@@ -126,3 +126,29 @@ export const getTaskDependencyChartByProjectId = async (projectId) => {
 
   return data; // Contains: dependencyTrees, sequentialChains, dependencies, tasks
 };
+
+export const deleteProjectById = async (id) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/projects/${id}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to delete project');
+    }
+
+    return data.message; // Expected: "Project deleted successfully."
+  } catch (error) {
+    console.error('Delete Project Error:', error.message);
+    throw error;
+  }
+};

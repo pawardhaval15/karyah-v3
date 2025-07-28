@@ -1,4 +1,4 @@
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
@@ -10,6 +10,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Modal, Alert,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
@@ -21,18 +22,20 @@ import { useTheme } from '../theme/ThemeContext';
 import { fetchUserConnections } from '../utils/issues';
 import { getProjectById } from '../utils/project';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
+import { deleteProjectById } from '../utils/project';
+import Toast from 'react-native-toast-message';
+import { getUserNameFromToken } from '../utils/auth';
 
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-
+  const [userId, setUserId] = useState(null);
   const theme = useTheme();
   const { project, projectId } = route.params || {};
   const [users, setUsers] = useState([]);
   const [projectDetails, setProjectDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDependencyChart, setShowDependencyChart] = useState(false);
-
   const [showProjectIssuePopup, setShowProjectIssuePopup] = useState(false);
   const [issueForm, setIssueForm] = useState({
     title: '',
@@ -42,7 +45,15 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     dueDate: '',
     isCritical: false,
   });
+  const [menuVisible, setMenuVisible] = useState(false);
 
+  useEffect(() => {
+    const fetchUserId = async () => {
+      const id = await getUserNameFromToken();
+      setUserId(id);
+    };
+    fetchUserId();
+  }, []);
   useEffect(() => {
     const fetchDetails = async () => {
       try {
@@ -71,14 +82,12 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         setUsers([]);
       }
     };
-
     fetchConnections();
   }, []);
 
   const handleIssueChange = (field, value) => {
     setIssueForm((prev) => ({ ...prev, [field]: value }));
   };
-
   const handleIssueSubmit = () => {
     // Future: send issue to backend
     setShowProjectIssuePopup(false);
@@ -89,7 +98,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       dueDate: '',
       isCritical: false,
     });
-    return null; // Prevent accidental raw value rendering
+    return null;
   };
 
   if (loading) {
@@ -119,16 +128,105 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       </View>
     );
   }
-
   const progressPercent = projectDetails.progress || 0;
-
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              top: Platform.OS === 'ios' ? 80 : 35,
+              right: 20,
+              backgroundColor: '#fff',
+              borderRadius: 10,
+              paddingVertical: 8,
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowOffset: { width: 0, height: 1 },
+              shadowRadius: 6,
+              elevation: 6,
+              minWidth: 140,
+            }}
+          >
+            {/* Edit Option */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 }}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('UpdateProjectScreen', { projectId: projectDetails.id });
+              }}
+            >
+              <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>Edit</Text>
+            </TouchableOpacity>
+            {/* Delete Option */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 }}
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert(
+                  'Delete Project',
+                  'Are you sure you want to delete this project?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await deleteProjectById(projectDetails.id);
+                          Toast.show({
+                            type: 'success',
+                            text1: 'Deleted',
+                            text2: 'Project deleted successfully.',
+                            position: 'center',
+                          });
+                          navigation.goBack();
+                        } catch (err) {
+                          Alert.alert('Delete Failed', err.message || 'Could not delete project.');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>Delete</Text>
+            </TouchableOpacity>
+          </View>
         </TouchableOpacity>
+      </Modal>
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingHorizontal: 16,
+            paddingTop: 16,
+          }}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
+            <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 8 }}>
+            <Feather name="more-vertical" size={22} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
         <LinearGradient
           colors={[theme.secondary, theme.primary]}
           start={{ x: 0, y: 0 }}
@@ -141,18 +239,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 styles.dueDate
               }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
           </View>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('UpdateProjectScreen', {
-              projectId: projectDetails.id, // or project.id
-            })}
-            style={{
-              padding: 8,
-              backgroundColor: 'rgba(255,255,255,0.15)',
-              borderRadius: 8,
-            }}
-          >
-            <MaterialIcons name="edit" size={22} color="#fff" />
-          </TouchableOpacity>
         </LinearGradient>
         {/* Compact tab-style button for Task Dependency Flow */}
         <TouchableOpacity
@@ -182,7 +268,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           <Text style={[styles.progressLabel, { color: theme.text }]}>
             Progress <Text style={{ color: theme.success }}>{projectDetails.progress || 0}%</Text>
           </Text>
-
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: theme.primary }]} />
             <Text style={[styles.statusText, { color: theme.primary }]}>
@@ -228,7 +313,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
               Co-Admins
             </Text>
-
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setShowCoAdminPopup(true)}
@@ -259,7 +343,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   />
                 </View>
               ))}
-
               {projectDetails.coAdmins?.length > 12 && (
                 <View
                   style={{
@@ -281,7 +364,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 </View>
               )}
             </TouchableOpacity>
-
           </View>
         </View>
         <FieldBox
@@ -338,7 +420,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       />
       {showDependencyChart && (
         <DependencyChartPopup
-          key={`chart-${projectDetails.id}-${Date.now()}`} // 👈 force new mount each time
+          key={`chart-${projectDetails.id}-${Date.now()}`}
           visible={true}
           onClose={() => setShowDependencyChart(false)}
           projectId={projectDetails.id}
@@ -349,7 +431,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         onClose={() => setShowCoAdminPopup(false)}
         data={projectDetails.coAdmins}
         theme={theme}
-        title={`Co-Admins (${projectDetails.coAdmins?.length || 0})`} // <-- Dynamic title
+        title={`Co-Admins (${projectDetails.coAdmins?.length || 0})`}
       />
     </View>
   );
@@ -490,7 +572,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     marginBottom: 4,
   },
-
   issueBtnRow: {
     marginTop: 0,
     marginBottom: 8,
