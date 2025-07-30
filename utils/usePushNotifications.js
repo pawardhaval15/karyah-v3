@@ -1,128 +1,77 @@
-import { useEffect } from 'react';
-import { PermissionsAndroid, Platform } from 'react-native';
 import messaging from '@react-native-firebase/messaging';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { navigationRef } from '../navigation/navigationRef'; // adjust the path
+import { useEffect } from 'react';
+import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import SystemNotificationService from './SystemNotificationService';
 
 const API_URL = 'https://api.karyah.in/';
 
 async function requestUserPermission() {
+  // Android specific permission
   if (Platform.OS === 'android') {
-    const granted = await PermissionsAndroid.request(
-      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
-      {
-        title: 'Notification Permission',
-        message: 'Karyah needs notification permission to alert you.',
-        buttonPositive: 'Allow',
-        buttonNegative: 'Deny',
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+        {
+          title: 'Notification Permission',
+          message: 'Karyah needs notification permission to alert you.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
+        }
+      );
+      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+        console.warn('🛑 Android notification permission denied.');
+        return false;
       }
-    );
-    if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
-      console.warn('🛑 Notification permission denied.');
+    } catch (err) {
+      console.warn('🛑 Android permission request failed:', err);
       return false;
     }
   }
 
-  const authStatus = await messaging().requestPermission();
-  const enabled =
-    authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-    authStatus === messaging.AuthorizationStatus.PROVISIONAL;
-
-  return enabled;
-}
-
-async function getFCMTokenAndRegister() {
-  const hasPermission = await requestUserPermission();
-  if (!hasPermission) {
-    console.warn('🛑 Notification permission not granted.');
-    return;
-  }
-
-  const token = await messaging().getToken();
-  console.log('📲 FCM Token:', token);
-
-  const userToken = await AsyncStorage.getItem('token');
-  if (!userToken || !token) {
-    console.warn('⚠️ Missing user or device token.');
-    return;
-  }
-
+  // Firebase messaging permission (both iOS and Android)
   try {
-    const res = await fetch(`${API_URL}api/devices/deviceToken`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${userToken}`,
-      },
-      body: JSON.stringify({
-        deviceToken: token,
-        platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
-      }),
-    });
+    const authStatus = await messaging().requestPermission();
+    const enabled =
+      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
 
-    const data = await res.json();
-    console.log('✅ Device token registered:', data);
+    if (!enabled) {
+      if (Platform.OS === 'ios') {
+        Alert.alert(
+          'Notification Permission',
+          'Push notifications are disabled. Please enable them in Settings to receive important updates.',
+          [{ text: 'OK' }]
+        );
+      }
+      console.warn('🛑 FCM permission denied.');
+      return false;
+    }
+
+    return true;
   } catch (error) {
-    console.error('❌ Error sending token:', error);
-  }
-}
-
-function handleNotificationNavigation(data) {
-  if (!data || !data.type) return;
-
-  switch (data.type) {
-    case 'project':
-      if (data.projectId) {
-        navigationRef.navigate('ProjectDetailsScreen', {
-          projectId: data.projectId,
-        });
-      }
-      break;
-    case 'task':
-      if (data.taskId) {
-        navigationRef.navigate('TaskDetails', {
-          taskId: data.taskId,
-        });
-      }
-      break;
-    case 'issue':
-      if (data.issueId) {
-        navigationRef.navigate('IssueDetails', {
-          issueId: data.issueId,
-        });
-      }
-      break;
-    default:
-      console.warn('📬 Unknown notification type:', data.type);
+    console.error('❌ Error requesting FCM permission:', error);
+    return false;
   }
 }
 
 export default function usePushNotifications() {
   useEffect(() => {
-    getFCMTokenAndRegister();
+    // Initialize system notification service
+    const notificationService = new SystemNotificationService();
+    
+    // Request permissions and register token
+    const initializeNotifications = async () => {
+      const hasPermission = await requestUserPermission();
+      if (hasPermission) {
+        await SystemNotificationService.registerToken();
+      }
+    };
 
-    // Background state
-    messaging().onNotificationOpenedApp(remoteMessage => {
-      console.log('🔄 Notification tapped (background):', remoteMessage);
-      handleNotificationNavigation(remoteMessage?.data);
-    });
+    initializeNotifications();
 
-    // Quit state
-    messaging()
-      .getInitialNotification()
-      .then(remoteMessage => {
-        if (remoteMessage) {
-          console.log('📲 Notification caused app to open from quit state:', remoteMessage);
-          handleNotificationNavigation(remoteMessage?.data);
-        }
-      });
+    // Setup FCM listeners using the system notification service
+    const cleanup = SystemNotificationService.setupFCMListeners();
 
-    // Foreground handling
-    const unsubscribe = messaging().onMessage(async remoteMessage => {
-      console.log('📥 Foreground notification:', remoteMessage);
-      // Optional: In-app alert or badge logic here
-    });
-
-    return unsubscribe;
+    return cleanup;
   }, []);
 }

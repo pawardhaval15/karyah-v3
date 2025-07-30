@@ -11,12 +11,11 @@
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.piyushkatole16.karyah",
+      "googleServicesFile": "./GoogleService-Info.plist",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -28,9 +27,11 @@
         "NSPhotoLibraryAddUsageDescription": "This app requires permission to save photos and videos to your library.",
         "NSDocumentsFolderUsageDescription": "This app requires access to your documents for file uploads and access.",
         "NSUserNotificationUsageDescription": "Karyah needs permission to send you important alerts and updates.",
-        "UIBackgroundModes": [
-          "fetch"
-        ]
+        "UIBackgroundModes": ["fetch", "remote-notification"]
+      },
+      "entitlements": {
+        "aps-environment": "development",
+        "com.apple.developer.usernotifications.communication": true
       }
     },
     "android": {
@@ -45,8 +46,15 @@
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.READ_EXTERNAL_STORAGE",
-        "android.permission.WRITE_EXTERNAL_STORAGE"
-      ]
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.VIBRATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "notification": {
+        "icon": "./assets/notification-icon.png",
+        "color": "#366CD9"
+      }
     },
     "web": {
       "bundler": "metro"
@@ -57,14 +65,32 @@
     "plugins": [
       "expo-font",
       "expo-audio",
-      "expo-notifications",
-      "expo-build-properties"
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "@react-native-firebase/app",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ],
+      [
+        "@react-native-firebase/messaging",
+        {
+          "ios": {
+            "useFrameworks": "static"
+          }
+        }
+      ]
     ],
-    "platforms": [
-      "ios",
-      "android",
-      "web"
-    ],
+    "platforms": ["ios", "android", "web"],
     "extra": {
       "router": {},
       "eas": {
