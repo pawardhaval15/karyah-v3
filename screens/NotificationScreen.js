@@ -1,8 +1,7 @@
+import MaterialIcons from '@expo/vector-icons/MaterialIcons'; // Already imported as Icon, but for clarity
 import { Audio } from 'expo-av';
-import * as Notifications from 'expo-notifications';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Animated,
   Image,
   Platform,
@@ -14,9 +13,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import Icon from 'react-native-vector-icons/MaterialIcons';
 import { useTheme } from '../theme/ThemeContext';
-import MaterialIcons from '@expo/vector-icons/MaterialIcons'; // Already imported as Icon, but for clarity
 import {
   acceptConnectionRequest,
   getPendingRequests,
@@ -49,27 +46,6 @@ const NotificationScreen = ({ navigation }) => {
     }
   }, []);
 
-  useEffect(() => {
-    const subscription = Notifications.addNotificationReceivedListener(async () => {
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/notification.wav') // Make sure this file exists!
-        );
-        await sound.playAsync();
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.didJustFinish) sound.unloadAsync();
-        });
-      } catch (err) {
-        console.error('Notification sound error:', err.message);
-      }
-      loadNotifications();
-      loadPendingRequests();
-    });
-    return () => {
-      subscription.remove();
-    };
-  }, [loadNotifications, loadPendingRequests]);
-
   const loadPendingRequests = useCallback(async () => {
     try {
       const data = await getPendingRequests();
@@ -85,30 +61,31 @@ const NotificationScreen = ({ navigation }) => {
     loadPendingRequests();
   }, [loadNotifications, loadPendingRequests]);
 
+  // Auto-refresh notifications when screen is focused
   useEffect(() => {
-    const subscription = Notifications.addNotificationReceivedListener(async () => {
-      try {
-        const { sound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/refresh.wav')
-        );
-        await sound.playAsync();
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.didJustFinish) sound.unloadAsync();
-        });
-      } catch (err) {
-        console.error('Notification sound error:', err.message);
-      }
+    const unsubscribe = navigation.addListener('focus', () => {
       loadNotifications();
       loadPendingRequests();
     });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [loadNotifications, loadPendingRequests]);
+    return unsubscribe;
+  }, [navigation, loadNotifications, loadPendingRequests]);
 
   const onRefresh = async () => {
     setRefreshing(true);
+    
+    // Play refresh sound
+    try {
+      const { sound } = await Audio.Sound.createAsync(
+        require('../assets/sounds/refresh.wav')
+      );
+      await sound.playAsync();
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.didJustFinish) sound.unloadAsync();
+      });
+    } catch (err) {
+      console.error('Refresh sound error:', err.message);
+    }
+    
     await loadNotifications();
     await loadPendingRequests();
     setRefreshing(false);
@@ -410,7 +387,7 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
-    marginTop: Platform.OS === 'ios' ? 70 : 25,
+    marginTop: Platform.OS === 'ios' ? 0 : 0,
     marginLeft: 16,
     marginBottom: 18,
     flexDirection: 'row',

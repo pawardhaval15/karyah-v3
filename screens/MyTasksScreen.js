@@ -1,12 +1,13 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import CustomCircularProgress from 'components/task details/CustomCircularProgress';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
   Platform,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -15,12 +16,11 @@ import {
 } from 'react-native';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
+import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { getTasksByProjectId } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
-import { useFocusEffect } from '@react-navigation/native';
-import { RefreshControl } from 'react-native';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
   const [search, setSearch] = useState('');
