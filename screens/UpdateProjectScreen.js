@@ -1,6 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
     Alert,
     Image,
@@ -19,15 +19,15 @@ import DateBox from '../components/task details/DateBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserConnections, searchConnections } from '../utils/connections';
 import { getProjectById, updateProject } from '../utils/project';
+import { Keyboard } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 
 export default function UpdateProjectScreen({ route, navigation }) {
     const { projectId } = route.params;
     const theme = useTheme();
-
     const [project, setProject] = useState(null);
     const [loading, setLoading] = useState(true);
     const [allConnections, setAllConnections] = useState([]);
-
     const [values, setValues] = useState({
         projectName: '',
         projectDesc: '',
@@ -36,11 +36,28 @@ export default function UpdateProjectScreen({ route, navigation }) {
         startDate: '',
         endDate: '',
     });
-
     const [selectedCoAdmins, setSelectedCoAdmins] = useState([]);
     const [searchText, setSearchText] = useState('');
     const [filteredConnections, setFilteredConnections] = useState([]);
     const [showCoAdminPicker, setShowCoAdminPicker] = useState(false);
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
+                setKeyboardVisible(true);
+            });
+            const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+                setKeyboardVisible(false);
+            });
+
+            return () => {
+                showSubscription.remove();
+                hideSubscription.remove();
+            };
+        }, [])
+    );
+
     useEffect(() => {
         if (showCoAdminPicker) {
             getUserConnections()
@@ -48,6 +65,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
                 .catch(() => setAllConnections([]));
         }
     }, [showCoAdminPicker]);
+
     useEffect(() => {
         const fetchProject = async () => {
             try {
@@ -119,7 +137,6 @@ export default function UpdateProjectScreen({ route, navigation }) {
                     <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
                     <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
                 </TouchableOpacity>
-
                 {/* Header Card */}
                 <LinearGradient colors={[theme.secondary, theme.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerCard}>
                     <View>
@@ -127,7 +144,6 @@ export default function UpdateProjectScreen({ route, navigation }) {
                         <Text style={styles.dueDate}>Due Date : {values.endDate?.split('T')[0] || '-'}</Text>
                     </View>
                 </LinearGradient>
-
                 {/* Date Row */}
                 <View style={styles.dateRow}>
                     <DateBox
@@ -143,7 +159,6 @@ export default function UpdateProjectScreen({ route, navigation }) {
                         theme={theme}
                     />
                 </View>
-
                 {/* Editable Fields */}
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <Text style={[styles.inputLabel, { color: theme.text }]}>Project Name</Text>
@@ -186,7 +201,6 @@ export default function UpdateProjectScreen({ route, navigation }) {
                         style={[styles.inputValue, { color: theme.text, minHeight: 60 }]}
                     />
                 </View>
-
                 {/* Co-Admins */}
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>Co-Admins</Text>
@@ -212,7 +226,6 @@ export default function UpdateProjectScreen({ route, navigation }) {
                         <Feather name="chevron-right" size={20} color={theme.secondaryText} style={{ marginLeft: 8 }} />
                     </TouchableOpacity>
                 </View>
-
                 <Modal
                     visible={showCoAdminPicker}
                     animationType="slide"
@@ -236,7 +249,6 @@ export default function UpdateProjectScreen({ route, navigation }) {
                                 }}
                             >
                                 <Text style={{ color: theme.text, fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>Select Co-Admins</Text>
-
                                 {selectedCoAdmins.length > 0 && (
                                     <ScrollView
                                         horizontal
@@ -349,9 +361,11 @@ export default function UpdateProjectScreen({ route, navigation }) {
                     </View>
                 </Modal>
             </ScrollView>
-            <View style={styles.fixedButtonContainer}>
-                <GradientButton title="Save Changes" onPress={handleUpdate} theme={theme} />
-            </View>
+            {!isKeyboardVisible && (
+                <View style={styles.fixedButtonContainer}>
+                    <GradientButton title="Save Changes" onPress={handleUpdate} theme={theme} />
+                </View>
+            )}
         </KeyboardAvoidingView>
     );
 }
