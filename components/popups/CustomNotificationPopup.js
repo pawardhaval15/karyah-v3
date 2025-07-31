@@ -100,13 +100,6 @@ export default function CustomNotificationPopup({
     });
   };
 
-  const handleEnlarge = () => {
-    if (onEnlarge) {
-      onEnlarge({ title, message, data });
-    }
-    hideNotification();
-  };
-
   const handleTap = () => {
     if (onNavigate && data) {
       onNavigate(data);
@@ -197,6 +190,16 @@ export default function CustomNotificationPopup({
               {title}
             </Text>
 
+            {/* Notification Description - Small */}
+            {message && (
+              <Text
+                style={[styles.description, { color: theme?.secondaryText || '#666666' }]}
+                numberOfLines={2}
+              >
+                {message}
+              </Text>
+            )}
+
             {/* Type indicator - smaller */}
             {data?.type && (
               <View style={styles.typeIndicator}>
@@ -209,16 +212,8 @@ export default function CustomNotificationPopup({
             )}
           </TouchableOpacity>
 
-          {/* Action Buttons - Compact */}
+          {/* Action Buttons - Only Cancel */}
           <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.enlargeButton]}
-              onPress={handleEnlarge}
-              activeOpacity={0.7}
-            >
-              <Feather name="maximize-2" size={14} color={theme?.primary || '#007AFF'} />
-            </TouchableOpacity>
-
             <TouchableOpacity
               style={[styles.actionButton, styles.cancelButton]}
               onPress={hideNotification}
@@ -267,7 +262,7 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 12,
-    paddingRight: 76, // Space for action buttons
+    paddingRight: 44, // Space for single cancel button
   },
   header: {
     flexDirection: 'row',
@@ -297,8 +292,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 14,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: 4,
     lineHeight: 18,
+  },
+  description: {
+    fontSize: 11,
+    lineHeight: 14,
+    marginBottom: 6,
+    opacity: 0.8,
   },
   message: {
     fontSize: 12,

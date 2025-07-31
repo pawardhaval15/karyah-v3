@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NotificationQueueManager } from '../components/NotificationQueueManager';
 import { navigationRef } from '../navigation/navigationRef';
 
@@ -19,10 +19,12 @@ class CustomNotificationManager {
     console.log('📝 Adding notification listener, total listeners:', this.listeners.length + 1);
     this.listeners.push(listener);
     
-    // Send current queue to new listener
+    // Send current queue to new listener asynchronously
     if (this.notificationQueue.length > 0) {
       console.log('📬 Sending current queue to new listener:', this.notificationQueue);
-      listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
+      setTimeout(() => {
+        listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
+      }, 0);
     }
   }
 
@@ -106,10 +108,12 @@ class CustomNotificationManager {
       queueLength: this.notificationQueue.length
     });
     
-    // Broadcast queue update
-    this.listeners.forEach(listener => {
-      listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
-    });
+    // Broadcast queue update asynchronously
+    setTimeout(() => {
+      this.listeners.forEach(listener => {
+        listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
+      });
+    }, 0);
   }
 
   static removeNotification(notificationId) {
@@ -117,20 +121,24 @@ class CustomNotificationManager {
     this.notificationQueue = this.notificationQueue.filter(n => n.id !== notificationId);
     console.log('📬 Queue length after removal:', this.notificationQueue.length);
     
-    // Broadcast queue update
-    this.listeners.forEach(listener => {
-      listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
-    });
+    // Broadcast queue update asynchronously
+    setTimeout(() => {
+      this.listeners.forEach(listener => {
+        listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
+      });
+    }, 0);
   }
 
   static clearAllNotifications() {
     console.log('🧹 Clearing all notifications');
     this.notificationQueue = [];
     
-    // Broadcast queue update
-    this.listeners.forEach(listener => {
-      listener({ type: 'QUEUE_UPDATE', queue: [] });
-    });
+    // Broadcast queue update asynchronously
+    setTimeout(() => {
+      this.listeners.forEach(listener => {
+        listener({ type: 'QUEUE_UPDATE', queue: [] });
+      });
+    }, 0);
   }
 
   static handleNotificationNavigation(data) {
@@ -180,7 +188,7 @@ class CustomNotificationManager {
 export function CustomNotificationProvider({ children, theme }) {
   const [notifications, setNotifications] = useState([]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleNotificationUpdate = (update) => {
       console.log('🎯 CustomNotificationProvider received update:', update);
       

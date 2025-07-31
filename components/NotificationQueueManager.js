@@ -1,17 +1,15 @@
 import { Feather } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomNotificationPopup from '../components/popups/CustomNotificationPopup';
-import EnlargedNotificationModal from '../components/popups/EnlargedNotificationModal';
 
 const { width: screenWidth } = Dimensions.get('window');
 
 export function NotificationQueueManager({ notifications, onRemoveNotification, onClearAll, onNavigate, theme }) {
-  const [enlargedNotification, setEnlargedNotification] = useState(null);
-  const [showEnlarged, setShowEnlarged] = useState(false);
-
   // Auto-remove notifications after 8 seconds based on their arrival time
   useEffect(() => {
+    if (!notifications || notifications.length === 0) return;
+    
     const timers = [];
     
     notifications.forEach((notification) => {
@@ -19,7 +17,7 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
         const arrivalTime = new Date(notification.timestamp).getTime();
         const currentTime = Date.now();
         const elapsed = currentTime - arrivalTime;
-        const remaining = Math.max(8000 - elapsed, 0); // 3 seconds total
+        const remaining = Math.max(8000 - elapsed, 0); // 8 seconds total
 
         if (remaining > 0) {
           const timer = setTimeout(() => {
@@ -28,8 +26,8 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
           
           timers.push(timer);
         } else {
-          // Already expired, remove immediately
-          setTimeout(() => onRemoveNotification(notification.id), 100);
+          // Already expired, remove immediately using setTimeout to avoid sync update
+          setTimeout(() => onRemoveNotification(notification.id), 10);
         }
       }
     });
@@ -38,16 +36,6 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
       timers.forEach(timer => clearTimeout(timer));
     };
   }, [notifications, onRemoveNotification]);
-
-  const handleEnlarge = (notification) => {
-    setEnlargedNotification(notification);
-    setShowEnlarged(true);
-  };
-
-  const handleCloseEnlarged = () => {
-    setShowEnlarged(false);
-    setEnlargedNotification(null);
-  };
 
   const getNotificationPosition = (index) => {
     return {
@@ -74,7 +62,6 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
             title={notification.title}
             message={notification.message}
             data={notification.data}
-            onEnlarge={() => handleEnlarge(notification)}
             onCancel={() => onRemoveNotification(notification.id)}
             onNavigate={(data) => {
               onNavigate(data);
@@ -108,18 +95,6 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Enlarged Notification Modal */}
-      <EnlargedNotificationModal
-        visible={showEnlarged}
-        notification={enlargedNotification}
-        onClose={handleCloseEnlarged}
-        onNavigate={(data) => {
-          onNavigate(data);
-          handleCloseEnlarged();
-        }}
-        theme={theme}
-      />
     </>
   );
 }
