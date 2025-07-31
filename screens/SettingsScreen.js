@@ -236,38 +236,68 @@ export default function SettingsScreen({ navigation }) {
 
         {/* Logout Option - styled like other options */}
         <TouchableOpacity
-          style={[styles.optionRow, { borderBottomColor: theme.border }]}
-          onPress={async () => {
-            try {
-              await AsyncStorage.removeItem('token');
-              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
-            } catch (err) {
-              alert('Logout failed');
-            }
-          }}
-        >
-          {/* Icon in a box */}
-          <View style={{
-            width: 36,
-            height: 36,
-            backgroundColor: theme.card,
-            borderRadius: 10,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 16,
-            borderWidth: 1,
-            borderColor: theme.border
-          }}>
-            <Feather name="log-out" size={20} color={theme.text} />
-          </View>
-          {/* Text in middle */}
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.optionText, { color: theme.text }]}>Logout</Text>
-            <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>Sign out of your account and return to login.</Text>
-          </View>
-          {/* Empty at right for alignment */}
-          <View style={{ width: 40 }} />
-        </TouchableOpacity>
+  style={[styles.optionRow, { borderBottomColor: theme.border }]}
+  onPress={async () => {
+    try {
+      const userToken = await AsyncStorage.getItem('token');
+      const fcmToken = await AsyncStorage.getItem(`fcm_token_${Platform.OS}`);
+
+      // 🔁 Unregister FCM token from backend
+      if (userToken && fcmToken) {
+        await fetch('https://api.karyah.in/api/devices/deviceToken', {
+          method: 'DELETE', // or 'POST' depending on your API
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${userToken}`,
+          },
+          body: JSON.stringify({
+            deviceToken: fcmToken,
+            platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
+            tokenType: 'FCM',
+          }),
+        });
+      }
+
+      // 🧹 Remove tokens from storage
+      await AsyncStorage.removeItem(`fcm_token_${Platform.OS}`);
+      await AsyncStorage.removeItem('token');
+
+      // 🔄 Navigate to login screen
+      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+
+    } catch (err) {
+      console.error('Logout failed:', err);
+      alert('Logout failed');
+    }
+  }}
+>
+  {/* Icon in a box */}
+  <View style={{
+    width: 36,
+    height: 36,
+    backgroundColor: theme.card,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 16,
+    borderWidth: 1,
+    borderColor: theme.border
+  }}>
+    <Feather name="log-out" size={20} color={theme.text} />
+  </View>
+
+  {/* Text in middle */}
+  <View style={{ flex: 1 }}>
+    <Text style={[styles.optionText, { color: theme.text }]}>Logout</Text>
+    <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>
+      Sign out of your account and return to login.
+    </Text>
+  </View>
+
+  {/* Empty at right for alignment */}
+  <View style={{ width: 40 }} />
+</TouchableOpacity>
+
       </ScrollView>
       <ChangePinPopup
         visible={pinModalVisible}
