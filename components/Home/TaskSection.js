@@ -22,8 +22,8 @@ export default function TaskSection({ navigation, loading: parentLoading }) {
         const [tasksData, issuesData] = await Promise.all([fetchMyTasks(), fetchAssignedIssues()]);
         setTasks(tasksData || []);
         setIssues(issuesData || []);
-        console.log('Fetched tasks:', tasksData);
-        console.log('Fetched issues:', issuesData);
+        // console.log('Fetched tasks:', tasksData);
+        // console.log('Fetched issues:', issuesData);
       } catch (err) {
         console.error('Error fetching tasks/issues:', err);
       } finally {
