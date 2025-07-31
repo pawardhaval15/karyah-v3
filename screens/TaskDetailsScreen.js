@@ -419,7 +419,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const isCreator =
     userName && creatorName && userName.trim().toLowerCase() === creatorName.trim().toLowerCase();
   // console.log('[TaskDetailsScreen] Matching userName:', userName, 'with creatorName:', creatorName, '| isCreator:', isCreator);
-  console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
+//   console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
 
   if (loading) {
     return (

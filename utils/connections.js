@@ -140,7 +140,7 @@ export const searchConnections = async (query) => {
     );
 
     const data = await response.json();
-    console.log('[searchConnections] Response data:', data);
+    // console.log('[searchConnections] Response data:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to search connections');
