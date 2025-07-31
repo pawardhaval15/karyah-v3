@@ -6,6 +6,7 @@ class CustomNotificationManager {
   static instance = null;
   static listeners = [];
   static notificationQueue = [];
+  static pendingNotifications = new Map(); // Track pending notifications to prevent rapid duplicates
 
   static getInstance() {
     if (!CustomNotificationManager.instance) {
@@ -31,16 +32,79 @@ class CustomNotificationManager {
   }
 
   static showNotification(notification) {
-    console.log('📢 Adding notification to queue:', notification);
+    console.log('📢 Attempting to add notification:', notification);
     
-    // Add unique ID if not present
+    // Create a unique key for this notification
+    const notificationKey = `${notification.title}-${notification.data?.type}-${notification.data?.issueId}-${notification.data?.projectId}-${notification.data?.taskId}`;
+    
+    // Check if this exact notification is already pending (debounce within 500ms)
+    if (this.pendingNotifications.has(notificationKey)) {
+      console.log('🚫 Notification already pending, ignoring duplicate:', notificationKey);
+      return;
+    }
+    
+    // Mark as pending
+    this.pendingNotifications.set(notificationKey, true);
+    
+    // Clear pending status after 500ms
+    setTimeout(() => {
+      this.pendingNotifications.delete(notificationKey);
+    }, 500);
+    
+    // Enhanced duplicate checking with multiple criteria
+    const isDuplicate = this.notificationQueue.some(existing => {
+      // Check by ID first (if present)
+      if (notification.id && existing.id && notification.id === existing.id) {
+        return true;
+      }
+      
+      // Check by content and data
+      const sameContent = existing.title === notification.title && 
+                         existing.message === notification.message;
+      
+      const sameData = existing.data?.type === notification.data?.type &&
+                      existing.data?.issueId === notification.data?.issueId &&
+                      existing.data?.projectId === notification.data?.projectId &&
+                      existing.data?.taskId === notification.data?.taskId;
+      
+      // Consider it duplicate if content and data match, and it's recent (within 2 seconds)
+      if (sameContent && sameData) {
+        const existingTime = new Date(existing.timestamp).getTime();
+        const currentTime = Date.now();
+        const timeDiff = currentTime - existingTime;
+        
+        if (timeDiff < 2000) { // Within 2 seconds
+          return true;
+        }
+      }
+      
+      return false;
+    });
+    
+    if (isDuplicate) {
+      console.log('🚫 Duplicate notification detected and blocked:', {
+        title: notification.title,
+        data: notification.data
+      });
+      return;
+    }
+    
+    // Add unique ID and timestamp if not present
     if (!notification.id) {
       notification.id = Date.now() + Math.random();
     }
     
+    if (!notification.timestamp) {
+      notification.timestamp = new Date();
+    }
+    
     // Add to queue
     this.notificationQueue.push(notification);
-    console.log('📬 Queue length after adding:', this.notificationQueue.length);
+    console.log('✅ Notification added to queue:', {
+      id: notification.id,
+      title: notification.title,
+      queueLength: this.notificationQueue.length
+    });
     
     // Broadcast queue update
     this.listeners.forEach(listener => {

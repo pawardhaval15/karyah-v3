@@ -13,7 +13,7 @@ import {
   View
 } from 'react-native';
 import ChangePinPopup from '../components/popups/ChangePinPopup';
-import CustomNotificationPopup, { getCustomNotificationsEnabled, toggleCustomNotifications } from '../components/popups/CustomNotificationPopup';
+import { getCustomNotificationsEnabled, toggleCustomNotifications } from '../components/popups/CustomNotificationPopup';
 import { useTheme } from '../theme/ThemeContext';
 import { changePin as changePinApi, getIsPublic, updateIsPublic } from '../utils/auth';
 

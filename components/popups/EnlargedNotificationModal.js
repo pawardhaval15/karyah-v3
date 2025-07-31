@@ -67,18 +67,23 @@ export default function EnlargedNotificationModal({
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="formSheet"
       onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor: theme?.background || '#FFFFFF' }]}>
-        {/* Header */}
+        {/* Drag Handle */}
+        <View style={styles.dragHandle}>
+          <View style={[styles.handleBar, { backgroundColor: theme?.border || '#E1E5E9' }]} />
+        </View>
+
+        {/* Compact Header */}
         <View style={[styles.header, { borderBottomColor: theme?.border || '#E1E5E9' }]}>
-          <View style={styles.headerLeft}>
+          <View style={styles.headerContent}>
             <View style={[styles.iconContainer, { backgroundColor: theme?.primary || '#007AFF' }]}>
-              <MaterialIcons name="notifications" size={20} color="#FFFFFF" />
+              <MaterialIcons name="notifications" size={16} color="#FFFFFF" />
             </View>
             <Text style={[styles.headerTitle, { color: theme?.text || '#000000' }]}>
-              Notification Details
+              Notification
             </Text>
           </View>
           <TouchableOpacity
@@ -86,83 +91,70 @@ export default function EnlargedNotificationModal({
             onPress={onClose}
             activeOpacity={0.7}
           >
-            <Feather name="x" size={24} color={theme?.text || '#000000'} />
+            <Feather name="x" size={20} color={theme?.secondaryText || '#666666'} />
           </TouchableOpacity>
         </View>
 
         {/* Content */}
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Title Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme?.secondaryText || '#666666' }]}>
-              NOTIFICATION
+          {/* Title Section - Compact */}
+          <View style={styles.titleSection}>
+            <Text style={[styles.titleText, { color: theme?.text || '#000000' }]}>
+              {title}
             </Text>
-            <View style={[styles.card, { backgroundColor: theme?.card || '#F8F9FA' }]}>
-              <Text style={[styles.titleText, { color: theme?.text || '#000000' }]}>
-                {title}
-              </Text>
-            </View>
           </View>
 
           {/* Message Section - Main Focus */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme?.secondaryText || '#666666' }]}>
-              MESSAGE
+          <View style={styles.messageSection}>
+            <Text style={[styles.messageText, { color: theme?.text || '#000000' }]}>
+              {message}
             </Text>
-            <View style={[styles.messageCard, { backgroundColor: theme?.card || '#F8F9FA' }]}>
-              <Text style={[styles.messageText, { color: theme?.text || '#000000' }]}>
-                {message}
-              </Text>
-            </View>
           </View>
 
-          {/* Quick Details */}
+          {/* Quick Details - Compact Badges */}
           {data?.type && (
-            <View style={styles.section}>
-              <View style={styles.quickDetails}>
-                <View style={[styles.detailBadge, { backgroundColor: theme?.primary + '20' || '#007AFF20' }]}>
-                  <Text style={[styles.detailBadgeText, { color: theme?.primary || '#007AFF' }]}>
-                    {data.type.toUpperCase()}
+            <View style={styles.badgeSection}>
+              <View style={[styles.typeBadge, { backgroundColor: theme?.primary + '15' || '#007AFF15' }]}>
+                <Text style={[styles.badgeText, { color: theme?.primary || '#007AFF' }]}>
+                  {data.type.toUpperCase()}
+                </Text>
+              </View>
+              {data?.priority && (
+                <View style={[styles.priorityBadge, { backgroundColor: 
+                  data.priority === 'high' ? '#FF453A15' :
+                  data.priority === 'critical' ? '#FF453A20' : '#34C75915'
+                }]}>
+                  <Text style={[styles.badgeText, { color: 
+                    data.priority === 'high' ? '#FF453A' :
+                    data.priority === 'critical' ? '#FF453A' : '#34C759'
+                  }]}>
+                    {data.priority.toUpperCase()}
                   </Text>
                 </View>
-                {data?.priority && (
-                  <View style={[styles.detailBadge, { backgroundColor: 
-                    data.priority === 'high' ? '#FF453A20' :
-                    data.priority === 'critical' ? '#FF453A30' : '#34C75920'
-                  }]}>
-                    <Text style={[styles.detailBadgeText, { color: 
-                      data.priority === 'high' ? '#FF453A' :
-                      data.priority === 'critical' ? '#FF453A' : '#34C759'
-                    }]}>
-                      {data.priority.toUpperCase()}
-                    </Text>
-                  </View>
-                )}
-              </View>
+              )}
             </View>
           )}
         </ScrollView>
 
-        {/* Action Buttons */}
+        {/* Action Buttons - Compact */}
         <View style={[styles.footer, { borderTopColor: theme?.border || '#E1E5E9' }]}>
           {data && (
             <TouchableOpacity
-              style={[styles.actionButton, styles.navigateButton, { backgroundColor: theme?.primary || '#007AFF' }]}
+              style={[styles.primaryButton, { backgroundColor: theme?.primary || '#007AFF' }]}
               onPress={handleNavigate}
               activeOpacity={0.8}
             >
-              <Feather name="external-link" size={18} color="#FFFFFF" />
-              <Text style={styles.navigateButtonText}>Open {data.type || 'Item'}</Text>
+              <Feather name="external-link" size={16} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>Open</Text>
             </TouchableOpacity>
           )}
           
           <TouchableOpacity
-            style={[styles.actionButton, styles.dismissButton, { backgroundColor: theme?.card || '#F8F9FA' }]}
+            style={[styles.secondaryButton, { backgroundColor: theme?.card || '#F8F9FA', borderColor: theme?.border || '#E1E5E9' }]}
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <Feather name="x" size={18} color={theme?.text || '#000000'} />
-            <Text style={[styles.dismissButtonText, { color: theme?.text || '#000000' }]}>Close</Text>
+            <Text style={[styles.secondaryButtonText, { color: theme?.text || '#000000' }]}>Close</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -173,31 +165,41 @@ export default function EnlargedNotificationModal({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    borderTopLeftRadius: 16,
+    borderTopRightRadius: 16,
+  },
+  dragHandle: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  handleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60, // Account for status bar
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
   },
-  headerLeft: {
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
+    width: 24,
+    height: 24,
+    borderRadius: 6,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '600',
   },
   closeButton: {
@@ -205,101 +207,80 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
+    paddingTop: 16,
   },
-  section: {
-    marginVertical: 16,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    letterSpacing: 0.5,
-  },
-  card: {
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
+  titleSection: {
+    marginBottom: 16,
   },
   titleText: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '600',
     lineHeight: 24,
   },
-  messageCard: {
+  messageSection: {
+    marginBottom: 20,
+    padding: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.02)',
     borderRadius: 12,
-    padding: 20,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.06)',
-    minHeight: 100,
   },
   messageText: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'left',
+    fontSize: 15,
+    lineHeight: 22,
   },
-  quickDetails: {
+  badgeSection: {
     flexDirection: 'row',
     gap: 8,
-    flexWrap: 'wrap',
+    marginBottom: 16,
   },
-  detailBadge: {
-    paddingHorizontal: 12,
+  typeBadge: {
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 6,
+    borderRadius: 8,
   },
-  detailBadgeText: {
+  priorityBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  badgeText: {
     fontSize: 11,
     fontWeight: '600',
   },
-  dataRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    alignItems: 'flex-start',
-  },
-  dataLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    minWidth: 80,
-    marginRight: 12,
-  },
-  dataValue: {
-    fontSize: 14,
-    flex: 1,
-    fontWeight: '400',
-  },
   footer: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 34, // Account for home indicator
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: 20,
     borderTopWidth: 1,
-    gap: 12,
+    gap: 10,
   },
-  actionButton: {
+  primaryButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderRadius: 10,
-    gap: 8,
+    gap: 6,
   },
-  navigateButton: {
-    backgroundColor: '#007AFF',
-  },
-  navigateButtonText: {
+  primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
   },
-  dismissButton: {
+  secondaryButton: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
-  dismissButtonText: {
-    fontSize: 16,
+  secondaryButtonText: {
+    fontSize: 15,
     fontWeight: '600',
   },
 });

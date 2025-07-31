@@ -26,6 +26,7 @@ export default function CustomNotificationPopup({
   autoHide = true,
   autoHideDelay = 5000,
   forceShow = false, // New prop to bypass settings check for testing
+  disablePositioning = false, // New prop to disable internal positioning
 }) {
   const slideAnim = useRef(new Animated.Value(screenWidth)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -64,7 +65,7 @@ export default function CustomNotificationPopup({
       // Slide in from right
       Animated.parallel([
         Animated.timing(slideAnim, {
-          toValue: 20, // Final position from right edge
+          toValue: disablePositioning ? 0 : 20, // Full width: 0, normal: 20px from right
           duration: 300,
           useNativeDriver: true,
         }),
@@ -80,7 +81,7 @@ export default function CustomNotificationPopup({
       console.log('◀️ Hiding notification...');
       hideNotification();
     }
-  }, [visible, showNotifications, forceShow]);
+  }, [visible, showNotifications, forceShow, disablePositioning]);
 
   const hideNotification = () => {
     Animated.parallel([
@@ -120,7 +121,7 @@ export default function CustomNotificationPopup({
         return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dy) < 100;
       },
       onPanResponderGrant: () => {
-        slideAnim.setOffset(20);
+        slideAnim.setOffset(disablePositioning ? 0 : 20);
       },
       onPanResponderMove: (evt, gestureState) => {
         if (gestureState.dx > 0) {
@@ -136,7 +137,7 @@ export default function CustomNotificationPopup({
         } else {
           // Snap back to original position
           Animated.spring(slideAnim, {
-            toValue: 20,
+            toValue: disablePositioning ? 0 : 20,
             useNativeDriver: true,
           }).start();
         }
@@ -152,7 +153,9 @@ export default function CustomNotificationPopup({
   console.log('✅ CustomNotificationPopup rendering with:', { title, message, data });
 
   return (
-    <View style={styles.overlay} pointerEvents="box-none">
+    <View style={[
+      disablePositioning ? styles.overlayNoPosition : styles.overlay
+    ]} pointerEvents="box-none">
       <Animated.View
         {...panResponder.panHandlers}
         style={[
@@ -174,7 +177,7 @@ export default function CustomNotificationPopup({
             {/* Header with App Icon */}
             <View style={styles.header}>
               <View style={[styles.iconContainer, { backgroundColor: theme?.primary || '#007AFF' }]}>
-                <MaterialIcons name="notifications" size={14} color="#FFFFFF" />
+                <MaterialIcons name="notifications" size={12} color="#FFFFFF" />
               </View>
               <Text style={[styles.appName, { color: theme?.secondaryText || '#666666' }]}>
                 Karyah
@@ -213,7 +216,7 @@ export default function CustomNotificationPopup({
               onPress={handleEnlarge}
               activeOpacity={0.7}
             >
-              <Feather name="maximize-2" size={16} color={theme?.primary || '#007AFF'} />
+              <Feather name="maximize-2" size={14} color={theme?.primary || '#007AFF'} />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -221,7 +224,7 @@ export default function CustomNotificationPopup({
               onPress={hideNotification}
               activeOpacity={0.7}
             >
-              <Feather name="x" size={16} color={theme?.secondaryText || '#666666'} />
+              <Feather name="x" size={14} color={theme?.secondaryText || '#666666'} />
             </TouchableOpacity>
           </View>
 
@@ -241,40 +244,46 @@ const styles = StyleSheet.create({
     zIndex: 9999,
     elevation: 9999,
   },
+  overlayNoPosition: {
+    // No positioning when managed externally - full width
+    flex: 1,
+    zIndex: 9999,
+    elevation: 9999,
+  },
   container: {
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
+    marginHorizontal: 12,
+    marginVertical: 4,
+    borderRadius: 10,
     borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 3,
+      height: 2,
     },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 6,
     overflow: 'hidden',
   },
   content: {
-    padding: 16,
-    paddingRight: 82, // Space for action buttons
+    padding: 12,
+    paddingRight: 76, // Space for action buttons
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   iconContainer: {
-    width: 20,
-    height: 20,
-    borderRadius: 5,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 8,
+    marginRight: 6,
   },
   appName: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '600',
     flex: 1,
   },
@@ -282,14 +291,14 @@ const styles = StyleSheet.create({
     marginLeft: 'auto',
   },
   timeText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '400',
   },
   title: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    marginBottom: 8,
-    lineHeight: 20,
+    marginBottom: 6,
+    lineHeight: 18,
   },
   message: {
     fontSize: 12,
@@ -311,15 +320,15 @@ const styles = StyleSheet.create({
   },
   actions: {
     position: 'absolute',
-    top: 16,
-    right: 16,
+    top: 12,
+    right: 12,
     flexDirection: 'row',
-    gap: 8,
+    gap: 6,
   },
   actionButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
