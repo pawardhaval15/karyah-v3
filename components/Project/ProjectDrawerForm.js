@@ -44,6 +44,7 @@ export default function ProjectDrawerForm({
       const payload = {
         ...values,
         description: values.projectDesc,
+        location: values.location,
         coAdminIds: selectedCoAdmins,
         startDate: values.startDate ? new Date(values.startDate).toISOString() : '',
         endDate: values.endDate ? new Date(values.endDate).toISOString() : '',
@@ -195,6 +196,13 @@ export default function ProjectDrawerForm({
                     theme={theme}
                     editable={true}
                     onChangeText={t => onChange('projectCategory', t)}
+                  />
+                  <FieldBox
+                    value={values?.location || ''}
+                    placeholder="Project Location"
+                    theme={theme}
+                    editable={true}
+                    onChangeText={t => onChange('location', t)}
                   />
 
                   <Modal
