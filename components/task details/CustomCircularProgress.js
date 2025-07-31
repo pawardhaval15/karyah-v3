@@ -1,6 +1,5 @@
-import React from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 
 const CustomCircularProgress = ({ size = 52, strokeWidth = 4, percentage = 75 }) => {
@@ -44,11 +43,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 13,
-    alignSelf: 'center',
-    top: '40%',
-    left: 0,
-    right: 0,
+    fontSize: 11,
     textAlign: 'center',
   },
 });

@@ -408,11 +408,16 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     style={styles.headerCard}
                 >
                     <View>
-                        <Text style={styles.taskName}>{task.taskName}</Text>
+                        <Text
+                            style={styles.taskName}
+                            numberOfLines={2}
+                            ellipsizeMode="tail"
+                        >
+                            {task.taskName}
+                        </Text>
                         <Text style={styles.dueDate}>
                             Due Date: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
                         </Text>
-
                     </View>
                     {isCreator && (
                         <TouchableOpacity
@@ -1258,6 +1263,7 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: '600',
         marginBottom: 6,
+        maxWidth: '80%',
     },
     dueDate: {
         color: '#fff',

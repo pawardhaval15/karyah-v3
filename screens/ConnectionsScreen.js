@@ -95,12 +95,12 @@ export default function ConnectionsScreen({ navigation }) {
                                 {item.phone ? `Phone: ${item.phone}` : ''}
                             </Text>
                         </View>
-                        <TouchableOpacity
+                        {/* <TouchableOpacity
                             style={[styles.actionBtn, { backgroundColor: theme.secCard }]}
                             onPress={() => alert('Message')}
                         >
                             <Feather name="message-circle" size={20} color={theme.primary} />
-                        </TouchableOpacity>
+                        </TouchableOpacity> */}
                     </TouchableOpacity>
                 )}
                 ListEmptyComponent={
