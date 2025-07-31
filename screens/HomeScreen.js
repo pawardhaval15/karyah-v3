@@ -298,7 +298,6 @@ const styles = StyleSheet.create({
     top: 0, left: 0, right: 0, bottom: 0,
     flexDirection: 'row',
     zIndex: 1000,
-    elevation: 100,
   },
   overlayBg: {
     flex: 1,
@@ -413,11 +412,6 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 8,
-    shadowColor: '#011F53',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
     marginBottom: -36,
   },
 });

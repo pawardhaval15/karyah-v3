@@ -4,7 +4,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 export default function FabPopup({ onTask, onProject, theme }) {
     return (
         <View style={styles.popupContainer}>
-            <View style={[styles.popupBox, { backgroundColor: theme.card }]}>
+            <View style={[styles.popupBox, { backgroundColor: theme.secCard }]}>
                 <TouchableOpacity style={styles.popupBtn} onPress={onTask}>
                     <Text style={[styles.popupText, { color: theme.text }]}>Task</Text>
                 </TouchableOpacity>
@@ -13,7 +13,7 @@ export default function FabPopup({ onTask, onProject, theme }) {
                     <Text style={[styles.popupText, { color: theme.text }]}>Project</Text>
                 </TouchableOpacity>
             </View>
-            <View style={[styles.popupArrowDown, { borderTopColor: theme.card }]} />
+            <View style={[styles.popupArrowDown, { borderTopColor: theme.secCard }]} />
         </View>
     );
 }
@@ -27,11 +27,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         backgroundColor: '#fff',
         borderRadius: 10,
-        elevation: 8,
-        shadowColor: '#011F53',
-        shadowOpacity: 0.10,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 4 },
         minWidth: 170,
         justifyContent: 'center',
         alignItems: 'center',
