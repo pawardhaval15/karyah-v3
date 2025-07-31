@@ -54,7 +54,7 @@ export default function TaskDrawerForm({
     const [showAddProjectPopup, setShowAddProjectPopup] = useState(false);
     const [showAddWorklistPopup, setShowAddWorklistPopup] = useState(false);
     const [addProjectValues, setAddProjectValues] = useState({ projectName: '', projectDesc: '', projectCategory: '', startDate: '', endDate: '' });
-    
+
     const handleAddProjectChange = (key, value) => {
         setAddProjectValues(prev => ({ ...prev, [key]: value }));
     };
@@ -71,8 +71,6 @@ export default function TaskDrawerForm({
         { userId: '__add_new__', name: '+ Add New Connection' },
         ...users,
     ];
-
-
 
     useEffect(() => {
         (async () => {
@@ -427,7 +425,6 @@ export default function TaskDrawerForm({
                     </>
                 }
             />
-
             {/* Attachment Preview Grid */}
             {attachments.length > 0 && (
                 <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
@@ -466,7 +463,6 @@ export default function TaskDrawerForm({
                                                 />
                                             </TouchableOpacity>
                                         )}
-
                                         {/* Audio Playback */}
                                         {att.type?.startsWith('audio') && (
                                             <TouchableOpacity
@@ -480,19 +476,16 @@ export default function TaskDrawerForm({
                                                 <MaterialCommunityIcons name="play-circle-outline" size={28} color="#1D4ED8" />
                                             </TouchableOpacity>
                                         )}
-
                                         {/* Fallback File Icon */}
                                         {!att.type?.startsWith('image') && !att.type?.startsWith('audio') && (
                                             <MaterialCommunityIcons name="file-document-outline" size={28} color="#888" style={{ marginRight: 8 }} />
                                         )}
-
                                         {/* File Name */}
                                         <Text style={{ color: '#444', fontSize: 13, flex: 1 }}>
                                             {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                                                 ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                                                 : (att.name || att.uri?.split('/').pop())}
                                         </Text>
-
                                         {/* Delete Button */}
                                         <TouchableOpacity
                                             onPress={() => {
@@ -509,7 +502,6 @@ export default function TaskDrawerForm({
                     ))}
                 </View>
             )}
-
             {/* Attachment Picker Bottom Sheet */}
             <AttachmentSheet
                 visible={showAttachmentSheet}
@@ -519,7 +511,6 @@ export default function TaskDrawerForm({
                     setShowAttachmentSheet(false);
                 }}
             />
-
             {/* Description */}
             <FieldBox
                 value={values.taskDesc}
@@ -529,7 +520,6 @@ export default function TaskDrawerForm({
                 multiline={true}
                 onChangeText={t => onChange('taskDesc', t)}
             />
-
             {/* Submit Button */}
             <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate}>
                 <LinearGradient

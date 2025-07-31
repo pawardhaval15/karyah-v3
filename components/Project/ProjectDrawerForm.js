@@ -93,52 +93,53 @@ export default function ProjectDrawerForm({
 
   return (
     <>
-      <KeyboardAvoidingView
-        style={{ flex: 1, backgroundColor: theme.card }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
-      >
-
-        <ScrollView
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-          keyboardShouldPersistTaps="handled"
+      {!showFullForm && (
+        <KeyboardAvoidingView
+          style={{ flex: 1, backgroundColor: theme.card }}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
         >
-          <View style={{ flex: 1, justifyContent: 'center' }}>
-            <FieldBox
-              value={values?.projectName || ''}
-              placeholder="Project Name"
-              theme={theme}
-              editable={true}
-              onChangeText={t => onChange && onChange('projectName', t)}
-            />
-            <FieldBox
-              value={values?.projectDesc || ''}
-              placeholder="Description"
-              theme={theme}
-              editable={true}
-              multiline={true}
-              onChangeText={t => onChange && onChange('projectDesc', t)}
-            />
-            <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
-              <LinearGradient
-                colors={['#011F53', '#366CD9']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.drawerBtnGradient}
-              >
-                <Text style={styles.drawerBtnText}>Create Project</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <Text style={[styles.drawerHint, { color: theme.secondaryText }]}>
-              Want to Add Complete Details?{' '}
-              <Text style={[styles.drawerHintLink, { color: theme.primary }]} onPress={() => setShowFullForm(true)}>
-                Click Here
-              </Text>
-            </Text>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
 
+          <ScrollView
+            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={{ flex: 1, justifyContent: 'center' }}>
+              <FieldBox
+                value={values?.projectName || ''}
+                placeholder="Project Name"
+                theme={theme}
+                editable={true}
+                onChangeText={t => onChange && onChange('projectName', t)}
+              />
+              <FieldBox
+                value={values?.projectDesc || ''}
+                placeholder="Description"
+                theme={theme}
+                editable={true}
+                multiline={true}
+                onChangeText={t => onChange && onChange('projectDesc', t)}
+              />
+              <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
+                <LinearGradient
+                  colors={['#011F53', '#366CD9']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 0 }}
+                  style={styles.drawerBtnGradient}
+                >
+                  <Text style={styles.drawerBtnText}>Create Project</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <Text style={[styles.drawerHint, { color: theme.secondaryText }]}>
+                Want to Add Complete Details?{' '}
+                <Text style={[styles.drawerHintLink, { color: theme.primary }]} onPress={() => setShowFullForm(true)}>
+                  Click Here
+                </Text>
+              </Text>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      )}
       {/* Full Modal */}
       <Modal
         visible={showFullForm}
@@ -315,14 +316,14 @@ export default function ProjectDrawerForm({
                     <Feather name="chevron-right" size={20} color={theme.secondaryText} />
                   </TouchableOpacity>
 
-                <FieldBox
-                  value={values?.projectDesc || ''}
-                  placeholder="Description"
-                  theme={theme}
-                  editable={true}
-                  multiline={true}
-                  onChangeText={t => onChange('projectDesc', t)}
-                />
+                  <FieldBox
+                    value={values?.projectDesc || ''}
+                    placeholder="Description"
+                    theme={theme}
+                    editable={true}
+                    multiline={true}
+                    onChangeText={t => onChange('projectDesc', t)}
+                  />
                   <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
                     <LinearGradient
                       colors={['#011F53', '#366CD9']}

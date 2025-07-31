@@ -43,17 +43,24 @@ export default function TaskListScreen({ navigation, route }) {
   const worklistId = worklist?.id;
   const worklistName = worklist?.name || 'Worklist';
   const [refreshing, setRefreshing] = useState(false);
-
+  const [projectTasks, setProjectTasks] = useState([]); // ALL tasks in the project
+  
   const onRefresh = async () => {
     setRefreshing(true);
-    await fetchTasks();
+    await Promise.all([
+      fetchTasks(),
+      fetchAllProjectTasks() // ✅ Now calling this too!
+    ]);
     setRefreshing(false);
   };
 
   useFocusEffect(
     React.useCallback(() => {
-      fetchTasks();
-    }, [])
+      if (worklistId && projectId) {
+        fetchTasks();
+        fetchAllProjectTasks(); // ✅ Now calling this!
+      }
+    }, [worklistId, projectId])
   );
 
   useEffect(() => {
@@ -80,14 +87,38 @@ export default function TaskListScreen({ navigation, route }) {
     }
   };
 
+  const fetchAllProjectTasks = async () => {
+  try {
+    if (projectId) {
+      const allProjectTasks = await getTasksByProjectId(projectId);
+      setProjectTasks(allProjectTasks || []);
+    }
+  } catch (err) {
+    console.error('Failed to load project tasks:', err.message);
+    setProjectTasks([]);
+  }
+};
+
+  // Initial load
   useEffect(() => {
     const init = async () => {
+      if (!worklistId || !projectId) return;
+      
       setLoading(true);
-      await fetchTasks();
-      setLoading(false);
+      try {
+        await Promise.all([
+          fetchTasks(),
+          fetchAllProjectTasks()
+        ]);
+      } catch (err) {
+        console.error(' Initial load failed:', err);
+      } finally {
+        setLoading(false);
+      }
     };
-    if (worklistId) init();
-  }, [worklistId]);
+    
+    init();
+  }, [worklistId, projectId]);
 
   const filtered = tasks.filter((t) => t.name?.toLowerCase().includes(search.toLowerCase()));
   // Sort: incomplete at top, completed (100%) at bottom
@@ -244,7 +275,6 @@ export default function TaskListScreen({ navigation, route }) {
           }
         />
       )}
-
       <TaskPopup
         visible={showTaskPopup}
         onClose={() => setShowTaskPopup(false)}
@@ -257,12 +287,11 @@ export default function TaskListScreen({ navigation, route }) {
         worklistId={worklistId}
         worklistName={worklistName}
         users={users}
-        projectTasks={tasks}
+        projectTasks={projectTasks}
       />
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
