@@ -13,6 +13,7 @@ import {
   View
 } from 'react-native';
 import ChangePinPopup from '../components/popups/ChangePinPopup';
+import CustomNotificationPopup, { getCustomNotificationsEnabled, toggleCustomNotifications } from '../components/popups/CustomNotificationPopup';
 import { useTheme } from '../theme/ThemeContext';
 import { changePin as changePinApi, getIsPublic, updateIsPublic } from '../utils/auth';
 
@@ -22,6 +23,7 @@ export default function SettingsScreen({ navigation }) {
   const [hierarchyPrivacy, setHierarchyPrivacy] = useState(false);
   const [connectionPrivacy, setConnectionPrivacy] = useState(true);
   const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [customNotificationsEnabled, setCustomNotificationsEnabled] = useState(true);
   const appState = useRef(AppState.currentState);
   const [biometricLoading, setBiometricLoading] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -39,6 +41,8 @@ export default function SettingsScreen({ navigation }) {
         setPrivateAccount(!isPublic); // privateAccount = !isPublic
         const bio = await AsyncStorage.getItem('biometricEnabled');
         setBiometricEnabled(bio === 'true');
+        const customNotifs = await getCustomNotificationsEnabled();
+        setCustomNotificationsEnabled(customNotifs);
       } catch (err) {
         console.log('Error fetching user public/private status:', err.message);
       }
@@ -137,6 +141,21 @@ export default function SettingsScreen({ navigation }) {
               } else {
                 setBiometricEnabled(false);
                 await AsyncStorage.setItem('biometricEnabled', 'false');
+              }
+            },
+            showToggle: true,
+          },
+          {
+            label: "Custom Notifications",
+            desc: "Show custom notification popups.\nEnhanced notification experience.",
+            value: customNotificationsEnabled,
+            icon: <Feather name="bell" size={20} color={theme.text} />,
+            onChange: async (val) => {
+              setCustomNotificationsEnabled(val);
+              try {
+                await toggleCustomNotifications(val);
+              } catch (err) {
+                alert('Failed to update notification settings: ' + err.message);
               }
             },
             showToggle: true,
@@ -349,5 +368,14 @@ const styles = StyleSheet.create({
   menuItemText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  sectionHeader: {
+    paddingVertical: 8,
+    paddingHorizontal: 6,
+  },
+  sectionTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
 });

@@ -3,7 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 import { Platform, ToastAndroid } from 'react-native';
 import Toast from 'react-native-toast-message';
+import { getCustomNotificationsEnabled } from '../components/popups/CustomNotificationPopup';
 import { navigationRef } from '../navigation/navigationRef';
+import CustomNotificationManager from './CustomNotificationManager';
 
 // Try to import PushNotification, fallback if not available
 let PushNotification;
@@ -90,11 +92,25 @@ class SystemNotificationService {
   }
 
   // Show local notification in foreground
-  static showForegroundNotification(remoteMessage) {
+  static async showForegroundNotification(remoteMessage) {
     const title = remoteMessage.notification?.title || 'Karyah';
     const body = remoteMessage.notification?.body || 'You have a new notification';
     const data = remoteMessage.data || {};
 
+    // Check if custom notifications are enabled
+    const customNotificationsEnabled = await getCustomNotificationsEnabled();
+
+    if (customNotificationsEnabled) {
+      // Show custom notification popup
+      CustomNotificationManager.showNotification({
+        title: title,
+        message: body,
+        data: data,
+      });
+      return;
+    }
+
+    // Fallback to system notifications
     if (Platform.OS === 'android') {
       // Android: Try PushNotification first, fallback to ToastAndroid
       if (PushNotification) {

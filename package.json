@@ -1,6 +1,7 @@
 {
-  "name": "my-expo-app",
-  "version": "1.0.0",
+  "name": "Karyah:",
+  "slug": "karyahapp",
+  "version": "1.0.1",
   "scripts": {
     "android": "expo run:android",
     "ios": "expo run:ios",

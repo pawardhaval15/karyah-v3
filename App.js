@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import AppNavigator from './navigation/AppNavigator';
 import { ThemeProvider, useThemeContext } from './theme/ThemeContext';
+import { CustomNotificationProvider } from './utils/CustomNotificationManager';
 import usePushNotifications from './utils/usePushNotifications';
 
 // Import background message handler
@@ -67,7 +68,9 @@ function AppContent() {
         backgroundColor={Platform.OS === 'android' ? theme.card : undefined}
         translucent={false}
       />
-      <AppNavigator />
+      <CustomNotificationProvider theme={theme}>
+        <AppNavigator />
+      </CustomNotificationProvider>
     </>
   );
 }
