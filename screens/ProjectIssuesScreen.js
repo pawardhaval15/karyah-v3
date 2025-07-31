@@ -18,21 +18,19 @@ import { Platform } from 'react-native';
 
 export default function ProjectIssuesScreen({ navigation, route }) {
     const { projectId } = route.params || {};
-    // console.log('Project ID received in screen:', projectId);
 
     const theme = useTheme();
     const [search, setSearch] = useState('');
-    const [activeTab, setActiveTab] = useState('all');
-    const [section, setSection] = useState('assigned');
+    const [activeTab, setActiveTab] = useState('all');  // This covers "all", "critical", "resolved", "unresolved", "pending_approval"
+    const [section, setSection] = useState('assigned'); // Currently only "assigned" used for project issues
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
     const [showProjectIssuePopup, setShowProjectIssuePopup] = useState(false);
-    const [viewMode, setViewMode] = useState('assigned'); // 'assigned' or 'created'
 
     const [issueForm, setIssueForm] = useState({
         title: '',
         description: '',
-        projectId: '',    // <-- add this
+        projectId: '',
         assignTo: '',
         dueDate: '',
         isCritical: false,
@@ -43,7 +41,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (!projectId) return; // Prevent running on undefined
+        if (!projectId) return;
 
         const fetchData = async () => {
             setLoading(true);
@@ -54,8 +52,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                     fetchProjectsByUser(),
                     fetchUserConnections()
                 ]);
-
-                setIssuesByProjectId(projectIssues);
+                setIssuesByProjectId(projectIssues || []);
                 setCreatedIssues(created || []);
                 setProjects(projects || []);
                 setUsers(connections || []);
@@ -69,32 +66,63 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                 setLoading(false);
             }
         };
-
         fetchData();
     }, [projectId]);
 
+    // Filter function applying search filter only here,
+    // let IssueList handle detailed status filtering internally — recommended for single source of truth
+    const filterBySearch = (issues) => {
+        return issues.filter(item =>
+            (item.issueTitle ? item.issueTitle.toLowerCase() : '').includes(search.toLowerCase())
+        );
+    };
 
+    // Apply search filtering only
+    const filteredAssigned = filterBySearch(issuesByProjectId);
+    const filteredCreated = filterBySearch(createdIssues);
 
-    // Filter logic for search and tab
-    const filterIssues = (issues) =>
-        issues.filter(
-            item =>
-                (item.issueTitle ? item.issueTitle.toLowerCase() : '').includes(search.toLowerCase()) &&
-                (activeTab === 'all' || (activeTab === 'critical' && item.isCritical))
+    /*
+    // Optional: If you prefer full filtering here (search + status), use this approach and pass it to IssueList:
+    const filterAndStatus = (issues) => {
+        let filtered = issues.filter(item =>
+            (item.issueTitle ? item.issueTitle.toLowerCase() : '').includes(search.toLowerCase())
         );
 
-    const filteredAssigned = filterIssues(issuesByProjectId);
-    const filteredCreated = filterIssues(createdIssues);
+        if (activeTab !== 'all') {
+            switch (activeTab) {
+                case 'critical':
+                    filtered = filtered.filter(item => item.isCritical);
+                    break;
+                case 'resolved':
+                    filtered = filtered.filter(item => item.issueStatus === 'resolved');
+                    break;
+                case 'unresolved':
+                    filtered = filtered.filter(item => item.issueStatus === 'unresolved');
+                    break;
+                case 'pending_approval':
+                    filtered = filtered.filter(item => item.issueStatus === 'pending_approval');
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        return filtered;
+    };
+
+    const filteredAssigned = filterAndStatus(issuesByProjectId);
+    const filteredCreated = filterAndStatus(createdIssues);
+    */
 
     const handleIssueChange = (field, value) => {
         setIssueForm(prev => ({ ...prev, [field]: value }));
     };
 
     const handleDateSelect = () => {
-        // Use your preferred date picker here
+        // Your date picker logic here
         console.log("Open date picker");
-        // Example with DateTimePickerModal or native DatePickerAndroid/DatePickerIOS
     };
+
     const handleIssueCreated = (newIssue) => {
         if (section === 'assigned') {
             setIssuesByProjectId(prev => [newIssue, ...prev]);
@@ -103,6 +131,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
         }
 
         setShowProjectIssuePopup(false);
+
         setIssueForm({
             title: '',
             description: '',
@@ -115,10 +144,11 @@ export default function ProjectIssuesScreen({ navigation, route }) {
 
     const handleIssueSubmit = () => {
         setShowProjectIssuePopup(false);
+
         setIssueForm({
             title: '',
             description: '',
-            projectId: '',    // <-- reset this too
+            projectId: '',
             assignTo: '',
             dueDate: '',
             isCritical: false,
@@ -143,14 +173,13 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                     <Text style={styles.bannerDesc}>
                         View all issues raised under this project or created by you.
                     </Text>
-
                 </View>
                 <TouchableOpacity
                     style={styles.bannerAction}
                     onPress={() => {
                         setIssueForm(prev => ({
                             ...prev,
-                            projectId, // ✅ auto-set the projectId from route
+                            projectId, // auto-set projectId
                         }));
                         setShowProjectIssuePopup(true);
                     }}
@@ -158,44 +187,46 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                     <Text style={styles.bannerActionText}>Issue</Text>
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
-
             </LinearGradient>
 
             <View style={styles.tabRow}>
                 <TouchableOpacity
                     style={[
                         styles.tabButton,
-                        section === 'assigned' && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                        section === 'assigned' && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }],
                     ]}
                     onPress={() => setSection('assigned')}
                 >
                     <Text
                         style={[
                             styles.tabText,
-                            section === 'assigned' ? { color: '#fff' } : { color: theme.secondaryText }
+                            section === 'assigned' ? { color: '#fff' } : { color: theme.secondaryText },
                         ]}
                     >
                         Issues by Project
                     </Text>
                 </TouchableOpacity>
-                {/* <TouchableOpacity
+                {/* If you want to re-enable created tab, uncomment below:
+                <TouchableOpacity
                     style={[
                         styles.tabButton,
-                        section === 'created' && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }]
+                        section === 'created' && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }],
                     ]}
                     onPress={() => setSection('created')}
                 >
                     <Text
                         style={[
                             styles.tabText,
-                            section === 'created' ? { color: '#fff' } : { color: theme.secondaryText }
+                            section === 'created' ? { color: '#fff' } : { color: theme.secondaryText },
                         ]}
                     >
                         Created by Me
                     </Text>
-                </TouchableOpacity> */}
+                </TouchableOpacity>
+                */}
             </View>
-            {/* Search */}
+
+            {/* Search bar */}
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
                 <TextInput
                     style={[styles.searchInput, { color: theme.text }]}
@@ -207,71 +238,65 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                 <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} />
             </View>
 
+            {/* Filter tabs: All and Critical (extend as needed) */}
             <View style={styles.tabRow}>
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === 'all' && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }]
-                    ]}
-                    onPress={() => setActiveTab('all')}
-                >
-                    <Text
-                        style={[
-                            styles.tabText,
-                            activeTab === 'all' ? { color: '#fff' } : { color: theme.secondaryText }
-                        ]}
-                    >
-                        All
-                        <Text
-                            style={[
-                                styles.countsmall,
-                                activeTab === 'all'
-                                    ? { color: '#fff' }
-                                    : { color: theme.secondaryText },
-                            ]}
-                        >
-                            {' '}
-                            {(section === 'assigned' ? issuesByProjectId.length : createdIssues.length)}
-                        </Text>
-                    </Text>
-                </TouchableOpacity>
+                {/* {['all', 'critical', 'resolved', 'unresolved', 'pending_approval'].map(tabKey => {
+                    // Labels for each tab
+                    const labels = {
+                        all: 'All',
+                        critical: 'Critical',
+                        resolved: 'Resolved',
+                        unresolved: 'Unresolved',
+                        pending_approval: 'Pending Approval',
+                    };
+                    // Count of issues per tab for display
+                    const count =
+                        section === 'assigned'
+                            ? issuesByProjectId.filter(issue => {
+                                  if (tabKey === 'all') return true;
+                                  if (tabKey === 'critical') return issue.isCritical;
+                                  return issue.issueStatus === tabKey;
+                            }).length
+                            : createdIssues.filter(issue => {
+                                  if (tabKey === 'all') return true;
+                                  if (tabKey === 'critical') return issue.isCritical;
+                                  return issue.issueStatus === tabKey;
+                            }).length;
 
-                <TouchableOpacity
-                    style={[
-                        styles.tabButton,
-                        activeTab === 'critical' && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }]
-                    ]}
-                    onPress={() => setActiveTab('critical')}
-                >
-                    <Text
-                        style={[
-                            styles.tabText,
-                            activeTab === 'critical' ? { color: '#fff' } : { color: theme.secondaryText }
-                        ]}
-                    >
-                        Critical Issue
-                        <Text
+                    return (
+                        <TouchableOpacity
+                            key={tabKey}
                             style={[
-                                styles.countsmall,
-                                activeTab === 'critical'
-                                    ? { color: '#fff' }
-                                    : { color: theme.secondaryText },
+                                styles.tabButton,
+                                activeTab === tabKey && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.primary }],
                             ]}
+                            onPress={() => setActiveTab(tabKey)}
                         >
-                            {' '}
-                            {(section === 'assigned'
-                                ? issuesByProjectId.filter(i => i.isCritical).length
-                                : createdIssues.filter(i => i.isCritical).length)}
-                        </Text>
-                    </Text>
-                </TouchableOpacity>
+                            <Text
+                                style={[
+                                    styles.tabText,
+                                    activeTab === tabKey ? { color: '#fff' } : { color: theme.secondaryText },
+                                ]}
+                            >
+                                {labels[tabKey]}
+                                <Text style={[
+                                    styles.countsmall,
+                                    activeTab === tabKey ? { color: '#fff' } : { color: theme.secondaryText },
+                                ]}>
+                                    {' '}{count}
+                                </Text>
+                            </Text>
+                        </TouchableOpacity>
+                    );
+                })} */}
             </View>
+
             {loading ? (
                 <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
             ) : (
                 <IssueList
                     issues={section === 'assigned' ? filteredAssigned : filteredCreated}
-                    onPressIssue={issue => navigation.navigate('IssueDetails', { issueId: issue.issueId, section })} // <-- pass section
+                    onPressIssue={issue => navigation.navigate('IssueDetails', { issueId: issue.issueId, section })}
                     styles={styles}
                     theme={theme}
                     section={section}
@@ -279,6 +304,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                     statusTab={activeTab}
                 />
             )}
+
             <ProjectIssuePopup
                 visible={showProjectIssuePopup}
                 onClose={() => setShowProjectIssuePopup(false)}
@@ -294,7 +320,6 @@ export default function ProjectIssuesScreen({ navigation, route }) {
         </View>
     );
 }
-
 const styles = StyleSheet.create({
     toggleWrapper: {
         marginHorizontal: 20,
