@@ -26,7 +26,8 @@ function WorklistBanner({ projectName, onAdd }) {
             style={styles.banner}
         >
             <View style={{ flex: 1 }}>
-                <Text style={styles.bannerTitle}>{projectName}</Text>
+                <Text numberOfLines={2}
+                    ellipsizeMode="tail" style={styles.bannerTitle}>{projectName}</Text>
                 <Text style={styles.bannerDesc}>The list of worklists for this project</Text>
             </View>
             <TouchableOpacity style={styles.bannerAction} onPress={onAdd}>
@@ -255,7 +256,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginBottom: 12,
         paddingHorizontal: 16,
-    paddingVertical: 12,
+        paddingVertical: 12,
     },
     searchInput: {
         flex: 1,

@@ -36,7 +36,7 @@ export default function ProjectProgressCard({
       ]}
       activeOpacity={0.85}
     >
-      <Text style={[styles.title, { color: theme.text }]} numberOfLines={2} ellipsizeMode="tail">
+      <Text style={[styles.title, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
         {title}
       </Text>
       <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
@@ -63,7 +63,7 @@ export default function ProjectProgressCard({
             ))}
         </View>
         <View>
-          <Text style={[styles.timeline, { color: theme.text }]}>{formatShortDateRange(timeline)}</Text>
+          <Text ellipsizeMode="tail" style={[styles.timeline, { color: theme.text }]}>{formatShortDateRange(timeline)}</Text>
         </View>
       </View>
       <Text style={[styles.assigned, { color: theme.text }]}>
@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginRight: 10,
-    width: 210,
+    width: 240,
     minHeight: 110,
     justifyContent: 'center',
   },

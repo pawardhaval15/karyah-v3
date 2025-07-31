@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import CustomCircularProgress from 'components/task details/CustomCircularProgress';
-import { StyleSheet, Text, TouchableOpacity, View, Image } from 'react-native';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function TaskCard({ task, onSubtaskPress, theme }) {
   const formattedEndDate = task.endDate ? task.endDate.split('T')[0] : '';
@@ -35,49 +35,63 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
           <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>
             Assigned To:&nbsp;
           </Text>
-          {assignedUsers.map((user, idx) => (
-            <View
-              key={user.id || idx}
-              style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6 }}
-            >
-              {user.profileImage ? (
-                <Image
-                  source={{ uri: user.profileImage }}
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    marginRight: 3,
-                    backgroundColor: '#eee',
-                  }}
-                />
-              ) : (
-                <View
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    backgroundColor: theme.avatarBg,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 3,
-                  }}
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+            {assignedUsers.slice(0, 2).map((user, idx) => (
+              <View
+                key={user.id || idx}
+                style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6, marginBottom: 2 }}
+              >
+                {user.profileImage ? (
+                  <Image
+                    source={{ uri: user.profileImage }}
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      marginRight: 3,
+                      backgroundColor: '#eee',
+                    }}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: 16,
+                      height: 16,
+                      borderRadius: 8,
+                      backgroundColor: theme.avatarBg,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 3,
+                    }}
+                  >
+                    <Text style={{
+                      color: theme.primary,
+                      fontSize: 8,
+                      fontWeight: 'bold',
+                      textAlign: 'center'
+                    }}>
+                      {user.name?.[0] || '?'}
+                    </Text>
+                  </View>
+                )}
+                <Text 
+                  style={[styles.taskInfo, { color: theme.secondaryText, marginLeft: 0, maxWidth: 80 }]} 
+                  numberOfLines={1} 
+                  ellipsizeMode="tail"
                 >
-                  <Text style={{
-                    color: theme.primary,
-                    fontSize: 10,
-                    fontWeight: 'bold',
-                    textAlign: 'center'
-                  }}>
-                    {user.name?.[0] || '?'}
-                  </Text>
-                </View>
-              )}
-              <Text style={[styles.taskInfo, { color: theme.secondaryText, marginLeft: 0 }]}>
-                {user.name}
+                  {user.name}
+                </Text>
+                {idx < assignedUsers.slice(0, 2).length - 1 && (
+                  <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>, </Text>
+                )}
+              </View>
+            ))}
+            {assignedUsers.length > 2 && (
+              <Text style={[styles.taskInfo, { color: theme.primary, fontWeight: '500' }]}>
+                +{assignedUsers.length - 2} more
               </Text>
-            </View>
-          ))}
+            )}
+          </View>
         </View>
       </View>
 

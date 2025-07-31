@@ -40,7 +40,8 @@ export default function CustomDrawer({ onClose, theme }) {
     return (
         <View style={[styles.drawer, { backgroundColor: theme.background, flex: 1 }]}>
             <View style={styles.header}>
-                <Text style={[styles.title, { color: theme.text }]}>
+                <Text numberOfLines={1}
+                    ellipsizeMode="tail"  style={[styles.title, { color: theme.text }]}>
                     Hi {userName ? userName : 'there'} !
                 </Text>
                 <TouchableOpacity onPress={onClose}>
@@ -275,6 +276,7 @@ const styles = StyleSheet.create({
         fontSize: 22,
         fontWeight: 'bold',
         color: '#222', // overridden by theme.text
+        maxWidth: '80%',
     },
     item: {
         flexDirection: 'row',
