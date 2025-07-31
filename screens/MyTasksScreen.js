@@ -48,7 +48,7 @@ export default function MyTasksScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const handleRefresh = async () => {
     setRefreshing(true);
-    await loadTasks();  // This already fetches based on activeTab
+    await loadTasks(); // This already fetches based on activeTab
     setRefreshing(false);
   };
 
@@ -64,7 +64,6 @@ export default function MyTasksScreen({ navigation }) {
     setLoading(true);
     setErrorMsg('');
     try {
-
       let data = [];
       if (activeTab === 'mytasks') {
         data = await fetchMyTasks();
@@ -95,7 +94,7 @@ export default function MyTasksScreen({ navigation }) {
 
         const [projects, connections] = await Promise.all([
           fetchProjectsByUser(),
-          fetchUserConnections()
+          fetchUserConnections(),
         ]);
 
         setProjects(projects || []);
@@ -113,7 +112,6 @@ export default function MyTasksScreen({ navigation }) {
           setWorklists([]);
           setProjectTasks([]); // Reset if no project selected
         }
-
       } catch (e) {
         setProjects([]);
         setUsers([]);
@@ -147,7 +145,7 @@ export default function MyTasksScreen({ navigation }) {
       taskDesc: '',
     });
     if (newTask) {
-      setTasks(prev => [newTask, ...prev]);
+      setTasks((prev) => [newTask, ...prev]);
     }
   };
 
@@ -163,15 +161,14 @@ export default function MyTasksScreen({ navigation }) {
     const assignedInfoValue =
       activeTab === 'mytasks'
         ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
-        : (item.assignedUserDetails && item.assignedUserDetails.map(u => u.name).join(', ')) || 'Unassigned';
+        : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
+          'Unassigned';
 
     return (
       <>
         <TouchableOpacity
           onPress={() => navigation.navigate('TaskDetails', { taskId: item.taskId || item.id })}
-
-          style={[styles.taskCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-        >
+          style={[styles.taskCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View
             style={{
               width: 40,
@@ -181,14 +178,18 @@ export default function MyTasksScreen({ navigation }) {
               alignItems: 'center',
               justifyContent: 'center',
               marginRight: 14,
-            }}
-          >
+            }}>
             <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 18 }}>
               {(taskName.charAt(0) || '?').toUpperCase()}
             </Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.taskTitle, { color: theme.text }]}>{taskName}</Text>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.taskTitle, { color: theme.text }]}>
+              {taskName}
+            </Text>
             <Text style={[styles.taskProject, { color: theme.secondaryText }]}>
               {item.projectName || (item.project && item.project.projectName) || 'No Project'}
             </Text>
@@ -197,7 +198,10 @@ export default function MyTasksScreen({ navigation }) {
               <Text style={[styles.assignedInfoLabel, { color: theme.secondaryText }]}>
                 {assignedInfoLabel}{' '}
               </Text>
-              <Text style={[styles.assignedInfoValue, { color: theme.text }]}>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[styles.assignedInfoValue, { color: theme.text }]}>
                 {assignedInfoValue}
               </Text>
             </View>
@@ -233,8 +237,7 @@ export default function MyTasksScreen({ navigation }) {
         colors={[theme.secondary, theme.primary]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
-        style={styles.banner}
-      >
+        style={styles.banner}>
         <View style={{ flex: 1 }}>
           <Text style={styles.bannerTitle}>My Tasks</Text>
           <Text style={styles.bannerDesc}>
@@ -263,14 +266,28 @@ export default function MyTasksScreen({ navigation }) {
           {
             key: 'mytasks',
             label: 'My Task',
-            icon: <Feather name="user-check" size={15} color={activeTab === 'mytasks' ? '#fff' : theme.primary} style={{ marginRight: 4 }} />,
+            icon: (
+              <Feather
+                name="user-check"
+                size={15}
+                color={activeTab === 'mytasks' ? '#fff' : theme.primary}
+                style={{ marginRight: 4 }}
+              />
+            ),
           },
           {
             key: 'createdby',
             label: 'Created by Me',
-            icon: <Feather name="edit-3" size={15} color={activeTab === 'createdby' ? '#fff' : '#366CD9'} style={{ marginRight: 4 }} />,
+            icon: (
+              <Feather
+                name="edit-3"
+                size={15}
+                color={activeTab === 'createdby' ? '#fff' : '#366CD9'}
+                style={{ marginRight: 4 }}
+              />
+            ),
           },
-        ].map(tab => (
+        ].map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={{
@@ -285,14 +302,14 @@ export default function MyTasksScreen({ navigation }) {
               alignItems: 'center',
               gap: 6,
             }}
-            onPress={() => setActiveTab(tab.key)}
-          >
+            onPress={() => setActiveTab(tab.key)}>
             {tab.icon}
-            <Text style={{
-              fontSize: 13,
-              fontWeight: '500',
-              color: activeTab === tab.key ? '#fff' : theme.secondaryText,
-            }}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: '500',
+                color: activeTab === tab.key ? '#fff' : theme.secondaryText,
+              }}>
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -309,8 +326,7 @@ export default function MyTasksScreen({ navigation }) {
             marginTop: 30,
             textAlign: 'center',
             fontWeight: '600',
-          }}
-        >
+          }}>
           {errorMsg}
         </Text>
       ) : filteredTasks.length === 0 ? (
@@ -455,6 +471,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 16,
     marginBottom: 4,
+    maxWidth: '80%',
   },
   taskProject: {
     fontSize: 13,
@@ -472,6 +489,7 @@ const styles = StyleSheet.create({
   assignedInfoValue: {
     fontSize: 13,
     fontWeight: '600',
+    maxWidth: '60%',
   },
   progressCircle: {
     width: 48,
