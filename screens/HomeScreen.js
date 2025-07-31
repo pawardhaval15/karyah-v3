@@ -154,8 +154,8 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
                 
                 <View style={styles.titleContainer}>
-                  <Text style={[styles.modernTitle, { color: theme.text }]}>Overview</Text>
-                  <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Project Management Hub</Text>
+                  <Text style={[styles.modernTitle, { color: theme.text }]}></Text>
+                  <Text style={[styles.subtitle, { color: theme.secondaryText }]}></Text>
                 </View>
                 
                 <TouchableOpacity 
