@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NotificationQueueManager } from '../components/NotificationQueueManager';
 import { navigationRef } from '../navigation/navigationRef';
 
