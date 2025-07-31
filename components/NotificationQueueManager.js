@@ -1,27 +1,48 @@
 import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect } from 'react';
+import { Dimensions, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomNotificationPopup from '../components/popups/CustomNotificationPopup';
-import EnlargedNotificationModal from '../components/popups/EnlargedNotificationModal';
 
-export function NotificationQueueManager({ notifications, onRemoveNotification, onClearAll, onEnlarge, onNavigate, theme }) {
-  const [enlargedNotification, setEnlargedNotification] = useState(null);
-  const [showEnlarged, setShowEnlarged] = useState(false);
+const { width: screenWidth } = Dimensions.get('window');
 
-  const handleEnlarge = (notification) => {
-    setEnlargedNotification(notification);
-    setShowEnlarged(true);
-  };
+export function NotificationQueueManager({ notifications, onRemoveNotification, onClearAll, onNavigate, theme }) {
+  // Auto-remove notifications after 8 seconds based on their arrival time
+  useEffect(() => {
+    if (!notifications || notifications.length === 0) return;
+    
+    const timers = [];
+    
+    notifications.forEach((notification) => {
+      if (notification.timestamp) {
+        const arrivalTime = new Date(notification.timestamp).getTime();
+        const currentTime = Date.now();
+        const elapsed = currentTime - arrivalTime;
+        const remaining = Math.max(8000 - elapsed, 0); // 8 seconds total
 
-  const handleCloseEnlarged = () => {
-    setShowEnlarged(false);
-    setEnlargedNotification(null);
-  };
+        if (remaining > 0) {
+          const timer = setTimeout(() => {
+            onRemoveNotification(notification.id);
+          }, remaining);
+          
+          timers.push(timer);
+        } else {
+          // Already expired, remove immediately using setTimeout to avoid sync update
+          setTimeout(() => onRemoveNotification(notification.id), 10);
+        }
+      }
+    });
+
+    return () => {
+      timers.forEach(timer => clearTimeout(timer));
+    };
+  }, [notifications, onRemoveNotification]);
 
   const getNotificationPosition = (index) => {
     return {
-      top: 60 + (index * 80), // Stack notifications vertically
-      zIndex: 9999 - index, // Ensure proper stacking order
+      top: Platform.OS === 'ios' ? 10 + (index * 65) : 10 + (index * 65), // Stack notifications vertically
+      left: 0,
+      right: 0,
+      zIndex: 9999 - index,
     };
   };
 
@@ -41,47 +62,39 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
             title={notification.title}
             message={notification.message}
             data={notification.data}
-            onEnlarge={() => handleEnlarge(notification)}
             onCancel={() => onRemoveNotification(notification.id)}
             onNavigate={(data) => {
               onNavigate(data);
               onRemoveNotification(notification.id);
             }}
             theme={theme}
-            autoHide={index === 0} // Only auto-hide the first notification
-            autoHideDelay={5000}
+            autoHide={false} // Disable auto-hide, managed by queue
             forceShow={true}
+            disablePositioning={true}
           />
         </View>
       ))}
 
       {/* Clear All Button - Show when more than 1 notification */}
       {notifications.length > 1 && (
-        <View style={[styles.clearAllWrapper, { top: 60 + (notifications.length * 80) + 10 }]}>
+        <View style={[
+          styles.clearAllWrapper, 
+          { 
+            top: Platform.OS === 'ios' ? 60 + (notifications.length * 65) + 10 : 35 + (notifications.length * 65) + 10 
+          }
+        ]}>
           <TouchableOpacity
             style={[styles.clearAllButton, { backgroundColor: theme?.card || '#FFFFFF' }]}
             onPress={onClearAll}
             activeOpacity={0.8}
           >
-            <Feather name="x-circle" size={16} color={theme?.secondaryText || '#666666'} />
+            <Feather name="x-circle" size={12} color={theme?.secondaryText || '#666666'} />
             <Text style={[styles.clearAllText, { color: theme?.secondaryText || '#666666' }]}>
               Clear All ({notifications.length})
             </Text>
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Enlarged Notification Modal */}
-      <EnlargedNotificationModal
-        visible={showEnlarged}
-        notification={enlargedNotification}
-        onClose={handleCloseEnlarged}
-        onNavigate={(data) => {
-          onNavigate(data);
-          handleCloseEnlarged();
-        }}
-        theme={theme}
-      />
     </>
   );
 }
@@ -89,8 +102,6 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
 const styles = StyleSheet.create({
   notificationWrapper: {
     position: 'absolute',
-    left: 0,
-    right: 0,
     zIndex: 9999,
     elevation: 9999,
   },
@@ -105,9 +116,9 @@ const styles = StyleSheet.create({
   clearAllButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(0, 0, 0, 0.1)',
     shadowColor: '#000',
@@ -118,10 +129,10 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 4,
-    gap: 6,
+    gap: 4,
   },
   clearAllText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '500',
   },
 });

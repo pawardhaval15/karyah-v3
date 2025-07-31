@@ -29,108 +29,59 @@ export default function EnlargedNotificationModal({
     onClose();
   };
 
-  const formatNotificationData = () => {
-    if (!data) return [];
-
-    const items = [];
-    
-    if (data.type) {
-      items.push({ label: 'Type', value: data.type.toUpperCase() });
-    }
-    
-    if (data.projectId) {
-      items.push({ label: 'Project ID', value: data.projectId });
-    }
-    
-    if (data.taskId) {
-      items.push({ label: 'Task ID', value: data.taskId });
-    }
-    
-    if (data.issueId) {
-      items.push({ label: 'Issue ID', value: data.issueId });
-    }
-    
-    if (data.priority) {
-      items.push({ label: 'Priority', value: data.priority });
-    }
-    
-    if (data.timestamp) {
-      items.push({ label: 'Time', value: new Date(data.timestamp).toLocaleString() });
-    }
-
-    return items;
-  };
-
-  const notificationData = formatNotificationData();
-
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="formSheet"
       onRequestClose={onClose}
     >
       <View style={[styles.container, { backgroundColor: theme?.background || '#FFFFFF' }]}>
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: theme?.border || '#E1E5E9' }]}>
-          <View style={styles.headerLeft}>
-            <View style={[styles.iconContainer, { backgroundColor: theme?.primary || '#007AFF' }]}>
-              <MaterialIcons name="notifications" size={20} color="#FFFFFF" />
-            </View>
-            <Text style={[styles.headerTitle, { color: theme?.text || '#000000' }]}>
-              Notification Details
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.closeButton}
-            onPress={onClose}
-            activeOpacity={0.7}
-          >
-            <Feather name="x" size={24} color={theme?.text || '#000000'} />
-          </TouchableOpacity>
+        {/* Drag Handle */}
+        <View style={styles.dragHandle}>
+          <View style={[styles.handleBar, { backgroundColor: theme?.border || '#E1E5E9' }]} />
         </View>
 
-        {/* Content */}
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {/* Title Section */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme?.secondaryText || '#666666' }]}>
-              NOTIFICATION
-            </Text>
-            <View style={[styles.card, { backgroundColor: theme?.card || '#F8F9FA' }]}>
-              <Text style={[styles.titleText, { color: theme?.text || '#000000' }]}>
-                {title}
+          {/* Notification Container - Same style as popup */}
+          <View style={[styles.notificationContainer, { 
+            backgroundColor: theme?.card || '#FFFFFF', 
+            borderColor: theme?.border || '#E1E5E9' 
+          }]}>
+            {/* Header with App Icon - Same as popup */}
+            <View style={styles.header}>
+              <View style={[styles.iconContainer, { backgroundColor: theme?.primary || '#007AFF' }]}>
+                <MaterialIcons name="notifications" size={12} color="#FFFFFF" />
+              </View>
+              <Text style={[styles.appName, { color: theme?.secondaryText || '#666666' }]}>
+                Karyah
               </Text>
+              <View style={styles.timestamp}>
+                <Text style={[styles.timeText, { color: theme?.secondaryText || '#666666' }]}>
+                  {data?.timestamp ? new Date(data.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now'}
+                </Text>
+              </View>
             </View>
-          </View>
 
-          {/* Message Section - Main Focus */}
-          <View style={styles.section}>
-            <Text style={[styles.sectionLabel, { color: theme?.secondaryText || '#666666' }]}>
-              MESSAGE
+            {/* Notification Title - Same as popup */}
+            <Text style={[styles.notificationTitle, { color: theme?.text || '#000000' }]}>
+              {title}
             </Text>
-            <View style={[styles.messageCard, { backgroundColor: theme?.card || '#F8F9FA' }]}>
-              <Text style={[styles.messageText, { color: theme?.text || '#000000' }]}>
-                {message}
-              </Text>
-            </View>
-          </View>
 
-          {/* Quick Details */}
-          {data?.type && (
-            <View style={styles.section}>
-              <View style={styles.quickDetails}>
-                <View style={[styles.detailBadge, { backgroundColor: theme?.primary + '20' || '#007AFF20' }]}>
-                  <Text style={[styles.detailBadgeText, { color: theme?.primary || '#007AFF' }]}>
+            {/* Type indicator - Same as popup */}
+            {data?.type && (
+              <View style={styles.typeIndicator}>
+                <View style={[styles.typeBadge, { backgroundColor: theme?.primary + '20' || '#007AFF20' }]}>
+                  <Text style={[styles.typeText, { color: theme?.primary || '#007AFF' }]}>
                     {data.type.toUpperCase()}
                   </Text>
                 </View>
                 {data?.priority && (
-                  <View style={[styles.detailBadge, { backgroundColor: 
+                  <View style={[styles.priorityBadge, { backgroundColor: 
                     data.priority === 'high' ? '#FF453A20' :
                     data.priority === 'critical' ? '#FF453A30' : '#34C75920'
                   }]}>
-                    <Text style={[styles.detailBadgeText, { color: 
+                    <Text style={[styles.typeText, { color: 
                       data.priority === 'high' ? '#FF453A' :
                       data.priority === 'critical' ? '#FF453A' : '#34C759'
                     }]}>
@@ -139,30 +90,78 @@ export default function EnlargedNotificationModal({
                   </View>
                 )}
               </View>
+            )}
+
+            {/* Swipe indicator - Same as popup */}
+            <View style={[styles.swipeIndicator, { backgroundColor: theme?.border || '#E1E5E9' }]} />
+          </View>
+
+          {/* Message Section - Expanded */}
+          <View style={styles.messageSection}>
+            <Text style={[styles.sectionLabel, { color: theme?.secondaryText || '#666666' }]}>
+              MESSAGE
+            </Text>
+            <View style={[styles.messageCard, { backgroundColor: theme?.card || '#FFFFFF', borderColor: theme?.border || '#E1E5E9' }]}>
+              <Text style={[styles.messageText, { color: theme?.text || '#000000' }]}>
+                {message}
+              </Text>
+            </View>
+          </View>
+
+          {/* Additional Details if any */}
+          {(data?.projectId || data?.taskId || data?.issueId) && (
+            <View style={styles.detailsSection}>
+              <Text style={[styles.sectionLabel, { color: theme?.secondaryText || '#666666' }]}>
+                DETAILS
+              </Text>
+              <View style={[styles.detailsCard, { backgroundColor: theme?.card || '#FFFFFF', borderColor: theme?.border || '#E1E5E9' }]}>
+                {data?.projectId && (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme?.secondaryText || '#666666' }]}>Project ID:</Text>
+                    <Text style={[styles.detailValue, { color: theme?.text || '#000000' }]}>{data.projectId}</Text>
+                  </View>
+                )}
+                {data?.taskId && (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme?.secondaryText || '#666666' }]}>Task ID:</Text>
+                    <Text style={[styles.detailValue, { color: theme?.text || '#000000' }]}>{data.taskId}</Text>
+                  </View>
+                )}
+                {data?.issueId && (
+                  <View style={styles.detailRow}>
+                    <Text style={[styles.detailLabel, { color: theme?.secondaryText || '#666666' }]}>Issue ID:</Text>
+                    <Text style={[styles.detailValue, { color: theme?.text || '#000000' }]}>{data.issueId}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           )}
         </ScrollView>
 
-        {/* Action Buttons */}
-        <View style={[styles.footer, { borderTopColor: theme?.border || '#E1E5E9' }]}>
+        {/* Action Buttons - Enhanced */}
+        <View style={styles.actionSection}>
           {data && (
             <TouchableOpacity
-              style={[styles.actionButton, styles.navigateButton, { backgroundColor: theme?.primary || '#007AFF' }]}
+              style={[styles.primaryButton, { backgroundColor: theme?.primary || '#007AFF' }]}
               onPress={handleNavigate}
               activeOpacity={0.8}
             >
-              <Feather name="external-link" size={18} color="#FFFFFF" />
-              <Text style={styles.navigateButtonText}>Open {data.type || 'Item'}</Text>
+              <Feather name="external-link" size={16} color="#FFFFFF" />
+              <Text style={styles.primaryButtonText}>
+                Open {data.type === 'task' ? 'Task' : data.type === 'project' ? 'Project' : data.type === 'issue' ? 'Issue' : 'Item'}
+              </Text>
             </TouchableOpacity>
           )}
           
           <TouchableOpacity
-            style={[styles.actionButton, styles.dismissButton, { backgroundColor: theme?.card || '#F8F9FA' }]}
+            style={[styles.secondaryButton, { backgroundColor: theme?.card || '#F8F9FA', borderColor: theme?.border || '#E1E5E9' }]}
             onPress={onClose}
             activeOpacity={0.8}
           >
-            <Feather name="x" size={18} color={theme?.text || '#000000'} />
-            <Text style={[styles.dismissButtonText, { color: theme?.text || '#000000' }]}>Close</Text>
+            <Feather name="x" size={16} color={theme?.secondaryText || '#666666'} />
+            <Text style={[styles.secondaryButtonText, { color: theme?.secondaryText || '#666666' }]}>
+              Close
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -170,136 +169,188 @@ export default function EnlargedNotificationModal({
   );
 }
 
+
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  dragHandle: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  handleBar: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#E1E5E9',
+  },
+  content: {
+    flex: 1,
+    paddingHorizontal: 16,
+  },
+  notificationContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#E1E5E9',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingTop: 60, // Account for status bar
-    borderBottomWidth: 1,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+    marginBottom: 8,
   },
   iconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    alignItems: 'center',
+    width: 16,
+    height: 16,
+    borderRadius: 3,
+    backgroundColor: '#007AFF',
     justifyContent: 'center',
-    marginRight: 12,
+    alignItems: 'center',
+    marginRight: 6,
   },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  content: {
+  appName: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#666666',
     flex: 1,
-    paddingHorizontal: 20,
   },
-  section: {
-    marginVertical: 16,
+  timestamp: {
+    marginLeft: 'auto',
+  },
+  timeText: {
+    fontSize: 11,
+    color: '#666666',
+  },
+  notificationTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  typeIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  typeBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    backgroundColor: '#007AFF20',
+    marginRight: 6,
+  },
+  priorityBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  typeText: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  swipeIndicator: {
+    height: 2,
+    backgroundColor: '#E1E5E9',
+    borderRadius: 1,
+    marginTop: 8,
+  },
+  messageSection: {
+    marginBottom: 20,
   },
   sectionLabel: {
     fontSize: 12,
     fontWeight: '600',
+    color: '#666666',
     marginBottom: 8,
+    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  card: {
+  messageCard: {
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-  },
-  titleText: {
-    fontSize: 17,
-    fontWeight: '600',
-    lineHeight: 24,
-  },
-  messageCard: {
-    borderRadius: 12,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.06)',
-    minHeight: 100,
+    borderColor: '#E1E5E9',
   },
   messageText: {
-    fontSize: 16,
-    lineHeight: 24,
-    textAlign: 'left',
+    fontSize: 15,
+    lineHeight: 22,
+    color: '#000000',
   },
-  quickDetails: {
+  detailsSection: {
+    marginBottom: 20,
+  },
+  detailsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E1E5E9',
+  },
+  detailRow: {
     flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F0F0F0',
   },
-  detailBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  detailBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  dataRow: {
-    flexDirection: 'row',
-    marginBottom: 8,
-    alignItems: 'flex-start',
-  },
-  dataLabel: {
+  detailLabel: {
     fontSize: 14,
     fontWeight: '500',
-    minWidth: 80,
-    marginRight: 12,
+    color: '#666666',
   },
-  dataValue: {
+  detailValue: {
     fontSize: 14,
-    flex: 1,
-    fontWeight: '400',
+    color: '#000000',
+    fontWeight: '500',
   },
-  footer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    paddingBottom: 34, // Account for home indicator
+  actionSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 20,
     borderTopWidth: 1,
+    borderTopColor: '#E1E5E9',
     gap: 12,
   },
-  actionButton: {
-    flex: 1,
+  primaryButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: '#007AFF',
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 12,
     gap: 8,
   },
-  navigateButton: {
-    backgroundColor: '#007AFF',
-  },
-  navigateButtonText: {
+  primaryButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
     color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '600',
   },
-  dismissButton: {
+  secondaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F8F9FA',
+    paddingVertical: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
+    borderColor: '#E1E5E9',
+    gap: 8,
   },
-  dismissButtonText: {
+  secondaryButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#666666',
   },
 });
