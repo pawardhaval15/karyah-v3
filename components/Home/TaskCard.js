@@ -45,14 +45,19 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
 
   const dueDateStatus = getDueDateStatus();
 
+  // Format the dueDate string nicely for display
+  // For example, "Apr 25, 2024"
+  const dueDate = date ? new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'No due date';
+
   return (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
 
-      {dueDateStatus && dueDateStatus.isOverdue && !(isIssue && isCritical) && (
+      {/* Uncomment if you want overdue banner, currently commented out */}
+      {/* {dueDateStatus && dueDateStatus.isOverdue && !(isIssue && isCritical) && (
         <View style={[styles.dueDateBanner, { backgroundColor: dueDateStatus.color }]}>
           <Text style={styles.dueDateBannerText}>{dueDateStatus.text}</Text>
         </View>
-      )}
+      )} */}
 
       <View style={styles.content}>
         <View style={styles.row}>
@@ -142,7 +147,7 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
                 ]}
                 numberOfLines={1}
               >
-                {dueDateStatus.text}
+                Due Date: {dueDate} ({dueDateStatus.text})
               </Text>
             </View>
           )}
