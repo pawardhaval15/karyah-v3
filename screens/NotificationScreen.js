@@ -154,7 +154,7 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background, paddingBottom: 70 }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
         <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
@@ -387,7 +387,7 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
-    marginTop: Platform.OS === 'ios' ? 0 : 0,
+    marginTop: Platform.OS === 'ios' ? 25 : 25,
     marginLeft: 16,
     marginBottom: 18,
     flexDirection: 'row',
@@ -439,7 +439,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 8,
-    marginTop: 8,
+    marginTop: 0,
   },
   card: {
     borderRadius: 16,

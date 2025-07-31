@@ -1,13 +1,14 @@
 import { Feather } from '@expo/vector-icons';
 import StatCardList from 'components/Home/StatCard';
 import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomDrawer from '../components/Home/CustomDrawer';
 import CriticalIssueCard from '../components/professionalDashboard/CriticalIssueCard';
 import DailyProgressCard from '../components/professionalDashboard/DailyProgressCard';
 import { useTheme } from '../theme/ThemeContext';
+import { fetchNotifications } from '../utils/notifications';
+import usePushNotifications from '../utils/usePushNotifications';
 
 
 const DRAWER_WIDTH = 300;
@@ -39,6 +40,25 @@ export default function ProfessionalDashboard({ navigation }) {
     const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
+    const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+    usePushNotifications();
+
+    useEffect(() => {
+        const checkUnreadNotifications = async () => {
+            try {
+                const data = await fetchNotifications();
+                const hasUnread = data?.some(n => !n.read); // assuming each notification has a `read` boolean
+                setHasUnreadNotifications(hasUnread);
+            } catch (err) {
+                console.error('Error checking notifications:', err.message);
+            }
+        };
+
+        checkUnreadNotifications();
+
+        const interval = setInterval(checkUnreadNotifications, 10000); // poll every 10s
+        return () => clearInterval(interval);
+    }, []);
 
     useEffect(() => {
         Animated.timing(drawerAnim, {
@@ -69,27 +89,34 @@ export default function ProfessionalDashboard({ navigation }) {
                 </View>
             )}
 
-            {/* Gradient Header */}
-            <LinearGradient
-                colors={['#011F53', '#366CD9']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.gradientHeader}
-            >
+            {/* Modern Header */}
+            <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
                 <View style={styles.headerRow}>
-                    <TouchableOpacity onPress={() => setDrawerOpen(true)}>
-                        <Feather name="menu" size={28} color="#fff" />
+                    <TouchableOpacity 
+                        onPress={() => setDrawerOpen(true)}
+                        style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
+                    >
+                        <Feather name="menu" size={22} color={theme.text} />
                     </TouchableOpacity>
-                    <View style={styles.header}>
-                        <View style={styles.row}>
-                            <Text style={styles.title}>KARYAH:</Text>
-                        </View>
+                    
+                    <View style={styles.titleContainer}>
+                        <Text style={[styles.modernTitle, { color: theme.text }]}>Analytics</Text>
+                        <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Data Insights & Performance</Text>
                     </View>
-                    <TouchableOpacity>
-                        <Feather name="bell" size={28} color="#fff" />
+                    
+                    <TouchableOpacity 
+                        onPress={() => navigation.navigate('NotificationScreen')}
+                        style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
+                    >
+                        <View style={{ position: 'relative' }}>
+                            <Feather name="bell" size={22} color={theme.text} />
+                            {hasUnreadNotifications && (
+                                <View style={styles.notificationDot} />
+                            )}
+                        </View>
                     </TouchableOpacity>
                 </View>
-            </LinearGradient>
+            </View>
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
@@ -184,6 +211,49 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         paddingTop: Platform.OS === 'android' ? 0 : 0,
     },
+    modernHeader: {
+        paddingTop: Platform.OS === 'ios' ? 60 : 20,
+        paddingBottom: 16,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    headerButton: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    titleContainer: {
+        flex: 1,
+        alignItems: 'center',
+        marginHorizontal: 16,
+    },
+    modernTitle: {
+        fontSize: 20,
+        fontWeight: '600',
+        letterSpacing: -0.2,
+        marginBottom: 2,
+    },
+    subtitle: {
+        fontSize: 13,
+        fontWeight: '400',
+        opacity: 0.7,
+    },
+    notificationDot: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        width: 8,
+        height: 8,
+        borderRadius: 4,
+        backgroundColor: '#FF3B30',
+        borderWidth: 1.5,
+        borderColor: '#fff',
+    },
     gradientHeader: {
         width: '100%',
         paddingTop: Platform.OS === 'ios' ? 70 : 25,
@@ -214,7 +284,7 @@ const styles = StyleSheet.create({
         marginRight: 12,
     },
     scrollContent: {
-        marginTop: 24,
+        marginTop: 8,
         paddingHorizontal: 0,
         paddingBottom: 100,
     },

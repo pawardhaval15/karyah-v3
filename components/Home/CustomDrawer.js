@@ -108,7 +108,7 @@ export default function CustomDrawer({ onClose, theme }) {
                     {isProfessionalDashboard ? (
                         <DrawerItem
                             icon={<MaterialIcons name="dashboard" size={20} color="#009688" />}
-                            label="Simple Dashboard"
+                            label="Overview Dashboard"
                             onPress={() => {
                                 navigation.navigate('Home');
                                 onClose && onClose();
@@ -117,8 +117,8 @@ export default function CustomDrawer({ onClose, theme }) {
                         />
                     ) : (
                         <DrawerItem
-                            icon={<MaterialIcons name="dashboard" size={20} color="#009688" />}
-                            label="Professional Dashboard"
+                            icon={<MaterialIcons name="analytics" size={20} color="#009688" />}
+                            label="Analytics Dashboard"
                             onPress={() => {
                                 navigation.navigate('ProfessionalDashboard');
                                 onClose && onClose();

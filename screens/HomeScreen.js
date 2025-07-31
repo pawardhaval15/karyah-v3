@@ -143,30 +143,33 @@ export default function HomeScreen({ navigation }) {
               />
             }
           >
-            <View style={[styles.headerRow, { backgroundColor: theme.background }]}>
-              <TouchableOpacity onPress={() => setDrawerOpen(true)}>
-                <Feather name="menu" size={24} color={theme.text} />
-              </TouchableOpacity>
-              <View style={{ flex: 1 }} />
-              <TouchableOpacity onPress={() => navigation.navigate('NotificationScreen')}>
-                <View style={{ position: 'relative' }}>
-                  <Feather name="bell" size={24} color={theme.text} />
-                  {hasUnreadNotifications && (
-                    <View
-                      style={{
-                        position: 'absolute',
-                        top: -2,
-                        right: -2,
-                        width: 10,
-                        height: 10,
-                        borderRadius: 5,
-                        backgroundColor: 'red',
-                      }}
-                    />
-                  )}
+            {/* Modern Header */}
+            <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
+              <View style={styles.headerRow}>
+                <TouchableOpacity 
+                  onPress={() => setDrawerOpen(true)}
+                  style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
+                >
+                  <Feather name="menu" size={22} color={theme.text} />
+                </TouchableOpacity>
+                
+                <View style={styles.titleContainer}>
+                  <Text style={[styles.modernTitle, { color: theme.text }]}>Overview</Text>
+                  <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Project Management Hub</Text>
                 </View>
-              </TouchableOpacity>
-                  
+                
+                <TouchableOpacity 
+                  onPress={() => navigation.navigate('NotificationScreen')}
+                  style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
+                >
+                  <View style={{ position: 'relative' }}>
+                    <Feather name="bell" size={22} color={theme.text} />
+                    {hasUnreadNotifications && (
+                      <View style={styles.notificationDot} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <ScrollView
@@ -317,12 +320,51 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   container: { flex: 1 },
+  modernHeader: {
+    paddingBottom: 0,
+    paddingHorizontal: 0,
+  },
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  titleContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginHorizontal: 16,
+  },
+  modernTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    letterSpacing: -0.2,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 13,
+    fontWeight: '400',
+    opacity: 0.7,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF3B30',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 70 : 25,
+    paddingTop: Platform.OS === 'ios' ? 60 : 20,
     paddingHorizontal: 20,
-    paddingBottom: 12,
+    paddingBottom: 0,
+    justifyContent: 'space-between',
   },
   greeting: {
     fontSize: 22,
