@@ -15,12 +15,12 @@ import {
 } from 'react-native';
 import { getUserConnections } from '../../utils/connections';
 import { getProjectById, getProjectsByUserId } from '../../utils/project';
-import { createTask, getTasksByWorklistId } from '../../utils/task'; // <-- Add createTask here
+import { createTask, getTasksByProjectId } from '../../utils/task';
 import { createWorklist, getWorklistsByProjectId } from '../../utils/worklist';
 import AddWorklistPopup from '../popups/AddWorklistPopup';
 import AttachmentSheet from '../popups/AttachmentSheet';
 import CustomPickerDrawer from '../popups/CustomPickerDrawer';
-import ProjectPopup from '../popups/ProjectPopup'; // If not already imported
+import ProjectPopup from '../popups/ProjectPopup';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
 
@@ -30,9 +30,8 @@ export default function TaskDrawerForm({
     onSubmit,
     theme,
     projects: propProjects = [],
-    projectTasks = [],
 }) {
-    const [worklistTasks, setWorklistTasks] = useState([]);
+    const [projectTasks, setProjectTasks] = useState([]); // Only this project-task state is needed
     const [projectName, setProjectName] = useState('');
     const [worklists, setWorklists] = useState([]);
     const [showProjectPicker, setShowProjectPicker] = useState(false);
@@ -41,7 +40,7 @@ export default function TaskDrawerForm({
     const [showDepPicker, setShowDepPicker] = useState(false);
     const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
     const [loading, setLoading] = useState(false);
-    const [projects, setProjects] = useState(propProjects); // <-- ADD THIS LINE
+    const [projects, setProjects] = useState(propProjects);
     const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
     const [users, setUsers] = useState([]);
     const navigation = useNavigation();
@@ -82,21 +81,24 @@ export default function TaskDrawerForm({
             }
         })();
     }, [values.projectId]);
+
+    // Fetch all tasks of the selected project for dependency picking
     useEffect(() => {
-        if (!values.taskWorklist) {
-            setWorklistTasks([]);
+        if (!values.projectId || values.projectId === '__add_new__') {
+            setProjectTasks([]);
             return;
         }
-        (async () => {
+        const fetchProjectTasks = async () => {
             try {
-                const token = await AsyncStorage.getItem('token');
-                const tasks = await getTasksByWorklistId(values.taskWorklist, token);
-                setWorklistTasks(Array.isArray(tasks) ? tasks : []);
-            } catch (e) {
-                setWorklistTasks([]);
+                const tasks = await getTasksByProjectId(values.projectId);
+                setProjectTasks(Array.isArray(tasks) ? tasks : []);
+            } catch (error) {
+                console.error('Error fetching project tasks:', error.message);
+                setProjectTasks([]);
             }
-        })();
-    }, [values.taskWorklist]);
+        };
+        fetchProjectTasks();
+    }, [values.projectId]);
 
     useEffect(() => {
         if (!propProjects.length) {
@@ -109,18 +111,18 @@ export default function TaskDrawerForm({
                 }
             })();
         }
-    }, [propProjects]); useEffect(() => {
+    }, [propProjects]);
+
+    useEffect(() => {
         if (!values.projectId) {
             setWorklists([]);
             return;
         }
-
         const fetchProjectAndWorklists = async () => {
             try {
                 const res = await getProjectById(values.projectId);
                 const name = res.name || res.projectName || 'Project';
                 setProjectName(name);
-
                 const token = await AsyncStorage.getItem('token');
                 const worklistsRes = await getWorklistsByProjectId(values.projectId, token);
                 setWorklists(worklistsRes || []);
@@ -130,20 +132,21 @@ export default function TaskDrawerForm({
                 setWorklists([]);
             }
         };
-
         fetchProjectAndWorklists();
         onChange('taskWorklist', '');
     }, [values.projectId]);
 
     const isValidDate = (date) => date && !isNaN(new Date(date).getTime());
-    const taskValueKey = worklistTasks.length && worklistTasks[0]?.id !== undefined ? 'id' : 'taskId';
+
+    // Updated to use projectTasks for dependencies
+    const taskValueKey = projectTasks.length && projectTasks[0]?.id !== undefined ? 'id' : 'taskId';
 
     const selectedDepIds = Array.isArray(values.taskDeps)
         ? values.taskDeps.map(String)
         : [];
 
     const selectedDeps = selectedDepIds
-        .map(id => worklistTasks.find(t => String(t[taskValueKey]) === id))
+        .map(id => projectTasks.find(t => String(t[taskValueKey]) === id))
         .filter(Boolean);
 
     const handleTaskCreate = async () => {
@@ -152,21 +155,16 @@ export default function TaskDrawerForm({
             const startDate = isValidDate(values.startDate)
                 ? new Date(values.startDate).toISOString()
                 : null;
-
             const endDate = isValidDate(values.endDate)
                 ? new Date(values.endDate).toISOString()
                 : null;
-
             const assignedUserIds = Array.isArray(values.assignTo)
                 ? values.assignTo.map(id => Number(id)).filter(Boolean)
                 : [];
-
             const dependentTaskIds = Array.isArray(values.taskDeps)
                 ? values.taskDeps.map((id) => String(id))
                 : [];
-
             const parentId = values.parentId ? Number(values.parentId) : undefined;
-
             const images = attachments.map(att => ({
                 uri: att.uri,
                 name: att.name || att.uri?.split('/').pop(),
@@ -188,7 +186,6 @@ export default function TaskDrawerForm({
                 ...(parentId && { parentId }),
             };
 
-            // Call the createTask API here
             await createTask(taskData);
 
             Alert.alert('Success', 'Task created successfully!');
@@ -212,14 +209,11 @@ export default function TaskDrawerForm({
     const handleDepToggle = (taskId) => {
         const current = Array.isArray(values.taskDeps) ? [...values.taskDeps] : [];
         const id = String(taskId);
-
         const updated = current.includes(id)
             ? current.filter((item) => item !== id)
             : [...current, id];
-
         onChange('taskDeps', updated);
     };
-
 
     return (
         <>
@@ -309,7 +303,7 @@ export default function TaskDrawerForm({
                 showImage={false}
             />
 
-            {/* Dependencies Multi-select */}
+            {/* Dependencies Multi-select - Now using projectTasks */}
             <FieldBox
                 value={
                     selectedDeps.length
@@ -327,7 +321,7 @@ export default function TaskDrawerForm({
             <CustomPickerDrawer
                 visible={showDepPicker}
                 onClose={() => setShowDepPicker(false)}
-                data={worklistTasks}
+                data={projectTasks} // Uses all project tasks
                 valueKey={taskValueKey}
                 labelKey="name"
                 selectedValue={selectedDepIds}
@@ -381,9 +375,7 @@ export default function TaskDrawerForm({
                 selectedValue={values.assignTo}
                 onSelect={v => {
                     if (v === '__add_new__') {
-                        // Only close the CustomPickerDrawer, not the parent modal
                         setShowUserPicker(false);
-                        // Use InteractionManager to ensure navigation after drawer closes
                         setTimeout(() => {
                             navigation.navigate('AddConnectionScreen');
                         }, 300);
@@ -425,6 +417,7 @@ export default function TaskDrawerForm({
                     </>
                 }
             />
+            
             {/* Attachment Preview Grid */}
             {attachments.length > 0 && (
                 <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
@@ -437,7 +430,6 @@ export default function TaskDrawerForm({
                                 const idx = rowIdx * 2 + colIdx;
                                 const att = attachments[idx];
                                 if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
-
                                 return (
                                     <View
                                         key={att.uri || att.name || idx}
@@ -502,6 +494,7 @@ export default function TaskDrawerForm({
                     ))}
                 </View>
             )}
+
             {/* Attachment Picker Bottom Sheet */}
             <AttachmentSheet
                 visible={showAttachmentSheet}
@@ -511,6 +504,7 @@ export default function TaskDrawerForm({
                     setShowAttachmentSheet(false);
                 }}
             />
+
             {/* Description */}
             <FieldBox
                 value={values.taskDesc}
@@ -520,6 +514,7 @@ export default function TaskDrawerForm({
                 multiline={true}
                 onChangeText={t => onChange('taskDesc', t)}
             />
+
             {/* Submit Button */}
             <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate}>
                 <LinearGradient
@@ -531,6 +526,7 @@ export default function TaskDrawerForm({
                     <Text style={styles.drawerBtnText}>Add Task</Text>
                 </LinearGradient>
             </TouchableOpacity>
+
             <AddWorklistPopup
                 visible={showAddWorklistPopup}
                 onClose={() => setShowAddWorklistPopup(false)}
@@ -539,12 +535,9 @@ export default function TaskDrawerForm({
                 onSubmit={async (projectId, name) => {
                     try {
                         const token = await AsyncStorage.getItem('token');
-                        // Create the new worklist
                         const newWorklist = await createWorklist(projectId, name, token);
-                        // Refresh worklists for the selected project
                         const updatedWorklists = await getWorklistsByProjectId(projectId, token);
                         setWorklists(Array.isArray(updatedWorklists) ? updatedWorklists : []);
-                        // Set the new worklist as selected in the form if it has an id
                         if (newWorklist && newWorklist.id) {
                             onChange('taskWorklist', String(newWorklist.id));
                         }
@@ -554,22 +547,22 @@ export default function TaskDrawerForm({
                     }
                 }}
             />
+
             <ProjectPopup
                 visible={showAddProjectPopup}
                 onClose={() => setShowAddProjectPopup(false)}
                 values={addProjectValues}
                 onChange={handleAddProjectChange}
                 onSubmit={() => {
-                    // Optionally, you can handle project creation here or just close the popup
                     setShowAddProjectPopup(false);
                     setAddProjectValues({ projectName: '', projectDesc: '', projectCategory: '', startDate: '', endDate: '' });
                 }}
                 theme={theme}
             />
         </>
-
     );
 }
+
 const styles = StyleSheet.create({
     dateRow: {
         flexDirection: 'row',

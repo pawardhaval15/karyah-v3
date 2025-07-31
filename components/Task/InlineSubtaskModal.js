@@ -42,7 +42,7 @@ export default function InlineSubtaskModal({ task, onClose, theme }) {
     <View style={[styles.inlineModal, { backgroundColor: theme.card, borderColor: theme.border }]}>
       <View style={[styles.inlineModalHeader, { borderBottomColor: theme.border }]}>
         <Text style={[styles.inlineModalTitle, { color: theme.text }]}>Subtasks</Text>
-        <TouchableOpacity
+        {/* <TouchableOpacity
           style={[styles.createSubtaskBtn, { backgroundColor: theme.primary + '22' }]}
           onPress={() => {
             // Add your create new subtask logic here later
@@ -52,7 +52,7 @@ export default function InlineSubtaskModal({ task, onClose, theme }) {
           <Text style={[styles.createSubtaskBtnText, { color: theme.buttonText }]}>
             Create New SubTask
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
 
       <View style={{ paddingHorizontal: 0, paddingTop: 16 }}>

@@ -275,6 +275,8 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                     styles={styles}
                     theme={theme}
                     section={section}
+                    onStatusFilter={setActiveTab}
+                    statusTab={activeTab}
                 />
             )}
             <ProjectIssuePopup
