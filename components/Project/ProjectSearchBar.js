@@ -12,7 +12,7 @@ export default function ProjectSearchBar({ value, onChange, theme }) {
         value={value}
         onChangeText={onChange}
       />
-      <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} />
+      {/* <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} /> */}
     </View>
   );
 }

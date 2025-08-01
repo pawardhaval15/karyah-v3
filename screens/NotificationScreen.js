@@ -424,9 +424,9 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    paddingHorizontal: 20,
-    marginTop: 15,
-    paddingBottom: 8,
+    paddingHorizontal: 10,
+    marginTop: 8,
+    paddingBottom: 0,
   },
   tabButton: {
     paddingVertical: 8,

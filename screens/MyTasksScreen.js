@@ -251,7 +251,7 @@ export default function MyTasksScreen({ navigation }) {
       </LinearGradient>
       {/* Search */}
       <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
-        <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} />
+        {/* <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} /> */}
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
           placeholder="Search Task"
