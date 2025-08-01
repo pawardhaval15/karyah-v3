@@ -6,6 +6,7 @@ import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platf
 import Animated from 'react-native-reanimated';
 import { useThemeContext } from '../../theme/ThemeContext'; // <-- import your theme context/provider
 import { fetchUserDetails } from '../../utils/auth';
+import { Linking } from 'react-native';
 
 export default function CustomDrawer({ onClose, theme }) {
   const navigation = useNavigation();
@@ -18,7 +19,7 @@ export default function CustomDrawer({ onClose, theme }) {
   const iconColor = theme.text;
   const secondaryColor = theme.primary;
   const [userName, setUserName] = useState('');
-
+  const helpUrl = 'https://wa.me/919619555596?text=Hi%20Team%20Karyah!';
   useEffect(() => {
     fetchUserDetails()
       .then((user) => setUserName(user.name || user.userId || user.email || ''))
@@ -134,7 +135,12 @@ export default function CustomDrawer({ onClose, theme }) {
             icon={<MaterialIcons name="help-outline" size={20} color={secondaryColor} />}
             label="Help"
             labelStyle={{ color: secondaryColor }}
-            onPress={onClose}
+            onPress={() => {
+              Linking.openURL(helpUrl).catch(err => {
+                console.error("Failed to open URL:", err);
+              });
+              onClose();  // close the drawer
+            }}
             theme={theme}
           />
           <DrawerItem
