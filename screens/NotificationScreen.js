@@ -23,7 +23,6 @@ import {
   fetchNotifications,
   markAllNotificationsAsRead,
 } from '../utils/notifications';
-import { Dimensions } from 'react-native';
 
 const NotificationScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Critical');
@@ -36,7 +35,7 @@ const NotificationScreen = ({ navigation }) => {
   const theme = useTheme();
 
   const tabs = ['Critical', 'Task', 'All', 'Connections'];
-  
+
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -177,54 +176,58 @@ const NotificationScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.tabRow}>
-        {tabs.map((tab) => {
-          const isActive = activeTab.toLowerCase() === tab.toLowerCase();
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tabButton,
-                isActive
-                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                  : { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-              onPress={() => setActiveTab(tab.toUpperCase())}
-            >
-              <Text
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabRow}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab.toLowerCase() === tab.toLowerCase();
+            return (
+              <TouchableOpacity
+                key={tab}
                 style={[
-                  styles.tabText,
+                  styles.tabButton,
                   isActive
-                    ? { color: '#fff', fontWeight: '600' }
-                    : { color: theme.text, fontWeight: '400' },
+                    ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                    : { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
+                onPress={() => setActiveTab(tab.toUpperCase())}
               >
-                {tab}
                 <Text
                   style={[
-                    styles.countSmall,
-                    isActive && { color: '#fff', fontWeight: '600' },
+                    styles.tabText,
+                    isActive
+                      ? { color: '#fff', fontWeight: '600' }
+                      : { color: theme.text, fontWeight: '400' },
                   ]}
                 >
-                  {' '}
-                  {
-                    tab.toLowerCase() === 'all'
-                      ? notifications.length
-                      : tab.toLowerCase() === 'connections'
-                        ? pendingRequests.length
-                        : tab.toLowerCase() === 'critical'
-                          ? notifications.filter((n) => n.type?.toLowerCase() === 'issue').length
-                          : tab.toLowerCase() === 'task'
-                            ? notifications.filter((n) => n.type?.toLowerCase() === 'task').length
-                            : 0
-                  }
-
+                  {tab}
+                  <Text
+                    style={[
+                      styles.countSmall,
+                      isActive && { color: '#fff', fontWeight: '600' },
+                    ]}
+                  >
+                    {' '}
+                    {
+                      tab.toLowerCase() === 'all'
+                        ? notifications.length
+                        : tab.toLowerCase() === 'connections'
+                          ? pendingRequests.length
+                          : tab.toLowerCase() === 'critical'
+                            ? notifications.filter((n) => n.type?.toLowerCase() === 'issue').length
+                            : tab.toLowerCase() === 'task'
+                              ? notifications.filter((n) => n.type?.toLowerCase() === 'task').length
+                              : 0
+                    }
+                  </Text>
                 </Text>
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
-
       {/* Body */}
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 50 }}
@@ -339,9 +342,7 @@ const NotificationScreen = ({ navigation }) => {
               project: 'ProjectScreen',
               connection: 'ConnectionsScreen',
             };
-
             const targetScreen = screenMap[n.type?.toLowerCase()] || null;
-
             return (
               <TouchableOpacity
                 key={n.id}
@@ -393,9 +394,7 @@ const NotificationScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-const screenWidth = Dimensions.get('window').width;
-  const TAB_HORIZONTAL_PADDING = screenWidth * 0.05; // 5% of screen width
-  const TAB_MARGIN_RIGHT = screenWidth * 0.02; 
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
@@ -424,20 +423,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabRow: {
-  flexDirection: 'row',
-  paddingHorizontal: TAB_HORIZONTAL_PADDING, // responsive horizontal padding for tab container
-  marginTop: 15,
-  paddingBottom: 8,
-},
-tabButton: {
-  paddingVertical: 8,
-  paddingHorizontal: 16, // slightly smaller horizontal padding for better fit on smaller devices
-  borderRadius: 20,
-  marginRight: TAB_MARGIN_RIGHT, // responsive margin-right between tabs
-  borderWidth: 1,
-  borderColor: '#e5e7eb',
-  backgroundColor: '#fff',
-},
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginTop: 15,
+    paddingBottom: 8,
+  },
+  tabButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 18,
+    borderRadius: 20,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fff',
+  },
   tabText: {
     fontSize: 14,
     fontWeight: '400',
