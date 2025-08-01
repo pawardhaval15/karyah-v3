@@ -91,7 +91,6 @@ export default function ProjectDrawerForm({
       setFilteredConnections(filtered);
     }
   }, [searchText]);
-
   return (
     <>
       {!showFullForm && (

@@ -101,7 +101,7 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
         )}
         <FabButton onPress={() => setOpen(!open)} theme={theme} />
       </View>
-      <Modal visible={!!drawerType} animationType="slide" transparent onRequestClose={closeDrawer}>
+      <Modal visible={!!drawerType} animationType="slide" transparent onRequestClose={closeDrawer} presentationStyle="pageSheet">
         {drawerType === 'task' ? (
           <TouchableWithoutFeedback onPress={closeDrawer}>
             <View style={styles.modalOverlay}>
@@ -133,7 +133,6 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
           </TouchableWithoutFeedback>
         ) : null}
       </Modal>
-      
       {/* Separate ProjectPopup to avoid nested modals */}
       <ProjectPopup
         visible={drawerType === 'project'}
