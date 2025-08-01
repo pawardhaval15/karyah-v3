@@ -42,7 +42,6 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
   };
 
   const handleTaskChange = (field, value) => {
-    console.log('[ProjectFabDrawer] handleTaskChange:', field, value);
     setTaskForm((prev) => ({ ...prev, [field]: value }));
   };
 
