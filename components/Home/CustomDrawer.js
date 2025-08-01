@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   },
 
   drawer: {
-    width: 300,
+    width: Platform.OS === 'ios' ? 300 : 300,
     backgroundColor: '#f7f8fa', // overridden by theme.background
     paddingTop: Platform.OS === 'ios' ? 70 : 25,
     paddingHorizontal: 24,
