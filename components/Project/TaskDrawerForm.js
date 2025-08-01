@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import DateBox from 'components/task details/DateBox';
 import FieldBox from 'components/task details/FieldBox';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getUserConnections } from '../../utils/connections';
 import { getProjectById, getProjectsByUserId } from '../../utils/project';
@@ -37,6 +37,7 @@ export default function TaskDrawerForm({
   const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
   const [users, setUsers] = useState([]);
   const navigation = useNavigation();
+  const prevProjectIdRef = useRef(values.projectId);
   const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
     onRecordingFinished: (audioFile) => {
       setAttachments((prev) => [...prev, audioFile]);
@@ -70,7 +71,7 @@ export default function TaskDrawerForm({
         setUsers([]);
       }
     })();
-  }, [values.projectId]);
+  }, []); // Remove values.projectId dependency
 
   // Fetch all tasks of the selected project for dependency picking
   useEffect(() => {
@@ -91,7 +92,7 @@ export default function TaskDrawerForm({
   }, [values.projectId]);
 
   useEffect(() => {
-    if (!propProjects.length) {
+    if (!propProjects || propProjects.length === 0) {
       (async () => {
         try {
           const fetched = await getProjectsByUserId();
@@ -100,14 +101,23 @@ export default function TaskDrawerForm({
           setProjects([]);
         }
       })();
+    } else {
+      setProjects(propProjects);
     }
-  }, [propProjects]);
+  }, []); // Remove propProjects dependency to prevent re-rendering
 
  useEffect(() => {
-  if (!values.projectId) {
-    setWorklists([]);
+  // Only run if projectId actually changed
+  if (prevProjectIdRef.current === values.projectId) {
     return;
   }
+  
+  if (!values.projectId) {
+    setWorklists([]);
+    prevProjectIdRef.current = values.projectId;
+    return;
+  }
+  
   const fetchProjectAndWorklists = async () => {
     try {
       const res = await getProjectById(values.projectId);
@@ -122,12 +132,9 @@ export default function TaskDrawerForm({
       setWorklists([]);
     }
   };
+  
   fetchProjectAndWorklists();
-
-  // Only reset if not already empty
-  if (values.taskWorklist !== '') {
-    onChange('taskWorklist', '');
-  }
+  prevProjectIdRef.current = values.projectId;
 }, [values.projectId]);
 
   const isValidDate = (date) => date && !isNaN(new Date(date).getTime());
@@ -324,19 +331,13 @@ export default function TaskDrawerForm({
           theme={theme}
           label="Start Date"
           value={values.startDate}
-          onChange={(date) => {
-            console.log('[TaskDrawerForm] Start DateBox onChange:', date);
-            onChange('startDate', date);
-          }}
+          onChange={(date) => onChange('startDate', date)}
         />
         <DateBox
           theme={theme}
           label="End Date"
           value={values.endDate}
-          onChange={(date) => {
-            console.log('[TaskDrawerForm] End DateBox onChange:', date);
-            onChange('endDate', date);
-          }}
+          onChange={(date) => onChange('endDate', date)}
         />
       </View>
       {/* Assigned Users Multi-select */}
