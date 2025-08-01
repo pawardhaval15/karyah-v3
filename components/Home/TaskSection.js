@@ -76,9 +76,12 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     <View style={{ marginBottom: 120 }}>
       {/* Section Heading */}
       <View style={styles.sectionRow}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        {/* <Text style={[styles.sectionTitle, { color: theme.text }]}>
           {activeTab === 'tasks' ? 'My Tasks' : 'My Issues'}
           <Text style={[styles.count, { color: theme.text }]}> {sortedData.length}</Text>
+        </Text> */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          <Text >My Issues & Task</Text>
         </Text>
         <TouchableOpacity
           onPress={() =>
