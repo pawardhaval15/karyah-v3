@@ -11,7 +11,7 @@ export default function DateBox({ label, value, theme }) {
                 <View style={{ alignItems: 'center' }}>
                     <Text style={[styles.dateLabel, { color: theme.secondaryText }]}>{label}</Text>
                     <Text style={[styles.dateValue, { color: theme.text }]}>
-                        {parsedDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {parsedDate.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}
                     </Text>
                 </View>
             </View>
