@@ -1,11 +1,12 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchDashboardStats } from '../../utils/dashboard';
 import { fetchAssignedCriticalIssues } from '../../utils/issues';
 
 export default function StatCardList({ navigation, theme, loading, refreshKey = 0 }) {
   const [statData, setStatData] = useState([]);
+  const scrollViewRef = useRef(null);
 
   useEffect(() => {
     async function fetchStats() {
@@ -13,7 +14,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
         fetchDashboardStats(),
         fetchAssignedCriticalIssues()
       ]);
-      setStatData([
+      const newStatData = [
         {
           title: 'Critical Issues',
           value: criticalIssues.length,
@@ -72,7 +73,20 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
           gradientColors: ['#011F53', '#366CD9'],
           screen: 'ConnectionsScreen',
         },
-      ]);
+      ];
+      
+      setStatData(newStatData);
+      
+      // Find the first card with non-zero value and scroll to it
+      setTimeout(() => {
+        const firstNonZeroIndex = newStatData.findIndex(item => item.value > 0);
+        if (firstNonZeroIndex > 0 && scrollViewRef.current) {
+          const cardWidth = 180; // width of each card
+          const cardMargin = 12; // margin between cards
+          const scrollPosition = firstNonZeroIndex * (cardWidth + cardMargin);
+          scrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
+        }
+      }, 100); // Small delay to ensure the ScrollView is rendered
     }
     fetchStats();
   }, [refreshKey]);
@@ -87,6 +101,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
 
   return (
     <ScrollView
+      ref={scrollViewRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={{ flexDirection: 'row', paddingLeft: 20, paddingRight: 20 }}
