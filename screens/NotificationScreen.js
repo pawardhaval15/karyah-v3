@@ -23,9 +23,10 @@ import {
   fetchNotifications,
   markAllNotificationsAsRead,
 } from '../utils/notifications';
+import { Dimensions } from 'react-native';
 
 const NotificationScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeTab, setActiveTab] = useState('Critical');
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -35,7 +36,7 @@ const NotificationScreen = ({ navigation }) => {
   const theme = useTheme();
 
   const tabs = ['Critical', 'Task', 'All', 'Connections'];
-
+  
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -392,7 +393,9 @@ const NotificationScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
+const screenWidth = Dimensions.get('window').width;
+  const TAB_HORIZONTAL_PADDING = screenWidth * 0.05; // 5% of screen width
+  const TAB_MARGIN_RIGHT = screenWidth * 0.02; 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
@@ -421,20 +424,20 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   tabRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 24,
-    marginTop: 15,
-    paddingBottom: 8,
-  },
-  tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    marginRight: 8,
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
-  },
+  flexDirection: 'row',
+  paddingHorizontal: TAB_HORIZONTAL_PADDING, // responsive horizontal padding for tab container
+  marginTop: 15,
+  paddingBottom: 8,
+},
+tabButton: {
+  paddingVertical: 8,
+  paddingHorizontal: 16, // slightly smaller horizontal padding for better fit on smaller devices
+  borderRadius: 20,
+  marginRight: TAB_MARGIN_RIGHT, // responsive margin-right between tabs
+  borderWidth: 1,
+  borderColor: '#e5e7eb',
+  backgroundColor: '#fff',
+},
   tabText: {
     fontSize: 14,
     fontWeight: '400',
