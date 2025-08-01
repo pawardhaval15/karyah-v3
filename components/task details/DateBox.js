@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function DateBox({ label, value, onChange, theme }) {
-  console.log('[DateBox] Render label:', label, 'value:', value);
+//   console.log('[DateBox] Render label:', label, 'value:', value);
 
   const [show, setShow] = useState(false);
   const [tempDate, setTempDate] = useState(value ? new Date(value) : new Date());
@@ -12,11 +12,9 @@ export default function DateBox({ label, value, onChange, theme }) {
   const parsedDate = value ? new Date(value) : new Date();
 
   const handleChange = (event, selectedDate) => {
-    console.log('[DateBox] handleChange event:', event, 'selectedDate:', selectedDate);
     if (Platform.OS === 'android') {
       setShow(false);
       if (selectedDate) {
-        console.log('[DateBox] Android onChange fired:', selectedDate);
         onChange(selectedDate);
       }
     } else {
@@ -34,7 +32,6 @@ export default function DateBox({ label, value, onChange, theme }) {
         onPress={() => {
           setTempDate(parsedDate);
           setShow(true);
-          console.log('[DateBox] onPress, parsedDate:', parsedDate);
         }}>
         <Ionicons name="calendar-outline" size={20} color={theme.text} style={{ marginRight: 6 }} />
         <View style={{ alignItems: 'center' }}>
