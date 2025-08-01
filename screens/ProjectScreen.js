@@ -182,24 +182,24 @@ export default function ProjectScreen({ navigation }) {
               <Text style={{ marginLeft: 18, marginTop: 20, color: theme.secondaryText }}>No projects found.</Text>
             ) : (
               tabData.map((item, idx) => {
-  let delayedDays = 0;
-  const now = new Date();
-  if (item.endDate && new Date(item.endDate) < now && (item.progress < 100)) {
-    const end = new Date(item.endDate);
-    const diffTime = now - end;
-    delayedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  }
-  
-  return (
-    <ProjectCard
-      key={item.id || idx}
-      project={item}
-      theme={theme}
-      delayedDays={delayedDays}
-      endDate={item.endDate}   // Pass the existing endDate directly
-    />
-  );
-})
+                let delayedDays = 0;
+                const now = new Date();
+                if (item.endDate && new Date(item.endDate) < now && (item.progress < 100)) {
+                  const end = new Date(item.endDate);
+                  const diffTime = now - end;
+                  delayedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                }
+
+                return (
+                  <ProjectCard
+                    key={item.id || idx}
+                    project={item}
+                    theme={theme}
+                    delayedDays={delayedDays}
+                    endDate={item.endDate}   // Pass the existing endDate directly
+                  />
+                );
+              })
 
             )}
           </ScrollView>

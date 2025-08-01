@@ -41,10 +41,10 @@ export default function ProjectCard({ project = {}, theme }) {
   // Format endDate nicely for display
   const formattedEndDate = endDate
     ? new Date(endDate).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
     : '-';
 
   return (
@@ -73,21 +73,9 @@ export default function ProjectCard({ project = {}, theme }) {
       {/* Container for End Date above progress */}
       <View style={styles.endDateProgressContainer}>
         <View style={styles.projectRow}>
-          {/* <Feather name="clock" size={14} color={statusColor} /> */}
           <Text style={[styles.projectInfo, { color: statusColor }]}>{remainingText}</Text>
         </View>
-        
-        <View
-          style={[
-            styles.progressCircle,
-            {
-              borderColor: theme.primary,
-              backgroundColor: theme.card,
-            },
-          ]}
-        >
-          <CustomCircularProgress percentage={progress || 0} />
-        </View>
+        <CustomCircularProgress percentage={progress || 0} />
       </View>
     </TouchableOpacity>
   );
@@ -150,6 +138,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 10,
     justifyContent: 'flex-start',
+    gap: 2,
   },
   endDateText: {
     fontSize: 12,
