@@ -373,13 +373,20 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
-        <FieldBox
-          label="Description"
-          value={projectDetails.description}
-          placeholder="Description"
-          multiline={true}
-          theme={theme}
-        />
+        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: 140 }]}>
+  {(!projectDetails.description || projectDetails.description.trim() === '') && (
+    <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
+      Description
+    </Text>
+  )}
+  <ScrollView style={{ maxHeight: 100 }}>
+    <Text style={[styles.inputValue, { color: theme.text }]}>
+      {projectDetails.description && projectDetails.description.trim() !== ''
+        ? projectDetails.description
+        : ''} {/* Show empty string instead of placeholder */}
+    </Text>
+  </ScrollView>
+</View>
         <View style={styles.issueBtnRow}>
           <IssueButton
             icon="alert-circle"

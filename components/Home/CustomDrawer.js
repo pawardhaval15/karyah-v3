@@ -60,19 +60,19 @@ export default function CustomDrawer({ onClose, theme }) {
             theme={theme}
           />
           <DrawerItem
-            icon={<Feather name="list" size={20} color="#4CAF50" />}
-            label="Task"
+            icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
+            label="Issues"
             onPress={() => {
-              navigation.navigate('MyTasksScreen');
+              navigation.navigate('IssuesScreen');
               onClose && onClose();
             }}
             theme={theme}
           />
           <DrawerItem
-            icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
-            label="Issues"
+            icon={<Feather name="list" size={20} color="#4CAF50" />}
+            label="Task"
             onPress={() => {
-              navigation.navigate('IssuesScreen');
+              navigation.navigate('MyTasksScreen');
               onClose && onClose();
             }}
             theme={theme}
