@@ -205,7 +205,7 @@ export default function IssuesScreen({ navigation }) {
                     value={search}
                     onChangeText={setSearch}
                 />
-                <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} />
+                {/* <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} /> */}
             </View>
 
             {/* Issue List */}
