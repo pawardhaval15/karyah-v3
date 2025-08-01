@@ -101,17 +101,18 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
-        ) : (
-          <ProjectPopup
-            visible={true}
-            onClose={closeDrawer}
-            values={projectForm}
-            onChange={handleProjectChange}
-            onSubmit={handleProjectSubmit}
-            theme={theme}
-          />
-        )}
+        ) : null}
       </Modal>
+      
+      {/* Separate ProjectPopup to avoid nested modals */}
+      <ProjectPopup
+        visible={drawerType === 'project'}
+        onClose={closeDrawer}
+        values={projectForm}
+        onChange={handleProjectChange}
+        onSubmit={handleProjectSubmit}
+        theme={theme}
+      />
     </>
   );
 }

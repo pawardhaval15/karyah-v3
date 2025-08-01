@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, Text } from 'react-native';
+import { Modal, View, TouchableOpacity, StyleSheet, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ProjectDrawerForm from '../Project/ProjectDrawerForm';
 
@@ -12,7 +12,11 @@ export default function ProjectPopup({ visible, onClose, values, onChange, onSub
       transparent
       onRequestClose={onClose}
     >
-      <View style={styles.overlay}>
+      <KeyboardAvoidingView 
+        style={styles.overlay}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
         <View style={[styles.popup, { backgroundColor: theme.card }]}>
           <View style={styles.header}>
             <Text style={[{ fontSize: 18, fontWeight: '500', color: theme.text }]}>Create New Project</Text>
@@ -20,17 +24,15 @@ export default function ProjectPopup({ visible, onClose, values, onChange, onSub
               <Ionicons name="close" size={20} color={theme.text} />
             </TouchableOpacity>
           </View>
-          <ScrollView>
-            <ProjectDrawerForm
-              values={values}
-              onChange={onChange}
-              onSubmit={() => { onSubmit(); onClose(); }}
-              hideSimpleForm
-              theme={theme}
-            />
-          </ScrollView>
+          <ProjectDrawerForm
+            values={values}
+            onChange={onChange}
+            onSubmit={() => { onSubmit(); onClose(); }}
+            hideSimpleForm
+            theme={theme}
+          />
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -47,7 +49,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 22,
     paddingVertical: 18,
-    maxHeight: '90%',
+    maxHeight: '85%',
+    minHeight: 320,
     elevation: 8,
   },
   header: {
@@ -55,7 +58,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 18,
-    marginBottom: 20,
+    marginBottom: 12,
   },
   closeBtn: {
     padding: 4,
