@@ -92,15 +92,7 @@ export default function CustomDrawer({ onClose, theme }) {
             }}
             theme={theme}
           />
-          <DrawerItem
-            icon={<Feather name="user" size={20} color="#9C27B0" />}
-            label="Profile"
-            onPress={() => {
-              navigation.navigate('UserProfileScreen');
-              onClose && onClose();
-            }}
-            theme={theme}
-          />
+          
           <DrawerItem
             icon={<Feather name="settings" size={20} color="#607D8B" />}
             label="Settings"
@@ -131,6 +123,15 @@ export default function CustomDrawer({ onClose, theme }) {
               theme={theme}
             />
           )}
+          <DrawerItem
+            icon={<Feather name="user" size={20} color="#9C27B0" />}
+            label="Profile"
+            onPress={() => {
+              navigation.navigate('UserProfileScreen');
+              onClose && onClose();
+            }}
+            theme={theme}
+          />
           <DrawerItem
             icon={<MaterialIcons name="help-outline" size={20} color={secondaryColor} />}
             label="Help"
