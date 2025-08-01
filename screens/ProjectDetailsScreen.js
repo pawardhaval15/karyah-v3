@@ -185,13 +185,13 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                       onPress: async () => {
                         try {
                           await deleteProjectById(projectDetails.id);
-                          Toast.show({
-                            type: 'success',
-                            text1: 'Deleted',
-                            text2: 'Project deleted successfully.',
-                            position: 'center',
-                          });
-                          navigation.goBack();
+                          Alert.alert('Deleted', 'Project deleted successfully.', [
+                            {
+                              text: 'OK', onPress: () => {
+                                navigation.navigate('Home', { refresh: true });
+                              }
+                            },
+                          ]);
                         } catch (err) {
                           Alert.alert('Delete Failed', err.message || 'Could not delete project.');
                         }
@@ -374,19 +374,19 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </View>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border, maxHeight: 140 }]}>
-  {(!projectDetails.description || projectDetails.description.trim() === '') && (
-    <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
-      Description
-    </Text>
-  )}
-  <ScrollView style={{ maxHeight: 100 }}>
-    <Text style={[styles.inputValue, { color: theme.text }]}>
-      {projectDetails.description && projectDetails.description.trim() !== ''
-        ? projectDetails.description
-        : ''} {/* Show empty string instead of placeholder */}
-    </Text>
-  </ScrollView>
-</View>
+          {(!projectDetails.description || projectDetails.description.trim() === '') && (
+            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
+              Description
+            </Text>
+          )}
+          <ScrollView style={{ maxHeight: 100 }}>
+            <Text style={[styles.inputValue, { color: theme.text }]}>
+              {projectDetails.description && projectDetails.description.trim() !== ''
+                ? projectDetails.description
+                : ''} {/* Show empty string instead of placeholder */}
+            </Text>
+          </ScrollView>
+        </View>
         <View style={styles.issueBtnRow}>
           <IssueButton
             icon="alert-circle"

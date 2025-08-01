@@ -1,6 +1,5 @@
-import React from 'react';
-import { Modal, View, TouchableOpacity, StyleSheet, Text, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ProjectDrawerForm from '../Project/ProjectDrawerForm';
 
 

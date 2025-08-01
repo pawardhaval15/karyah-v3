@@ -132,10 +132,11 @@ export default function ProfessionalDashboard({ navigation }) {
                     />
                 }
             >
-                <StatCardList navigation={navigation} theme={theme} key={`stat-${refreshKey}`} />
-                <DailyProgressCard theme={theme} key={`daily-${refreshKey}`} />
+                <StatCardList navigation={navigation} theme={theme} refreshKey={refreshKey} key={`stat-${refreshKey}`} />
+                <DailyProgressCard theme={theme} refreshKey={refreshKey} key={`daily-${refreshKey}`} />
                 <CriticalIssueCard
                     theme={theme}
+                    refreshKey={refreshKey}
                     onViewAll={() => navigation.navigate('IssuesScreen')}
                     key={`critical-${refreshKey}`}
                 />
@@ -149,13 +150,17 @@ export default function ProfessionalDashboard({ navigation }) {
                 </View>
             )}
             <ProjectFabDrawer
-                onTaskSubmit={(task) => {
+                onTaskSubmit={async (task) => {
                     // handle new task here
                     console.log('New Task:', task);
+                    // Refresh dashboard data instantly
+                    await onRefresh();
                 }}
-                onProjectSubmit={(project) => {
+                onProjectSubmit={async (project) => {
                     // handle new project here
                     console.log('New Project:', project);
+                    // Refresh dashboard data instantly
+                    await onRefresh();
                 }}
                 theme={theme}
             />

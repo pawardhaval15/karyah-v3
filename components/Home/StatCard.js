@@ -1,11 +1,10 @@
-import { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchDashboardStats } from '../../utils/dashboard';
 import { fetchAssignedCriticalIssues } from '../../utils/issues';
-import { ActivityIndicator } from 'react-native';
 
-export default function StatCardList({ navigation, theme, loading }) {
+export default function StatCardList({ navigation, theme, loading, refreshKey = 0 }) {
   const [statData, setStatData] = useState([]);
 
   useEffect(() => {
@@ -76,7 +75,7 @@ export default function StatCardList({ navigation, theme, loading }) {
       ]);
     }
     fetchStats();
-  }, []);
+  }, [refreshKey]);
 
   if (loading) {
     return (

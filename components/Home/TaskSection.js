@@ -6,7 +6,7 @@ import { fetchAssignedIssues } from '../../utils/issues';
 import { fetchMyTasks } from '../../utils/task'; // <-- im
 import TaskCard from './TaskCard';
 
-export default function TaskSection({ navigation, loading: parentLoading }) {
+export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
   const theme = useTheme();
 
   const [search, setSearch] = useState('');
@@ -31,7 +31,7 @@ export default function TaskSection({ navigation, loading: parentLoading }) {
       }
     };
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   const data = activeTab === 'tasks' ? tasks : issues;
   const filtered = data.filter((item) =>

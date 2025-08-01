@@ -235,6 +235,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     flex: 1,
     marginRight: 0,
+    paddingBottom: 4,
   },
   taskSubTitle: {
     fontSize: 12,
