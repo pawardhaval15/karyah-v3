@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import ProjectPopup from 'components/popups/ProjectPopup';
 import { useState } from 'react';
 import {
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
 import FabButton from './FabButton';
 import FabPopup from './FabPopup';
@@ -42,7 +42,6 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
   };
 
   const handleTaskChange = (field, value) => {
-    console.log('[ProjectFabDrawer] handleTaskChange:', field, value);
     setTaskForm((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -50,14 +49,44 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
     setProjectForm((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleTaskSubmit = () => {
-    onTaskSubmit && onTaskSubmit(taskForm);
-    closeDrawer();
+  const handleTaskSubmit = async () => {
+    try {
+      if (onTaskSubmit) {
+        await onTaskSubmit(taskForm);
+      }
+      // Reset task form after successful submission
+      setTaskForm({
+        taskName: '',
+        projectId: '',
+        taskWorklist: '',
+        taskDeps: [],
+        startDate: '',
+        endDate: '',
+        assignTo: [],
+        taskDesc: '',
+      });
+      closeDrawer();
+    } catch (error) {
+      console.error('Error in task submission callback:', error);
+      closeDrawer(); // Still close even if callback fails
+    }
   };
 
-  const handleProjectSubmit = () => {
-    onProjectSubmit && onProjectSubmit(projectForm);
-    closeDrawer();
+  const handleProjectSubmit = async () => {
+    try {
+      if (onProjectSubmit) {
+        await onProjectSubmit(projectForm);
+      }
+      // Reset project form after successful submission
+      setProjectForm({
+        projectName: '',
+        projectDesc: '',
+      });
+      closeDrawer();
+    } catch (error) {
+      console.error('Error in project submission callback:', error);
+      closeDrawer(); // Still close even if callback fails
+    }
   };
 
   return (
@@ -102,17 +131,18 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
               </TouchableWithoutFeedback>
             </View>
           </TouchableWithoutFeedback>
-        ) : (
-          <ProjectPopup
-            visible={true}
-            onClose={closeDrawer}
-            values={projectForm}
-            onChange={handleProjectChange}
-            onSubmit={handleProjectSubmit}
-            theme={theme}
-          />
-        )}
+        ) : null}
       </Modal>
+      
+      {/* Separate ProjectPopup to avoid nested modals */}
+      <ProjectPopup
+        visible={drawerType === 'project'}
+        onClose={closeDrawer}
+        values={projectForm}
+        onChange={handleProjectChange}
+        onSubmit={handleProjectSubmit}
+        theme={theme}
+      />
     </>
   );
 }

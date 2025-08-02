@@ -65,7 +65,6 @@ export default function ConnectionsScreen({ navigation }) {
             </LinearGradient>
 
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
-                <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} />
                 <TextInput
                     style={[styles.searchInput, { color: theme.text }]}
                     placeholder="Search Connection"
@@ -74,7 +73,6 @@ export default function ConnectionsScreen({ navigation }) {
                     onChangeText={setSearch}
                 />
             </View>
-
             <FlatList
                 data={filteredConnections}
                 keyExtractor={item => item.connectionId.toString()}
@@ -187,7 +185,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginBottom: 0,
         paddingHorizontal: 16,
-    paddingVertical: 12,
+        paddingVertical: 12,
     },
     searchInput: {
         flex: 1,

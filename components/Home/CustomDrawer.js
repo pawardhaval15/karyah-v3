@@ -6,6 +6,7 @@ import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platf
 import Animated from 'react-native-reanimated';
 import { useThemeContext } from '../../theme/ThemeContext'; // <-- import your theme context/provider
 import { fetchUserDetails } from '../../utils/auth';
+import { Linking } from 'react-native';
 
 export default function CustomDrawer({ onClose, theme }) {
   const navigation = useNavigation();
@@ -18,7 +19,7 @@ export default function CustomDrawer({ onClose, theme }) {
   const iconColor = theme.text;
   const secondaryColor = theme.primary;
   const [userName, setUserName] = useState('');
-
+  const helpUrl = 'https://wa.me/919619555596?text=Hi%20Team%20Karyah!';
   useEffect(() => {
     fetchUserDetails()
       .then((user) => setUserName(user.name || user.userId || user.email || ''))
@@ -59,19 +60,19 @@ export default function CustomDrawer({ onClose, theme }) {
             theme={theme}
           />
           <DrawerItem
-            icon={<Feather name="list" size={20} color="#4CAF50" />}
-            label="Task"
+            icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
+            label="Issues"
             onPress={() => {
-              navigation.navigate('MyTasksScreen');
+              navigation.navigate('IssuesScreen');
               onClose && onClose();
             }}
             theme={theme}
           />
           <DrawerItem
-            icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
-            label="Issues"
+            icon={<Feather name="list" size={20} color="#4CAF50" />}
+            label="Task"
             onPress={() => {
-              navigation.navigate('IssuesScreen');
+              navigation.navigate('MyTasksScreen');
               onClose && onClose();
             }}
             theme={theme}
@@ -91,15 +92,7 @@ export default function CustomDrawer({ onClose, theme }) {
             }}
             theme={theme}
           />
-          <DrawerItem
-            icon={<Feather name="user" size={20} color="#9C27B0" />}
-            label="Profile"
-            onPress={() => {
-              navigation.navigate('UserProfileScreen');
-              onClose && onClose();
-            }}
-            theme={theme}
-          />
+          
           <DrawerItem
             icon={<Feather name="settings" size={20} color="#607D8B" />}
             label="Settings"
@@ -131,10 +124,24 @@ export default function CustomDrawer({ onClose, theme }) {
             />
           )}
           <DrawerItem
+            icon={<Feather name="user" size={20} color="#9C27B0" />}
+            label="Profile"
+            onPress={() => {
+              navigation.navigate('UserProfileScreen');
+              onClose && onClose();
+            }}
+            theme={theme}
+          />
+          <DrawerItem
             icon={<MaterialIcons name="help-outline" size={20} color={secondaryColor} />}
             label="Help"
             labelStyle={{ color: secondaryColor }}
-            onPress={onClose}
+            onPress={() => {
+              Linking.openURL(helpUrl).catch(err => {
+                console.error("Failed to open URL:", err);
+              });
+              onClose();  // close the drawer
+            }}
             theme={theme}
           />
           <DrawerItem
@@ -249,7 +256,7 @@ const styles = StyleSheet.create({
   },
 
   drawer: {
-    width: 300,
+    width: Platform.OS === 'ios' ? 300 : 300,
     backgroundColor: '#f7f8fa', // overridden by theme.background
     paddingTop: Platform.OS === 'ios' ? 70 : 25,
     paddingHorizontal: 24,

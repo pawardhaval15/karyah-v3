@@ -6,7 +6,7 @@ import { fetchAssignedIssues } from '../../utils/issues';
 import { fetchMyTasks } from '../../utils/task'; // <-- im
 import TaskCard from './TaskCard';
 
-export default function TaskSection({ navigation, loading: parentLoading }) {
+export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
   const theme = useTheme();
 
   const [search, setSearch] = useState('');
@@ -31,7 +31,7 @@ export default function TaskSection({ navigation, loading: parentLoading }) {
       }
     };
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   const data = activeTab === 'tasks' ? tasks : issues;
   const filtered = data.filter((item) =>
@@ -76,9 +76,12 @@ export default function TaskSection({ navigation, loading: parentLoading }) {
     <View style={{ marginBottom: 120 }}>
       {/* Section Heading */}
       <View style={styles.sectionRow}>
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+        {/* <Text style={[styles.sectionTitle, { color: theme.text }]}>
           {activeTab === 'tasks' ? 'My Tasks' : 'My Issues'}
           <Text style={[styles.count, { color: theme.text }]}> {sortedData.length}</Text>
+        </Text> */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>
+          <Text >My Issues & Task</Text>
         </Text>
         <TouchableOpacity
           onPress={() =>

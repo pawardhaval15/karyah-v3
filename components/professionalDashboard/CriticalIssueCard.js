@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchAssignedCriticalIssues } from '../../utils/issues';
 
-export default function CriticalIssueCard({ onViewAll, theme }) {
+export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) {
   const [criticalIssues, setCriticalIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
@@ -16,7 +16,7 @@ export default function CriticalIssueCard({ onViewAll, theme }) {
         setLoading(false);
       })
       .catch(() => setLoading(false));
-  }, []);
+  }, [refreshKey]);
 
   const visibleIssues = criticalIssues.filter(
     issue => (issue.status || issue.issueStatus || '').toLowerCase() !== 'resolved'

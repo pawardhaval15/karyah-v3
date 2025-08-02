@@ -25,7 +25,7 @@ import {
 } from '../utils/notifications';
 
 const NotificationScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('ALL');
+  const [activeTab, setActiveTab] = useState('Critical');
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -34,7 +34,8 @@ const NotificationScreen = ({ navigation }) => {
   const messageAnim = useRef(new Animated.Value(0)).current;
   const theme = useTheme();
 
-  const tabs = ['All', 'Critical', 'Connections'];
+  const tabs = ['Critical', 'Task', 'All', 'Connections'];
+
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -72,7 +73,7 @@ const NotificationScreen = ({ navigation }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    
+
     // Play refresh sound
     try {
       const { sound } = await Audio.Sound.createAsync(
@@ -85,7 +86,7 @@ const NotificationScreen = ({ navigation }) => {
     } catch (err) {
       console.error('Refresh sound error:', err.message);
     }
-    
+
     await loadNotifications();
     await loadPendingRequests();
     setRefreshing(false);
@@ -128,12 +129,15 @@ const NotificationScreen = ({ navigation }) => {
     switch (activeTab) {
       case 'CRITICAL':
         return notifications.filter((n) => /0\sday\(s\)(\sleft|\sremaining)/i.test(n.message));
+      case 'TASK':
+        return notifications.filter((n) => n.type?.toLowerCase() === 'task');
       case 'CONNECTIONS':
         return notifications.filter((n) => n.type?.toLowerCase() === 'connection');
       default:
         return notifications;
     }
   };
+
   const filteredNotifications = getFilteredNotifications();
   // Helper to show a message in the drawer
   const showMessage = (msg) => {
@@ -172,49 +176,58 @@ const NotificationScreen = ({ navigation }) => {
       </View>
 
       <View style={styles.tabRow}>
-        {tabs.map((tab) => {
-          const isActive = activeTab.toLowerCase() === tab.toLowerCase();
-          return (
-            <TouchableOpacity
-              key={tab}
-              style={[
-                styles.tabButton,
-                isActive
-                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                  : { backgroundColor: theme.card, borderColor: theme.border },
-              ]}
-              onPress={() => setActiveTab(tab.toUpperCase())}
-            >
-              <Text
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabRow}
+        >
+          {tabs.map((tab) => {
+            const isActive = activeTab.toLowerCase() === tab.toLowerCase();
+            return (
+              <TouchableOpacity
+                key={tab}
                 style={[
-                  styles.tabText,
+                  styles.tabButton,
                   isActive
-                    ? { color: '#fff', fontWeight: '600' }
-                    : { color: theme.text, fontWeight: '400' },
+                    ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                    : { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
+                onPress={() => setActiveTab(tab.toUpperCase())}
               >
-                {tab}
                 <Text
                   style={[
-                    styles.countSmall,
-                    isActive && { color: '#fff', fontWeight: '600' },
+                    styles.tabText,
+                    isActive
+                      ? { color: '#fff', fontWeight: '600' }
+                      : { color: theme.text, fontWeight: '400' },
                   ]}
                 >
-                  {' '}
-                  {tab.toLowerCase() === 'all'
-                    ? notifications.length
-                    : tab.toLowerCase() === 'connections'
-                      ? pendingRequests.length
-                      : notifications.filter((n) =>
-                        /0\sday\(s\)(\sleft|\sremaining)/i.test(n.message)
-                      ).length}
+                  {tab}
+                  <Text
+                    style={[
+                      styles.countSmall,
+                      isActive && { color: '#fff', fontWeight: '600' },
+                    ]}
+                  >
+                    {' '}
+                    {
+                      tab.toLowerCase() === 'all'
+                        ? notifications.length
+                        : tab.toLowerCase() === 'connections'
+                          ? pendingRequests.length
+                          : tab.toLowerCase() === 'critical'
+                            ? notifications.filter((n) => n.type?.toLowerCase() === 'issue').length
+                            : tab.toLowerCase() === 'task'
+                              ? notifications.filter((n) => n.type?.toLowerCase() === 'task').length
+                              : 0
+                    }
+                  </Text>
                 </Text>
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
-
       {/* Body */}
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 50 }}
@@ -323,39 +336,37 @@ const NotificationScreen = ({ navigation }) => {
           </View>
         ) : (
           filteredNotifications.map((n) => {
-  const screenMap = {
-    task: 'MyTasksScreen',
-    issue: 'IssuesScreen',
-    project: 'ProjectScreen',
-    connection: 'ConnectionsScreen',
-  };
-
-  const targetScreen = screenMap[n.type?.toLowerCase()] || null;
-
-  return (
-    <TouchableOpacity
-      key={n.id}
-      onPress={() => {
-        if (targetScreen) {
-          navigation.navigate(targetScreen, n.params || {});
-        }
-      }}
-      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border || '#e0e0e0' }]}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <View style={[styles.iconCircle, { backgroundColor: theme.avatarBg }]}>
-          <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 20 }}>
-            {n.type?.charAt(0)?.toUpperCase() || 'N'}
-          </Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.name, { color: theme.text }]}>{n.type}</Text>
-          <Text style={{ color: theme.secondaryText, fontSize: 12, fontWeight: '300' }}>{n.message}</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-})
+            const screenMap = {
+              task: 'MyTasksScreen',
+              issue: 'IssuesScreen',
+              project: 'ProjectScreen',
+              connection: 'ConnectionsScreen',
+            };
+            const targetScreen = screenMap[n.type?.toLowerCase()] || null;
+            return (
+              <TouchableOpacity
+                key={n.id}
+                onPress={() => {
+                  if (targetScreen) {
+                    navigation.navigate(targetScreen, n.params || {});
+                  }
+                }}
+                style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border || '#e0e0e0' }]}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.iconCircle, { backgroundColor: theme.avatarBg }]}>
+                    <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 20 }}>
+                      {n.type?.charAt(0)?.toUpperCase() || 'N'}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.name, { color: theme.text }]}>{n.type}</Text>
+                    <Text style={{ color: theme.secondaryText, fontSize: 12, fontWeight: '300' }}>{n.message}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
       {/* Custom message drawer */}
@@ -413,9 +424,9 @@ const styles = StyleSheet.create({
   },
   tabRow: {
     flexDirection: 'row',
-    paddingHorizontal: 24,
-    marginTop: 15,
-    paddingBottom: 8,
+    paddingHorizontal: 10,
+    marginTop: 8,
+    paddingBottom: 0,
   },
   tabButton: {
     paddingVertical: 8,
@@ -455,7 +466,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ddd',
   },
   name: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 5,
   },

@@ -1,13 +1,12 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Circle, Svg } from 'react-native-svg';
 import { getUserWeeklyAnalysis } from '../../utils/analysis'; // adjust path as needed
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import jwtDecode from 'jwt-decode'; // Add this at the top if not already imported
 
 const options = ['Issues', 'Tasks', 'Projects'];
 
-export default function DailyProgressCard({ theme }) {
+export default function DailyProgressCard({ theme, refreshKey = 0 }) {
   const [selected, setSelected] = useState('Issues');
   const [weeklyData, setWeeklyData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -56,7 +55,7 @@ export default function DailyProgressCard({ theme }) {
       setLoading(false);
     };
     fetchAnalysis();
-  }, []);
+  }, [refreshKey]);
 
   if (loading || !weeklyData || !weeklyData[selected]) {
     return (

@@ -198,7 +198,16 @@ export default function UpdateProjectScreen({ route, navigation }) {
                         placeholderTextColor={theme.secondaryText}
                         onChangeText={text => handleChange('projectDesc', text)}
                         multiline
-                        style={[styles.inputValue, { color: theme.text, minHeight: 60 }]}
+                        scrollEnabled
+                        style={[
+                            styles.inputValue,
+                            {
+                                color: theme.text,
+                                minHeight: 60,         // minimum height so users can type comfortably
+                                maxHeight: 140,        // maximum height enabling internal scrolling after this
+                                textAlignVertical: 'top', // aligns text to top in Android for multiline
+                            },
+                        ]}
                     />
                 </View>
                 {/* Co-Admins */}

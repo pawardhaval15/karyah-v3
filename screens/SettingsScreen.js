@@ -146,8 +146,8 @@ export default function SettingsScreen({ navigation }) {
             showToggle: true,
           },
           {
-            label: "Custom Notifications",
-            desc: "Show custom notification popups.\nEnhanced notification experience.",
+            label: "Display Notifications",
+            desc: "Show notification popups.\nEnhanced notification experience.",
             value: customNotificationsEnabled,
             icon: <Feather name="bell" size={20} color={theme.text} />,
             onChange: async (val) => {

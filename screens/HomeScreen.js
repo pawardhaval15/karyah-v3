@@ -68,7 +68,21 @@ export default function HomeScreen({ navigation }) {
   const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
   usePushNotifications();
+
+  useEffect(() => {
+  const unsubscribe = navigation.addListener('focus', () => {
+    if (navigation?.getState()?.routes?.find(r => r.name === 'HomeScreen')?.params?.refresh) {
+      fetchProjectsData();
+      setRefreshKey(prev => prev + 1);
+      // Optionally clear the param so it doesn't keep refreshing
+      navigation.setParams({ refresh: false });
+    }
+  });
+  return unsubscribe;
+}, [navigation]);
+
   useEffect(() => {
     const checkUnreadNotifications = async () => {
       try {
@@ -183,6 +197,7 @@ export default function HomeScreen({ navigation }) {
                 loading={loadingProjects || refreshing}
                 refreshing={refreshing}
                 onRefresh={onRefresh}
+                refreshKey={refreshKey}
               />
               {projects.length > 0 && (
                 <>
@@ -226,18 +241,19 @@ export default function HomeScreen({ navigation }) {
                 loading={loadingProjects || refreshing}
                 refreshing={refreshing}
                 onRefresh={onRefresh}
+                refreshKey={refreshKey}
               />
             </ScrollView>
           </ScrollView>
           {!drawerOpen && (
             <ProjectFabDrawer
-              onTaskSubmit={(task) => {
-                // handle new task here
-                console.log('New Task:', task);
+              onTaskSubmit={async (task) => {
+                await fetchProjectsData();
+                setRefreshKey(prev => prev + 1);
               }}
-              onProjectSubmit={(project) => {
-                // handle new project here
-                console.log('New Project:', project);
+              onProjectSubmit={async (project) => {
+                await fetchProjectsData();
+                setRefreshKey(prev => prev + 1);
               }}
               theme={theme}
             />

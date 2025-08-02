@@ -3,7 +3,7 @@ import Svg, { Circle } from 'react-native-svg';
 import { useTheme } from '../../theme/ThemeContext';
 
 const CustomCircularProgress = ({ size = 52, strokeWidth = 4, percentage = 75 }) => {
-  const radius = (size - strokeWidth) / 2;
+  const radius = (size - strokeWidth - 10) / 2; // Reduce radius for a smaller circle
   const circumference = 2 * Math.PI * radius;
   const strokeDashoffset = circumference - (percentage / 100) * circumference;
   const theme = useTheme();
