@@ -14,6 +14,24 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
     filteredIssues = issues.filter(i => i.issueStatus === 'pending_approval');
   }
 
+  filteredIssues = filteredIssues.slice().sort((a, b) => {
+    // Helper to classify priority
+    const getPriority = (issue) => {
+      if (issue.issueStatus !== 'resolved') {
+        // Unresolved
+        return issue.isCritical ? 0 : 1;  // critical first, then other unresolved
+      }
+      return 2;  // resolved last
+    };
+
+    const priorityA = getPriority(a);
+    const priorityB = getPriority(b);
+
+    if (priorityA < priorityB) return -1;
+    if (priorityA > priorityB) return 1;
+    return 0;  // same priority, keep original order
+  });
+
   return (
     <>
       {/* Status filter tabs row (pill design) */}
