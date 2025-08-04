@@ -34,6 +34,7 @@ import {
   getTasksByProjectId,
   updateTaskDetails,
   updateTaskProgress,
+  deleteTask,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
@@ -81,6 +82,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [chatAttaching, setChatAttaching] = useState(false);
   const isInitialProgressSet = useRef(false);
   const isSlidingRef = useRef(false);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   // When task loads, set initial progress only once
   useEffect(() => {
@@ -419,7 +421,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const isCreator =
     userName && creatorName && userName.trim().toLowerCase() === creatorName.trim().toLowerCase();
   // console.log('[TaskDetailsScreen] Matching userName:', userName, 'with creatorName:', creatorName, '| isCreator:', isCreator);
-//   console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
+  //   console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
 
   if (loading) {
     return (
@@ -456,12 +458,112 @@ export default function TaskDetailsScreen({ route, navigation }) {
         backgroundColor: theme.background,
         paddingTop: Platform.OS === 'ios' ? 70 : 25,
       }}>
+      <Modal
+        visible={menuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }}
+          activeOpacity={1}
+          onPress={() => setMenuVisible(false)}
+        >
+          <View
+            style={{
+              position: 'absolute',
+              top: Platform.OS === 'ios' ? 80 : 35, // adjust as needed
+              right: 20,
+              backgroundColor: '#fff',
+              borderRadius: 10,
+              paddingVertical: 8,
+              shadowColor: '#000',
+              shadowOpacity: 0.1,
+              shadowOffset: { width: 0, height: 1 },
+              shadowRadius: 6,
+              elevation: 6,
+              minWidth: 140,
+            }}
+          >
+            {/* Edit Option - visible to everyone */}
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 }}
+              onPress={() => {
+                setMenuVisible(false);
+                navigation.navigate('UpdateTaskScreen', {
+                  taskId: task.id || task._id || task.taskId,
+                  projects,
+                  users,
+                  worklists,
+                  projectTasks,
+                });
+              }}
+            >
+              <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>Edit</Text>
+            </TouchableOpacity>
+            {/* Divider shown only if Delete option visible */}
+            {isCreator && <View style={{ height: 1, backgroundColor: '#EEE', marginVertical: 2 }} />}
+            {/* Delete Option - visible only to creator */}
+            {isCreator && (
+              <TouchableOpacity
+                style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 }}
+                onPress={() => {
+                  setMenuVisible(false);
+                  Alert.alert(
+                    'Delete Task',
+                    'Are you sure you want to delete this task?',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      {
+                        text: 'Delete',
+                        style: 'destructive',
+                        onPress: async () => {
+                          try {
+                            await deleteTask(task.id || task._id || task.taskId);
+                            Alert.alert('Deleted', 'Task deleted successfully.', [
+                              {
+                                text: 'OK',
+                                onPress: () => navigation.goBack(),
+                              },
+                            ]);
+                          } catch (err) {
+                            Alert.alert('Delete Failed', err.message || 'Could not delete task.');
+                          }
+                        },
+                      },
+                    ],
+                  );
+                }}
+              >
+                <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>Delete</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </TouchableOpacity>
+      </Modal>
       <ScrollView contentContainerStyle={{ paddingBottom: showSubtasks ? 60 : 80 }}>
         {/* Top Navigation */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
-        </TouchableOpacity>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingTop: 16,
+            height: 55, // Ensures consistent row height
+          }}
+        >
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
+            <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 8 }}>
+            <Feather name="more-vertical" size={22} color={theme.text} />
+          </TouchableOpacity>
+
+        </View>
         {/* Header */}
         <LinearGradient
           colors={[theme.secondary, theme.primary]}
@@ -476,7 +578,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               Due Date: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
             </Text>
           </View>
-          {isCreator && (
+          {/* {isCreator && (
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate('UpdateTaskScreen', {
@@ -494,7 +596,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               }}>
               <MaterialIcons name="edit" size={22} color="#fff" />
             </TouchableOpacity>
-          )}
+          )} */}
         </LinearGradient>
         {/* Task Chat Button */}
         <TouchableOpacity

@@ -83,6 +83,7 @@ export const getTasksByWorklistId = async (worklistId) => {
 //     throw error;
 //   }
 // };
+
 export const createTask = async (taskData) => {
   try {
     const token = await AsyncStorage.getItem('token');
@@ -356,5 +357,26 @@ export const updateTaskDetails = async (taskId, data) => {
   }
 };
 
+export const deleteTask = async (taskId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    const data = await response.json();
 
-
+    if (!response.ok) {
+      // Backend sends e.g. { message: "Task not found." } or { message: "You are not authorized..." }
+      throw new Error(data.message || 'Failed to delete task');
+    }
+    return data; // { message: "...", ... }
+  } catch (error) {
+    console.error('Error deleting task:', error.message);
+    throw error;
+  }
+};
