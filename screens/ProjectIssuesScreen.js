@@ -15,7 +15,7 @@ import ProjectIssuePopup from '../components/popups/ProjectIssuePopup';
 import { useTheme } from '../theme/ThemeContext';
 import { getIssuesByProjectId, fetchCreatedByMeIssues, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { Platform } from 'react-native';
-
+import { getUserNameFromToken } from '../utils/auth';
 export default function ProjectIssuesScreen({ navigation, route }) {
     const { projectId } = route.params || {};
 
@@ -153,6 +153,17 @@ export default function ProjectIssuesScreen({ navigation, route }) {
             dueDate: '',
             isCritical: false,
         });
+    };
+
+    const [currentUserName, setCurrentUserName] = useState(null);
+
+    useEffect(() => {
+        getUserNameFromToken().then(setCurrentUserName);  // or use getUserNameFromToken()
+    }, []);
+
+    const isCurrentUserCreator = (issue) => {
+        if (!currentUserName || !issue?.creatorName) return false;
+        return currentUserName.trim().toLowerCase() === issue.creatorName.trim().toLowerCase();
     };
 
     return (
@@ -296,7 +307,15 @@ export default function ProjectIssuesScreen({ navigation, route }) {
             ) : (
                 <IssueList
                     issues={section === 'assigned' ? filteredAssigned : filteredCreated}
-                    onPressIssue={issue => navigation.navigate('IssueDetails', { issueId: issue.issueId, section })}
+                    onPressIssue={(issue) => {
+                        const sectionParam = isCurrentUserCreator(issue) ? "created" : "assigned";
+                        navigation.navigate("IssueDetails", {
+                            issueId: issue.id || issue.issueId,
+                            section: sectionParam,
+                            creatorName: issue.creatorName,
+                        });
+                    }}
+
                     styles={styles}
                     theme={theme}
                     section={section}
@@ -461,7 +480,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginBottom: 12,
         paddingHorizontal: 16,
-    paddingVertical: 12,
+        paddingVertical: 12,
     },
     searchInput: {
         flex: 1,

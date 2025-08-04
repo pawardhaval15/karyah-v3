@@ -25,14 +25,12 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { approveIssue, deleteIssue, fetchIssueById, resolveIssueByAssignedUser, updateIssue } from '../utils/issues';
 import { getUserNameFromToken } from '../utils/auth'; // import this
-
 function formatDate(dateString) {
     if (!dateString) return '';
     const date = new Date(dateString);
     if (isNaN(date)) return dateString;
     return date.toLocaleDateString('en-GB');
 }
-
 export default function IssueDetailsScreen({ navigation, route }) {
     const theme = useTheme();
     const { issueId, section } = route.params || {};
@@ -48,7 +46,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
     });
     // Add menuVisible state for three-dots menu
     const [menuVisible, setMenuVisible] = useState(false);
-
     // Attachment state
     const [drawerVisible, setDrawerVisible] = useState(false);
     const [previewVisible, setPreviewVisible] = useState(false);
@@ -68,9 +65,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             setAttachments(prev => [...prev, audio]);
         }
     });
-
     const userImg = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
-
     useEffect(() => {
         if (!issueId) return;
         setLoading(true);
@@ -92,7 +87,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
             Alert.alert('Please enter remarks or add attachments.');
             return;
         }
-
         setLoading(true);
         try {
             const resolvedImages = attachments.map(att => ({
@@ -100,14 +94,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 name: att.name || att.uri?.split('/').pop(),
                 type: att.mimeType || att.type || 'application/octet-stream',
             }));
-
             await resolveIssueByAssignedUser({
                 issueId,
                 remarks: remark,
                 resolvedImages,
                 issueStatus: 'resolved',
             });
-
             Alert.alert('Submitted successfully');
             navigation.goBack();
         } catch (error) {
@@ -116,14 +108,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
             setLoading(false);
         }
     };
-
     // Merge all attachments for drawer
     const allAttachments = [
         ...(issue?.unresolvedImages || []),
         ...(issue?.resolvedImages || []),
         ...(section === 'assigned' ? attachments : []),
     ];
-
     if (loading) {
         return (
             <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }}>
@@ -131,11 +121,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
             </View>
         );
     }
-
     return (
         <View style={{ flex: 1, backgroundColor: theme.background }}>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: Platform.OS === 'ios' ? 70 : 25, marginLeft: 16, marginBottom: 18, justifyContent: 'space-between' }}>
                     <TouchableOpacity style={{ flexDirection: 'row', alignItems: 'center' }} onPress={() => navigation.goBack()}>
                         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
@@ -171,7 +159,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                             ...(assignedUserId ? { assignTo: assignedUserId } : {}),
                                             // You can add assignTo, isCritical, issueStatus, remarks, removeImages, removeResolvedImages if needed
                                         };
-
                                         // Separate existing URLs and new files
                                         let existingUnresolvedImages = [];
                                         let newUnresolvedImages = [];
@@ -189,7 +176,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                                 type: att.mimeType || att.type || 'application/octet-stream',
                                             }));
                                         }
-
                                         // Only send new files as unresolvedImages (for FormData)
                                         if (newUnresolvedImages.length > 0) {
                                             updatePayload.unresolvedImages = newUnresolvedImages;
@@ -226,7 +212,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         )
                     ) : null}
                 </View>
-
                 {(() => {
                     return (
                         userName && issue?.creatorName === userName && (
@@ -425,7 +410,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                                             />
                                                         </TouchableOpacity>
                                                     ) : null}
-
                                                     {/* Preview for audio */}
                                                     {att.type && att.type.startsWith('audio') ? (
                                                         <TouchableOpacity
@@ -439,19 +423,16 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                                             <MaterialCommunityIcons name="play-circle-outline" size={28} color="#1D4ED8" />
                                                         </TouchableOpacity>
                                                     ) : null}
-
                                                     {/* File/document icon for other types */}
                                                     {!att.type?.startsWith('image') && !att.type?.startsWith('audio') ? (
                                                         <MaterialCommunityIcons name="file-document-outline" size={28} color="#888" style={{ marginRight: 8 }} />
                                                     ) : null}
-
                                                     {/* File name */}
                                                     <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
                                                         {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                                                             ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                                                             : (att.name || att.uri?.split('/').pop())}
                                                     </Text>
-
                                                     {/* Remove button */}
                                                     <TouchableOpacity
                                                         onPress={() => {
@@ -508,7 +489,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         containerStyle={{ alignItems: 'center' }}
                     />
                 )}
-
                 <FieldBox
                     label="Assigned To"
                     value={issue.assignTo?.userName || ''}
@@ -528,7 +508,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     }
                     theme={theme}
                 />
-
                 <FieldBox
                     label="Due Date"
                     value={
@@ -546,7 +525,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         ) : null
                     }
                 />
-
                 {showDueDatePicker && (
                     <DateTimePicker
                         value={editFields.dueDate ? new Date(editFields.dueDate) : new Date()}
@@ -562,9 +540,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         accentColor={theme.buttonText}
                     />
                 )}
-
                 <View style={{ height: 1, backgroundColor: '#e6eaf3', marginTop: 18, marginHorizontal: 20 }} />
-
                 {section === 'created' && issue.issueStatus === 'pending_approval' && (
                     <View style={{ marginHorizontal: 0, marginTop: 16 }}>
                         {/* Resolved Attachments */}
@@ -641,7 +617,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                             theme={theme}
                             containerStyle={{ alignItems: 'center' }}
                         />
-
                         {/* Show previous resolution remark */}
                         <FieldBox
                             label="Resolution Remark"
@@ -718,7 +693,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                                             <Image source={{ uri: att.uri }} style={{ width: 25, height: 25, borderRadius: 6, marginRight: 8 }} />
                                                         </TouchableOpacity>
                                                     )}
-
                                                     {att.type?.startsWith('audio') && (
                                                         <TouchableOpacity
                                                             onPress={async () => {
@@ -731,17 +705,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                                             <MaterialCommunityIcons name="play-circle-outline" size={28} color="#1D4ED8" />
                                                         </TouchableOpacity>
                                                     )}
-
                                                     {!att.type?.startsWith('image') && !att.type?.startsWith('audio') && (
                                                         <MaterialCommunityIcons name="file-document-outline" size={28} color="#888" style={{ marginRight: 8 }} />
                                                     )}
-
                                                     <Text style={{ color: '#444', fontSize: 13, flex: 1 }}>
                                                         {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                                                             ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                                                             : (att.name || att.uri?.split('/').pop())}
                                                     </Text>
-
                                                     <TouchableOpacity
                                                         onPress={() => {
                                                             setAttachments(prev => prev.filter((_, i) => i !== idx));
@@ -863,9 +834,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         </TouchableOpacity>
                     </View>
                 )}
-
-
-
             </ScrollView>
             <AttachmentDrawer
                 visible={drawerVisible}
@@ -878,14 +846,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     setDrawerVisible(false);
                 }}
             />
-
             <ImageModal
                 visible={imageModalVisible}
                 image={selectedImage}
                 onClose={() => setImageModalVisible(false)}
                 theme={theme}
             />
-
             <AttachmentPreviewModal
                 visible={previewVisible}
                 onClose={() => {
@@ -900,7 +866,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     setPreviewVisible(false);
                 }}
             />
-
             <ReassignPopup
                 visible={showReassignModal}
                 onClose={async () => {
@@ -918,7 +883,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
         </View>
     );
 }
-
 const styles = StyleSheet.create({
     inputBox: {
         flexDirection: 'row',
