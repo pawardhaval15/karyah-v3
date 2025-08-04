@@ -7,88 +7,11 @@ import { getCustomNotificationsEnabled } from '../components/popups/CustomNotifi
 import { navigationRef } from '../navigation/navigationRef';
 import CustomNotificationManager from './CustomNotificationManager';
 
-// Try to import PushNotification, fallback if not available
-let PushNotification;
-try {
-  PushNotification = require('react-native-push-notification').default;
-} catch (error) {
-  console.warn('📱 react-native-push-notification not available, using fallback');
-  PushNotification = null;
-}
-
 const API_URL = 'https://api.karyah.in/';
 
 class SystemNotificationService {
   constructor() {
-    this.configure();
-  }
-
-  configure() {
-    // Only configure if PushNotification is available
-    if (!PushNotification) {
-      console.warn('📱 PushNotification not available, using fallback notifications');
-      return;
-    }
-
-    // Configure push notifications
-    PushNotification.configure({
-      // Called when notification is tapped
-      onNotification: function(notification) {
-        console.log('📱 System notification tapped:', notification);
-        
-        if (notification.userInteraction) {
-          // User tapped the notification
-          if (notification.data) {
-            SystemNotificationService.handleNotificationNavigation(notification.data);
-          }
-        }
-      },
-
-      // Called when FCM token is refreshed
-      onRegister: function(token) {
-        console.log('📲 System notification token:', token);
-      },
-
-      // iOS permissions
-      permissions: {
-        alert: true,
-        badge: true,
-        sound: true,
-      },
-
-      // Should the initial notification be popped automatically
-      popInitialNotification: true,
-      requestPermissions: Platform.OS === 'ios',
-    });
-
-    // Create notification channels for Android
-    if (Platform.OS === 'android' && PushNotification) {
-      PushNotification.createChannel(
-        {
-          channelId: 'karyah-default',
-          channelName: 'Karyah Notifications',
-          channelDescription: 'Default notifications for Karyah app',
-          playSound: true,
-          soundName: 'default',
-          importance: 4,
-          vibrate: true,
-        },
-        (created) => console.log(`📱 Android channel created: ${created}`)
-      );
-
-      PushNotification.createChannel(
-        {
-          channelId: 'karyah-critical',
-          channelName: 'Karyah Critical',
-          channelDescription: 'Critical notifications for Karyah app',
-          playSound: true,
-          soundName: 'default',
-          importance: 5,
-          vibrate: true,
-        },
-        (created) => console.log(`📱 Android critical channel created: ${created}`)
-      );
-    }
+    // No push notification library configuration needed
   }
 
   // Show local notification in foreground
@@ -112,30 +35,14 @@ class SystemNotificationService {
 
     // Fallback to system notifications
     if (Platform.OS === 'android') {
-      // Android: Try PushNotification first, fallback to ToastAndroid
-      if (PushNotification) {
-        PushNotification.localNotification({
-          title: title,
-          message: body,
-          playSound: true,
-          soundName: 'default',
-          channelId: data.priority === 'high' ? 'karyah-critical' : 'karyah-default',
-          largeIcon: 'ic_launcher',
-          smallIcon: 'ic_notification',
-          userInfo: data,
-          importance: 'high',
-          priority: 'high',
-        });
-      } else {
-        // Fallback to ToastAndroid
-        ToastAndroid.showWithGravityAndOffset(
-          `${title}: ${body}`,
-          ToastAndroid.LONG,
-          ToastAndroid.TOP,
-          25,
-          50
-        );
-      }
+      // Android: Use ToastAndroid for local feedback in foreground
+      ToastAndroid.showWithGravityAndOffset(
+        `${title}: ${body}`,
+        ToastAndroid.LONG,
+        ToastAndroid.TOP,
+        25,
+        50
+      );
     } else {
       // iOS: Use Toast with better styling
       Toast.show({
