@@ -39,7 +39,6 @@ export async function fetchMyTasks() {
 
 export async function fetchTasksCreatedByMe() {
   const url = `${API_URL}api/tasks/my-created-tasks`;
-  console.log('[fetchTasksCreatedByMe] URL:', url);
 
   try {
     const token = await getToken();
@@ -52,7 +51,7 @@ export async function fetchTasksCreatedByMe() {
     });
 
     const data = await response.json();
-
+    // console.log('[fetchTasksCreatedByMe] Data:', data);
 
     if (!response.ok) throw new Error(data.message || 'Failed to fetch created tasks');
     return data.tasks || [];
