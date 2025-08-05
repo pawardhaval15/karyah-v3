@@ -190,7 +190,10 @@ export default function MyTasksScreen({ navigation }) {
               style={[styles.taskTitle, { color: theme.text }]}>
               {taskName}
             </Text>
-            <Text style={[styles.taskProject, { color: theme.secondaryText }]}>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.taskProject, { color: theme.secondaryText }]}>
               {item.projectName || (item.project && item.project.projectName) || 'No Project'}
             </Text>
 
@@ -477,6 +480,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '400',
     marginBottom: 0,
+    maxWidth: '80%',
   },
   assignedInfoRow: {
     flexDirection: 'row',
@@ -489,7 +493,7 @@ const styles = StyleSheet.create({
   assignedInfoValue: {
     fontSize: 13,
     fontWeight: '600',
-    maxWidth: '60%',
+    maxWidth: '55%',
   },
   progressCircle: {
     width: 48,

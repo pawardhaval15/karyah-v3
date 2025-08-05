@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import ProjectPopup from 'components/popups/ProjectPopup';
+import ProjectDrawerForm from './ProjectDrawerForm';
 import { useState } from 'react';
 import {
     Modal,
@@ -102,47 +102,44 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
         <FabButton onPress={() => setOpen(!open)} theme={theme} />
       </View>
       <Modal visible={!!drawerType} animationType="slide" transparent onRequestClose={closeDrawer}>
-        {drawerType === 'task' ? (
-          <TouchableWithoutFeedback onPress={closeDrawer}>
-            <View style={styles.modalOverlay}>
-              <TouchableWithoutFeedback>
-                <View style={[styles.drawerSheet, { backgroundColor: theme.card }]}>
-                  <View style={styles.drawerHeader}>
-                    <Text style={[styles.drawerTitle, { color: theme.text }]}>
-                      Add Task Details
-                    </Text>
-                    <TouchableOpacity
-                      onPress={closeDrawer}
-                      style={[styles.closeBtn, { backgroundColor: theme.secCard }]}>
-                      <Ionicons name="close" size={20} color={theme.text} />
-                    </TouchableOpacity>
-                  </View>
-                  <ScrollView
-                    showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ paddingBottom: 30 }}>
+        <TouchableWithoutFeedback onPress={closeDrawer}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.drawerSheet, { backgroundColor: theme.card }]}>
+                <View style={styles.drawerHeader}>
+                  <Text style={[styles.drawerTitle, { color: theme.text }]}>
+                    {drawerType === 'task' ? 'Add Task Details' : 'Create New Project'}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={closeDrawer}
+                    style={[styles.closeBtn, { backgroundColor: theme.secCard }]}>
+                    <Ionicons name="close" size={20} color={theme.text} />
+                  </TouchableOpacity>
+                </View>
+                <ScrollView
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={{ paddingBottom: 30 }}>
+                  {drawerType === 'task' ? (
                     <TaskDrawerForm
                       values={taskForm}
                       onChange={handleTaskChange}
                       onSubmit={handleTaskSubmit}
                       theme={theme}
                     />
-                  </ScrollView>
-                </View>
-              </TouchableWithoutFeedback>
-            </View>
-          </TouchableWithoutFeedback>
-        ) : null}
+                  ) : drawerType === 'project' ? (
+                    <ProjectDrawerForm
+                      values={projectForm}
+                      onChange={handleProjectChange}
+                      onSubmit={handleProjectSubmit}
+                      hideSimpleForm={true}
+                    />
+                  ) : null}
+                </ScrollView>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
-      
-      {/* Separate ProjectPopup to avoid nested modals */}
-      <ProjectPopup
-        visible={drawerType === 'project'}
-        onClose={closeDrawer}
-        values={projectForm}
-        onChange={handleProjectChange}
-        onSubmit={handleProjectSubmit}
-        theme={theme}
-      />
     </>
   );
 }
