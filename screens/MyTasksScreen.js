@@ -52,18 +52,18 @@ export default function MyTasksScreen({ navigation }) {
   const [showBulkAssignPopup, setShowBulkAssignPopup] = useState(false);
   const [bulkAssignUsers, setBulkAssignUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
-  
+
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
     status: [],
     progress: [],
     projects: [],
-    assignedTo: []
+    assignedTo: [],
   });
   const [taskCounts, setTaskCounts] = useState({
     mytasks: 0,
-    createdby: 0
+    createdby: 0,
   });
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -90,11 +90,11 @@ export default function MyTasksScreen({ navigation }) {
     try {
       const [myTasksData, createdByMeData] = await Promise.all([
         fetchMyTasks(),
-        fetchTasksCreatedByMe()
+        fetchTasksCreatedByMe(),
       ]);
       setTaskCounts({
         mytasks: myTasksData.length,
-        createdby: createdByMeData.length
+        createdby: createdByMeData.length,
       });
     } catch (error) {
       // If there's an error, keep existing counts
@@ -110,10 +110,10 @@ export default function MyTasksScreen({ navigation }) {
       let data = [];
       if (activeTab === 'mytasks') {
         data = await fetchMyTasks();
-        setTaskCounts(prev => ({ ...prev, mytasks: data.length }));
+        setTaskCounts((prev) => ({ ...prev, mytasks: data.length }));
       } else {
         data = await fetchTasksCreatedByMe();
-        setTaskCounts(prev => ({ ...prev, createdby: data.length }));
+        setTaskCounts((prev) => ({ ...prev, createdby: data.length }));
       }
       // 👇 SORT HERE: Move completed (100%) tasks to the end
       data.sort((a, b) => {
@@ -171,46 +171,54 @@ export default function MyTasksScreen({ navigation }) {
   }, [addTaskForm.projectId]);
 
   const filteredTasks = tasks.filter((task) => {
-    const searchMatch = (task.name || task.taskName || '').toLowerCase().includes(search.toLowerCase());
-    
+    const searchMatch = (task.name || task.taskName || '')
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
     // Status filter
     const statusMatch = filters.status.length === 0 || filters.status.includes(task.status);
-    
+
     // Progress filter
     let progressMatch = true;
     if (filters.progress.length > 0) {
       const progress = task.progress || 0;
-      progressMatch = filters.progress.some(range => {
-        switch(range) {
-          case 'not-started': return progress === 0;
-          case 'in-progress': return progress > 0 && progress < 100;
-          case 'completed': return progress === 100;
-          default: return false;
+      progressMatch = filters.progress.some((range) => {
+        switch (range) {
+          case 'not-started':
+            return progress === 0;
+          case 'in-progress':
+            return progress > 0 && progress < 100;
+          case 'completed':
+            return progress === 100;
+          default:
+            return false;
         }
       });
     }
-    
+
     // Project filter
-    const projectMatch = filters.projects.length === 0 || 
+    const projectMatch =
+      filters.projects.length === 0 ||
       filters.projects.includes(
-        task.projectName || 
-        (task.project && task.project.projectName) || 
-        (task.project && task.project.name) ||
-        task.projectTitle ||
-        (typeof task.project === 'string' ? task.project : null)
+        task.projectName ||
+          (task.project && task.project.projectName) ||
+          (task.project && task.project.name) ||
+          task.projectTitle ||
+          (typeof task.project === 'string' ? task.project : null)
       );
-    
+
     // Assigned to filter
     let assignedMatch = true;
     if (filters.assignedTo.length > 0) {
       if (activeTab === 'mytasks') {
         // For my tasks, filter by creator name
-        assignedMatch = filters.assignedTo.includes(task.creatorName) ||
-                       filters.assignedTo.includes(task.creator?.name);
+        assignedMatch =
+          filters.assignedTo.includes(task.creatorName) ||
+          filters.assignedTo.includes(task.creator?.name);
       } else {
         // For created by me, filter by assigned user names
         if (task.assignedUserDetails && task.assignedUserDetails.length > 0) {
-          assignedMatch = task.assignedUserDetails.some(user => 
+          assignedMatch = task.assignedUserDetails.some((user) =>
             filters.assignedTo.includes(user.name)
           );
         } else {
@@ -218,7 +226,7 @@ export default function MyTasksScreen({ navigation }) {
         }
       }
     }
-    
+
     return searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch;
   });
 
@@ -272,7 +280,6 @@ export default function MyTasksScreen({ navigation }) {
   };
 
   const handleBulkAssign = () => {
-
     if (selectedTasks.length === 0) {
       alert('Please select at least one task');
       return;
@@ -318,11 +325,11 @@ export default function MyTasksScreen({ navigation }) {
   };
 
   const toggleFilter = (filterType, value) => {
-    setFilters(prev => ({
+    setFilters((prev) => ({
       ...prev,
       [filterType]: prev[filterType].includes(value)
-        ? prev[filterType].filter(item => item !== value)
-        : [...prev[filterType], value]
+        ? prev[filterType].filter((item) => item !== value)
+        : [...prev[filterType], value],
     }));
   };
 
@@ -331,7 +338,7 @@ export default function MyTasksScreen({ navigation }) {
       status: [],
       progress: [],
       projects: [],
-      assignedTo: []
+      assignedTo: [],
     });
   };
 
@@ -341,29 +348,42 @@ export default function MyTasksScreen({ navigation }) {
 
   // Get unique values for filter options
   const getFilterOptions = () => {
-    const statuses = [...new Set(tasks.map(task => task.status).filter(Boolean))];
-    const projectOptions = [...new Set(tasks.map(task => 
-      task.projectName || 
-      (task.project && task.project.projectName) || 
-      (task.project && task.project.name) ||
-      task.projectTitle ||
-      (typeof task.project === 'string' ? task.project : null)
-    ).filter(Boolean))];
-    
+    const statuses = [...new Set(tasks.map((task) => task.status).filter(Boolean))];
+    const projectOptions = [
+      ...new Set(
+        tasks
+          .map(
+            (task) =>
+              task.projectName ||
+              (task.project && task.project.projectName) ||
+              (task.project && task.project.name) ||
+              task.projectTitle ||
+              (typeof task.project === 'string' ? task.project : null)
+          )
+          .filter(Boolean)
+      ),
+    ];
+
     let assignedOptions = [];
     if (activeTab === 'mytasks') {
       // For my tasks, show creators
-      assignedOptions = [...new Set(tasks.map(task => 
-        task.creatorName || (task.creator && task.creator.name)
-      ).filter(Boolean))];
+      assignedOptions = [
+        ...new Set(
+          tasks
+            .map((task) => task.creatorName || (task.creator && task.creator.name))
+            .filter(Boolean)
+        ),
+      ];
     } else {
       // For created by me, show assigned users
-      const allAssignedUsers = tasks.flatMap(task => 
-        task.assignedUserDetails ? task.assignedUserDetails.map(user => user.name || 'Unknown') : []
+      const allAssignedUsers = tasks.flatMap((task) =>
+        task.assignedUserDetails
+          ? task.assignedUserDetails.map((user) => user.name || 'Unknown')
+          : []
       );
       assignedOptions = [...new Set(allAssignedUsers)];
     }
-    
+
     return { statuses, projectOptions, assignedOptions };
   };
 
@@ -444,12 +464,12 @@ export default function MyTasksScreen({ navigation }) {
               numberOfLines={1}
               ellipsizeMode="tail"
               style={[styles.taskProject, { color: theme.secondaryText }]}>
-              {item.projectName || 
-               (item.project && item.project.projectName) || 
-               (item.project && item.project.name) ||
-               item.projectTitle ||
-               item.project ||
-               'No Project'}
+              {item.projectName ||
+                (item.project && item.project.projectName) ||
+                (item.project && item.project.name) ||
+                item.projectTitle ||
+                item.project ||
+                'No Project'}
             </Text>
 
             <View style={styles.assignedInfoRow}>
@@ -500,7 +520,7 @@ export default function MyTasksScreen({ navigation }) {
           <Text style={styles.bannerTitle}>
             {isSelectionMode ? `${selectedTasks.length} Selected` : 'My Tasks'}
           </Text>
-          <Text  style={styles.bannerDesc}>
+          <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerDesc}>
             {isSelectionMode
               ? 'Select tasks to assign to users'
               : 'All tasks assigned to you or created by you are listed here.'}
@@ -553,16 +573,19 @@ export default function MyTasksScreen({ navigation }) {
           value={search}
           onChangeText={setSearch}
         />
-        <TouchableOpacity 
-          style={[styles.filterButton, { 
-            backgroundColor: getActiveFiltersCount() > 0 ? theme.primary + '15' : 'transparent',
-            borderColor: getActiveFiltersCount() > 0 ? theme.primary : theme.border 
-          }]}
+        <TouchableOpacity
+          style={[
+            styles.filterButton,
+            {
+              backgroundColor: getActiveFiltersCount() > 0 ? theme.primary + '15' : 'transparent',
+              borderColor: getActiveFiltersCount() > 0 ? theme.primary : theme.border,
+            },
+          ]}
           onPress={() => setShowFilters(!showFilters)}>
-          <MaterialIcons 
-            name="tune" 
-            size={20} 
-            color={getActiveFiltersCount() > 0 ? theme.primary : theme.secondaryText} 
+          <MaterialIcons
+            name="tune"
+            size={20}
+            color={getActiveFiltersCount() > 0 ? theme.primary : theme.secondaryText}
           />
           {getActiveFiltersCount() > 0 && (
             <View style={[styles.filterBadge, { backgroundColor: theme.primary }]}>
@@ -626,14 +649,19 @@ export default function MyTasksScreen({ navigation }) {
               {tab.label}
             </Text>
             {tab.count > 0 && (
-              <View style={[
-                styles.tabCountBadge,
-                { backgroundColor: activeTab === tab.key ? 'rgba(255,255,255,0.3)' : theme.primary + '20' }
-              ]}>
-                <Text style={[
-                  styles.tabCountText,
-                  { color: activeTab === tab.key ? '#fff' : theme.primary }
+              <View
+                style={[
+                  styles.tabCountBadge,
+                  {
+                    backgroundColor:
+                      activeTab === tab.key ? 'rgba(255,255,255,0.3)' : theme.primary + '20',
+                  },
                 ]}>
+                <Text
+                  style={[
+                    styles.tabCountText,
+                    { color: activeTab === tab.key ? '#fff' : theme.primary },
+                  ]}>
                   {tab.count}
                 </Text>
               </View>
@@ -644,7 +672,8 @@ export default function MyTasksScreen({ navigation }) {
 
       {/* Filters Panel */}
       {showFilters && (
-        <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View
+          style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.filterHeader}>
             <Text style={[styles.filterHeaderText, { color: theme.text }]}>Filters</Text>
             <View style={styles.filterHeaderActions}>
@@ -657,17 +686,16 @@ export default function MyTasksScreen({ navigation }) {
             </View>
           </View>
 
-          <ScrollView 
+          <ScrollView
             style={styles.filtersScrollView}
             showsVerticalScrollIndicator={false}
             nestedScrollEnabled={true}>
-            
             {/* Status Filter */}
             {statuses.length > 0 && (
               <View style={styles.compactFilterSection}>
                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Status</Text>
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.horizontalScroll}>
                   <View style={styles.compactChipsRow}>
@@ -677,8 +705,12 @@ export default function MyTasksScreen({ navigation }) {
                         style={[
                           styles.compactChip,
                           {
-                            backgroundColor: filters.status.includes(status) ? theme.primary : 'transparent',
-                            borderColor: filters.status.includes(status) ? theme.primary : theme.border,
+                            backgroundColor: filters.status.includes(status)
+                              ? theme.primary
+                              : 'transparent',
+                            borderColor: filters.status.includes(status)
+                              ? theme.primary
+                              : theme.border,
                           },
                         ]}
                         onPress={() => toggleFilter('status', status)}>
@@ -699,8 +731,8 @@ export default function MyTasksScreen({ navigation }) {
             {/* Progress Filter */}
             <View style={styles.compactFilterSection}>
               <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Progress</Text>
-              <ScrollView 
-                horizontal 
+              <ScrollView
+                horizontal
                 showsHorizontalScrollIndicator={false}
                 style={styles.horizontalScroll}>
                 <View style={styles.compactChipsRow}>
@@ -714,15 +746,23 @@ export default function MyTasksScreen({ navigation }) {
                       style={[
                         styles.compactChip,
                         {
-                          backgroundColor: filters.progress.includes(progressOption.key) ? theme.primary : 'transparent',
-                          borderColor: filters.progress.includes(progressOption.key) ? theme.primary : theme.border,
+                          backgroundColor: filters.progress.includes(progressOption.key)
+                            ? theme.primary
+                            : 'transparent',
+                          borderColor: filters.progress.includes(progressOption.key)
+                            ? theme.primary
+                            : theme.border,
                         },
                       ]}
                       onPress={() => toggleFilter('progress', progressOption.key)}>
                       <Text
                         style={[
                           styles.compactChipText,
-                          { color: filters.progress.includes(progressOption.key) ? '#fff' : theme.text },
+                          {
+                            color: filters.progress.includes(progressOption.key)
+                              ? '#fff'
+                              : theme.text,
+                          },
                         ]}>
                         {progressOption.label}
                       </Text>
@@ -736,8 +776,8 @@ export default function MyTasksScreen({ navigation }) {
             {projectOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Projects</Text>
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.horizontalScroll}>
                   <View style={styles.compactChipsRow}>
@@ -747,8 +787,12 @@ export default function MyTasksScreen({ navigation }) {
                         style={[
                           styles.compactChip,
                           {
-                            backgroundColor: filters.projects.includes(project) ? theme.primary : 'transparent',
-                            borderColor: filters.projects.includes(project) ? theme.primary : theme.border,
+                            backgroundColor: filters.projects.includes(project)
+                              ? theme.primary
+                              : 'transparent',
+                            borderColor: filters.projects.includes(project)
+                              ? theme.primary
+                              : theme.border,
                           },
                         ]}
                         onPress={() => toggleFilter('projects', project)}>
@@ -773,8 +817,8 @@ export default function MyTasksScreen({ navigation }) {
                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
                   {activeTab === 'mytasks' ? 'Assigned By' : 'Assigned To'}
                 </Text>
-                <ScrollView 
-                  horizontal 
+                <ScrollView
+                  horizontal
                   showsHorizontalScrollIndicator={false}
                   style={styles.horizontalScroll}>
                   <View style={styles.compactChipsRow}>
@@ -784,18 +828,28 @@ export default function MyTasksScreen({ navigation }) {
                         style={[
                           styles.compactChip,
                           {
-                            backgroundColor: filters.assignedTo.includes(assignedPerson) ? theme.primary : 'transparent',
-                            borderColor: filters.assignedTo.includes(assignedPerson) ? theme.primary : theme.border,
+                            backgroundColor: filters.assignedTo.includes(assignedPerson)
+                              ? theme.primary
+                              : 'transparent',
+                            borderColor: filters.assignedTo.includes(assignedPerson)
+                              ? theme.primary
+                              : theme.border,
                           },
                         ]}
                         onPress={() => toggleFilter('assignedTo', assignedPerson)}>
                         <Text
                           style={[
                             styles.compactChipText,
-                            { color: filters.assignedTo.includes(assignedPerson) ? '#fff' : theme.text },
+                            {
+                              color: filters.assignedTo.includes(assignedPerson)
+                                ? '#fff'
+                                : theme.text,
+                            },
                           ]}
                           numberOfLines={1}>
-                          {assignedPerson.length > 8 ? assignedPerson.substring(0, 8) + '...' : assignedPerson}
+                          {assignedPerson.length > 8
+                            ? assignedPerson.substring(0, 8) + '...'
+                            : assignedPerson}
                         </Text>
                       </TouchableOpacity>
                     ))}
