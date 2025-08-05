@@ -124,7 +124,9 @@ export default function LoginPanel({
             </Text>
           </View>
           <Text style={styles.otpInfoText}>
-            Enter the 4-digit code sent to your mobile/email.
+            {inputLabel === 'Enter OTP :'
+              ? 'Enter the 4-digit code sent to your mobile/email.'
+              : 'Enter the 4-digit code.'}
           </Text>
           <OTPInput
             otp={otp}

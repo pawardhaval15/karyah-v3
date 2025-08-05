@@ -26,13 +26,62 @@ export default function CustomDrawer({ onClose, theme }) {
       .catch(() => setUserName(''));
   }, []);
 
+  // const handleLogout = async () => {
+  //   try {
+  //     await AsyncStorage.removeItem('token');
+  //     navigation.reset({
+  //       index: 0,
+  //       routes: [{ name: 'PinLogin' }],
+  //     });
+  //   } catch (err) {
+  //     console.error('Logout failed:', err);
+  //   }
+  // };
+
   const handleLogout = async () => {
     try {
+      // Get device token from AsyncStorage
+      const deviceTokenKey = `fcm_token_${Platform.OS}`;
+      const deviceToken = await AsyncStorage.getItem(deviceTokenKey);
+
+      // Get user auth token from AsyncStorage
+      const userToken = await AsyncStorage.getItem('token');
+
+      // Call backend to delete device token if both tokens exist
+      if (deviceToken && userToken) {
+        try {
+          const response = await fetch('https://api.karyah.in/api/devices/deviceToken', {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${userToken}`,
+            },
+            body: JSON.stringify({ deviceToken }),
+          });
+
+          if (!response.ok) {
+            console.error('Failed to delete device token:', await response.text());
+          } else {
+            console.log('Device token deleted successfully');
+            // Optionally remove stored device token
+            await AsyncStorage.removeItem(deviceTokenKey);
+          }
+        } catch (error) {
+          console.error('Error deleting device token:', error);
+        }
+      } else {
+        console.log('No device token or user token found, skipping device token removal');
+      }
+
+      // Remove user token (auth)
       await AsyncStorage.removeItem('token');
+
+      // Reset navigation to login screen
       navigation.reset({
         index: 0,
         routes: [{ name: 'PinLogin' }],
       });
+
     } catch (err) {
       console.error('Logout failed:', err);
     }
@@ -92,7 +141,7 @@ export default function CustomDrawer({ onClose, theme }) {
             }}
             theme={theme}
           />
-          
+
           <DrawerItem
             icon={<Feather name="settings" size={20} color="#607D8B" />}
             label="Settings"
