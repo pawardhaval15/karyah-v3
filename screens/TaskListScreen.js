@@ -44,7 +44,7 @@ export default function TaskListScreen({ navigation, route }) {
   const worklistName = worklist?.name || 'Worklist';
   const [refreshing, setRefreshing] = useState(false);
   const [projectTasks, setProjectTasks] = useState([]); // ALL tasks in the project
-  
+
   const onRefresh = async () => {
     setRefreshing(true);
     await Promise.all([
@@ -88,22 +88,22 @@ export default function TaskListScreen({ navigation, route }) {
   };
 
   const fetchAllProjectTasks = async () => {
-  try {
-    if (projectId) {
-      const allProjectTasks = await getTasksByProjectId(projectId);
-      setProjectTasks(allProjectTasks || []);
+    try {
+      if (projectId) {
+        const allProjectTasks = await getTasksByProjectId(projectId);
+        setProjectTasks(allProjectTasks || []);
+      }
+    } catch (err) {
+      console.error('Failed to load project tasks:', err.message);
+      setProjectTasks([]);
     }
-  } catch (err) {
-    console.error('Failed to load project tasks:', err.message);
-    setProjectTasks([]);
-  }
-};
+  };
 
   // Initial load
   useEffect(() => {
     const init = async () => {
       if (!worklistId || !projectId) return;
-      
+
       setLoading(true);
       try {
         await Promise.all([
@@ -116,7 +116,7 @@ export default function TaskListScreen({ navigation, route }) {
         setLoading(false);
       }
     };
-    
+
     init();
   }, [worklistId, projectId]);
 
@@ -259,6 +259,11 @@ export default function TaskListScreen({ navigation, route }) {
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={{ color: theme.text, marginTop: 10 }}>Loading tasks...</Text>
         </View>
+      ) : sortedTasks.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <MaterialIcons name="error-outline" size={48} color="#AAA" />
+          <Text style={styles.emptyText}>No Tasks Found for {worklistName}</Text>
+        </View>
       ) : (
         <FlatList
           data={sortedTasks}
@@ -318,6 +323,19 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 110,
   },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    // marginTop: 5,
+  },
+  emptyText: {
+    color: '#AAA',
+    fontSize: 18,
+    fontWeight: '300', // lightweight font
+    // marginTop: 12,
+  },
+
   bannerTitle: {
     color: '#fff',
     fontSize: 22,

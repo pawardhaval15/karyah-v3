@@ -26,6 +26,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
     const [showProjectIssuePopup, setShowProjectIssuePopup] = useState(false);
+    const [projectName, setProjectName] = useState('');
 
     const [issueForm, setIssueForm] = useState({
         title: '',
@@ -39,6 +40,23 @@ export default function ProjectIssuesScreen({ navigation, route }) {
     const [issuesByProjectId, setIssuesByProjectId] = useState([]);
     const [createdIssues, setCreatedIssues] = useState([]);
     const [loading, setLoading] = useState(true);
+    useEffect(() => {
+        if (!projectId) return;
+
+        const fetchProjectName = async () => {
+            try {
+                const projectData = await fetchProjectsByUser(); // Or a getProjectById(projectId) API if available
+                // If fetchProjectsByUser returns all projects, find matching project's name
+                const currentProject = projectData.find(p => p.id === projectId || p.projectId === projectId);
+                setProjectName(currentProject?.name || currentProject?.projectName || 'Project');
+            } catch (err) {
+                console.error('Failed to fetch project name:', err);
+                setProjectName('Project Not Found');
+            }
+        };
+
+        fetchProjectName();
+    }, [projectId]);
 
     useEffect(() => {
         if (!projectId) return;
@@ -304,6 +322,11 @@ export default function ProjectIssuesScreen({ navigation, route }) {
 
             {loading ? (
                 <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
+            ) : (section === 'assigned' ? filteredAssigned : filteredCreated).length === 0 ? (
+                <View style={styles.emptyContainer}>
+                    <MaterialIcons name="error-outline" size={48} color="#AAA" />
+                    <Text style={styles.emptyText}>No Issues Found for {projectName}</Text>
+                </View>
             ) : (
                 <IssueList
                     issues={section === 'assigned' ? filteredAssigned : filteredCreated}
@@ -345,6 +368,20 @@ const styles = StyleSheet.create({
         marginTop: 6,
         marginBottom: 12,
         maxWidth: "60%"
+    },
+    emptyContainer: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        // marginTop: 50,
+        paddingHorizontal: 20,
+    },
+    emptyText: {
+        color: '#AAA',
+        fontSize: 18,
+        fontWeight: '300',
+        marginTop: 12,
+        textAlign: 'center',
     },
 
     toggleContainer: {
