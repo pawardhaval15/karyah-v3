@@ -23,7 +23,7 @@ export default function UserProfileScreen({ navigation, route }) {
   const [profilePhoto, setProfilePhoto] = useState('');
   const [name, setName] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [pin, setPin] = useState('');
+const [pin, setPin] = useState('');
 
   const handlePickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -82,7 +82,6 @@ export default function UserProfileScreen({ navigation, route }) {
         setDob(userData.dob || '');
         setGender(userData.gender || '');
         setAddress(userData.location || '');
-        setsupportPin(userData.supportPin || '');
         setProfilePhoto(userData.profilePhoto || DEFAULT_AVATAR);
       } catch (err) {
         Alert.alert('Error', 'Failed to load user profile');
@@ -302,9 +301,6 @@ export default function UserProfileScreen({ navigation, route }) {
             <Text style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}>
               {address || 'No address'}
             </Text>
-            <Text style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}>
-              {supportPin ? `Support PIN: ${supportPin}` : 'No Support PIN'}
-            </Text>
             {/* <TouchableOpacity style={styles.rowBetween} disabled>
               <Text style={[styles.changePinLabel, { color: theme.text }]}>Change PIN</Text>
               <Feather name="chevron-right" size={20} color={theme.secondaryText} />
@@ -316,6 +312,8 @@ export default function UserProfileScreen({ navigation, route }) {
             </TouchableOpacity> */}
           </>
         )}
+
+
         {isEditing && (
           <View style={styles.saveBtn}>
             <GradientButton title="Save Profile" onPress={handleSave} />
