@@ -15,7 +15,7 @@ const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png'
 export default function UserProfileScreen({ navigation, route }) {
   const theme = useTheme();
   const [gettingLocation, setGettingLocation] = useState(false);
-
+  const [supportPin, setSupportPin] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
@@ -23,8 +23,8 @@ export default function UserProfileScreen({ navigation, route }) {
   const [profilePhoto, setProfilePhoto] = useState('');
   const [name, setName] = useState('');
   const [showDatePicker, setShowDatePicker] = useState(false);
-const [pin, setPin] = useState('');
-
+  const [pin, setPin] = useState('');
+  const [pinVisible, setPinVisible] = useState(false);
   const handlePickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -82,6 +82,7 @@ const [pin, setPin] = useState('');
         setDob(userData.dob || '');
         setGender(userData.gender || '');
         setAddress(userData.location || '');
+        setSupportPin(userData.supportPin || '');
         setProfilePhoto(userData.profilePhoto || DEFAULT_AVATAR);
       } catch (err) {
         Alert.alert('Error', 'Failed to load user profile');
@@ -301,6 +302,54 @@ const [pin, setPin] = useState('');
             <Text style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}>
               {address || 'No address'}
             </Text>
+            <View style={{ marginBottom: 16 }}>
+              <Text
+                style={{
+                  color: theme.secondaryText,
+                  fontSize: 12,
+                  marginTop: 4,
+                  marginLeft: 8,
+                  fontStyle: 'italic',
+                  backgroundColor: theme.background,
+                  maxWidth: 280,
+                }}
+              >
+                This Support PIN is used to contact our support team for assistance.
+              </Text>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderRadius: 14,
+                  padding: 14,
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                  maxWidth: 280,
+                  marginTop: 8,
+                }}
+              >
+                <Text
+                  style={{
+                    flex: 1,
+                    color: theme.text,
+                    fontSize: 16,
+                  }}
+                >
+                  Support PIN: {supportPin ? (pinVisible ? supportPin : '*****') : 'No Support PIN'}
+                </Text>
+                {supportPin ? (
+                  <TouchableOpacity
+                    onPress={() => setPinVisible(!pinVisible)}
+                    style={{ paddingHorizontal: 8, paddingVertical: 2 }}
+                  >
+                    <Text style={{ color: theme.primary, fontWeight: '600' }}>
+                      {pinVisible ? 'Hide' : 'Show'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
             {/* <TouchableOpacity style={styles.rowBetween} disabled>
               <Text style={[styles.changePinLabel, { color: theme.text }]}>Change PIN</Text>
               <Feather name="chevron-right" size={20} color={theme.secondaryText} />
@@ -312,8 +361,6 @@ const [pin, setPin] = useState('');
             </TouchableOpacity> */}
           </>
         )}
-
-
         {isEditing && (
           <View style={styles.saveBtn}>
             <GradientButton title="Save Profile" onPress={handleSave} />
