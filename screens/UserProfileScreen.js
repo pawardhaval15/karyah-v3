@@ -8,7 +8,7 @@ import GradientButton from 'components/Login/GradientButton';
 import * as Location from 'expo-location';
 import * as ImagePicker from 'expo-image-picker';
 import { Platform } from 'react-native';
-
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
 
@@ -22,6 +22,8 @@ export default function UserProfileScreen({ navigation, route }) {
   const [isEditing, setIsEditing] = useState(false);
   const [profilePhoto, setProfilePhoto] = useState('');
   const [name, setName] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [pin, setPin] = useState('');
 
   const handlePickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
@@ -80,6 +82,7 @@ export default function UserProfileScreen({ navigation, route }) {
         setDob(userData.dob || '');
         setGender(userData.gender || '');
         setAddress(userData.location || '');
+        setsupportPin(userData.supportPin || '');
         setProfilePhoto(userData.profilePhoto || DEFAULT_AVATAR);
       } catch (err) {
         Alert.alert('Error', 'Failed to load user profile');
@@ -210,13 +213,38 @@ export default function UserProfileScreen({ navigation, route }) {
                 onChangeText={setPhone}
                 keyboardType="phone-pad"
               />
-              <TextInput
-                style={[styles.input, { flex: 1, color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                placeholder="DD/MM/YYYY"
-                placeholderTextColor={theme.secondaryText}
-                value={dob}
-                onChangeText={setDob}
-              />
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                onPress={() => setShowDatePicker(true)}
+                activeOpacity={0.8}
+              >
+                <TextInput
+                  style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                  placeholder="Date of Birth (YYYY-MM-DD)"
+                  placeholderTextColor={theme.secondaryText}
+                  value={dob}
+                  editable={false}
+                  pointerEvents="none"
+                />
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={dob ? new Date(dob) : new Date()}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(false);
+                    if (selectedDate) {
+                      const yyyy = selectedDate.getFullYear();
+                      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                      const dd = String(selectedDate.getDate()).padStart(2, '0');
+                      setDob(`${yyyy}-${mm}-${dd}`);
+                    }
+                  }}
+                  maximumDate={new Date()}
+                />
+              )}
+
               {/* <TextInput
                 style={[styles.input, { flex: 1, color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
                 placeholder="Gender"
@@ -274,6 +302,9 @@ export default function UserProfileScreen({ navigation, route }) {
             <Text style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}>
               {address || 'No address'}
             </Text>
+            <Text style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}>
+              {supportPin ? `Support PIN: ${supportPin}` : 'No Support PIN'}
+            </Text>
             {/* <TouchableOpacity style={styles.rowBetween} disabled>
               <Text style={[styles.changePinLabel, { color: theme.text }]}>Change PIN</Text>
               <Feather name="chevron-right" size={20} color={theme.secondaryText} />
@@ -285,8 +316,6 @@ export default function UserProfileScreen({ navigation, route }) {
             </TouchableOpacity> */}
           </>
         )}
-
-
         {isEditing && (
           <View style={styles.saveBtn}>
             <GradientButton title="Save Profile" onPress={handleSave} />
