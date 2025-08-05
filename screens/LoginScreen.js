@@ -92,7 +92,7 @@ export default function LoginScreen({ navigation }) {
           <Header />
           <KeyboardAvoidingView
             style={{ flex: 1, width: '100%' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
           >
             <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
@@ -126,6 +126,7 @@ export default function LoginScreen({ navigation }) {
                     inputPlaceholder="Mobile Number / Email"
                     footerText="Already a registered user?"
                     footerLinkText="Login with PIN."
+                    
                     onFooterLinkPress={() => navigation.navigate('PinLogin')}
                   />
                 </SafeAreaView>

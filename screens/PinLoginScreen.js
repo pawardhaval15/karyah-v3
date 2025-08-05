@@ -80,7 +80,7 @@ export default function PinLoginScreen({ navigation }) {
           <Header />
           <KeyboardAvoidingView
             style={{ flex: 1, width: '100%' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
           >
             <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
