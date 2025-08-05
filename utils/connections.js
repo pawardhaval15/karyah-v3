@@ -170,23 +170,44 @@ export const getPendingRequests = async () => {
     });
 
     // If fetch fails, response is undefined
-    if (!response) throw new Error('No response from server');
+    if (!response) {
+      console.log('No response from server, returning empty array');
+      return [];
+    }
 
     let data;
     try {
       data = await response.json();
     } catch (jsonErr) {
-      throw new Error('Invalid JSON response');
+      console.log('JSON Parse Error, returning empty array:', jsonErr.message);
+      return [];
     }
 
     if (!response.ok) {
-      throw new Error(data?.message || 'Failed to fetch pending requests');
+      console.log('HTTP Error:', response.status, response.statusText);
+      console.log('Response data:', data);
+      
+      // Handle specific HTTP errors
+      if (response.status === 404) {
+        console.log('Pending requests endpoint not found - using response data or returning empty array');
+        // If the server returns data even with 404, use it, otherwise return empty array
+        return data?.pendingRequests || [];
+      } else if (response.status === 401) {
+        throw new Error('Authentication failed - please login again');
+      } else if (response.status === 403) {
+        throw new Error('Access denied - insufficient permissions');
+      } else {
+        console.log('Other HTTP error, returning empty array');
+        return [];
+      }
     }
 
-    return data.pendingRequests;
+    return data.pendingRequests || [];
   } catch (error) {
-    console.error('Error fetching pending requests:', error.message);
-    throw error;
+    console.log('Error fetching pending requests (handled):', error.message);
+    
+    // For any errors, return empty array to prevent app crashes
+    return [];
   }
 };
 

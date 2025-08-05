@@ -39,7 +39,7 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
 
   const getNotificationPosition = (index) => {
     return {
-      top: Platform.OS === 'ios' ? 10 + (index * 65) : 10 + (index * 65), // Stack notifications vertically
+      top: Platform.OS === 'ios' ? 70 + (index * 65) : 40 + (index * 65), // Stack notifications vertically
       left: 0,
       right: 0,
       zIndex: 9999 - index,
@@ -80,7 +80,7 @@ export function NotificationQueueManager({ notifications, onRemoveNotification, 
         <View style={[
           styles.clearAllWrapper, 
           { 
-            top: Platform.OS === 'ios' ? 60 + (notifications.length * 65) + 10 : 35 + (notifications.length * 65) + 10 
+            top: Platform.OS === 'ios' ? 90 + (notifications.length * 65) + 10 : 70 + (notifications.length * 65) + 10 
           }
         ]}>
           <TouchableOpacity
