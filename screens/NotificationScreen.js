@@ -51,8 +51,13 @@ const NotificationScreen = ({ navigation }) => {
     try {
       const data = await getPendingRequests();
       setPendingRequests(Array.isArray(data) ? data : []);
+      
+      // Only log if we actually got some data
+      if (data && data.length > 0) {
+        console.log('Loaded pending requests:', data.length);
+      }
     } catch (err) {
-      console.log('Pending Requests Error:', err.message);
+      console.log('Pending Requests Error (gracefully handled):', err.message);
       setPendingRequests([]); // Set to empty array on error
     }
   }, []);
@@ -398,7 +403,7 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
-    marginTop: Platform.OS === 'ios' ? 25 : 25,
+    marginTop: Platform.OS === 'ios' ? 0 : 25,
     marginLeft: 16,
     marginBottom: 18,
     flexDirection: 'row',

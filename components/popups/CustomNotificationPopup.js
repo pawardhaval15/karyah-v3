@@ -233,7 +233,7 @@ export default function CustomNotificationPopup({
 const styles = StyleSheet.create({
   overlay: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 60 : 35,
+    top: Platform.OS === 'ios' ? 160 : 100,
     left: 0,
     right: 0,
     zIndex: 9999,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   },
   container: {
     marginHorizontal: 12,
-    marginVertical: 4,
+    marginVertical: 8,
     borderRadius: 10,
     borderWidth: 1,
     shadowColor: '#000',
