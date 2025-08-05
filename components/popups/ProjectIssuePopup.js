@@ -6,7 +6,9 @@ import {
     StyleSheet,
     ScrollView,
     Text,
+    Image,
     TextInput,
+    Alert,
     Switch,
     Platform,
 } from 'react-native';
@@ -22,6 +24,7 @@ import { createIssue } from '../../utils/issues'; // adjust path as needed
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../theme/ThemeContext';
 import useAttachmentPicker from './useAttachmentPicker';
+import useAudioRecorder from './useAudioRecorder';
 export default function ProjectIssuePopup({
     visible,
     onClose,
@@ -39,7 +42,7 @@ export default function ProjectIssuePopup({
     const [showProjectPicker, setShowProjectPicker] = useState(false);
     const [showUserPicker, setShowUserPicker] = useState(false);
     const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
-    const { attachments, pickAttachment, clearAttachments } = useAttachmentPicker();
+    const { attachments, pickAttachment, clearAttachments, setAttachments } = useAttachmentPicker();
     const [showDatePicker, setShowDatePicker] = useState(false);
 
     // const handleAttachmentPick = async (type) => {
@@ -122,7 +125,12 @@ export default function ProjectIssuePopup({
             alert(error.message || 'Failed to create issue');
         }
     };
-
+    const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
+        onRecordingFinished: (audioFile) => {
+            setAttachments(prev => [...prev, audioFile]);
+            Alert.alert('Audio recorded and attached!');
+        }
+    });
     const handleDateChange = (event, selectedDate) => {
         setShowDatePicker(false);
         if (selectedDate) {
@@ -203,7 +211,7 @@ export default function ProjectIssuePopup({
                         </View>
 
                         {/* Attachments */}
-                        <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TextInput
                                 style={[styles.input, { color: theme.text }]}
                                 placeholder="Add Attachments"
@@ -211,18 +219,91 @@ export default function ProjectIssuePopup({
                                 editable={false}
                             />
                             <Feather name="paperclip" size={20} color="#888" style={styles.inputIcon} onPress={() => setShowAttachmentSheet(true)} />
-                            <MaterialCommunityIcons name="microphone-outline" size={20} color="#888" style={styles.inputIcon} onPress={() => setShowAttachmentSheet(true)} />
+                            <MaterialCommunityIcons
+                                name={isRecording ? "microphone" : "microphone-outline"}
+                                size={20}
+                                color={isRecording ? "#E53935" : "#888"}
+                                style={styles.inputIcon}
+                                onPress={isRecording ? stopRecording : startRecording}
+                            />
+                            {isRecording && (
+                                <Text style={{ color: "#E53935", marginLeft: 8 }}>{seconds}s</Text>
+                            )}
                         </View>
                         {attachments.length > 0 && (
                             <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
-                                {attachments.map((att, idx) => (
-                                    <Text key={att.uri || att.name || idx} style={{ color: theme.secondaryText, fontSize: 13 }}>
-                                        {att.name || att.uri?.split('/').pop() || 'Attachment'}
-                                    </Text>
+                                {Array.from({ length: Math.ceil(attachments.length / 2) }).map((_, rowIdx) => (
+                                    <View key={rowIdx} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6, }}>
+                                        {[0, 1].map(colIdx => {
+                                            const idx = rowIdx * 2 + colIdx;
+                                            const att = attachments[idx];
+                                            if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
+                                            return (
+                                                <View
+                                                    key={att.uri || att.name || idx}
+                                                    style={{
+                                                        flex: 1,
+                                                        flexDirection: 'row',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'flex-start',
+                                                        padding: 8,
+                                                        borderWidth: 1,
+                                                        borderColor: theme.border,
+                                                        borderRadius: 10,
+                                                        backgroundColor: theme.card,
+                                                        marginRight: colIdx === 0 ? 12 : 0
+                                                    }}
+                                                >
+                                                    {/* Preview for images */}
+                                                    {att.type && att.type.startsWith('image') ? (
+                                                        <TouchableOpacity onPress={() => { /* Optionally open image in modal */ }}>
+                                                            <Image
+                                                                source={{ uri: att.uri }}
+                                                                style={{ width: 25, height: 25, borderRadius: 6, marginRight: 8 }}
+                                                            />
+                                                        </TouchableOpacity>
+                                                    ) : null}
+
+                                                    {/* Preview for audio */}
+                                                    {att.type && att.type.startsWith('audio') ? (
+                                                        <TouchableOpacity
+                                                            onPress={async () => {
+                                                                const { Sound } = await import('expo-av');
+                                                                const { sound } = await Sound.createAsync({ uri: att.uri });
+                                                                await sound.playAsync();
+                                                            }}
+                                                            style={{ marginRight: 8 }}
+                                                        >
+                                                            <MaterialCommunityIcons name="play-circle-outline" size={28} color="#1D4ED8" />
+                                                        </TouchableOpacity>
+                                                    ) : null}
+
+                                                    {/* File/document icon for other types */}
+                                                    {!att.type?.startsWith('image') && !att.type?.startsWith('audio') ? (
+                                                        <MaterialCommunityIcons name="file-document-outline" size={28} color="#888" style={{ marginRight: 8 }} />
+                                                    ) : null}
+
+                                                    {/* File name */}
+                                                    <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
+                                                        {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
+                                                            ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
+                                                            : (att.name || att.uri?.split('/').pop())}
+                                                    </Text>
+
+                                                    {/* Remove button */}
+                                                    <TouchableOpacity
+                                                        onPress={() => {
+                                                            setAttachments(prev => prev.filter((_, i) => i !== idx));
+                                                        }}
+                                                        style={{ marginLeft: 8 }}
+                                                    >
+                                                        <MaterialCommunityIcons name="close-circle" size={22} color="#E53935" />
+                                                    </TouchableOpacity>
+                                                </View>
+                                            );
+                                        })}
+                                    </View>
                                 ))}
-                                <TouchableOpacity onPress={clearAttachments} style={{ marginTop: 4 }}>
-                                    <Text style={{ color: '#E53935', fontSize: 13 }}>Clear All</Text>
-                                </TouchableOpacity>
                             </View>
                         )}
                         <AttachmentSheet
