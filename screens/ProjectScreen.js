@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons'; // Add this import if not already present
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useState } from 'react';
 import {
@@ -9,7 +10,6 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import { Feather } from '@expo/vector-icons'; // Add this import if not already present
 
 import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
 import { Platform } from 'react-native';
@@ -116,7 +116,8 @@ export default function ProjectScreen({ navigation }) {
       <ProjectBanner onAdd={() => setShowProjectPopup(true)} theme={theme} />
       <ProjectSearchBar value={search} onChange={setSearch} theme={theme} />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginBottom: 12, gap: 2, flexWrap: 'wrap', rowGap: 10, maxWidth: "95%" }}>        {[
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginBottom: 12, gap: 2, flexWrap: 'wrap', rowGap: 10, maxWidth: "95%" }}>
+        {[
         {
           key: 'all',
           label: 'All',
