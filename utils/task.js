@@ -278,13 +278,6 @@ export const updateTaskDetails = async (taskId, data) => {
     formData.append('startDate', data.startDate || '');
     formData.append('endDate', data.endDate || '');
 
-    console.log('[updateTaskDetails] Core fields:', {
-      taskName: data.taskName,
-      description: data.description,
-      startDate: data.startDate,
-      endDate: data.endDate,
-    });
-
     // ✅ Assigned user IDs
     if (Array.isArray(data.assignedUserIds)) {
       data.assignedUserIds.forEach(id => {
@@ -377,6 +370,53 @@ export const deleteTask = async (taskId) => {
     return data; // { message: "...", ... }
   } catch (error) {
     console.error('Error deleting task:', error.message);
+    throw error;
+  }
+};
+
+export const bulkAssignTasks = async (taskIds, assignedUserIds) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/bulk-assign`;
+    
+    console.log('🔄 Bulk assign API call:', {
+      url,
+      taskIds,
+      assignedUserIds,
+      taskIdsType: typeof taskIds,
+      assignedUserIdsType: typeof assignedUserIds,
+      taskIdsLength: taskIds?.length,
+      assignedUserIdsLength: assignedUserIds?.length
+    });
+    
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify({
+        taskIds,
+        assignedUserIds,
+      }),
+    });
+
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response headers:', response.headers);
+
+    const data = await response.json();
+    console.log('📊 Response data:', data);
+
+    if (!response.ok) {
+      console.error('❌ API Error Response:', data);
+      throw new Error(data.message || 'Failed to bulk assign tasks');
+    }
+
+    console.log('✅ Bulk assign API success:', data);
+    return data;
+  } catch (error) {
+    console.error('❌ Error bulk assigning tasks:', error.message);
+    console.error('❌ Full error:', error);
     throw error;
   }
 };

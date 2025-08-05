@@ -21,11 +21,7 @@ function AppContent() {
   });
   const [biometricChecked, setBiometricChecked] = useState(false);
   const [biometricPassed, setBiometricPassed] = useState(false);
-
-  // Initialize push notifications
   usePushNotifications();
-
-  // Biometric check
   useEffect(() => {
     (async () => {
       const bio = await AsyncStorage.getItem('biometricEnabled');
