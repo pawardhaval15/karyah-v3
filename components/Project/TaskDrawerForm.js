@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import DateBox from 'components/task details/DateBox';
 import FieldBox from 'components/task details/FieldBox';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { getUserConnections } from '../../utils/connections';
 import { getProjectById, getProjectsByUserId } from '../../utils/project';
@@ -325,7 +325,6 @@ export default function TaskDrawerForm({
         showImage={false}
       />
       {/* Dates */}
-      // ...existing code...
       <View style={styles.dateRow}>
         <DateBox
           theme={theme}
