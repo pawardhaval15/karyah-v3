@@ -437,7 +437,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                           {
                             text: 'OK',
                             onPress: () => {
-                              navigation.navigate('Home', { refresh: true });
+                              navigation.navigate('ProjectScreen', { refresh: true });
                             },
                           },
                         ]);
