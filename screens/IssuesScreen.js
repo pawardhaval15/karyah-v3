@@ -66,6 +66,9 @@ export default function IssuesScreen({ navigation }) {
             assignedTo: [],
         });
     };
+    const getActiveFiltersCount = () => {
+        return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
+    };
     const currentIssues = section === 'assigned' ? assignedIssues : createdIssues;
     const statuses = Array.from(new Set(currentIssues.map(issue => issue.issueStatus).filter(Boolean)));
     const projectOptions = Array.from(new Set(currentIssues.map(issue => issue.projectName || issue.project?.name).filter(Boolean)));
@@ -282,9 +285,28 @@ export default function IssuesScreen({ navigation }) {
                     onChangeText={setSearch}
                 />
                 {/* <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} /> */}
-                <TouchableOpacity onPress={() => setShowFilters(!showFilters)} style={{ padding: 1, marginHorizontal: 18 }}>
-                    <MaterialIcons name="tune" size={20} color={theme.primary} />
+                <TouchableOpacity
+                    style={[
+                        styles.filterButton,
+                        {
+                            backgroundColor: getActiveFiltersCount() > 0 ? theme.primary + '15' : 'transparent',
+                            borderColor: getActiveFiltersCount() > 0 ? theme.primary : theme.border,
+                        },
+                    ]}
+                    onPress={() => setShowFilters(!showFilters)}
+                >
+                    <MaterialIcons
+                        name="tune"
+                        size={20}
+                        color={getActiveFiltersCount() > 0 ? theme.primary : theme.secondaryText}
+                    />
+                    {getActiveFiltersCount() > 0 && (
+                        <View style={[styles.filterBadge, { backgroundColor: theme.primary }]}>
+                            <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
+
             </View>
             {showFilters && (
                 <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
