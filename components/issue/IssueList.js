@@ -1,7 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 
-export default function IssueList({ issues, onPressIssue, navigation, styles, theme, section, onStatusFilter, statusTab }) {
+export default function IssueList({ issues, onPressIssue, navigation, styles, theme, section, onStatusFilter, statusTab, refreshControl }) {
   // Filtering logic
   let filteredIssues = issues;
   if (statusTab === 'critical') {
@@ -106,6 +106,7 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
       <ScrollView
         style={{ marginHorizontal: 16, marginBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
       >
         {filteredIssues.map((item, idx) => (
           <TouchableOpacity
