@@ -7,12 +7,12 @@ import {
     ActivityIndicator,
     Platform,
     StyleSheet,
+    RefreshControl,
     Text,
     TextInput,
     TouchableOpacity,
-    View,
+    View, ScrollView,
 } from 'react-native';
-
 import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useTheme } from '../theme/ThemeContext';
@@ -27,6 +27,7 @@ export default function IssuesScreen({ navigation }) {
     const [users, setUsers] = useState([]);
     const [showIssuePopup, setShowIssuePopup] = useState(false);
     const [viewMode, setViewMode] = useState('assigned'); // 'assigned' or 'created'
+    const [refreshing, setRefreshing] = useState(false);
 
     const [issueForm, setIssueForm] = useState({
         title: '',
@@ -41,8 +42,64 @@ export default function IssuesScreen({ navigation }) {
     const [createdIssues, setCreatedIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [statusTab, setStatusTab] = useState('all'); // 'all', 'resolved', 'unresolved'
+    const [filters, setFilters] = useState({
+        status: [],
+        progress: [],     // Optional: if progress applies to issues
+        projects: [],
+        assignedTo: [],
+    });
+    // Show/hide filters panel
+    const [showFilters, setShowFilters] = useState(false);
+    const toggleFilter = (filterType, value) => {
+        setFilters(prev => ({
+            ...prev,
+            [filterType]: prev[filterType].includes(value)
+                ? prev[filterType].filter(item => item !== value)
+                : [...prev[filterType], value],
+        }));
+    };
+    const clearAllFilters = () => {
+        setFilters({
+            status: [],
+            progress: [],
+            projects: [],
+            assignedTo: [],
+        });
+    };
+    const currentIssues = section === 'assigned' ? assignedIssues : createdIssues;
+    const statuses = Array.from(new Set(currentIssues.map(issue => issue.issueStatus).filter(Boolean)));
+    const projectOptions = Array.from(new Set(currentIssues.map(issue => issue.projectName || issue.project?.name).filter(Boolean)));
+    const assignedOptions = Array.from(new Set(
+        section === 'assigned'
+            ? currentIssues.map(issue => issue.creatorName || issue.creator?.name).filter(Boolean)
+            : currentIssues.map(issue => issue.assignToUserName || issue.assignTo?.name).filter(Boolean)
+    ));
 
-
+    const handleRefresh = async () => {
+        setRefreshing(true);
+        try {
+            // You can use your fetchData logic from useFocusEffect for full reload:
+            const token = await AsyncStorage.getItem('token');
+            const [assigned, created, projects, connections] = await Promise.all([
+                fetchAssignedIssues(),
+                fetchCreatedByMeIssues(),
+                fetchProjectsByUser(),
+                fetchUserConnections()
+            ]);
+            setAssignedIssues(assigned || []);
+            setCreatedIssues(created || []);
+            setProjects(projects || []);
+            setUsers(connections || []);
+        } catch (e) {
+            setAssignedIssues([]);
+            setCreatedIssues([]);
+            setProjects([]);
+            setUsers([]);
+        } finally {
+            setRefreshing(false);
+            setLoading(false);
+        }
+    };
     // Refetch issues on mount and when coming back from details with refresh param
     useFocusEffect(
         React.useCallback(() => {
@@ -73,27 +130,48 @@ export default function IssuesScreen({ navigation }) {
         }, [])
     );
 
-
-
     const filterAndSortIssues = (issues) => {
-        let filtered = issues.filter(
-            item =>
-                (item.issueTitle ? item.issueTitle.toLowerCase() : '').includes(search.toLowerCase()) &&
-                (activeTab === 'all' || (activeTab === 'critical' && item.isCritical))
-        );
-        // Filter by statusTab
-        if (statusTab === 'resolved') {
-            filtered = filtered.filter(item => item.issueStatus === 'resolved');
-        } else if (statusTab === 'unresolved') {
-            filtered = filtered.filter(item => item.issueStatus !== 'resolved');
-        }
-        // Sort: unresolved first, then resolved
-        return filtered.sort((a, b) => {
-            const aResolved = a.issueStatus === 'resolved';
-            const bResolved = b.issueStatus === 'resolved';
-            if (aResolved === bResolved) return 0;
-            return aResolved ? 1 : -1;
-        });
+        return issues
+            .filter(item => {
+                const searchMatch = (item.issueTitle || '').toLowerCase().includes(search.toLowerCase());
+                const activeTabMatch = activeTab === 'all' || (activeTab === 'critical' && item.isCritical);
+
+                // Status filter OR all if filters.status empty
+                const statusMatch = filters.status.length === 0 || filters.status.includes(item.issueStatus);
+
+                // Progress filter (adjust if issues have progress)
+                const progressMatch = filters.progress.length === 0 || filters.progress.some(range => {
+                    const progress = item.progress ?? 0;
+                    switch (range) {
+                        case 'not-started': return progress === 0;
+                        case 'in-progress': return progress > 0 && progress < 100;
+                        case 'completed': return progress === 100;
+                        default: return false;
+                    }
+                });
+                // Projects filter
+                const issueProjectName = item.projectName || item.project?.name || '';
+                const projectMatch = filters.projects.length === 0 || filters.projects.includes(issueProjectName);
+                // AssignedTo filter (depends on section)
+                let assignedMatch = true;
+                if (filters.assignedTo.length > 0) {
+                    if (section === 'assigned') {
+                        const creatorName = item.creatorName || item.creator?.name || '';
+                        assignedMatch = filters.assignedTo.includes(creatorName);
+                    } else {
+                        const assignedToName = item.assignToUserName || item.assignTo?.name || '';
+                        assignedMatch = filters.assignedTo.includes(assignedToName);
+                    }
+                }
+                return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && assignedMatch;
+            })
+            .sort((a, b) => {
+                // Unresolved first, then resolved
+                const aResolved = a.issueStatus === 'resolved';
+                const bResolved = b.issueStatus === 'resolved';
+                if (aResolved === bResolved) return 0;
+                return aResolved ? 1 : -1;
+            });
     };
 
     const filteredAssigned = filterAndSortIssues(assignedIssues);
@@ -102,7 +180,6 @@ export default function IssuesScreen({ navigation }) {
     const handleIssueChange = (field, value) => {
         setIssueForm(prev => ({ ...prev, [field]: value }));
     };
-
     const handleDateSelect = () => {
         // Use your preferred date picker here
         console.log("Open date picker");
@@ -169,7 +246,6 @@ export default function IssuesScreen({ navigation }) {
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
             </LinearGradient>
-
             {/* Dynamic Section Tabs */}
             <View style={[styles.tabRow, { borderColor: theme.border }]}>
                 {[
@@ -206,8 +282,109 @@ export default function IssuesScreen({ navigation }) {
                     onChangeText={setSearch}
                 />
                 {/* <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} /> */}
+                <TouchableOpacity onPress={() => setShowFilters(!showFilters)} style={{ padding: 1, marginHorizontal: 18 }}>
+                    <MaterialIcons name="tune" size={20} color={theme.primary} />
+                </TouchableOpacity>
             </View>
-
+            {showFilters && (
+                <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={styles.filterHeader}>
+                        <Text style={[styles.filterHeaderText, { color: theme.text }]}>Filters</Text>
+                        <View style={styles.filterHeaderActions}>
+                            <TouchableOpacity onPress={clearAllFilters} style={styles.clearFiltersBtn}>
+                                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>Clear</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.closeBtn}>
+                                <MaterialIcons name="close" size={16} color={theme.secondaryText} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                    <ScrollView style={styles.filtersScrollView} showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
+                        {/* Status Filter */}
+                        {statuses.length > 0 && (
+                            <View style={styles.compactFilterSection}>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Status</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                                    <View style={styles.compactChipsRow}>
+                                        {statuses.map(status => (
+                                            <TouchableOpacity
+                                                key={status}
+                                                style={[
+                                                    styles.compactChip,
+                                                    {
+                                                        backgroundColor: filters.status.includes(status) ? theme.primary : 'transparent',
+                                                        borderColor: filters.status.includes(status) ? theme.primary : theme.border,
+                                                    },
+                                                ]}
+                                                onPress={() => toggleFilter('status', status)}>
+                                                <Text style={[styles.compactChipText, { color: filters.status.includes(status) ? '#fff' : theme.text }]}>
+                                                    {status}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        )}
+                        {/* Projects Filter */}
+                        {projectOptions.length > 0 && (
+                            <View style={styles.compactFilterSection}>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Projects</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                                    <View style={styles.compactChipsRow}>
+                                        {projectOptions.map(project => (
+                                            <TouchableOpacity
+                                                key={project}
+                                                style={[
+                                                    styles.compactChip,
+                                                    {
+                                                        backgroundColor: filters.projects.includes(project) ? theme.primary : 'transparent',
+                                                        borderColor: filters.projects.includes(project) ? theme.primary : theme.border,
+                                                    },
+                                                ]}
+                                                onPress={() => toggleFilter('projects', project)}>
+                                                <Text
+                                                    style={[styles.compactChipText, { color: filters.projects.includes(project) ? '#fff' : theme.text }]}
+                                                    numberOfLines={1}>
+                                                    {project.length > 10 ? project.substring(0, 10) + '...' : project}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        )}
+                        {/* Assigned To/By Filter */}
+                        {assignedOptions.length > 0 && (
+                            <View style={styles.compactFilterSection}>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
+                                    {section === 'assigned' ? 'Assigned By' : 'Assigned To'}
+                                </Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
+                                    <View style={styles.compactChipsRow}>
+                                        {assignedOptions.map(person => (
+                                            <TouchableOpacity
+                                                key={person}
+                                                style={[
+                                                    styles.compactChip,
+                                                    {
+                                                        backgroundColor: filters.assignedTo.includes(person) ? theme.primary : 'transparent',
+                                                        borderColor: filters.assignedTo.includes(person) ? theme.primary : theme.border,
+                                                    },
+                                                ]}
+                                                onPress={() => toggleFilter('assignedTo', person)}>
+                                                <Text style={[styles.compactChipText, { color: filters.assignedTo.includes(person) ? '#fff' : theme.text }]} numberOfLines={1}>
+                                                    {person.length > 8 ? person.substring(0, 8) + '...' : person}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        )}
+                    </ScrollView>
+                </View>
+            )}
             {/* Issue List */}
             {loading ? (
                 <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
@@ -220,6 +397,14 @@ export default function IssuesScreen({ navigation }) {
                     section={section}
                     onStatusFilter={setStatusTab}
                     statusTab={statusTab}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            colors={[theme.primary]}
+                            tintColor={theme.primary}
+                        />
+                    }
                 />
             )}
             <IssuePopup
@@ -233,7 +418,6 @@ export default function IssuesScreen({ navigation }) {
                 users={users}
                 theme={theme}
                 onIssueCreated={handleIssueCreated} // <-- pass the handler
-
             />
         </View>
     );
@@ -246,14 +430,12 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         maxWidth: "60%"
     },
-
     toggleContainer: {
         flexDirection: 'row',
         borderRadius: 12,
         overflow: 'hidden',
         padding: 2,
     },
-
     toggleOption: {
         flex: 1,
         paddingVertical: 10,
@@ -261,12 +443,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-
     toggleText: {
         fontSize: 14,
         fontWeight: '500',
     },
-
     backBtn: {
         marginTop: Platform.OS === 'ios' ? 70 : 25,
         marginLeft: 16,
@@ -450,5 +630,106 @@ const styles = StyleSheet.create({
     },
     chevronBox: {
         marginLeft: 10,
+    },
+    filterButton: {
+        position: 'relative',
+        marginLeft: 8,
+    },
+    filterBadge: {
+        position: 'absolute',
+        top: -4,
+        right: -4,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 2,
+        borderColor: '#fff',
+    },
+    filterBadgeText: {
+        color: '#fff',
+        fontSize: 10,
+        fontWeight: '700',
+    },
+    filtersPanel: {
+        marginHorizontal: 16,
+        marginBottom: 8,
+        borderRadius: 12,
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderWidth: 1,
+        maxHeight: 180,
+    },
+    filterHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 12,
+        paddingBottom: 8,
+        borderBottomWidth: 0.5,
+        borderBottomColor: 'rgba(0,0,0,0.1)',
+    },
+    filterHeaderText: {
+        fontSize: 16,
+        fontWeight: '600',
+    },
+    filterHeaderActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    clearFiltersBtn: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    clearFiltersText: {
+        fontSize: 12,
+        fontWeight: '600',
+    },
+    closeBtn: {
+        padding: 4,
+        borderRadius: 4,
+    },
+    filtersScrollView: {
+        maxHeight: 120,
+    },
+    compactFilterSection: {
+        marginBottom: 12,
+    },
+    compactFilterTitle: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 6,
+        opacity: 0.8,
+    },
+    horizontalScroll: {
+        flexGrow: 0,
+    },
+    compactChipsRow: {
+        flexDirection: 'row',
+        gap: 6,
+        paddingHorizontal: 2,
+    },
+    compactChip: {
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 14,
+        borderWidth: 1,
+        minHeight: 28,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    compactChipText: {
+        fontSize: 11,
+        fontWeight: '500',
+        textAlign: 'center',
+    },
+    filteredResultsText: {
+        fontSize: 12,
+        textAlign: 'center',
+        marginVertical: 8,
+        fontStyle: 'italic',
     },
 });
