@@ -68,3 +68,38 @@ export const markAllNotificationsAsRead = async () => {
     throw error;
   }
 };
+
+export const markNotificationAsRead = async (notificationId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('No token found in storage.');
+
+    const response = await fetch(`${API_URL}api/notifications/read`, {
+      method: 'PUT',  // assuming POST, adjust if PUT or PATCH
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ notificationId }),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+      console.error('Failed to mark notification as read. Status:', response.status, 'Response:', text);
+      try {
+        const errorJson = JSON.parse(text);
+        throw new Error(errorJson.message || 'Failed to mark notification as read');
+      } catch {
+        throw new Error('Failed to mark notification as read');
+      }
+    }
+    try {
+      return JSON.parse(text);  // return whatever backend returns (maybe confirmation)
+    } catch (err) {
+      console.error('Response was not valid JSON:', text);
+      throw new Error('Invalid JSON from server');
+    }
+  } catch (error) {
+    console.error('Error in markNotificationAsRead:', error.message);
+    throw error;
+  }
+};

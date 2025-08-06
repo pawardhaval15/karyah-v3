@@ -23,6 +23,7 @@ import {
   fetchNotifications,
   markAllNotificationsAsRead,
 } from '../utils/notifications';
+import { markNotificationAsRead } from '../utils/notifications';
 
 const NotificationScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('Critical');
@@ -51,7 +52,7 @@ const NotificationScreen = ({ navigation }) => {
     try {
       const data = await getPendingRequests();
       setPendingRequests(Array.isArray(data) ? data : []);
-      
+
       // Only log if we actually got some data
       if (data && data.length > 0) {
         console.log('Loaded pending requests:', data.length);
@@ -351,12 +352,28 @@ const NotificationScreen = ({ navigation }) => {
             return (
               <TouchableOpacity
                 key={n.id}
-                onPress={() => {
+                onPress={async () => {
+                  try {
+                    // Mark notification as read
+                    await markNotificationAsRead(n.id);
+                    // Refresh notifications to update UI
+                    await loadNotifications();
+                  } catch (error) {
+                    console.error('Failed to mark notification as read:', error.message);
+                    showMessage('Failed to mark notification as read');
+                  }
+                  // Navigate after marking as read
                   if (targetScreen) {
                     navigation.navigate(targetScreen, n.params || {});
                   }
                 }}
-                style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border || '#e0e0e0' }]}
+                style={[
+                  styles.card,
+                  {
+                    backgroundColor: n.read ? theme.card : `${theme.primary}22`, // Slightly different shade if unread
+                    borderColor: theme.border || '#e0e0e0',
+                  },
+                ]}
               >
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={[styles.iconCircle, { backgroundColor: theme.avatarBg }]}>
