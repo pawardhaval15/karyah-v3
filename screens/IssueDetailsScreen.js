@@ -69,8 +69,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
     useEffect(() => {
         if (!issueId) return;
         setLoading(true);
+        // console.log(`Fetching issue data for issueId: ${issueId}`);
         fetchIssueById(issueId)
             .then((data) => {
+                // console.log('Fetched issue data:', data);
                 setIssue(data);
                 setEditFields({
                     issueTitle: data.issueTitle || '',
@@ -78,6 +80,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     dueDate: data.dueDate || '',
                 });
             })
+
             .catch(() => setIssue(null))
             .finally(() => setLoading(false));
     }, [issueId]);
@@ -525,6 +528,25 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         ) : null
                     }
                 />
+                {/* <FieldBox
+                    label="Issue Creator Name"
+                    value={issue.creatorName || ''}
+                    placeholder="Issue Creator name"
+                    rightComponent={
+                        <Image
+                            source={{ uri: userImg }}
+                            style={{
+                                width: 30,
+                                height: 30,
+                                borderRadius: 20,
+                                marginLeft: 10,
+                                borderWidth: 2,
+                                borderColor: '#e6eaf3',
+                            }}
+                        />
+                    }
+                    theme={theme}
+                /> */}
                 {showDueDatePicker && (
                     <DateTimePicker
                         value={editFields.dueDate ? new Date(editFields.dueDate) : new Date()}
