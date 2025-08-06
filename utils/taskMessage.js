@@ -26,11 +26,19 @@ export async function fetchTaskMessages(taskId) {
   }
 }
 
-export async function sendTaskMessage({ taskId, message, attachments = [] }) {
+export async function sendTaskMessage({ taskId, message, attachments = [], mentions = [] }) {
   const token = await AsyncStorage.getItem('token');
   const formData = new FormData();
   formData.append('taskId', taskId);
   formData.append('message', message);
+  
+  // Add mentions if any
+  if (mentions && mentions.length > 0) {
+    mentions.forEach((mentionUserId) => {
+      formData.append('mentions[]', mentionUserId);
+    });
+  }
+  
   // Attach files if any
   attachments.forEach((file, idx) => {
     formData.append('attachments', {
@@ -60,6 +68,8 @@ export async function sendTaskMessage({ taskId, message, attachments = [] }) {
       sender: msg.sender,
       createdAt: msg.createdAt,
       attachments: msg.attachments || [],
+      mentions: msg.mentions || [],
+      readBy: msg.readBy || [],
     };
   } catch (err) {
     console.error('[sendTaskMessage] Error:', err);

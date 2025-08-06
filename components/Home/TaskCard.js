@@ -1,7 +1,30 @@
 import { Feather } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-export default function TaskCard({ title, project, percent, theme, isIssue, issueStatus, creatorName, date, isCritical }) {
+export default function TaskCard({
+  title,
+  project,
+  percent,
+  theme,
+  isIssue,
+  issueStatus,
+  creatorName,
+  date,
+  isCritical,
+}) {
+  const [showCreatorTooltip, setShowCreatorTooltip] = useState(false);
+
+  // Get initials from creator name
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
   // Calculate widths for each color segment
   const yellowWidth = percent <= 33 ? percent : 33;
   const orangeWidth = percent > 33 ? (percent <= 66 ? percent - 33 : 33) : 0;
@@ -20,25 +43,25 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
       return {
         text: `Overdue by ${Math.abs(daysDiff)} day${Math.abs(daysDiff) !== 1 ? 's' : ''}`,
         color: '#FF5252',
-        isOverdue: true
+        isOverdue: true,
       };
     } else if (daysDiff === 0) {
       return {
         text: 'Due Today',
         color: '#FF6F3C',
-        isOverdue: false
+        isOverdue: false,
       };
     } else if (daysDiff <= 3) {
       return {
         text: `Due in ${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
         color: '#FFC107',
-        isOverdue: false
+        isOverdue: false,
       };
     } else {
       return {
         text: `Due in ${daysDiff} days`,
         color: theme.secondaryText,
-        isOverdue: false
+        isOverdue: false,
       };
     }
   };
@@ -47,11 +70,16 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
 
   // Format the dueDate string nicely for display
   // For example, "Apr 25, 2024"
-  const dueDate = date ? new Date(date).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : 'No due date';
+  const dueDate = date
+    ? new Date(date).toLocaleDateString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      })
+    : 'No due date';
 
   return (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-
       {/* Uncomment if you want overdue banner, currently commented out */}
       {/* {dueDateStatus && dueDateStatus.isOverdue && !(isIssue && isCritical) && (
         <View style={[styles.dueDateBanner, { backgroundColor: dueDateStatus.color }]}>
@@ -62,51 +90,67 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
       <View style={styles.content}>
         <View style={styles.row}>
           <Text
-            style={[
-              styles.taskTitle,
-              { color: theme.text },
-            ]}
+            style={[styles.taskTitle, { color: theme.text }]}
             numberOfLines={1}
-            ellipsizeMode="tail"
-          >
+            ellipsizeMode="tail">
             {title}
           </Text>
-          {isIssue ? null : (
-            <Text style={[styles.progressText, { color: theme.secondaryText }]}>{percent}%</Text>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {/* Creator initials circle */}
+            {creatorName && (
+              <TouchableOpacity
+                onPress={() => setShowCreatorTooltip(!showCreatorTooltip)}
+                style={[styles.initialsCircle, { backgroundColor: theme.primary }]}
+                activeOpacity={0.7}>
+                <Text style={styles.initialsText}>{getInitials(creatorName)}</Text>
+              </TouchableOpacity>
+            )}
+            {isIssue ? null : (
+              <Text style={[styles.progressText, { color: theme.secondaryText }]}>{percent}%</Text>
+            )}
+          </View>
         </View>
+        
+        {/* Creator tooltip */}
+        {showCreatorTooltip && creatorName && (
+          <View style={[styles.tooltip, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            <Text style={[styles.tooltipText, { color: theme.text }]}>{creatorName}</Text>
+          </View>
+        )}
         <View style={{ width: '100%' }}>
           {/* First row: Project name and status/creator */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 4,
+            }}>
             <Text
               style={[styles.taskSubTitle, { color: theme.secondaryText, flex: 1 }]}
               numberOfLines={1}
-              ellipsizeMode="tail"
-            >
+              ellipsizeMode="tail">
               {project}
             </Text>
 
             {/* Critical indicator for issues */}
             {isIssue && isCritical && (
-              <Text
-                style={[
-                  styles.criticalText,
-                  { color: '#FF0000' }
-                ]}
-                numberOfLines={1}
-              >
+              <Text style={[styles.criticalText, { color: '#FF0000' }]} numberOfLines={1}>
                 Critical
               </Text>
             )}
 
             {isIssue && issueStatus && !isCritical && (
-              <Text numberOfLines={1}
+              <Text
+                numberOfLines={1}
                 ellipsizeMode="tail"
                 style={{
                   color:
-                    issueStatus === 'resolved' ? theme.primary :
-                      issueStatus === 'pending_approval' ? '#FFC107' :
-                        '#FF6F3C',
+                    issueStatus === 'resolved'
+                      ? theme.primary
+                      : issueStatus === 'pending_approval'
+                        ? '#FFC107'
+                        : '#FF6F3C',
                   fontSize: 11,
                   fontWeight: '400',
                   textTransform: 'capitalize',
@@ -118,39 +162,50 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
                 {issueStatus.replace(/_/g, ' ')}
               </Text>
             )}
-            {!isIssue && dueDateStatus && (
+            {/* Show due date for both issues and tasks */}
+            {dueDateStatus && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
-                <Feather name="calendar" size={12} color={dueDateStatus.color} style={{ marginRight: 2 }} />
-                <Text style={{ color: dueDateStatus.color, fontSize: 11, fontWeight: '500', maxWidth: 80 }} numberOfLines={1} ellipsizeMode="tail">
+                <Feather
+                  name="calendar"
+                  size={12}
+                  color={dueDateStatus.color}
+                  style={{ marginRight: 2 }}
+                />
+                <Text
+                  style={{
+                    color: dueDateStatus.color,
+                    fontSize: 11,
+                    fontWeight: '500',
+                    maxWidth: 80,
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail">
                   {dueDateStatus.text}
                 </Text>
               </View>
             )}
-            {!isIssue && !dueDateStatus && (
+            {!dueDateStatus && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
-                <Feather name="calendar" size={12} color={theme.secondaryText} style={{ marginRight: 2 }} />
-                <Text style={{ color: theme.secondaryText, fontSize: 11, fontWeight: '400', maxWidth: 60 }} numberOfLines={1} ellipsizeMode="tail">
+                <Feather
+                  name="calendar"
+                  size={12}
+                  color={theme.secondaryText}
+                  style={{ marginRight: 2 }}
+                />
+                <Text
+                  style={{
+                    color: theme.secondaryText,
+                    fontSize: 11,
+                    fontWeight: '400',
+                    maxWidth: 60,
+                  }}
+                  numberOfLines={1}
+                  ellipsizeMode="tail">
                   No due date
                 </Text>
               </View>
             )}
           </View>
-
-          {/* Second row: Due date info - only for issues */}
-          {isIssue && dueDateStatus && !dueDateStatus.isOverdue && (
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Feather name="calendar" size={12} color={dueDateStatus.color} style={{ marginRight: 4 }} />
-              <Text
-                style={[
-                  styles.dueDateText,
-                  { color: dueDateStatus.color, fontSize: 11 }
-                ]}
-                numberOfLines={1}
-              >
-                Due Date: {dueDate} ({dueDateStatus.text})
-              </Text>
-            </View>
-          )}
         </View>
       </View>
       {/* Compact thin progress bar */}
@@ -160,8 +215,9 @@ export default function TaskCard({ title, project, percent, theme, isIssue, issu
             styles.progressBar,
             {
               width: `${isIssue ? 100 : percent}%`,
-              backgroundColor: isIssue && isCritical ? '#FF0000' : isIssue ? '#FF5252' : theme.primary
-            }
+              backgroundColor:
+                isIssue && isCritical ? '#FF0000' : isIssue ? '#FF5252' : theme.primary,
+            },
           ]}
         />
       </View>
@@ -215,7 +271,10 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 1,
+    italic: true,
+    textAlign: 'center',
+    paddingHorizontal: 4,
   },
   content: {
     flex: 1,
@@ -257,7 +316,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-
   },
   progressText: {
     fontWeight: '400',
@@ -282,5 +340,43 @@ const styles = StyleSheet.create({
   progressBar: {
     height: 2,
     borderRadius: 0,
+  },
+  initialsCircle: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#007AFF',
+  },
+  initialsText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: '600',
+  },
+  tooltip: {
+    position: 'absolute',
+    top: 25,
+    right: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  tooltipText: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#333',
   },
 });

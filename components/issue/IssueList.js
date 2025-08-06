@@ -130,52 +130,63 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
               <View style={{ flex: 1 }}>
                 <View style={styles.issueRow}>
                   <View style={styles.issueTitleRow}>
-                    <Text style={[styles.issueName, { color: theme.text }]}>
-                      {item.title || item.issueTitle || 'Untitled'}
-                    </Text>
-                    {item.isCritical && (
-                      <View style={[styles.criticalTag, { backgroundColor: '#FF2700', paddingVertical: 1, paddingHorizontal: 6, borderRadius: 5, marginLeft: 6 }]}>
-                        <Text style={[styles.criticalTagText, { color: '#FFF', fontWeight: '500', fontSize: 10, letterSpacing: 0.2 }]}>Critical</Text>
-                      </View>
-                    )}
-                    {/* Issue Status Tag */}
-                    {item.issueStatus && (
-                      <View style={{
-                        backgroundColor:
-                          item.issueStatus === 'resolved'
-                            ? 'rgba(57, 201, 133, 0.13)'
-                            : item.issueStatus === 'pending_approval'
-                              ? 'rgba(255, 193, 7, 0.18)'
-                              : 'rgba(230, 117, 20, 0.08)',
-                        borderRadius: 5,
-                        paddingHorizontal: 6,
-                        paddingVertical: 1,
-                        marginLeft: 6,
-                        alignSelf: 'center',
-                        borderWidth: 0.5,
-                        borderColor:
-                          item.issueStatus === 'resolved'
-                            ? '#039855'
-                            : item.issueStatus === 'pending_approval'
-                              ? '#FFC107'
-                              : '#E67514',
-                      }}>
-                        <Text style={{
-                          color:
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'nowrap', minHeight: 22 }}>
+                      <Text
+                        style={[styles.issueName, { color: theme.text, flexShrink: 1, maxWidth: '60%' }]}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {item.title || item.issueTitle || 'Untitled'}
+                      </Text>
+                      {item.isCritical && (
+                        <View style={[styles.criticalTag, { backgroundColor: '#FF2700', paddingVertical: 1, paddingHorizontal: 6, borderRadius: 5, marginLeft: 6 }]}> 
+                          <Text style={[styles.criticalTagText, { color: '#FFF', fontWeight: '500', fontSize: 10, letterSpacing: 0.2 }]}>Critical</Text>
+                        </View>
+                      )}
+                      {/* Issue Status Tag */}
+                      {item.issueStatus && (
+                        <View style={{
+                          backgroundColor:
+                            item.issueStatus === 'resolved'
+                              ? 'rgba(57, 201, 133, 0.13)'
+                              : item.issueStatus === 'pending_approval'
+                                ? 'rgba(255, 193, 7, 0.18)'
+                                : 'rgba(230, 117, 20, 0.08)',
+                          borderRadius: 5,
+                          paddingHorizontal: 6,
+                          paddingVertical: 1,
+                          marginLeft: 6,
+                          alignSelf: 'center',
+                          borderWidth: 0.5,
+                          borderColor:
                             item.issueStatus === 'resolved'
                               ? '#039855'
                               : item.issueStatus === 'pending_approval'
                                 ? '#FFC107'
                                 : '#E67514',
-                          fontWeight: '500',
-                          fontSize: 10,
-                          textTransform: 'capitalize',
-                          letterSpacing: 0.2,
+                          maxWidth: 90,
                         }}>
-                          {item.issueStatus.replace(/_/g, ' ')}
-                        </Text>
-                      </View>
-                    )}
+                          <Text style={{
+                            color:
+                              item.issueStatus === 'resolved'
+                                ? '#039855'
+                                : item.issueStatus === 'pending_approval'
+                                  ? '#FFC107'
+                                  : '#E67514',
+                            fontWeight: '500',
+                            fontSize: 10,
+                            textTransform: 'capitalize',
+                            letterSpacing: 0.2,
+                            flexShrink: 1,
+                          }}
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                          >
+                            {item.issueStatus.replace(/_/g, ' ')}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
                 </View>
                 <View style={styles.issueRow}>

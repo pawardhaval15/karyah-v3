@@ -77,9 +77,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [projectTasks, setProjectTasks] = useState([]);
   const [worklists, setWorklists] = useState([]);
   const [projects, setProjects] = useState([]);
-  // Chat attachments state is now managed here for per-attachment removal
-  const [chatAttachments, setChatAttachments] = useState([]);
-  const [chatAttaching, setChatAttaching] = useState(false);
   const isInitialProgressSet = useRef(false);
   const isSlidingRef = useRef(false);
   const [menuVisible, setMenuVisible] = useState(false);
@@ -109,34 +106,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
     }
   }, [task?.progress, editableProgress]);
 
-  const { pickAttachment: pickChatAttachment, clearAttachments: clearChatAttachments } =
-    useAttachmentPicker();
-  // Handler to pick and add attachments for chat
-  const handlePickChatAttachment = async (type) => {
-    setChatAttaching(true);
-    try {
-      const files = await pickChatAttachment(type);
-      if (files && Array.isArray(files)) {
-        setChatAttachments((prev) => [...prev, ...files]);
-      } else if (files) {
-        setChatAttachments((prev) => [...prev, files]);
-      }
-    } catch (e) {
-      // Optionally log error
-    }
-    setChatAttaching(false);
-  };
-
-  // Handler to clear all chat attachments
-  const handleClearChatAttachments = () => {
-    setChatAttachments([]);
-    clearChatAttachments();
-  };
-
-  // Handler to remove a single chat attachment by index
-  const handleRemoveChatAttachment = (idx) => {
-    setChatAttachments((prev) => prev.filter((_, i) => i !== idx));
-  };
   const [showAssignedUserPopup, setShowAssignedUserPopup] = useState(false);
   const [showCreatorPopup, setShowCreatorPopup] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
@@ -210,23 +179,27 @@ export default function TaskDetailsScreen({ route, navigation }) {
     }
   }, [showTaskChat, task]);
 
-  const handleSendChatMessage = async (msg, attachments = []) => {
+  const handleSendChatMessage = async (msg, attachments = [], mentions = []) => {
     try {
-      setChatLoading(true);
-      // Always send a non-empty string for message
+      // Don't set loading state - let the popup handle optimistic updates
       const safeMsg = msg && msg.trim() ? msg : attachments.length > 0 ? ' ' : '';
       if (!safeMsg && attachments.length === 0) return; // nothing to send
+      
       const newMsg = await sendTaskMessage({
         taskId: task.id || task._id || task.taskId,
         message: safeMsg,
         attachments: attachments,
+        mentions: mentions,
       });
+      
+      // Add the server response to messages (this will replace the optimistic message)
       setChatMessages((prev) => [...prev, newMsg]);
-      clearChatAttachments();
     } catch (err) {
+      // Handle error - the popup will show failed status
+      console.error('Failed to send message:', err);
       Alert.alert('Error', err.message || 'Failed to send message');
+      throw err; // Re-throw so the popup can handle the error state
     }
-    setChatLoading(false);
   };
 
   useEffect(() => {
@@ -538,12 +511,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
           theme={theme}
           currentUserId={currentUserId}
           loading={chatLoading}
-          attachments={chatAttachments}
-          setAttachments={setChatAttachments}
-          pickAttachment={handlePickChatAttachment}
-          clearAttachments={handleClearChatAttachments}
-          removeAttachment={handleRemoveChatAttachment}
-          attaching={chatAttaching}
+          users={users}
+          task={task}
         />
         {task && typeof editableProgress === 'number' && (
           <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>
@@ -787,6 +756,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           }
           theme={theme}
         />
+
         <FieldBox
           label="ADD NEW ATTACHMENTS"
           value=""

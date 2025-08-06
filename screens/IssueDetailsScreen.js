@@ -683,11 +683,17 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 <Text
                   style={{
                     fontWeight: '400',
-                    paddingHorizontal: 6,
+                    paddingHorizontal: 0,
                     fontSize: 16,
                     color: theme.text,
                   }}>
                   Resolve Issue
+                </Text>
+              </View>
+              {/* Note for attachments and description */}
+              <View style={{ marginHorizontal: 20, marginBottom: 8 }}>
+                <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '500' }}>
+                  Note: You must add at least one attachment and enter a description to submit the resolution.
                 </Text>
               </View>
               <View
