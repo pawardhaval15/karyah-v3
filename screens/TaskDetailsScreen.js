@@ -30,11 +30,11 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import {
+  deleteTask,
   getTaskDetailsById,
   getTasksByProjectId,
   updateTaskDetails,
   updateTaskProgress,
-  deleteTask,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
@@ -604,7 +604,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         )}
         <FieldBox
-          label="Selected Project"
+          label="SELECTED PROJECT"
           value={
             typeof task.projectName === 'object'
               ? typeof task.projectName.name === 'string'
@@ -617,7 +617,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           theme={theme}
         />
         <FieldBox
-          label="Selected Worklist"
+          label="SELECTED WORKLIST"
           value={
             Array.isArray(worklists)
               ? worklists.find((wl) => wl.id === task.worklistId)?.name || '-'
@@ -627,156 +627,130 @@ export default function TaskDetailsScreen({ route, navigation }) {
         />
         {/* Dates and status */}
         <View style={styles.dateRow}>
-          <DateBox label="Start Date" value={new Date(task.startDate)} theme={theme} />
-          <DateBox label="End Date" value={new Date(task.endDate)} theme={theme} />
+          <DateBox label="START DATE" value={new Date(task.startDate)} theme={theme} />
+          <DateBox label="END DATE" value={new Date(task.endDate)} theme={theme} />
         </View>
-        <TouchableOpacity
-          onPress={() => {
-            setCoAdminListPopupTitle('Assigned Users');
-            setCoAdminListPopupData(task.assignedUserDetails || []);
-            setShowCoAdminListPopup(true);
-          }}
-          activeOpacity={0.85}
-          style={[
-            styles.fieldBox,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            },
-          ]}>
-          <Text style={[styles.inputLabel, { color: theme.text, flex: 1 }]}>Assigned Users</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {task.assignedUserDetails?.slice(0, 6).map((user, index) => {
-              const hasPhoto = user.profilePhoto && user.profilePhoto !== '';
-              return (
-                <View
-                  key={user.userId}
-                  style={{
-                    marginLeft: index === 0 ? 0 : -12,
-                    zIndex: 10 - index,
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    borderWidth: 1.5,
-                    borderColor: theme.primary,
-                    backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}>
-                  {hasPhoto ? (
-                    <Image
-                      source={{ uri: user.profilePhoto }}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                      }}
-                      onError={() => {
-                        user.profilePhoto = '';
-                      }}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                      }}
-                    />
-                  )}
-                </View>
-              );
-            })}
-            {task.assignedUserDetails?.length > 6 && (
-              <View
-                style={{
-                  marginLeft: -12,
-                  zIndex: 0,
-                  width: 32,
-                  height: 32,
-                  borderRadius: 16,
-                  backgroundColor: theme.buttonBg,
-                  borderWidth: 1.5,
-                  borderColor: theme.primary,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 12 }}>
-                  +{task.assignedUserDetails.length - 6}
+        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6, paddingTop: 6 }]}>
+              ASSIGNED USERS
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setCoAdminListPopupTitle('Assigned Users');
+                setCoAdminListPopupData(task.assignedUserDetails || []);
+                setShowCoAdminListPopup(true);
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              
+              {/* User names */}
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text  style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
+                  {task.assignedUserDetails?.length > 0 
+                    ? task.assignedUserDetails.slice(0, 2).map(user => user.name).join(', ') + 
+                      (task.assignedUserDetails.length > 2 ? ` +${task.assignedUserDetails.length - 2} more` : '')
+                    : 'No users assigned'
+                  }
                 </Text>
               </View>
-            )}
+
+              {/* Stacked avatars */}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                {task.assignedUserDetails?.slice(0, 4).map((user, index) => {
+                  const hasPhoto = user.profilePhoto && user.profilePhoto !== '';
+                  return (
+                    <View
+                      key={user.userId || index}
+                      style={{
+                        marginLeft: index === 0 ? 0 : -16,
+                        zIndex: task.assignedUserDetails.length - index,
+                      }}>
+                      <Image
+                        source={{
+                          uri: hasPhoto 
+                            ? user.profilePhoto 
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`
+                        }}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          borderWidth: 2,
+                          borderColor: theme.primary,
+                          backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
+                        }}
+                      />
+                    </View>
+                  );
+                })}
+                {task.assignedUserDetails?.length > 4 && (
+                  <View
+                    style={{
+                      marginLeft: -16,
+                      zIndex: 0,
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: theme.buttonBg,
+                      borderWidth: 2,
+                      borderColor: theme.primary,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}>
+                    <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 12 }}>
+                      +{task.assignedUserDetails.length - 4}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-        {/* Task Creator */}
-        <TouchableOpacity
-          onPress={() => {
-            setCoAdminListPopupTitle('Task Creator');
-            setCoAdminListPopupData(
-              task.creatorName ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }] : []
-            );
-            setShowCoAdminListPopup(true);
-          }}
-          activeOpacity={0.85}
-          style={[
-            styles.fieldBox,
-            {
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            },
-          ]}>
-          <Text style={[styles.inputLabel, { color: theme.text, flex: 1 }]}>Task Creator</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            {(() => {
-              const hasPhoto = task.creatorPhoto && task.creatorPhoto !== '';
-              return (
-                <View
+        </View>
+        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8, paddingTop: 6 }]}>
+              TASK CREATOR
+            </Text>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setCoAdminListPopupTitle('Task Creator');
+                setCoAdminListPopupData(
+                  task.creatorName ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }] : []
+                );
+                setShowCoAdminListPopup(true);
+              }}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              
+              {/* Creator name */}
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
+                  {task.creatorName || 'Unknown Creator'}
+                </Text>
+              </View>
+
+              {/* Creator avatar */}
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Image
+                  source={{
+                    uri: task.creatorPhoto && task.creatorPhoto !== ''
+                      ? task.creatorPhoto 
+                      : `https://ui-avatars.com/api/?name=${encodeURIComponent(task.creatorName || 'Creator')}&background=random`
+                  }}
                   style={{
-                    width: 32,
-                    height: 32,
-                    borderRadius: 16,
-                    borderWidth: 1.5,
+                    width: 40,
+                    height: 40,
+                    borderRadius: 20,
+                    borderWidth: 2,
                     borderColor: theme.primary,
                     backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                  }}>
-                  {hasPhoto ? (
-                    <Image
-                      source={{ uri: task.creatorPhoto }}
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 16,
-                      }}
-                      onError={() => {
-                        task.creatorPhoto = '';
-                      }}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
-                      style={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: 14,
-                      }}
-                    />
-                  )}
-                </View>
-              );
-            })()}
+                  }}
+                />
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
+        </View>
         <CoAdminListPopup
           visible={showCoAdminListPopup}
           onClose={() => setShowCoAdminListPopup(false)}
@@ -785,75 +759,60 @@ export default function TaskDetailsScreen({ route, navigation }) {
           title={coAdminListPopupTitle}
         />
         <FieldBox
-          label="Added Attachments"
+          label="ADDED ATTACHMENTS"
           value=""
-          placeholder="Added Attachments"
+          placeholder="No attachments added"
           rightComponent={
             allAttachments.length > 0 && (
               <TouchableOpacity
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
-                  paddingVertical: 0,
-                  paddingHorizontal: 6,
-                  backgroundColor: theme.secCard,
+                  paddingVertical: 6,
+                  paddingHorizontal: 12,
+                  backgroundColor: theme.primary,
                   borderRadius: 8,
                   justifyContent: 'center',
-                  alignSelf: 'center',
                 }}
                 onPress={() => {
                   setDrawerVisible(true);
                   setDrawerAttachments(task.images || []);
                 }}>
-                <MaterialIcons name="folder" size={18} color={theme.primary} />
-                <Text style={{ color: theme.primary, fontWeight: '500' }}> Open</Text>
+                <MaterialIcons name="folder" size={16} color="#fff" />
+                <Text style={{ color: '#fff', fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
+                  View ({allAttachments.length})
+                </Text>
               </TouchableOpacity>
             )
           }
           theme={theme}
-          containerStyle={{ alignItems: 'center' }}
         />
         <FieldBox
-          label="Add Attachments"
+          label="ADD NEW ATTACHMENTS"
           value=""
-          placeholder="Add Attachments"
+          placeholder="Tap to add attachments"
           rightComponent={
             <TouchableOpacity
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
-                paddingVertical: 0,
-                paddingHorizontal: 6,
+                paddingVertical: 6,
+                paddingHorizontal: 12,
                 backgroundColor: theme.secCard,
                 borderRadius: 8,
                 justifyContent: 'center',
-                alignSelf: 'center',
               }}
-              onPress={() => {
-                setShowAttachmentSheet(true);
-              }}>
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder=""
-                placeholderTextColor={theme.secondaryText}
-                editable={false}
-              />
-              <Feather
-                name="paperclip"
-                size={20}
-                color="#888"
-                style={styles.inputIcon}
-                onPress={() => setShowAttachmentSheet(true)}
-              />
-              {(uploadingAttachment || attaching) && (
-                <Text style={{ color: theme.primary, marginLeft: 8 }}>
-                  {uploadingAttachment ? 'Uploading...' : 'Attaching...'}
-                </Text>
-              )}
+              onPress={() => setShowAttachmentSheet(true)}>
+              <Feather name="paperclip" size={16} color={theme.primary} />
+              <Text style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
+                {(uploadingAttachment || attaching) 
+                  ? (uploadingAttachment ? 'Uploading...' : 'Attaching...') 
+                  : 'Add Files'
+                }
+              </Text>
             </TouchableOpacity>
           }
           theme={theme}
-          containerStyle={{ alignItems: 'center' }}
         />
         {newAttachments.length > 0 && (
           <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
@@ -984,7 +943,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           }}
         />
         <FieldBox
-          label="Description"
+          label="DESCRIPTION"
           value={task.description || ''}
           editable={false}
           multiline={true}
@@ -1548,9 +1507,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   inputLabel: {
-    fontSize: 16,
-    fontWeight: '400',
+    fontSize: 10,
+    fontWeight: '500',
     color: '#222',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   fieldIcon: {
     marginRight: 10,

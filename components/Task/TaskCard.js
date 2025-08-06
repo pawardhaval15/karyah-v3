@@ -35,11 +35,11 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
           <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>
             Assigned To:&nbsp;
           </Text>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', maxWidth: '60%' }}>
             {assignedUsers.slice(0, 2).map((user, idx) => (
               <View
                 key={user.id || idx}
-                style={{ flexDirection: 'row', alignItems: 'center', marginRight: 6, marginBottom: 2 }}
+                style={{ flexDirection: 'row', alignItems: 'center', marginRight: 4 }}
               >
                 {user.profileImage ? (
                   <Image
@@ -75,22 +75,14 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
                   </View>
                 )}
                 <Text 
-                  style={[styles.taskInfo, { color: theme.secondaryText, marginLeft: 0, maxWidth: 80 }]} 
+                  style={[styles.taskInfo, { color: theme.secondaryText, marginLeft: 0, maxWidth: 60 }]} 
                   numberOfLines={1} 
                   ellipsizeMode="tail"
                 >
                   {user.name}
                 </Text>
-                {idx < assignedUsers.slice(0, 2).length - 1 && (
-                  <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>, </Text>
-                )}
               </View>
             ))}
-            {assignedUsers.length > 2 && (
-              <Text style={[styles.taskInfo, { color: theme.primary, fontWeight: '500' }]}>
-                +{assignedUsers.length - 2} more
-              </Text>
-            )}
           </View>
         </View>
       </View>

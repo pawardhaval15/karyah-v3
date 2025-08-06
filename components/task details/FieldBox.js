@@ -18,8 +18,7 @@ export default function FieldBox({
 }) {
     return (
         <View style={[styles.wrapper, containerStyle]}>
-            {/* {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>} */}
-            {/* {subtitle && <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{subtitle}</Text>} */}
+            {subtitle && <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{subtitle}</Text>}
             <TouchableOpacity
                 style={[
                     styles.fieldBox,
@@ -30,23 +29,27 @@ export default function FieldBox({
                 onPress={onPress}
                 disabled={!editable && !onPress}
             >
-                {icon && <View style={styles.fieldIcon}>{icon}</View>}
-                <TextInput
-                    style={[
-                        styles.fieldInput,
-                        { color: theme.text },
-                        multiline && styles.fieldInputMultiline, { color: theme.text },
-                        inputStyle
-                    ]}
-                    value={value}
-                    editable={editable}
-                    placeholder={placeholder}
-                    placeholderTextColor={theme.secondaryText}
-                    multiline={multiline}
-                    onChangeText={onChangeText} // <-- add this line
-
-                />
-                {rightComponent}
+                <View style={styles.fieldContent}>
+                    {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>}
+                    <View style={styles.inputRow}>
+                        {icon && <View style={styles.fieldIcon}>{icon}</View>}
+                        <TextInput
+                            style={[
+                                styles.fieldInput,
+                                { color: theme.text },
+                                multiline && styles.fieldInputMultiline, { color: theme.text },
+                                inputStyle
+                            ]}
+                            value={value}
+                            editable={editable}
+                            placeholder={placeholder}
+                            placeholderTextColor={theme.secondaryText}
+                            multiline={multiline}
+                            onChangeText={onChangeText}
+                        />
+                        {rightComponent}
+                    </View>
+                </View>
             </TouchableOpacity>
         </View>
     );
@@ -58,10 +61,12 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     label: {
-        fontSize: 15,
-        fontWeight: 'bold',
+        fontSize: 10,
+        fontWeight: '500',
         color: '#222',
-        marginBottom: 2,
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     subtitle: {
         fontSize: 13,
@@ -69,20 +74,25 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     fieldBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         paddingHorizontal: 14,
         paddingVertical:12,
+        minHeight: 54,
     },
     fieldBoxMultiline: {
-        height: 84, // double the normal h eight
-        alignItems: 'flex-start',
+        minHeight: 84,
         paddingTop: 12,
         paddingBottom: 12,
+    },
+    fieldContent: {
+        flex: 1,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     fieldIcon: {
         marginRight: 10,

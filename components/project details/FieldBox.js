@@ -1,4 +1,4 @@
-import { StyleSheet, TextInput, TouchableOpacity, View, Text } from 'react-native';
+import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function FieldBox({
     label,
@@ -15,8 +15,7 @@ export default function FieldBox({
 }) {
     return (
         <View style={styles.wrapper}>
-            {/* {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>} */}
-            {/* {subtitle && <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{subtitle}</Text>} */}
+            {subtitle && <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{subtitle}</Text>}
             <TouchableOpacity
                 style={[
                     styles.fieldBox,
@@ -27,21 +26,26 @@ export default function FieldBox({
                 onPress={onPress}
                 disabled={!editable && !onPress}
             >
-                {icon && <View style={styles.fieldIcon}>{icon}</View>}
-                <TextInput
-                    style={[
-                        styles.fieldInput,
-                        { color: theme.text },
-                        multiline && styles.fieldInputMultiline,
-                        inputStyle
-                    ]}
-                    value={value}
-                    editable={editable}
-                    placeholder={placeholder}
-                    placeholderTextColor={theme.secondaryText}
-                    multiline={multiline}
-                />
-                {rightComponent}
+                <View style={styles.fieldContent}>
+                    {label && <Text style={[styles.label, { color: theme.text }]}>{label}</Text>}
+                    <View style={styles.inputRow}>
+                        {icon && <View style={styles.fieldIcon}>{icon}</View>}
+                        <TextInput
+                            style={[
+                                styles.fieldInput,
+                                { color: theme.text },
+                                multiline && styles.fieldInputMultiline,
+                                inputStyle
+                            ]}
+                            value={value}
+                            editable={editable}
+                            placeholder={placeholder}
+                            placeholderTextColor={theme.secondaryText}
+                            multiline={multiline}
+                        />
+                        {rightComponent}
+                    </View>
+                </View>
             </TouchableOpacity>
         </View>
     );
@@ -53,10 +57,14 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     label: {
-        fontSize: 15,
+        fontSize: 10,
         fontWeight: '400',
         color: '#222',
-        marginBottom: 2,
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        lineHeight: 14,
+        textAlign: 'left',
     },
     subtitle: {
         fontSize: 13,
@@ -64,20 +72,25 @@ const styles = StyleSheet.create({
         marginBottom: 6,
     },
     fieldBox: {
-        flexDirection: 'row',
-        alignItems: 'center',
         backgroundColor: '#fff',
         borderRadius: 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
         paddingHorizontal: 14,
         paddingVertical: 12,
+        minHeight: 54,
     },
     fieldBoxMultiline: {
-        height: 108, // double the normal height
-        alignItems: 'flex-start',
+        minHeight: 108,
         paddingTop: 12,
         paddingBottom: 12,
+    },
+    fieldContent: {
+        flex: 1,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     fieldIcon: {
         marginRight: 10,

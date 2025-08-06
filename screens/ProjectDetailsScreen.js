@@ -197,7 +197,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
             Task Dependency Flow
           </Text>
-        </TouchableOpacity>
+        </TouchableOpacity>    
         <View style={styles.progressSection}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
             Progress <Text style={{ color: theme.success }}>{projectDetails.progress || 0}%</Text>
@@ -219,24 +219,24 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         </View>
         <View style={styles.dateRow}>
           <DateBox
-            label="Start Date"
+            label="START DATE"
             value={projectDetails.startDate?.split('T')[0] || '-'}
             theme={theme}
           />
           <DateBox
-            label="End Date"
+            label="END DATE"
             value={projectDetails.endDate?.split('T')[0] || '-'}
             theme={theme}
           />
         </View>
         <FieldBox
-          label="Project Category"
+          label="PROJECT CATEGORY"
           value={projectDetails.projectCategory}
           placeholder="Project Category"
           theme={theme}
         />
         <FieldBox
-          label="Location"
+          label="LOCATION"
           value={projectDetails.location}
           placeholder="Location"
           theme={theme}
@@ -245,7 +245,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           {/* Row with label and avatars spaced */}
           <View style={{ flex: 1 }}>
             <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
-              Co-Admins
+              CO-ADMINS
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
@@ -300,19 +300,16 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         <View
           style={[
             styles.fieldBox,
-            { backgroundColor: theme.card, borderColor: theme.border, maxHeight: 140 },
+            { backgroundColor: theme.card, borderColor: theme.border, maxHeight: 140, flexDirection: 'column', alignItems: 'flex-start' },
           ]}>
-          {(!projectDetails.description || projectDetails.description.trim() === '') && (
-            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
-              Description
-            </Text>
-          )}
-          <ScrollView style={{ maxHeight: 100 }}>
+          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
+            DESCRIPTION
+          </Text>
+          <ScrollView style={{ maxHeight: 100, width: '100%' }}>
             <Text style={[styles.inputValue, { color: theme.text }]}>
               {projectDetails.description && projectDetails.description.trim() !== ''
                 ? projectDetails.description
-                : ''}{' '}
-              {/* Show empty string instead of placeholder */}
+                : 'No description available'}
             </Text>
           </ScrollView>
         </View>
@@ -540,7 +537,7 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: 20,
+    marginHorizontal: 24,
     marginBottom: 12,
     gap: 8,
   },
@@ -577,10 +574,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   inputLabel: {
-    color: '#222',
-    fontWeight: '400',
-    fontSize: 14,
-    marginBottom: 2,
+     fontSize: 10,
+        fontWeight: '400',
+        color: '#222',
+        marginBottom: 6,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        lineHeight: 14,
+        textAlign: 'left',
   },
   inputValue: {
     color: '#444',
