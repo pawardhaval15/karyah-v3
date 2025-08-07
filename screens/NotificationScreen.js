@@ -26,7 +26,7 @@ import {
 import { markNotificationAsRead } from '../utils/notifications';
 
 const NotificationScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('Critical');
+  const [activeTab, setActiveTab] = useState('CRITICAL');
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -35,7 +35,7 @@ const NotificationScreen = ({ navigation }) => {
   const messageAnim = useRef(new Animated.Value(0)).current;
   const theme = useTheme();
 
-  const tabs = ['Critical', 'Task', 'All', 'Connections'];
+  const tabs = ['Critical', 'Task', 'Connections', 'All'];
 
 
   const loadNotifications = useCallback(async () => {
@@ -44,7 +44,7 @@ const NotificationScreen = ({ navigation }) => {
       if (!Array.isArray(data)) throw new Error('Invalid notification data');
       setNotifications(data);
     } catch (err) {
-      console.log('Load Error:', err.message);
+      // console.log('Load Error:', err.message);
     }
   }, []);
 
@@ -55,10 +55,10 @@ const NotificationScreen = ({ navigation }) => {
 
       // Only log if we actually got some data
       if (data && data.length > 0) {
-        console.log('Loaded pending requests:', data.length);
+        // console.log('Loaded pending requests:', data.length);
       }
     } catch (err) {
-      console.log('Pending Requests Error (gracefully handled):', err.message);
+      // console.log('Pending Requests Error (gracefully handled):', err.message);
       setPendingRequests([]); // Set to empty array on error
     }
   }, []);
@@ -134,7 +134,8 @@ const NotificationScreen = ({ navigation }) => {
   const getFilteredNotifications = () => {
     switch (activeTab) {
       case 'CRITICAL':
-        return notifications.filter((n) => /0\sday\(s\)(\sleft|\sremaining)/i.test(n.message));
+        return notifications.filter((n) => n.type?.toLowerCase() === 'issue');
+
       case 'TASK':
         return notifications.filter((n) => n.type?.toLowerCase() === 'task');
       case 'CONNECTIONS':
@@ -189,6 +190,19 @@ const NotificationScreen = ({ navigation }) => {
         >
           {tabs.map((tab) => {
             const isActive = activeTab.toLowerCase() === tab.toLowerCase();
+
+            // Determine count based on tab
+            const count =
+              tab.toLowerCase() === 'all'
+                ? notifications.length
+                : tab.toLowerCase() === 'connections'
+                  ? pendingRequests.length
+                  : tab.toLowerCase() === 'critical'
+                    ? notifications.filter((n) => n.type?.toLowerCase() === 'issue').length
+                    : tab.toLowerCase() === 'task'
+                      ? notifications.filter((n) => n.type?.toLowerCase() === 'task').length
+                      : 0;
+
             return (
               <TouchableOpacity
                 key={tab}
@@ -200,38 +214,47 @@ const NotificationScreen = ({ navigation }) => {
                 ]}
                 onPress={() => setActiveTab(tab.toUpperCase())}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    isActive
-                      ? { color: '#fff', fontWeight: '600' }
-                      : { color: theme.text, fontWeight: '400' },
-                  ]}
-                >
-                  {tab}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <Text
                     style={[
-                      styles.countSmall,
-                      isActive && { color: '#fff', fontWeight: '600' },
+                      styles.tabText,
+                      isActive
+                        ? { color: '#fff', fontWeight: '600' }
+                        : { color: theme.text, fontWeight: '400' },
                     ]}
                   >
-                    {' '}
-                    {
-                      tab.toLowerCase() === 'all'
-                        ? notifications.length
-                        : tab.toLowerCase() === 'connections'
-                          ? pendingRequests.length
-                          : tab.toLowerCase() === 'critical'
-                            ? notifications.filter((n) => n.type?.toLowerCase() === 'issue').length
-                            : tab.toLowerCase() === 'task'
-                              ? notifications.filter((n) => n.type?.toLowerCase() === 'task').length
-                              : 0
-                    }
+                    {tab}
                   </Text>
-                </Text>
+                  {count > 0 && (
+                    <View
+                      style={{
+                        minWidth: 20,
+                        height: 20,
+                        borderRadius: 10,
+                        backgroundColor: isActive
+                          ? 'rgba(255,255,255,0.3)'
+                          : theme.primary + '33', // semi-transparent primary
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        paddingHorizontal: 6,
+                      }}
+                    >
+                      <Text
+                        style={{
+                          color: isActive ? '#fff' : theme.primary,
+                          fontSize: 12,
+                          fontWeight: '700',
+                        }}
+                      >
+                        {count}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </TouchableOpacity>
             );
           })}
+
         </ScrollView>
       </View>
       {/* Body */}
@@ -452,7 +475,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     paddingVertical: 8,
-    paddingHorizontal: 18,
+    paddingHorizontal: 17,
     borderRadius: 20,
     marginRight: 8,
     borderWidth: 1,

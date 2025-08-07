@@ -13,7 +13,7 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
   } else if (statusTab === 'pending_approval') {
     filteredIssues = issues.filter(i => i.issueStatus === 'pending_approval');
   }
-
+  // console.log(issues);
   filteredIssues = filteredIssues.slice().sort((a, b) => {
     // Helper to classify priority
     const getPriority = (issue) => {
@@ -94,12 +94,33 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
               color: statusTab === tab.key ? '#fff' : theme.secondaryText,
               fontSize: 13,
               fontWeight: '500',
+              marginRight: tab.count > 0 ? 4 : 0,
             }}>
               {tab.label}
-              <Text style={{ fontSize: 12, fontWeight: '400', marginLeft: 4, color: statusTab === tab.key ? '#fff' : theme.secondaryText }}>
-                {' '}{tab.count}
-              </Text>
             </Text>
+            {tab.count > 0 && (
+              <View
+                style={{
+                  minWidth: 20,
+                  height: 20,
+                  paddingHorizontal: 5,
+                  borderRadius: 10,
+                  backgroundColor: statusTab === tab.key
+                    ? 'rgba(255,255,255,0.3)'
+                    : tab.color + '20',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginLeft: 2,
+                }}>
+                <Text style={{
+                  color: statusTab === tab.key ? '#fff' : tab.color,
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                }}>
+                  {tab.count}
+                </Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>
@@ -110,7 +131,8 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
       >
         {filteredIssues.map((item, idx) => (
           <TouchableOpacity
-            key={(item.title || item.issueTitle || 'issue') + idx}
+            key={item.issueId || (item.title || item.issueTitle || 'issue') + idx}
+
             activeOpacity={0.8}
             onPress={() => onPressIssue(item)}
           >
@@ -139,7 +161,7 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
                         {item.title || item.issueTitle || 'Untitled'}
                       </Text>
                       {item.isCritical && (
-                        <View style={[styles.criticalTag, { backgroundColor: '#FF2700', paddingVertical: 1, paddingHorizontal: 6, borderRadius: 5, marginLeft: 6 }]}> 
+                        <View style={[styles.criticalTag, { backgroundColor: '#FF2700', paddingVertical: 1, paddingHorizontal: 6, borderRadius: 5, marginLeft: 6 }]}>
                           <Text style={[styles.criticalTagText, { color: '#FFF', fontWeight: '500', fontSize: 10, letterSpacing: 0.2 }]}>Critical</Text>
                         </View>
                       )}
@@ -197,6 +219,12 @@ export default function IssueList({ issues, onPressIssue, navigation, styles, th
                       : `Assigned to ${item.assignToUserName || 'N/A'}`}
                   </Text>
                 </View>
+              </View>
+              <View style={styles.issueRow}>
+                <Feather name="map-pin" size={14} color={theme.secondaryText} />
+                <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
+                  {item.projectLocation || item.project?.location || 'No location'}
+                </Text>
               </View>
               <View style={styles.chevronBox}>
                 <Feather name="chevron-right" size={24} color={theme.text} />

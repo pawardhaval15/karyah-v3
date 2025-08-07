@@ -47,6 +47,7 @@ export default function IssuesScreen({ navigation }) {
         progress: [],     // Optional: if progress applies to issues
         projects: [],
         assignedTo: [],
+        locations: [], // Optional: if you have location-based filtering
     });
     // Show/hide filters panel
     const [showFilters, setShowFilters] = useState(false);
@@ -64,6 +65,7 @@ export default function IssuesScreen({ navigation }) {
             progress: [],
             projects: [],
             assignedTo: [],
+            locations: [], // Reset all filters
         });
     };
     const getActiveFiltersCount = () => {
@@ -77,6 +79,10 @@ export default function IssuesScreen({ navigation }) {
             ? currentIssues.map(issue => issue.creatorName || issue.creator?.name).filter(Boolean)
             : currentIssues.map(issue => issue.assignToUserName || issue.assignTo?.name).filter(Boolean)
     ));
+    const locationOptions = Array.from(
+        new Set(currentIssues.map(issue => issue.projectLocation).filter(Boolean))
+    );
+
 
     const handleRefresh = async () => {
         setRefreshing(true);
@@ -89,6 +95,7 @@ export default function IssuesScreen({ navigation }) {
                 fetchProjectsByUser(),
                 fetchUserConnections()
             ]);
+            console.log(`Fetched assignedIssues: ${assigned ? assigned.length : 0}`);
             setAssignedIssues(assigned || []);
             setCreatedIssues(created || []);
             setProjects(projects || []);
@@ -166,7 +173,12 @@ export default function IssuesScreen({ navigation }) {
                         assignedMatch = filters.assignedTo.includes(assignedToName);
                     }
                 }
-                return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && assignedMatch;
+                const location = item.projectLocation || '';  // use projectLocation field
+                const locationMatch =
+                    filters.locations.length === 0 ||
+                    filters.locations.includes(location);
+
+                return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch;
             })
             .sort((a, b) => {
                 // Unresolved first, then resolved
@@ -376,6 +388,7 @@ export default function IssuesScreen({ navigation }) {
                                 </ScrollView>
                             </View>
                         )}
+
                         {/* Assigned To/By Filter */}
                         {assignedOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
@@ -404,6 +417,52 @@ export default function IssuesScreen({ navigation }) {
                                 </ScrollView>
                             </View>
                         )}
+                        {/* Location Filter */}
+                        {locationOptions.length > 0 && (
+                            <View style={styles.compactFilterSection}>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Location</Text>
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator={false}
+                                    style={styles.horizontalScroll}
+                                >
+                                    <View style={styles.compactChipsRow}>
+                                        {locationOptions.map(location => (
+                                            <TouchableOpacity
+                                                key={location}
+                                                style={[
+                                                    styles.compactChip,
+                                                    {
+                                                        backgroundColor: filters.locations.includes(location)
+                                                            ? theme.primary
+                                                            : 'transparent',
+                                                        borderColor: filters.locations.includes(location)
+                                                            ? theme.primary
+                                                            : theme.border,
+                                                    },
+                                                ]}
+                                                onPress={() => toggleFilter('locations', location)}
+                                            >
+                                                <Text
+                                                    style={[
+                                                        styles.compactChipText,
+                                                        {
+                                                            color: filters.locations.includes(location)
+                                                                ? '#fff'
+                                                                : theme.text,
+                                                        },
+                                                    ]}
+                                                    numberOfLines={1}
+                                                >
+                                                    {location.length > 10 ? location.substring(0, 10) + '...' : location}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </ScrollView>
+                            </View>
+                        )}
+
                     </ScrollView>
                 </View>
             )}

@@ -39,30 +39,30 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   );
 
   // Sort issues: critical first, then by creation date (newest first)
-  const sortedData = activeTab === 'issues' 
+  const sortedData = activeTab === 'issues'
     ? filtered.sort((a, b) => {
-        // First sort by critical status
-        if (a.isCritical && !b.isCritical) return -1;
-        if (!a.isCritical && b.isCritical) return 1;
-        
-        // Then sort by creation date (newest first)
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB.getTime() - dateA.getTime();
-      })
+      // First sort by critical status
+      if (a.isCritical && !b.isCritical) return -1;
+      if (!a.isCritical && b.isCritical) return 1;
+
+      // Then sort by creation date (newest first)
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB.getTime() - dateA.getTime();
+    })
     : filtered.sort((a, b) => {
-        // For tasks, sort by due date (closest first), then by creation date
-        const dueDateA = new Date(a.endDate || a.dueDate || 0);
-        const dueDateB = new Date(b.endDate || b.dueDate || 0);
-        
-        if (dueDateA.getTime() && dueDateB.getTime()) {
-          return dueDateA.getTime() - dueDateB.getTime();
-        }
-        
-        const dateA = new Date(a.createdAt || 0);
-        const dateB = new Date(b.createdAt || 0);
-        return dateB.getTime() - dateA.getTime();
-      });
+      // For tasks, sort by due date (closest first), then by creation date
+      const dueDateA = new Date(a.endDate || a.dueDate || 0);
+      const dueDateB = new Date(b.endDate || b.dueDate || 0);
+
+      if (dueDateA.getTime() && dueDateB.getTime()) {
+        return dueDateA.getTime() - dueDateB.getTime();
+      }
+
+      const dateA = new Date(a.createdAt || 0);
+      const dateB = new Date(b.createdAt || 0);
+      return dateB.getTime() - dateA.getTime();
+    });
 
   if (parentLoading || loading) {
     return (
@@ -95,7 +95,6 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
-
         <TouchableOpacity
           style={[
             styles.tabButton,
@@ -117,15 +116,31 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                 activeTab === 'issues' && styles.activeTabText,
               ]}>
               Issues
-              <Text
-                style={[
-                  styles.countsmall,
-                  activeTab === 'issues' ? { color: '#fff' } : { color: theme.text },
-                ]}>
-                {' '}
-                {issues.length}
-              </Text>
             </Text>
+            {issues.length > 0 && (
+              <View
+                style={{
+                  minWidth: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  backgroundColor: activeTab === 'issues'
+                    ? 'rgba(255,255,255,0.3)'
+                    : '#FF525230', // #FF5252 with alpha for light badge
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginLeft: 6,
+                  paddingHorizontal: 5,
+                }}>
+                <Text
+                  style={{
+                    color: activeTab === 'issues' ? '#fff' : '#FF5252',
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                  }}>
+                  {issues.length}
+                </Text>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
         <TouchableOpacity
@@ -149,18 +164,33 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                 activeTab === 'tasks' && styles.activeTabText,
               ]}>
               Tasks
-              <Text
-                style={[
-                  styles.countsmall,
-                  activeTab === 'tasks' ? { color: '#fff' } : { color: theme.text },
-                ]}>
-                {' '}
-                {tasks.length}
-              </Text>
             </Text>
+            {tasks.length > 0 && (
+              <View
+                style={{
+                  minWidth: 18,
+                  height: 18,
+                  borderRadius: 9,
+                  backgroundColor: activeTab === 'tasks'
+                    ? 'rgba(255,255,255,0.3)'
+                    : '#4CAF5030', // #4CAF50 with alpha for badge
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginLeft: 6,
+                  paddingHorizontal: 5,
+                }}>
+                <Text
+                  style={{
+                    color: activeTab === 'tasks' ? '#fff' : '#4CAF50',
+                    fontSize: 11,
+                    fontWeight: 'bold',
+                  }}>
+                  {tasks.length}
+                </Text>
+              </View>
+            )}
           </View>
         </TouchableOpacity>
-
       </ScrollView>
 
       {/* Search */}

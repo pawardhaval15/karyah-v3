@@ -184,14 +184,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
       // Don't set loading state - let the popup handle optimistic updates
       const safeMsg = msg && msg.trim() ? msg : attachments.length > 0 ? ' ' : '';
       if (!safeMsg && attachments.length === 0) return; // nothing to send
-      
+
       const newMsg = await sendTaskMessage({
         taskId: task.id || task._id || task.taskId,
         message: safeMsg,
         attachments: attachments,
         mentions: mentions,
       });
-      
+
       // Add the server response to messages (this will replace the optimistic message)
       setChatMessages((prev) => [...prev, newMsg]);
     } catch (err) {
@@ -542,7 +542,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 isSlidingRef.current = false;
                 // Save previous progress before change
                 const prevProgress = lastProgressRef.current;
-
                 // If user sets progress to 100, ask for confirmation
                 if (value === 100) {
                   Alert.alert(
@@ -612,18 +611,16 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 setShowCoAdminListPopup(true);
               }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              
               {/* User names */}
               <View style={{ flex: 1, marginRight: 12 }}>
-                <Text  style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
-                  {task.assignedUserDetails?.length > 0 
-                    ? task.assignedUserDetails.slice(0, 2).map(user => user.name).join(', ') + 
-                      (task.assignedUserDetails.length > 2 ? ` +${task.assignedUserDetails.length - 2} more` : '')
+                <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
+                  {task.assignedUserDetails?.length > 0
+                    ? task.assignedUserDetails.slice(0, 2).map(user => user.name).join(', ') +
+                    (task.assignedUserDetails.length > 2 ? ` +${task.assignedUserDetails.length - 2} more` : '')
                     : 'No users assigned'
                   }
                 </Text>
               </View>
-
               {/* Stacked avatars */}
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 {task.assignedUserDetails?.slice(0, 4).map((user, index) => {
@@ -637,8 +634,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
                       }}>
                       <Image
                         source={{
-                          uri: hasPhoto 
-                            ? user.profilePhoto 
+                          uri: hasPhoto
+                            ? user.profilePhoto
                             : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`
                         }}
                         style={{
@@ -691,20 +688,18 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 setShowCoAdminListPopup(true);
               }}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              
               {/* Creator name */}
               <View style={{ flex: 1, marginRight: 12 }}>
                 <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
                   {task.creatorName || 'Unknown Creator'}
                 </Text>
               </View>
-
               {/* Creator avatar */}
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Image
                   source={{
                     uri: task.creatorPhoto && task.creatorPhoto !== ''
-                      ? task.creatorPhoto 
+                      ? task.creatorPhoto
                       : `https://ui-avatars.com/api/?name=${encodeURIComponent(task.creatorName || 'Creator')}&background=random`
                   }}
                   style={{
@@ -730,7 +725,9 @@ export default function TaskDetailsScreen({ route, navigation }) {
         <FieldBox
           label="ADDED ATTACHMENTS"
           value=""
-          placeholder="No attachments added"
+          placeholder={allAttachments.length === 0
+            ? "No attachments added"
+            : "Tap on View to see attachments"}
           rightComponent={
             allAttachments.length > 0 && (
               <TouchableOpacity
@@ -756,7 +753,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
           }
           theme={theme}
         />
-
         <FieldBox
           label="ADD NEW ATTACHMENTS"
           value=""
@@ -775,8 +771,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
               onPress={() => setShowAttachmentSheet(true)}>
               <Feather name="paperclip" size={16} color={theme.primary} />
               <Text style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                {(uploadingAttachment || attaching) 
-                  ? (uploadingAttachment ? 'Uploading...' : 'Attaching...') 
+                {(uploadingAttachment || attaching)
+                  ? (uploadingAttachment ? 'Uploading...' : 'Attaching...')
                   : 'Add Files'
                 }
               </Text>
@@ -822,7 +818,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           />
                         </TouchableOpacity>
                       ) : null}
-
                       {/* Preview for audio */}
                       {att.type && att.type.startsWith('audio') ? (
                         <TouchableOpacity
@@ -927,12 +922,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
               .map((t) => {
                 const name = typeof t === 'string' ? t : t.taskName || t.name || '';
                 const progress = typeof t === 'object' && t.progress != null ? t.progress : null;
-
                 let statusText = '';
                 if (progress !== null) {
                   statusText = progress < 70 ? ' 🟠 In Progress' : ' ✅ Ready to Proceed';
                 }
-
                 return name
                   ? `• ${name} (${progress !== null ? progress + '%' : 'N/A'})${statusText}`
                   : '';

@@ -4,16 +4,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
@@ -60,6 +51,7 @@ export default function MyTasksScreen({ navigation }) {
     progress: [],
     projects: [],
     assignedTo: [],
+    locations: [],
   });
   const [taskCounts, setTaskCounts] = useState({
     mytasks: 0,
@@ -110,6 +102,7 @@ export default function MyTasksScreen({ navigation }) {
       let data = [];
       if (activeTab === 'mytasks') {
         data = await fetchMyTasks();
+        console.log('Fetched my tasks:', data);
         setTaskCounts((prev) => ({ ...prev, mytasks: data.length }));
       } else {
         data = await fetchTasksCreatedByMe();
@@ -201,10 +194,10 @@ export default function MyTasksScreen({ navigation }) {
       filters.projects.length === 0 ||
       filters.projects.includes(
         task.projectName ||
-          (task.project && task.project.projectName) ||
-          (task.project && task.project.name) ||
-          task.projectTitle ||
-          (typeof task.project === 'string' ? task.project : null)
+        (task.project && task.project.projectName) ||
+        (task.project && task.project.name) ||
+        task.projectTitle ||
+        (typeof task.project === 'string' ? task.project : null)
       );
 
     // Assigned to filter
@@ -226,8 +219,11 @@ export default function MyTasksScreen({ navigation }) {
         }
       }
     }
+    const locationMatch =
+      filters.locations.length === 0 ||
+      filters.locations.includes((task.project && task.project.location) || '');
 
-    return searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch;
+    return searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch;
   });
 
   // Filter users based on search query and hide selected users
@@ -339,6 +335,7 @@ export default function MyTasksScreen({ navigation }) {
       progress: [],
       projects: [],
       assignedTo: [],
+      locations: [],
     });
   };
 
@@ -363,6 +360,13 @@ export default function MyTasksScreen({ navigation }) {
           .filter(Boolean)
       ),
     ];
+    const locations = [
+      ...new Set(
+        tasks
+          .map((task) => (task.project && task.project.location) || null)
+          .filter(Boolean)
+      ),
+    ];
 
     let assignedOptions = [];
     if (activeTab === 'mytasks') {
@@ -384,10 +388,10 @@ export default function MyTasksScreen({ navigation }) {
       assignedOptions = [...new Set(allAssignedUsers)];
     }
 
-    return { statuses, projectOptions, assignedOptions };
+    return { statuses, projectOptions, assignedOptions, locations };
   };
 
-  const { statuses, projectOptions, assignedOptions } = getFilterOptions();
+  const { statuses, projectOptions, assignedOptions, locations } = getFilterOptions();
   const closeModal = () => setModalTaskId(null);
 
   const renderItem = ({ item, index }) => {
@@ -402,7 +406,7 @@ export default function MyTasksScreen({ navigation }) {
       activeTab === 'mytasks'
         ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
         : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
-          'Unassigned';
+        'Unassigned';
 
     return (
       <>
@@ -460,17 +464,29 @@ export default function MyTasksScreen({ navigation }) {
               style={[styles.taskTitle, { color: theme.text }]}>
               {taskName}
             </Text>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={[styles.taskProject, { color: theme.secondaryText }]}>
-              {item.projectName ||
-                (item.project && item.project.projectName) ||
-                (item.project && item.project.name) ||
-                item.projectTitle ||
-                item.project ||
-                'No Project'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[styles.taskProject, { color: theme.secondaryText, flexShrink: 1 }]}>
+                {item.projectName ||
+                  (item.project && item.project.projectName) ||
+                  (item.project && item.project.name) ||
+                  item.projectTitle ||
+                  item.project ||
+                  'No Project'}
+              </Text>
+              {((item.project && item.project.location) || '').length > 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
+                  <Feather name="map-pin" size={14} color={theme.secondaryText} />
+                  <Text
+                    numberOfLines={1}
+                    style={[styles.taskLocation, { color: theme.secondaryText, marginLeft: 2 }]}>
+                    {item.project.location}
+                  </Text>
+                </View>
+              )}
+            </View>
 
             <View style={styles.assignedInfoRow}>
               <Text style={[styles.assignedInfoLabel, { color: theme.secondaryText }]}>
@@ -484,7 +500,6 @@ export default function MyTasksScreen({ navigation }) {
               </Text>
             </View>
           </View>
-
           <View>
             <CustomCircularProgress percentage={item.progress || 0} />
           </View>
@@ -727,9 +742,8 @@ export default function MyTasksScreen({ navigation }) {
                 </ScrollView>
               </View>
             )}
-
             {/* Progress Filter */}
-            <View style={styles.compactFilterSection}>
+            {/* <View style={styles.compactFilterSection}>
               <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Progress</Text>
               <ScrollView
                 horizontal
@@ -770,8 +784,7 @@ export default function MyTasksScreen({ navigation }) {
                   ))}
                 </View>
               </ScrollView>
-            </View>
-
+            </View> */}
             {/* Projects Filter */}
             {projectOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
@@ -810,7 +823,44 @@ export default function MyTasksScreen({ navigation }) {
                 </ScrollView>
               </View>
             )}
-
+            {/* Location Filter */}
+            {locations.length > 0 && (
+              <View style={styles.compactFilterSection}>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Location</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}>
+                  <View style={styles.compactChipsRow}>
+                    {locations.map((location) => (
+                      <TouchableOpacity
+                        key={location}
+                        style={[
+                          styles.compactChip,
+                          {
+                            backgroundColor: filters.locations.includes(location)
+                              ? theme.primary
+                              : 'transparent',
+                            borderColor: filters.locations.includes(location)
+                              ? theme.primary
+                              : theme.border,
+                          },
+                        ]}
+                        onPress={() => toggleFilter('locations', location)}>
+                        <Text
+                          style={[
+                            styles.compactChipText,
+                            { color: filters.locations.includes(location) ? '#fff' : theme.text },
+                          ]}
+                          numberOfLines={1}>
+                          {location.length > 10 ? location.substring(0, 10) + '...' : location}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
             {/* Assigned To/By Filter */}
             {assignedOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
@@ -860,7 +910,6 @@ export default function MyTasksScreen({ navigation }) {
           </ScrollView>
         </View>
       )}
-
       {/* Task List or Loading/Error */}
       {loading ? (
         <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 30 }} />
@@ -904,7 +953,6 @@ export default function MyTasksScreen({ navigation }) {
           />
         </>
       )}
-
       <AddTaskPopup
         visible={showAddTaskPopup}
         onClose={() => setShowAddTaskPopup(false)}
@@ -917,7 +965,6 @@ export default function MyTasksScreen({ navigation }) {
         worklists={worklists}
         projectTasks={projectTasks}
       />
-
       {/* Bulk Assignment Popup */}
       {showBulkAssignPopup && (
         <View style={styles.popupOverlay}>
@@ -925,7 +972,6 @@ export default function MyTasksScreen({ navigation }) {
             <Text style={[styles.popupTitle, { color: theme.text }]}>
               Assign {selectedTasks.length} Task{selectedTasks.length > 1 ? 's' : ''}
             </Text>
-
             {/* Search Bar */}
             <View
               style={[
@@ -946,12 +992,10 @@ export default function MyTasksScreen({ navigation }) {
                 </TouchableOpacity>
               )}
             </View>
-
             {/* Selected Users Count */}
             <Text style={[styles.selectedUsersText, { color: theme.secondaryText }]}>
               {bulkAssignUsers.length} user{bulkAssignUsers.length !== 1 ? 's' : ''} selected
             </Text>
-
             {/* Show Selected Users */}
             {bulkAssignUsers.length > 0 && (
               <View style={styles.selectedUsersContainer}>
@@ -965,7 +1009,6 @@ export default function MyTasksScreen({ navigation }) {
                       const userKey = u.id || u._id || u.userId || `user_${users.indexOf(u)}`;
                       return userKey === userId;
                     });
-
                     if (!user) {
                       return (
                         <View
@@ -988,7 +1031,6 @@ export default function MyTasksScreen({ navigation }) {
                         </View>
                       );
                     }
-
                     return (
                       <View
                         style={[
@@ -1013,7 +1055,6 @@ export default function MyTasksScreen({ navigation }) {
                 />
               </View>
             )}
-
             <FlatList
               style={styles.usersList}
               data={filteredUsers}
@@ -1086,7 +1127,6 @@ export default function MyTasksScreen({ navigation }) {
                 </Text>
               }
             />
-
             <View style={styles.popupActions}>
               <TouchableOpacity
                 style={[styles.popupButton, styles.cancelButton, { borderColor: theme.border }]}
@@ -1097,7 +1137,6 @@ export default function MyTasksScreen({ navigation }) {
                 }}>
                 <Text style={[styles.popupButtonText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={[
                   styles.popupButton,
@@ -1325,7 +1364,6 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     fontStyle: 'italic',
   },
-
   // Task Card styles
   taskCard: {
     flexDirection: 'row',
