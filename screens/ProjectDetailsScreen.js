@@ -184,7 +184,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             paddingVertical: 7,
             marginHorizontal: 20,
             marginTop: 16,
-            marginBottom: 16,
+            marginBottom: 8,
             borderWidth: 1,
             borderColor: theme.border,
           }}>
@@ -197,7 +197,76 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
             Task Dependency Flow
           </Text>
-        </TouchableOpacity>    
+        </TouchableOpacity>
+
+        {/* Discussion and Access Buttons */}
+        <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 16, gap: 8 }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              if (projectDetails?.id) {
+                navigation.navigate('ProjectDiscussionScreen', { 
+                  projectId: projectDetails.id,
+                  projectName: projectDetails.projectName 
+                });
+              }
+            }}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.card,
+              borderRadius: 18,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}>
+            <Feather
+              name="message-circle"
+              size={16}
+              color={theme.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
+              Discussion
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => {
+              if (projectDetails?.id) {
+                navigation.navigate('ProjectAccessScreen', { 
+                  projectId: projectDetails.id,
+                  projectName: projectDetails.projectName 
+                });
+              }
+            }}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.card,
+              borderRadius: 18,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}>
+            <Feather
+              name="settings"
+              size={16}
+              color={theme.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
+              Project Settings
+            </Text>
+          </TouchableOpacity>
+        </View>    
         <View style={styles.progressSection}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
             Progress <Text style={{ color: theme.success }}>{projectDetails.progress || 0}%</Text>

@@ -208,6 +208,18 @@ export const getUserNameFromToken = async () => {
   }
 };
 
+export const getUserIdFromToken = async () => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return null;
+    const decoded = jwtDecode(token); // decode safely
+    return decoded.userId || decoded.id || decoded.sub || null;
+  } catch (error) {
+    console.error('Error decoding token for userId:', error.message);
+    return null;
+  }
+};
+
 export const fetchUserDetails = async () => {
   try {
     const token = await AsyncStorage.getItem('token');
