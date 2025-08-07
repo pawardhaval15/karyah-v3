@@ -102,7 +102,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
             });
             Alert.alert('Success', 'Project updated successfully.');
             // Instead of goBack, replace to ProjectDetailsScreen to force refresh
-            navigation.replace('ProjectDetailsScreen', { projectId });
+            navigation.replace('ProjectDetailsScreen', { projectId, refresh: true });
         } catch (err) {
             Alert.alert('Error', 'Failed to update project.');
         }
