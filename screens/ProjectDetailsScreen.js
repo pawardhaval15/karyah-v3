@@ -187,18 +187,22 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               justifyContent: 'center',
               backgroundColor: theme.card,
               borderRadius: 18,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
               borderWidth: 1,
               borderColor: theme.border,
+              minHeight: 48,
             }}>
             <MaterialIcons
               name="device-hub"
-              size={16}
+              size={18}
               color={theme.primary}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 8 }}
             />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 12 }}>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode='tail'
+              style={{ color: theme.text, fontWeight: '400', fontSize: 13, flexWrap: 'nowrap' }}>
               Task Dep.
             </Text>
           </TouchableOpacity>
@@ -221,54 +225,65 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               justifyContent: 'center',
               backgroundColor: theme.card,
               borderRadius: 18,
-              paddingHorizontal: 12,
-              paddingVertical: 7,
+              paddingHorizontal: 20,
+              paddingVertical: 10,
               borderWidth: 1,
               borderColor: theme.border,
+              minHeight: 48,
             }}>
             <Feather
               name="message-circle"
-              size={16}
+              size={18}
               color={theme.primary}
-              style={{ marginRight: 6 }}
+              style={{ marginRight: 8 }}
             />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 12 }}>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode='tail'
+              style={{ color: theme.text, fontWeight: '400', fontSize: 13, flexWrap: 'nowrap' }}>
               Discussion
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              if (projectDetails?.id) {
-                navigation.navigate('ProjectAccessScreen', {
-                  projectId: projectDetails.id,
-                  projectName: projectDetails.projectName
-                });
-              }
-            }}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.card,
-              borderRadius: 18,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}>
-            <Feather
-              name="settings"
-              size={16}
-              color={theme.primary}
-              style={{ marginRight: 6 }}
-            />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
-              Project Settings
-            </Text>
-          </TouchableOpacity>
+          {/* Project Settings - Only show for project owner */}
+          {projectDetails?.userId === userId && (
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                if (projectDetails?.id) {
+                  navigation.navigate('ProjectAccessScreen', {
+                    projectId: projectDetails.id,
+                    projectName: projectDetails.projectName
+                  });
+                }
+              }}
+              style={{
+                flex: 1,
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.card,
+                borderRadius: 18,
+                paddingHorizontal: 20,
+                paddingVertical: 10,
+                borderWidth: 1,
+                borderColor: theme.border,
+                minHeight: 48,
+              }}>
+              <Feather
+                name="settings"
+                size={18}
+                color={theme.primary}
+                style={{ marginRight: 8 }}
+              />
+              <Text
+                numberOfLines={1}
+                ellipsizeMode='tail'
+                style={{ color: theme.text, fontWeight: '400', fontSize: 13, flexWrap: 'nowrap' }}>
+                Project Settings
+              </Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.progressSection}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
