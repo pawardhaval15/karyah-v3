@@ -13,6 +13,7 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Pressable,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
@@ -45,6 +46,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     isCritical: false,
   });
   const [menuVisible, setMenuVisible] = useState(false);
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -130,7 +132,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const progressPercent = projectDetails.progress || 0;
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         bounces={true}>
@@ -205,9 +207,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             activeOpacity={0.8}
             onPress={() => {
               if (projectDetails?.id) {
-                navigation.navigate('ProjectDiscussionScreen', { 
+                navigation.navigate('ProjectDiscussionScreen', {
                   projectId: projectDetails.id,
-                  projectName: projectDetails.projectName 
+                  projectName: projectDetails.projectName
                 });
               }
             }}
@@ -238,9 +240,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             activeOpacity={0.8}
             onPress={() => {
               if (projectDetails?.id) {
-                navigation.navigate('ProjectAccessScreen', { 
+                navigation.navigate('ProjectAccessScreen', {
                   projectId: projectDetails.id,
-                  projectName: projectDetails.projectName 
+                  projectName: projectDetails.projectName
                 });
               }
             }}
@@ -266,7 +268,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               Project Settings
             </Text>
           </TouchableOpacity>
-        </View>    
+        </View>
         <View style={styles.progressSection}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
             Progress <Text style={{ color: theme.success }}>{projectDetails.progress || 0}%</Text>
@@ -366,22 +368,83 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </View>
-        <View
-          style={[
-            styles.fieldBox,
-            { backgroundColor: theme.card, borderColor: theme.border, maxHeight: 140, flexDirection: 'column', alignItems: 'flex-start' },
-          ]}>
-          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
-            DESCRIPTION
-          </Text>
-          <ScrollView style={{ maxHeight: 100, width: '100%' }}>
-            <Text style={[styles.inputValue, { color: theme.text }]}>
+        <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
+          <View
+            style={[
+              styles.fieldBox,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                maxHeight: 140,
+                flexDirection: 'column',
+                alignItems: 'flex-start'
+              },
+            ]}
+          >
+            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>DESCRIPTION</Text>
+            <Text
+              numberOfLines={5} // Limit lines in main screen for preview
+              ellipsizeMode="tail"
+              style={[styles.inputValue, { color: theme.text, width: '100%' }]}
+            >
               {projectDetails.description && projectDetails.description.trim() !== ''
                 ? projectDetails.description
                 : 'No description available'}
             </Text>
-          </ScrollView>
-        </View>
+            <Text style={{ color: theme.primary, marginTop: 4 }}>Read More</Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
+          <Modal
+            visible={showDescriptionModal}
+            animationType="slide"
+            transparent={true}
+            onRequestClose={() => setShowDescriptionModal(false)}
+          >
+            <View
+              style={{
+                flex: 1,
+                backgroundColor: 'rgba(0,0,0,0.5)',
+                justifyContent: 'center',
+                padding: 20,
+              }}
+            >
+              <View
+                style={{
+                  backgroundColor: theme.card,
+                  borderRadius: 12,
+                  padding: 20,
+                  maxHeight: '80%',
+                }}
+              >
+                <ScrollView>
+                  <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 12, fontSize: 18 }]}>
+                    Description
+                  </Text>
+                  <Text style={[styles.inputValue, { color: theme.text, fontSize: 16 }]}>
+                    {projectDetails.description && projectDetails.description.trim() !== ''
+                      ? projectDetails.description
+                      : 'No description available'}
+                  </Text>
+                </ScrollView>
+                <Pressable
+                  onPress={() => setShowDescriptionModal(false)}
+                  style={{
+                    marginTop: 20,
+                    alignSelf: 'center',
+                    paddingVertical: 10,
+                    paddingHorizontal: 30,
+                    backgroundColor: theme.primary,
+                    borderRadius: 25,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
+                </Pressable>
+              </View>
+            </View>
+          </Modal>
+        </TouchableOpacity>
+
         <View style={styles.issueBtnRow}>
           <IssueButton
             icon="alert-circle"
@@ -643,14 +706,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   inputLabel: {
-     fontSize: 10,
-        fontWeight: '400',
-        color: '#222',
-        marginBottom: 6,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-        lineHeight: 14,
-        textAlign: 'left',
+    fontSize: 10,
+    fontWeight: '400',
+    color: '#222',
+    marginBottom: 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: 14,
+    textAlign: 'left',
   },
   inputValue: {
     color: '#444',
