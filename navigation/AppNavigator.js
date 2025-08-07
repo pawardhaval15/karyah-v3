@@ -1,28 +1,30 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AddConnectionScreen from 'screens/AddConnectionScreen';
+import AuthLoadingScreen from 'screens/AuthLoadingScreen';
 import ConnectionDetailsScreen from 'screens/ConnectionDetailsModal';
 import ConnectionsScreen from 'screens/ConnectionsScreen';
+import IssueDetailsScreen from 'screens/IssueDetailsScreen';
 import MyTasksScreen from 'screens/MyTasksScreen';
+import NotificationScreen from 'screens/NotificationScreen';
+import RegistrationForm from 'screens/RegistrationForm';
+import UpdateTaskScreen from 'screens/UpdateTaskScreen';
+import UserProfileScreen from 'screens/UserProfileScreen';
 import HomeScreen from '../screens/HomeScreen';
+import IssuesScreen from '../screens/IssuesScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PinLoginScreen from '../screens/PinLoginScreen';
 import ProfessionalDashboard from '../screens/ProfessionalDashboard';
+import ProjectAccessScreen from '../screens/ProjectAccessScreen';
 import ProjectDetailsScreen from '../screens/ProjectDetailsScreen';
-import ProjectScreen from '../screens/ProjectScreen';
-import TaskDetailsScreen from '../screens/TaskDetailsScreen';
-import UpdateProjectScreen from '../screens/UpdateProjectScreen';
-import TaskListScreen from '../screens/TaskListScreen';
-import WorklistScreen from '../screens/WorklistScreen';
-import UserProfileScreen from 'screens/UserProfileScreen';
-import SettingsScreen from '../screens/SettingsScreen';
-import IssuesScreen from '../screens/IssuesScreen';
+import ProjectDiscussionScreen from '../screens/ProjectDiscussionScreen';
 import ProjectIssuesScreen from '../screens/ProjectIssuesScreen';
-import IssueDetailsScreen from 'screens/IssueDetailsScreen';
-import NotificationScreen from 'screens/NotificationScreen';
-import AuthLoadingScreen from 'screens/AuthLoadingScreen';
-import UpdateTaskScreen from 'screens/UpdateTaskScreen';
-import RegistrationForm from 'screens/RegistrationForm';
+import ProjectScreen from '../screens/ProjectScreen';
+import SettingsScreen from '../screens/SettingsScreen';
+import TaskDetailsScreen from '../screens/TaskDetailsScreen';
+import TaskListScreen from '../screens/TaskListScreen';
+import UpdateProjectScreen from '../screens/UpdateProjectScreen';
+import WorklistScreen from '../screens/WorklistScreen';
 import { navigationRef } from './navigationRef';
 const Stack = createNativeStackNavigator();
 
@@ -53,6 +55,8 @@ export default function AppNavigator() {
         <Stack.Screen name="IssueDetails" component={IssueDetailsScreen} />
         <Stack.Screen name="NotificationScreen" component={NotificationScreen} />
         <Stack.Screen name="UpdateTaskScreen" component={UpdateTaskScreen} options={{ title: 'Update Task' }} />
+        <Stack.Screen name="ProjectDiscussionScreen" component={ProjectDiscussionScreen} />
+        <Stack.Screen name="ProjectAccessScreen" component={ProjectAccessScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
