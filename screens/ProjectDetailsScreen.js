@@ -8,12 +8,12 @@ import {
   Image,
   Modal,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  Pressable,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
@@ -22,7 +22,7 @@ import DateBox from '../components/project details/DateBox';
 import FieldBox from '../components/project details/FieldBox';
 import IssueButton from '../components/project details/IssueButton';
 import { useTheme } from '../theme/ThemeContext';
-import { getUserNameFromToken } from '../utils/auth';
+import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 import { deleteProjectById, getProjectById } from '../utils/project';
 
@@ -50,7 +50,8 @@ export default function ProjectDetailsScreen({ navigation, route }) {
 
   useEffect(() => {
     const fetchUserId = async () => {
-      const id = await getUserNameFromToken();
+      const id = await getUserIdFromToken();
+      console.log('Current User ID:', id);
       setUserId(id);
     };
     fetchUserId();
@@ -62,6 +63,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         const id = projectId || (project && project.id);
         if (!id) throw new Error('No projectId provided');
         const res = await getProjectById(id);
+        console.log('Project Details - userId:', res.userId, 'Current User ID:', userId);
         setProjectDetails(res);
       } catch (err) {
         console.error('Failed to fetch project details:', err.message);
@@ -172,37 +174,36 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
           </View>
         </LinearGradient>
-        {/* Compact tab-style button for Task Dependency Flow */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => setShowDependencyChart(true)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            alignSelf: 'flex-start',
-            backgroundColor: theme.card,
-            borderRadius: 18,
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-            marginHorizontal: 20,
-            marginTop: 16,
-            marginBottom: 8,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}>
-          <MaterialIcons
-            name="device-hub"
-            size={18}
-            color={theme.primary}
-            style={{ marginRight: 7 }}
-          />
-          <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
-            Task Dependency Flow
-          </Text>
-        </TouchableOpacity>
+        {/* Action Buttons Row */}
+        <View style={{ flexDirection: 'row', marginHorizontal: 20, marginTop: 16, marginBottom: 16, gap: 8 }}>
+          {/* Task Dependency Flow */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowDependencyChart(true)}
+            style={{
+              flex: 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: theme.card,
+              borderRadius: 18,
+              paddingHorizontal: 12,
+              paddingVertical: 7,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}>
+            <MaterialIcons
+              name="device-hub"
+              size={16}
+              color={theme.primary}
+              style={{ marginRight: 6 }}
+            />
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 12 }}>
+              Task Dep.
+            </Text>
+          </TouchableOpacity>
 
-        {/* Discussion and Access Buttons */}
-        <View style={{ flexDirection: 'row', marginHorizontal: 20, marginBottom: 16, gap: 8 }}>
+          {/* Discussion */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => {
@@ -220,7 +221,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               justifyContent: 'center',
               backgroundColor: theme.card,
               borderRadius: 18,
-              paddingHorizontal: 14,
+              paddingHorizontal: 12,
               paddingVertical: 7,
               borderWidth: 1,
               borderColor: theme.border,
@@ -231,7 +232,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               color={theme.primary}
               style={{ marginRight: 6 }}
             />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 12 }}>
               Discussion
             </Text>
           </TouchableOpacity>

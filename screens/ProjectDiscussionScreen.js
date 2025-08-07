@@ -37,6 +37,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
   });
   const [accessLoading, setAccessLoading] = useState(true);
   const [selectedPinnedMessage, setSelectedPinnedMessage] = useState(null);
+  const [replyingTo, setReplyingTo] = useState(null);
   const scrollViewRef = useRef(null);
 
   useEffect(() => {
@@ -119,6 +120,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       const messageData = {
         content: newMessage.trim(),
         type: 'text',
+        replyTo: replyingTo?.id || null,
       };
 
       const response = await postMessage(projectId, messageData);
@@ -133,10 +135,11 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
       setMessages((prev) => [...prev, messageWithUserInfo]);
       setNewMessage('');
+      setReplyingTo(null);
 
-      // Scroll to top to show the new message (since messages are reversed)
+      // Scroll to bottom to show the new message
       setTimeout(() => {
-        scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+        scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -144,6 +147,14 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     } finally {
       setSending(false);
     }
+  };
+
+  const handleReply = (message) => {
+    setReplyingTo(message);
+  };
+
+  const cancelReply = () => {
+    setReplyingTo(null);
   };
 
   const handleReaction = async (messageId, reactionType) => {
@@ -232,13 +243,12 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     const isSelected = selectedPinnedMessage === message.id;
 
     // Check if this is a consecutive message from the same sender
-    const reversedMessages = [...messages].reverse();
-    const prevMessage = reversedMessages[index - 1];
-    const nextMessage = reversedMessages[index + 1];
-    
+    const prevMessage = messages[index - 1];
+    const nextMessage = messages[index + 1];
+
     const isSameSenderAsPrevious = prevMessage && prevMessage.senderId === message.senderId;
     const isSameSenderAsNext = nextMessage && nextMessage.senderId === message.senderId;
-    
+
     // Determine message bubble styling
     const isFirstInGroup = !isSameSenderAsPrevious;
     const isLastInGroup = !isSameSenderAsNext;
@@ -265,17 +275,17 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
         key={message.id}
         style={[
           styles.messageContainer,
-          { 
+          {
             alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
             marginBottom: isLastInGroup ? 16 : 3,
             marginTop: isFirstInGroup ? 8 : 0,
-          }
+          },
         ]}>
         <View
           style={[
             styles.messageBubble,
             {
-              backgroundColor: isOwnMessage ? theme.primary : theme.card,
+              backgroundColor: isOwnMessage ? '#17313E' : theme.card,
               borderColor: isSelected ? theme.primary : theme.border,
               borderWidth: isSelected ? 2 : 1,
               alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
@@ -285,13 +295,12 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               shadowRadius: isSelected ? 4 : 0,
               elevation: isSelected ? 3 : 1,
               // WhatsApp-like bubble shaping
-              borderTopLeftRadius: isOwnMessage ? 16 : (isFirstInGroup ? 16 : 4),
+              borderTopLeftRadius: isOwnMessage ? 16 : isFirstInGroup ? 16 : 4,
               borderTopRightRadius: isOwnMessage ? (isFirstInGroup ? 16 : 4) : 16,
-              borderBottomLeftRadius: isOwnMessage ? 16 : (isLastInGroup ? 16 : 4),
+              borderBottomLeftRadius: isOwnMessage ? 16 : isLastInGroup ? 16 : 4,
               borderBottomRightRadius: isOwnMessage ? (isLastInGroup ? 16 : 4) : 16,
             },
           ]}>
-          
           {/* Show sender name only for first message in group from others */}
           {!isOwnMessage && isFirstInGroup && (
             <View style={styles.messageHeader}>
@@ -315,6 +324,16 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
             </View>
           )}
 
+          {/* Show reply indicator if this message is a reply */}
+          {message.replyTo && (
+            <View style={styles.replyIndicator}>
+              <View style={[styles.replyLine, { backgroundColor: theme.primary }]} />
+              <Text style={[styles.replyText, { color: theme.secondaryText }]} numberOfLines={1}>
+                Replying to: {message.replyToContent || 'Message'}
+              </Text>
+            </View>
+          )}
+
           <Text style={[styles.messageText, { color: isOwnMessage ? '#fff' : theme.text }]}>
             {message.content}
           </Text>
@@ -330,6 +349,16 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
             </Text>
 
             <View style={styles.messageActions}>
+              <TouchableOpacity
+                onPress={() => handleReply(message)}
+                style={styles.actionButton}>
+                <MaterialIcons
+                  name="reply"
+                  size={14}
+                  color={isOwnMessage ? 'rgba(255,255,255,0.7)' : theme.secondaryText}
+                />
+              </TouchableOpacity>
+
               <TouchableOpacity
                 onPress={() => handleReaction(message.id, 'like')}
                 style={styles.actionButton}>
@@ -385,8 +414,10 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     );
   };
 
-  // Separate pinned messages for the sticky header
-  const pinnedMessages = messages.filter((msg) => msg.isPinned || msg.pinned);
+  // Separate pinned messages for the sticky header - show latest first
+  const pinnedMessages = messages
+    .filter((msg) => msg.isPinned || msg.pinned)
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -425,14 +456,14 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
             {pinnedMessages.map((message) => {
               const isSelected = selectedPinnedMessage === message.id;
               const senderName = message.User?.name || message.sender?.name || 'Unknown';
-              
+
               return (
                 <TouchableOpacity
                   key={`pinned-${message.id}`}
                   style={[
                     styles.compactPinnedMessage,
-                    { 
-                      backgroundColor: theme.background, 
+                    {
+                      backgroundColor: theme.background,
                       borderColor: isSelected ? theme.primary : theme.border,
                       borderWidth: isSelected ? 2 : 1,
                       shadowColor: isSelected ? theme.primary : 'transparent',
@@ -444,11 +475,10 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                   ]}
                   onPress={() => {
                     setSelectedPinnedMessage(isSelected ? null : message.id);
-                    // Scroll to the message in the main chat (accounting for reversed order)
+                    // Scroll to the message in the main chat
                     const messageIndex = messages.findIndex((msg) => msg.id === message.id);
                     if (messageIndex !== -1) {
-                      const reversedIndex = messages.length - 1 - messageIndex;
-                      scrollViewRef.current?.scrollTo({ y: reversedIndex * 80, animated: true });
+                      scrollViewRef.current?.scrollTo({ y: messageIndex * 80, animated: true });
                     }
                   }}>
                   <Text style={[styles.compactPinnedText, { color: theme.text }]} numberOfLines={1}>
@@ -460,8 +490,16 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                         e.stopPropagation();
                         handleTogglePin(message.id);
                       }}
-                      style={styles.compactUnpinButton}>
-                      <MaterialIcons name="close" size={14} color={theme.secondaryText} />
+                      style={[
+                        styles.compactUnpinButton,
+                        { backgroundColor: isSelected ? 'rgba(0,0,0,0.18)' : 'rgba(0,0,0,0.08)' },
+                      ]}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                      <MaterialIcons
+                        name="close"
+                        size={18}
+                        color={isSelected ? '#fff' : theme.text}
+                      />
                     </TouchableOpacity>
                   )}
                 </TouchableOpacity>
@@ -474,15 +512,17 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       {/* Messages */}
       <KeyboardAvoidingView
         style={styles.content}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
         <ScrollView
           ref={scrollViewRef}
           style={styles.messagesContainer}
           contentContainerStyle={styles.messagesContent}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
           onContentSizeChange={() => {
-            // Since messages are reversed, scroll to top to see latest messages
-            scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+            // Scroll to bottom to see latest messages
+            scrollViewRef.current?.scrollToEnd({ animated: false });
           }}>
           {accessLoading ? (
             <View style={styles.loadingContainer}>
@@ -518,19 +558,42 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               </Text>
             </View>
           ) : (
-            // Show all messages in reverse chronological order (latest first, like WhatsApp)
-            [...messages].reverse().map((message, index) => renderMessage(message, index))
+            // Show all messages in chronological order (old at top, new at bottom)
+            messages.map((message, index) => renderMessage(message, index))
           )}
         </ScrollView>
 
         {/* Input - Only show if user can reply and has view access */}
         {userAccess.canView && (
-          <View
-            style={[
-              styles.inputContainer,
-              { backgroundColor: theme.card, borderTopColor: theme.border },
-            ]}>
-            {userAccess.canReply ? (
+          <>
+            {/* Reply Preview - Outside of input container for better positioning */}
+            {replyingTo && (
+              <View style={[styles.replyPreviewContainer, { backgroundColor: theme.card }]}>
+                <View style={[styles.replyPreview, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                  <View style={styles.replyPreviewContent}>
+                    <MaterialIcons name="reply" size={16} color={theme.primary} />
+                    <View style={styles.replyPreviewText}>
+                      <Text style={[styles.replyPreviewTitle, { color: theme.primary }]}>
+                        Replying to {replyingTo.User?.name || replyingTo.sender?.name || 'Unknown'}
+                      </Text>
+                      <Text style={[styles.replyPreviewMessage, { color: theme.secondaryText }]} numberOfLines={1}>
+                        {replyingTo.content}
+                      </Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyButton}>
+                    <MaterialIcons name="close" size={18} color={theme.secondaryText} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            <View
+              style={[
+                styles.inputContainer,
+                { backgroundColor: theme.card, borderTopColor: theme.border },
+              ]}>
+              {userAccess.canReply ? (
               <>
                 <TextInput
                   style={[
@@ -541,7 +604,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                       color: theme.text,
                     },
                   ]}
-                  placeholder="Type your message..."
+                  placeholder={replyingTo ? `Reply to ${replyingTo.User?.name || 'message'}...` : "Type your message..."}
                   placeholderTextColor={theme.secondaryText}
                   value={newMessage}
                   onChangeText={setNewMessage}
@@ -577,7 +640,8 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                 </Text>
               </View>
             )}
-          </View>
+            </View>
+          </>
         )}
       </KeyboardAvoidingView>
     </View>
@@ -653,7 +717,7 @@ const styles = StyleSheet.create({
   },
   messageContainer: {
     marginBottom: 3,
-    maxWidth: '85%',
+    maxWidth: '100%',
     paddingHorizontal: 4,
   },
   messageHeader: {
@@ -665,26 +729,80 @@ const styles = StyleSheet.create({
   pinnedBadge: {
     marginLeft: 8,
   },
+  replyIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 6,
+    paddingLeft: 8,
+  },
+  replyLine: {
+    width: 3,
+    height: 20,
+    borderRadius: 1.5,
+    marginRight: 8,
+  },
+  replyText: {
+    fontSize: 12,
+    fontStyle: 'italic',
+    flex: 1,
+  },
+  replyPreviewContainer: {
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+  },
+  replyPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderLeftWidth: 1.5,
+    borderLeftColor: '#007AFF',
+  },
+  replyPreviewContent: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  replyPreviewText: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  replyPreviewTitle: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  replyPreviewMessage: {
+    fontSize: 12,
+  },
+  cancelReplyButton: {
+    padding: 4,
+    marginLeft: 8,
+  },
   stickyPinnedSection: {
     borderBottomWidth: 1,
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    maxHeight: 60,
+    paddingVertical: 10,
+    maxHeight: 80,
   },
   pinnedMessagesScroll: {
-    marginTop: 4,
+    marginTop: 6,
   },
   compactPinnedMessage: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
     borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    marginRight: 8,
+    marginRight: 12,
     borderWidth: 1,
-    borderLeftWidth: 3,
     maxWidth: 250,
+    minHeight: 32,
+    minWidth: 80,
   },
   compactPinnedText: {
     flex: 1,
@@ -692,8 +810,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   compactUnpinButton: {
-    marginLeft: 8,
-    padding: 2,
+    marginLeft: 6,
+    padding: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 28,
+    width: 28,
+    borderRadius: 14,
   },
   pinnedHeader: {
     flexDirection: 'row',
@@ -776,7 +899,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: Platform.OS === 'ios' ? 18 : 12,
     borderTopWidth: 1,
   },
   textInput: {

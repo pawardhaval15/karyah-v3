@@ -12,7 +12,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchUserConnections } from '../utils/issues';
@@ -67,82 +67,82 @@ export default function ProjectAccessScreen({ route, navigation }) {
   const fetchUsers = async () => {
     try {
       console.log('Fetching users...');
-      
+
       // Always try to get project details first to get owner and co-admins
       let projectUsers = [];
-      
+
       try {
         console.log('Fetching project details...');
         const projectData = await getProjectById(projectId);
         console.log('Complete project data:', JSON.stringify(projectData, null, 2));
-        
+
         // Add project owner - using creator fields from API response
         if (projectData?.userId && projectData?.creatorName) {
           console.log('Found project creator:', {
             id: projectData.userId,
             name: projectData.creatorName,
-            email: projectData.creatorEmail
+            email: projectData.creatorEmail,
           });
           const owner = {
             id: projectData.userId,
             name: projectData.creatorName,
             email: projectData.creatorEmail,
             designation: 'Owner',
-            role: 'owner'
+            role: 'owner',
           };
           projectUsers.push(owner);
         }
-        
+
         // Add co-admins - they should be in coAdmins array with user details
         if (projectData?.coAdmins && projectData.coAdmins.length > 0) {
           console.log('Found co-admins:', projectData.coAdmins);
           const coAdminUsers = projectData.coAdmins
-            .filter(admin => admin && (admin.id || admin.userId) && admin.name)
-            .map(admin => ({
+            .filter((admin) => admin && (admin.id || admin.userId) && admin.name)
+            .map((admin) => ({
               id: admin.id || admin.userId,
               name: admin.name,
               email: admin.email,
               profilePhoto: admin.profilePhoto,
               designation: 'Co-Admin',
-              role: 'co-admin'
+              role: 'co-admin',
             }));
           projectUsers.push(...coAdminUsers);
         }
-        
+
         console.log('Project users found:', projectUsers);
       } catch (error) {
         console.log('Failed to get project details:', error);
       }
-      
+
       // Also try to get connections
       try {
         const connections = await fetchUserConnections();
         console.log('Raw connections:', connections);
         console.log('Connections length:', connections?.length);
-        
+
         // Add connections with proper structure
         const validConnections = (connections || [])
-          .filter(user => user && user.id && user.name)
-          .map(user => ({
+          .filter((user) => user && user.id && user.name)
+          .map((user) => ({
             ...user,
             id: user.id,
             name: user.name,
             email: user.email,
             designation: 'Connection',
-            role: 'connection'
+            role: 'connection',
           }));
-        
+
         console.log('Valid connections:', validConnections);
         projectUsers.push(...validConnections);
       } catch (error) {
         console.log('Failed to get connections:', error);
       }
-      
+
       // Remove duplicates based on user ID
-      const uniqueUsers = projectUsers.filter((user, index, self) => 
-        index === self.findIndex(u => u.id === user.id)
+      const uniqueUsers = projectUsers.filter(
+        (user, index, self) => index === self.findIndex((u) => u.id === user.id)
       );
-      
+
       console.log('Final unique users:', uniqueUsers);
       setUsers(uniqueUsers);
     } catch (error) {
@@ -176,27 +176,23 @@ export default function ProjectAccessScreen({ route, navigation }) {
   };
 
   const handleRemoveAccess = async (userId, module) => {
-    Alert.alert(
-      'Remove Access',
-      'Are you sure you want to remove this access?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeAccess(projectId, { userId, module });
-              await fetchAccesses();
-              Alert.alert('Success', 'Access removed successfully');
-            } catch (error) {
-              console.error('Failed to remove access:', error);
-              Alert.alert('Error', 'Failed to remove access');
-            }
-          },
+    Alert.alert('Remove Access', 'Are you sure you want to remove this access?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Remove',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await removeAccess(projectId, { userId, module });
+            await fetchAccesses();
+            Alert.alert('Success', 'Access removed successfully');
+          } catch (error) {
+            console.error('Failed to remove access:', error);
+            Alert.alert('Error', 'Failed to remove access');
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const resetForm = () => {
@@ -216,15 +212,16 @@ export default function ProjectAccessScreen({ route, navigation }) {
 
     // Filter by search query
     if (searchQuery.trim()) {
-      filteredUsers = filteredUsers.filter(user =>
-        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email?.toLowerCase().includes(searchQuery.toLowerCase())
+      filteredUsers = filteredUsers.filter(
+        (user) =>
+          user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          user.email?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
     // Filter by role
     if (selectedRole !== 'all') {
-      filteredUsers = filteredUsers.filter(user => {
+      filteredUsers = filteredUsers.filter((user) => {
         if (selectedRole === 'owner') return user.role === 'owner';
         if (selectedRole === 'co-admin') return user.role === 'co-admin';
         if (selectedRole === 'connection') return user.role === 'connection';
@@ -236,20 +233,21 @@ export default function ProjectAccessScreen({ route, navigation }) {
   };
 
   const getFilteredAccesses = () => {
-    let filteredAccesses = accesses.filter(access => access.module === activeTab);
-    
+    let filteredAccesses = accesses.filter((access) => access.module === activeTab);
+
     // Filter by search query
     if (listSearchQuery.trim()) {
-      filteredAccesses = filteredAccesses.filter(access =>
-        access.User?.name?.toLowerCase().includes(listSearchQuery.toLowerCase()) ||
-        access.User?.email?.toLowerCase().includes(listSearchQuery.toLowerCase())
+      filteredAccesses = filteredAccesses.filter(
+        (access) =>
+          access.User?.name?.toLowerCase().includes(listSearchQuery.toLowerCase()) ||
+          access.User?.email?.toLowerCase().includes(listSearchQuery.toLowerCase())
       );
     }
 
     // Filter by role
     if (listFilterRole !== 'all') {
-      filteredAccesses = filteredAccesses.filter(access => {
-        const user = users.find(u => u.id === access.userId);
+      filteredAccesses = filteredAccesses.filter((access) => {
+        const user = users.find((u) => u.id === access.userId);
         if (listFilterRole === 'owner') return user?.role === 'owner';
         if (listFilterRole === 'co-admin') return user?.role === 'co-admin';
         if (listFilterRole === 'connection') return user?.role === 'connection';
@@ -262,7 +260,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
 
   const groupedAccesses = getFilteredAccesses().reduce((groups, access) => {
     if (!access || !access.userId) return groups;
-    
+
     const key = `${access.userId}-${access.User?.name || 'Unknown'}`;
     if (!groups[key]) {
       groups[key] = {
@@ -277,15 +275,15 @@ export default function ProjectAccessScreen({ route, navigation }) {
   const renderAccessItem = ({ item }) => {
     const [userId, userName] = item[0].split('-');
     const accessData = item[1];
-    
+
     // Find user role
-    const user = users.find(u => u.id === parseInt(userId));
+    const user = users.find((u) => u.id === parseInt(userId));
     const userRole = user?.role || 'unknown';
     const roleColors = {
       owner: '#FF6B35',
-      'co-admin': '#4ECDC4', 
+      'co-admin': '#4ECDC4',
       connection: '#45B7D1',
-      unknown: '#95A5A6'
+      unknown: '#95A5A6',
     };
 
     return (
@@ -318,24 +316,42 @@ export default function ProjectAccessScreen({ route, navigation }) {
             <View key={index} style={styles.moduleItem}>
               <View style={styles.moduleInfo}>
                 <Text style={[styles.moduleName, { color: theme.text }]}>
-                  {modules.find(m => m.key === moduleAccess.module)?.label || moduleAccess.module}
+                  {modules.find((m) => m.key === moduleAccess.module)?.label || moduleAccess.module}
                 </Text>
+
                 <View style={styles.permissionsList}>
                   {moduleAccess.canView && (
-                    <Text style={[styles.permission, { color: theme.success }]}>View</Text>
+                    <View
+                      style={[
+                        styles.permissionBox,
+                        { borderColor: theme.border, backgroundColor: theme.card },
+                      ]}>
+                      <Text style={[styles.permission, { color: theme.primary }]}>View</Text>
+                    </View>
                   )}
                   {moduleAccess.canReply && (
-                    <Text style={[styles.permission, { color: theme.primary }]}>Reply</Text>
+                    <View
+                      style={[
+                        styles.permissionBox,
+                        { borderColor: theme.border, backgroundColor: theme.card },
+                      ]}>
+                      <Text style={[styles.permission, { color: theme.primary }]}>Reply</Text>
+                    </View>
                   )}
                   {moduleAccess.canEdit && (
-                    <Text style={[styles.permission, { color: theme.warning }]}>Edit</Text>
+                    <View
+                      style={[
+                        styles.permissionBox,
+                        { borderColor: theme.border, backgroundColor: theme.card },
+                      ]}>
+                      <Text style={[styles.permission, { color: theme.primary }]}>Edit</Text>
+                    </View>
                   )}
                 </View>
               </View>
               <TouchableOpacity
                 onPress={() => handleRemoveAccess(moduleAccess.userId, moduleAccess.module)}
-                style={styles.removeButton}
-              >
+                style={styles.removeButton}>
                 <MaterialIcons name="delete-outline" size={20} color={theme.danger} />
               </TouchableOpacity>
             </View>
@@ -348,30 +364,35 @@ export default function ProjectAccessScreen({ route, navigation }) {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View
+        style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <Text style={[styles.headerTitle, { color: theme.text }]}>Project Settings</Text>
-          <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>
-            {projectName}
-          </Text>
+          <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>{projectName}</Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={() => {
             setSelectedModule(activeTab);
             setShowAddUser(true);
           }}
-          style={[styles.addButton, { backgroundColor: theme.primary }]}
-        >
+          style={[styles.addButton, { backgroundColor: theme.primary }]}>
           <MaterialIcons name="add" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
 
       {/* Module Tabs */}
-      <View style={[styles.tabContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScrollContainer}>
+      <View
+        style={[
+          styles.tabContainer,
+          { backgroundColor: theme.card, borderBottomColor: theme.border },
+        ]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabScrollContainer}>
           {modules.map((module) => (
             <TouchableOpacity
               key={module.key}
@@ -380,20 +401,17 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 {
                   backgroundColor: activeTab === module.key ? theme.primary : 'transparent',
                   borderColor: theme.border,
-                }
+                },
               ]}
-              onPress={() => setActiveTab(module.key)}
-            >
-              <Feather 
-                name={module.icon} 
-                size={16} 
-                color={activeTab === module.key ? '#fff' : theme.text} 
+              onPress={() => setActiveTab(module.key)}>
+              <Feather
+                name={module.icon}
+                size={16}
+                color={activeTab === module.key ? '#fff' : theme.text}
                 style={styles.tabIcon}
               />
-              <Text style={[
-                styles.tabText,
-                { color: activeTab === module.key ? '#fff' : theme.text }
-              ]}>
+              <Text
+                style={[styles.tabText, { color: activeTab === module.key ? '#fff' : theme.text }]}>
                 {module.label}
               </Text>
             </TouchableOpacity>
@@ -402,8 +420,16 @@ export default function ProjectAccessScreen({ route, navigation }) {
       </View>
 
       {/* Search and Filter Bar */}
-      <View style={[styles.searchFilterBar, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
-        <View style={[styles.searchContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View
+        style={[
+          styles.searchFilterBar,
+          { backgroundColor: theme.background, borderBottomColor: theme.border },
+        ]}>
+        <View
+          style={[
+            styles.searchContainer,
+            { backgroundColor: theme.card, borderColor: theme.border },
+          ]}>
           <MaterialIcons name="search" size={20} color={theme.secondaryText} />
           <TextInput
             style={[styles.searchInput, { color: theme.text }]}
@@ -418,14 +444,35 @@ export default function ProjectAccessScreen({ route, navigation }) {
             </TouchableOpacity>
           )}
         </View>
-        
+
         {/* Role Filter */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.filterContainer}>
           {[
             { key: 'all', label: 'All', count: getFilteredAccesses().length },
-            { key: 'owner', label: 'Owner', count: getFilteredAccesses().filter(access => users.find(u => u.id === access.userId)?.role === 'owner').length },
-            { key: 'co-admin', label: 'Co-Admin', count: getFilteredAccesses().filter(access => users.find(u => u.id === access.userId)?.role === 'co-admin').length },
-            { key: 'connection', label: 'Connections', count: getFilteredAccesses().filter(access => users.find(u => u.id === access.userId)?.role === 'connection').length },
+            {
+              key: 'owner',
+              label: 'Owner',
+              count: getFilteredAccesses().filter(
+                (access) => users.find((u) => u.id === access.userId)?.role === 'owner'
+              ).length,
+            },
+            {
+              key: 'co-admin',
+              label: 'Co-Admin',
+              count: getFilteredAccesses().filter(
+                (access) => users.find((u) => u.id === access.userId)?.role === 'co-admin'
+              ).length,
+            },
+            {
+              key: 'connection',
+              label: 'Connections',
+              count: getFilteredAccesses().filter(
+                (access) => users.find((u) => u.id === access.userId)?.role === 'connection'
+              ).length,
+            },
           ].map((filter) => (
             <TouchableOpacity
               key={filter.key}
@@ -434,14 +481,14 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 {
                   backgroundColor: listFilterRole === filter.key ? theme.primary : theme.card,
                   borderColor: theme.border,
-                }
+                },
               ]}
-              onPress={() => setListFilterRole(filter.key)}
-            >
-              <Text style={[
-                styles.filterChipText,
-                { color: listFilterRole === filter.key ? '#fff' : theme.text }
-              ]}>
+              onPress={() => setListFilterRole(filter.key)}>
+              <Text
+                style={[
+                  styles.filterChipText,
+                  { color: listFilterRole === filter.key ? '#fff' : theme.text },
+                ]}>
                 {filter.label} ({filter.count})
               </Text>
             </TouchableOpacity>
@@ -466,18 +513,20 @@ export default function ProjectAccessScreen({ route, navigation }) {
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Feather name={modules.find(m => m.key === activeTab)?.icon || 'settings'} size={48} color={theme.secondaryText} />
+              <Feather
+                name={modules.find((m) => m.key === activeTab)?.icon || 'settings'}
+                size={48}
+                color={theme.secondaryText}
+              />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
-                {listSearchQuery || listFilterRole !== 'all' 
+                {listSearchQuery || listFilterRole !== 'all'
                   ? 'No matching results found'
-                  : `No ${modules.find(m => m.key === activeTab)?.label} Access Configured`
-                }
+                  : `No ${modules.find((m) => m.key === activeTab)?.label} Access Configured`}
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
-                {listSearchQuery || listFilterRole !== 'all' 
+                {listSearchQuery || listFilterRole !== 'all'
                   ? 'Try adjusting your search or filter criteria'
-                  : `Add users to grant them access to ${modules.find(m => m.key === activeTab)?.label.toLowerCase()}`
-                }
+                  : `Add users to grant them access to ${modules.find((m) => m.key === activeTab)?.label.toLowerCase()}`}
               </Text>
               {(listSearchQuery || listFilterRole !== 'all') && (
                 <TouchableOpacity
@@ -485,8 +534,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                   onPress={() => {
                     setListSearchQuery('');
                     setListFilterRole('all');
-                  }}
-                >
+                  }}>
                   <Text style={styles.clearFiltersButtonText}>Clear Filters</Text>
                 </TouchableOpacity>
               )}
@@ -496,8 +544,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                   onPress={() => {
                     setSelectedModule('discussion');
                     setShowAddUser(true);
-                  }}
-                >
+                  }}>
                   <Text style={styles.quickAddButtonText}>Add Discussion Access</Text>
                 </TouchableOpacity>
               )}
@@ -511,13 +558,12 @@ export default function ProjectAccessScreen({ route, navigation }) {
         visible={showAddUser}
         transparent
         animationType="slide"
-        onRequestClose={() => setShowAddUser(false)}
-      >
+        onRequestClose={() => setShowAddUser(false)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Add {modules.find(m => m.key === selectedModule)?.label} Access
+                Add {modules.find((m) => m.key === selectedModule)?.label} Access
               </Text>
               <TouchableOpacity onPress={() => setShowAddUser(false)}>
                 <MaterialIcons name="close" size={24} color={theme.text} />
@@ -525,23 +571,31 @@ export default function ProjectAccessScreen({ route, navigation }) {
             </View>
 
             {/* Current Module Display */}
-            <View style={[styles.currentModuleContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-              <Feather 
-                name={modules.find(m => m.key === selectedModule)?.icon || 'settings'} 
-                size={20} 
-                color={theme.primary} 
+            <View
+              style={[
+                styles.currentModuleContainer,
+                { backgroundColor: theme.background, borderColor: theme.border },
+              ]}>
+              <Feather
+                name={modules.find((m) => m.key === selectedModule)?.icon || 'settings'}
+                size={20}
+                color={theme.primary}
               />
               <Text style={[styles.currentModuleText, { color: theme.text }]}>
-                {modules.find(m => m.key === selectedModule)?.label} Access
+                {modules.find((m) => m.key === selectedModule)?.label} Access
               </Text>
             </View>
 
             {/* User Selection */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Select User</Text>
-              
+
               {users.length === 0 ? (
-                <View style={[styles.noUsersContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                <View
+                  style={[
+                    styles.noUsersContainer,
+                    { backgroundColor: theme.background, borderColor: theme.border },
+                  ]}>
                   <MaterialIcons name="people-outline" size={24} color={theme.secondaryText} />
                   <Text style={[styles.noUsersText, { color: theme.secondaryText }]}>
                     No users found. Make sure you have connections.
@@ -551,7 +605,11 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 <>
                   {/* Search and Filter */}
                   <View style={styles.searchFilterContainer}>
-                    <View style={[styles.searchContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                    <View
+                      style={[
+                        styles.searchContainer,
+                        { backgroundColor: theme.background, borderColor: theme.border },
+                      ]}>
                       <MaterialIcons name="search" size={20} color={theme.secondaryText} />
                       <TextInput
                         style={[styles.searchInput, { color: theme.text }]}
@@ -566,9 +624,12 @@ export default function ProjectAccessScreen({ route, navigation }) {
                         </TouchableOpacity>
                       )}
                     </View>
-                    
+
                     {/* Role Filter */}
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterContainer}>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      style={styles.filterContainer}>
                       {[
                         { key: 'all', label: 'All' },
                         { key: 'owner', label: 'Owner' },
@@ -580,16 +641,17 @@ export default function ProjectAccessScreen({ route, navigation }) {
                           style={[
                             styles.filterChip,
                             {
-                              backgroundColor: selectedRole === filter.key ? theme.primary : theme.background,
+                              backgroundColor:
+                                selectedRole === filter.key ? theme.primary : theme.background,
                               borderColor: theme.border,
-                            }
+                            },
                           ]}
-                          onPress={() => setSelectedRole(filter.key)}
-                        >
-                          <Text style={[
-                            styles.filterChipText,
-                            { color: selectedRole === filter.key ? '#fff' : theme.text }
-                          ]}>
+                          onPress={() => setSelectedRole(filter.key)}>
+                          <Text
+                            style={[
+                              styles.filterChipText,
+                              { color: selectedRole === filter.key ? '#fff' : theme.text },
+                            ]}>
                             {filter.label}
                           </Text>
                         </TouchableOpacity>
@@ -607,34 +669,51 @@ export default function ProjectAccessScreen({ route, navigation }) {
                         style={[
                           styles.userChip,
                           {
-                            backgroundColor: selectedUser?.id === item.id ? theme.primary : theme.background,
+                            backgroundColor:
+                              selectedUser?.id === item.id ? theme.primary : theme.background,
                             borderColor: theme.border,
-                          }
+                          },
                         ]}
-                        onPress={() => setSelectedUser(item)}
-                      >
+                        onPress={() => setSelectedUser(item)}>
                         <View style={styles.userChipContent}>
-                          <Text style={[
-                            styles.userChipText,
-                            { color: selectedUser?.id === item.id ? '#fff' : theme.text }
-                          ]}>
+                          <Text
+                            style={[
+                              styles.userChipText,
+                              { color: selectedUser?.id === item.id ? '#fff' : theme.text },
+                            ]}>
                             {item.name}
                           </Text>
                           {item.designation && (
-                            <Text style={[
-                              styles.userChipDesignation,
-                              { color: selectedUser?.id === item.id ? 'rgba(255,255,255,0.8)' : theme.secondaryText }
-                            ]}>
+                            <Text
+                              style={[
+                                styles.userChipDesignation,
+                                {
+                                  color:
+                                    selectedUser?.id === item.id
+                                      ? 'rgba(255,255,255,0.8)'
+                                      : theme.secondaryText,
+                                },
+                              ]}>
                               {item.designation}
                             </Text>
                           )}
                         </View>
                       </TouchableOpacity>
                     )}
-                    keyExtractor={(item) => (item.id ? item.id.toString() : Math.random().toString())}
+                    keyExtractor={(item) =>
+                      item.id ? item.id.toString() : Math.random().toString()
+                    }
                     ListEmptyComponent={
-                      <View style={[styles.noFilterResultsContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                        <MaterialIcons name="filter-list-off" size={24} color={theme.secondaryText} />
+                      <View
+                        style={[
+                          styles.noFilterResultsContainer,
+                          { backgroundColor: theme.background, borderColor: theme.border },
+                        ]}>
+                        <MaterialIcons
+                          name="filter-list-off"
+                          size={24}
+                          color={theme.secondaryText}
+                        />
                         <Text style={[styles.noFilterResultsText, { color: theme.secondaryText }]}>
                           No users match your filters
                         </Text>
@@ -646,10 +725,12 @@ export default function ProjectAccessScreen({ route, navigation }) {
             </View>
 
             {/* Module Selection - Removed since we're using tabs */}
-            
+
             {/* Permissions */}
             <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Permissions for {modules.find(m => m.key === selectedModule)?.label}</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                Permissions for {modules.find((m) => m.key === selectedModule)?.label}
+              </Text>
               {selectedModule === 'discussion' && (
                 <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
                   Configure what this user can do in project discussions
@@ -659,22 +740,26 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 <View key={key} style={styles.permissionRow}>
                   <View style={styles.permissionInfo}>
                     <Text style={[styles.permissionLabel, { color: theme.text }]}>
-                      {key === 'canView' ? 'View Messages' : 
-                       key === 'canReply' ? 'Send Messages' : 
-                       'Manage Discussion'}
+                      {key === 'canView'
+                        ? 'View Messages'
+                        : key === 'canReply'
+                          ? 'Send Messages'
+                          : 'Manage Discussion'}
                     </Text>
                     {selectedModule === 'discussion' && (
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
-                        {key === 'canView' ? 'Can see discussion messages' : 
-                         key === 'canReply' ? 'Can post messages and replies' : 
-                         'Can pin messages and moderate discussion'}
+                        {key === 'canView'
+                          ? 'Can see discussion messages'
+                          : key === 'canReply'
+                            ? 'Can post messages and replies'
+                            : 'Can pin messages and moderate discussion'}
                       </Text>
                     )}
                   </View>
                   <Switch
                     value={value}
-                    onValueChange={(newValue) => 
-                      setPermissions(prev => ({ ...prev, [key]: newValue }))
+                    onValueChange={(newValue) =>
+                      setPermissions((prev) => ({ ...prev, [key]: newValue }))
                     }
                     trackColor={{ false: theme.border, true: theme.primary }}
                     thumbColor={value ? '#fff' : theme.secondaryText}
@@ -687,14 +772,12 @@ export default function ProjectAccessScreen({ route, navigation }) {
             <View style={styles.modalActions}>
               <TouchableOpacity
                 style={[styles.cancelButton, { borderColor: theme.border }]}
-                onPress={() => setShowAddUser(false)}
-              >
+                onPress={() => setShowAddUser(false)}>
                 <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                onPress={handleSetAccess}
-              >
+                onPress={handleSetAccess}>
                 <Text style={styles.saveButtonText}>Save Access</Text>
               </TouchableOpacity>
             </View>
@@ -913,14 +996,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  permissionsContainer: {
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginTop: 4,
+  },
   permissionsList: {
     flexDirection: 'row',
-    marginTop: 4,
+    paddingTop: 4,
+  },
+  permissionBox: {
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    marginRight: 8,
+    marginBottom: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   permission: {
     fontSize: 12,
     fontWeight: '500',
-    marginRight: 8,
   },
   removeButton: {
     padding: 4,
