@@ -3,6 +3,7 @@ import { Audio } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  Dimensions,
   Image,
   Platform,
   RefreshControl,
@@ -11,14 +12,10 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-import {
-  acceptConnectionRequest,
-  getPendingRequests,
-  rejectConnectionRequest,
-} from '../utils/connections';
+import { acceptConnectionRequest, getPendingRequests, rejectConnectionRequest } from '../utils/connections';
 import {
   fetchNotifications,
   markAllNotificationsAsRead,
@@ -35,8 +32,10 @@ const NotificationScreen = ({ navigation }) => {
   const messageAnim = useRef(new Animated.Value(0)).current;
   const theme = useTheme();
 
-  const tabs = ['Critical', 'Task', 'Connections', 'All'];
+  const screenWidth = Dimensions.get('window').width;
+  const isTablet = screenWidth >= 768;
 
+  const tabs = ['Critical', 'Task', 'Connections', 'All'];
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -83,9 +82,7 @@ const NotificationScreen = ({ navigation }) => {
 
     // Play refresh sound
     try {
-      const { sound } = await Audio.Sound.createAsync(
-        require('../assets/sounds/refresh.wav')
-      );
+      const { sound } = await Audio.Sound.createAsync(require('../assets/sounds/refresh.wav'));
       await sound.playAsync();
       sound.setOnPlaybackStatusUpdate((status) => {
         if (status.didJustFinish) sound.unloadAsync();
@@ -179,39 +176,88 @@ const NotificationScreen = ({ navigation }) => {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     // For older dates, show actual date
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
       day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
     });
   };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-        <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+      <TouchableOpacity
+        style={[
+          styles.backBtn,
+          {
+            marginLeft: isTablet ? 24 : 16,
+            marginBottom: isTablet ? 24 : 18,
+          },
+        ]}
+        onPress={() => navigation.goBack()}>
+        <MaterialIcons name="arrow-back-ios" size={isTablet ? 18 : 16} color={theme.text} />
+        <Text
+          style={[
+            styles.backText,
+            {
+              color: theme.text,
+              fontSize: isTablet ? 20 : 18,
+            },
+          ]}>
+          Back
+        </Text>
       </TouchableOpacity>
-      <View style={styles.headerRow}>
-        <Text style={[styles.headerTitle, { color: theme.text }]}>Notifications</Text>
+      
+      <View
+        style={[
+          styles.headerRow,
+          {
+            paddingHorizontal: isTablet ? 24 : 16,
+            marginBottom: isTablet ? 4 : 0,
+          },
+        ]}>
+        <Text
+          style={[
+            styles.headerTitle,
+            {
+              color: theme.text,
+              fontSize: isTablet ? 24 : 20,
+            },
+          ]}>
+          Notifications
+        </Text>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity onPress={onRefresh}>
-            <MaterialIcons name="refresh" size={22} color={theme.text} style={{ marginRight: 12 }} />
+            <MaterialIcons
+              name="refresh"
+              size={isTablet ? 26 : 22}
+              color={theme.text}
+              style={{ marginRight: isTablet ? 16 : 12 }}
+            />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleMarkAllAsRead}>
-            <MaterialIcons name="check-circle-outline" size={22} color={theme.text} />
+            <MaterialIcons
+              name="check-circle-outline"
+              size={isTablet ? 26 : 22}
+              color={theme.text}
+            />
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.tabRow}>
+      <View
+        style={[
+          styles.tabRow,
+          {
+            paddingHorizontal: isTablet ? 14 : 10,
+            marginTop: isTablet ? 12 : 8,
+          },
+        ]}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabRow}
-        >
+          contentContainerStyle={[styles.tabRow, { gap: isTablet ? 2 : 8 }]}>
           {tabs.map((tab) => {
             const isActive = activeTab.toLowerCase() === tab.toLowerCase();
 
@@ -232,44 +278,52 @@ const NotificationScreen = ({ navigation }) => {
                 key={tab}
                 style={[
                   styles.tabButton,
+                  {
+                    paddingVertical: isTablet ? 12 : 8,
+                    paddingHorizontal: isTablet ? 22 : 17,
+                    borderRadius: isTablet ? 24 : 20,
+                    marginRight: isTablet ? 0 : 8,
+                  },
                   isActive
                     ? { backgroundColor: theme.primary, borderColor: theme.primary }
                     : { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
-                onPress={() => setActiveTab(tab.toUpperCase())}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                onPress={() => setActiveTab(tab.toUpperCase())}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: isTablet ? 8 : 6,
+                  }}>
                   <Text
                     style={[
                       styles.tabText,
+                      {
+                        fontSize: isTablet ? 16 : 14,
+                      },
                       isActive
                         ? { color: '#fff', fontWeight: '600' }
                         : { color: theme.text, fontWeight: '400' },
-                    ]}
-                  >
+                    ]}>
                     {tab}
                   </Text>
                   {count > 0 && (
                     <View
                       style={{
-                        minWidth: 20,
-                        height: 20,
-                        borderRadius: 10,
-                        backgroundColor: isActive
-                          ? 'rgba(255,255,255,0.3)'
-                          : theme.primary + '33', // semi-transparent primary
+                        minWidth: isTablet ? 24 : 20,
+                        height: isTablet ? 24 : 20,
+                        borderRadius: isTablet ? 12 : 10,
+                        backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : theme.primary + '33', // semi-transparent primary
                         justifyContent: 'center',
                         alignItems: 'center',
-                        paddingHorizontal: 6,
-                      }}
-                    >
+                        paddingHorizontal: isTablet ? 8 : 6,
+                      }}>
                       <Text
                         style={{
                           color: isActive ? '#fff' : theme.primary,
-                          fontSize: 12,
+                          fontSize: isTablet ? 14 : 12,
                           fontWeight: '700',
-                        }}
-                      >
+                        }}>
                         {count}
                       </Text>
                     </View>
@@ -278,21 +332,37 @@ const NotificationScreen = ({ navigation }) => {
               </TouchableOpacity>
             );
           })}
-
         </ScrollView>
       </View>
       {/* Body */}
       <ScrollView
-        contentContainerStyle={{ padding: 16, paddingBottom: 50 }}
+        contentContainerStyle={{
+          padding: isTablet ? 24 : 16,
+          paddingBottom: isTablet ? 60 : 50,
+        }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
+        showsVerticalScrollIndicator={false}>
         {activeTab === 'CONNECTIONS' && pendingRequests.length > 0 && (
           <>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Connection Requests</Text>
+            <Text
+              style={[
+                styles.sectionTitle,
+                {
+                  color: theme.text,
+                  fontSize: isTablet ? 18 : 16,
+                  marginBottom: isTablet ? 12 : 8,
+                },
+              ]}>
+              Connection Requests
+            </Text>
             {pendingRequests.map((req) => {
               const initials = req.requester?.name
-                ? req.requester.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+                ? req.requester.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)
                 : 'U';
               return (
                 <View
@@ -304,76 +374,117 @@ const NotificationScreen = ({ navigation }) => {
                       borderColor: theme.DrawerBorder || '#e0e0e0',
                       flexDirection: 'row',
                       alignItems: 'center',
-                      paddingVertical: 14,
-                      paddingHorizontal: 14,
+                      paddingVertical: isTablet ? 18 : 14,
+                      paddingHorizontal: isTablet ? 20 : 14,
+                      borderRadius: isTablet ? 20 : 16,
+                      marginBottom: isTablet ? 16 : 12,
                     },
-                  ]}
-                >
+                  ]}>
                   {/* Avatar */}
                   <View
                     style={{
-                      width: 54,
-                      height: 54,
-                      borderRadius: 27,
+                      width: isTablet ? 64 : 54,
+                      height: isTablet ? 64 : 54,
+                      borderRadius: isTablet ? 32 : 27,
                       borderWidth: 2,
                       borderColor: theme.primary,
                       backgroundColor: theme.avatarBg,
                       alignItems: 'center',
                       justifyContent: 'center',
-                      marginRight: 14,
+                      marginRight: isTablet ? 18 : 14,
                       overflow: 'hidden',
-                    }}
-                  >
+                    }}>
                     {req.requester?.profilePhoto ? (
                       <Image
                         source={{ uri: req.requester.profilePhoto }}
-                        style={{ width: 50, height: 50, borderRadius: 25 }}
+                        style={{
+                          width: isTablet ? 60 : 50,
+                          height: isTablet ? 60 : 50,
+                          borderRadius: isTablet ? 30 : 25,
+                        }}
                         resizeMode="cover"
                       />
                     ) : (
-                      <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 20 }}>
+                      <Text
+                        style={{
+                          color: theme.primary,
+                          fontWeight: '700',
+                          fontSize: isTablet ? 24 : 20,
+                        }}>
                         {initials}
                       </Text>
                     )}
                   </View>
                   {/* Info and actions */}
                   <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Text style={[styles.name, { color: theme.text, fontWeight: '500', fontSize: 16 }]}>
+                    <Text
+                      style={[
+                        styles.name,
+                        {
+                          color: theme.text,
+                          fontWeight: '500',
+                          fontSize: isTablet ? 18 : 16,
+                        },
+                      ]}>
                       {req.requester?.name || 'User'}
                     </Text>
-                    <Text style={{ color: theme.secondaryText, fontSize: 13, marginBottom: 8, fontWeight: '300' }}>
+                    <Text
+                      style={{
+                        color: theme.secondaryText,
+                        fontSize: isTablet ? 15 : 13,
+                        marginBottom: isTablet ? 10 : 8,
+                        fontWeight: '300',
+                      }}>
                       wants to connect
                     </Text>
-                    <Text style={{ color: theme.secondaryText, fontSize: 11, marginBottom: 8, fontWeight: '300' }}>
+                    <Text
+                      style={{
+                        color: theme.secondaryText,
+                        fontSize: isTablet ? 13 : 11,
+                        marginBottom: isTablet ? 12 : 8,
+                        fontWeight: '300',
+                      }}>
                       {formatDateTime(req.createdAt)}
                     </Text>
                     <View style={{ flexDirection: 'row', gap: 0 }}>
                       <TouchableOpacity
                         onPress={() => handleAccept(req.id)}
                         style={{
-                          backgroundColor: "#366CD91A",
-                          borderRadius: 20,
-                          paddingVertical: 6,
-                          paddingHorizontal: 18,
-                          marginRight: 8,
+                          backgroundColor: '#366CD91A',
+                          borderRadius: isTablet ? 24 : 20,
+                          paddingVertical: isTablet ? 10 : 6,
+                          paddingHorizontal: isTablet ? 24 : 18,
+                          marginRight: isTablet ? 12 : 8,
                           borderWidth: 1,
                           borderColor: theme.primary,
-                        }}
-                      >
-                        <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 14 }}>Accept</Text>
+                        }}>
+                        <Text
+                          style={{
+                            color: theme.primary,
+                            fontWeight: '500',
+                            fontSize: isTablet ? 16 : 14,
+                          }}>
+                          Accept
+                        </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => handleReject(req.id)}
                         style={{
                           backgroundColor: theme.danger,
-                          borderRadius: 20,
-                          paddingVertical: 6,
-                          paddingHorizontal: 18,
+                          borderRadius: isTablet ? 24 : 20,
+                          paddingVertical: isTablet ? 10 : 6,
+                          paddingHorizontal: isTablet ? 24 : 18,
                           borderWidth: 1,
                           borderColor: theme.dangerText,
-                        }}
-                      >
-                        <Text style={{ color: theme.dangerText, fontWeight: '500', fontSize: 14 }}>Reject</Text>
+                        }}>
+                        <Text
+                          style={{
+                            color: theme.dangerText,
+                            fontWeight: '500',
+                            fontSize: isTablet ? 16 : 14,
+                          }}>
+                          Reject
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </View>
@@ -422,23 +533,70 @@ const NotificationScreen = ({ navigation }) => {
                   {
                     backgroundColor: n.read ? theme.card : `${theme.card}`, // Slightly different shade if unread
                     borderColor: theme.border || '#e0e0e0',
+                    borderRadius: isTablet ? 20 : 16,
+                    padding: isTablet ? 20 : 16,
+                    marginBottom: isTablet ? 16 : 12,
                   },
-                ]}
-              >
+                ]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.iconCircle, { backgroundColor: theme.avatarBg }]}>
-                    <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 20 }}>
+                  <View
+                    style={[
+                      styles.iconCircle,
+                      {
+                        backgroundColor: theme.avatarBg,
+                        width: isTablet ? 50 : 42,
+                        height: isTablet ? 50 : 42,
+                        borderRadius: isTablet ? 16 : 12,
+                        marginRight: isTablet ? 16 : 12,
+                      },
+                    ]}>
+                    <Text
+                      style={{
+                        color: theme.primary,
+                        fontWeight: '500',
+                        fontSize: isTablet ? 24 : 20,
+                      }}>
                       {n.type?.charAt(0)?.toUpperCase() || 'N'}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
-                      <Text style={[styles.name, { color: theme.text, flex: 1 }]}>{n.type}</Text>
-                      <Text style={{ color: theme.secondaryText, fontSize: 11, fontWeight: '300' }}>
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        justifyContent: 'space-between',
+                        alignItems: 'flex-start',
+                        marginBottom: isTablet ? 4 : 2,
+                      }}>
+                      <Text
+                        style={[
+                          styles.name,
+                          {
+                            color: theme.text,
+                            flex: 1,
+                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: '600',
+                            marginBottom: isTablet ? 6 : 5,
+                          },
+                        ]}>
+                        {n.type}
+                      </Text>
+                      <Text
+                        style={{
+                          color: theme.secondaryText,
+                          fontSize: isTablet ? 13 : 11,
+                          fontWeight: '300',
+                        }}>
                         {formatDateTime(n.createdAt)}
                       </Text>
                     </View>
-                    <Text style={{ color: theme.secondaryText, fontSize: 12, fontWeight: '300' }}>{n.message}</Text>
+                    <Text
+                      style={{
+                        color: theme.secondaryText,
+                        fontSize: isTablet ? 14 : 12,
+                        fontWeight: '300',
+                      }}>
+                      {n.message}
+                    </Text>
                   </View>
                 </View>
               </TouchableOpacity>
@@ -451,21 +609,36 @@ const NotificationScreen = ({ navigation }) => {
         <Animated.View
           style={[
             styles.messageDrawer,
-            { backgroundColor: theme.primary },
+            {
+              backgroundColor: theme.primary,
+              right: isTablet ? 30 : 20,
+              top: isTablet ? 80 : 70,
+              maxWidth: isTablet ? 400 : 360,
+              borderRadius: isTablet ? 20 : 16,
+              paddingVertical: isTablet ? 18 : 14,
+              paddingHorizontal: isTablet ? 30 : 24,
+            },
             {
               opacity: messageAnim,
               transform: [
                 {
                   translateY: messageAnim.interpolate({
                     inputRange: [0, 1],
-                    outputRange: [-40, 0],
+                    outputRange: [isTablet ? -50 : -40, 0],
                   }),
                 },
               ],
             },
-          ]}
-        >
-          <Text style={{ color: '#fff', fontWeight: '500', fontSize: 12, textAlign: 'center' }}>{message}</Text>
+          ]}>
+          <Text
+            style={{
+              color: '#fff',
+              fontWeight: '500',
+              fontSize: isTablet ? 14 : 12,
+              textAlign: 'center',
+            }}>
+            {message}
+          </Text>
         </Animated.View>
       )}
     </SafeAreaView>
@@ -475,7 +648,7 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
-    marginTop: Platform.OS === 'ios' ? 0 : 25,
+    marginTop: Platform.OS === 'ios' ? 70 : 25,
     marginLeft: 16,
     marginBottom: 18,
     flexDirection: 'row',

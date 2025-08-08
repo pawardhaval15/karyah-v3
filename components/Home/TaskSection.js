@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../../theme/ThemeContext';
 import { fetchAssignedIssues } from '../../utils/issues';
@@ -234,27 +234,29 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   );
 }
 
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
+
 const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    flexWrap: 'wrap', 
+    gap: isTablet ? 10 : 6,
+    paddingHorizontal: isTablet ? 20 : 20,
+    paddingBottom: isTablet ? 24 : 20,
   },
   cardWrapper: {
-    width: '49%',
-    marginBottom: 9,
+    width: isTablet ? '23%' : '49%',
   },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: 20,
+    marginHorizontal: isTablet ? 20 : 20,
     marginBottom: 0,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
     fontWeight: '500',
     color: '#363942',
   },
@@ -278,15 +280,15 @@ const styles = StyleSheet.create({
   tabRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    marginTop: 12,
-    marginHorizontal: 20,
-    marginBottom: 12,
+    marginTop: isTablet ? 16 : 12,
+    marginHorizontal: isTablet ? 20 : 20,
+    marginBottom: isTablet ? 16 : 12,
   },
   tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    marginRight: 6,
+    paddingVertical: isTablet ? 10 : 8,
+    paddingHorizontal: isTablet ? 20 : 20,
+    borderRadius: isTablet ? 20 : 20,
+    marginRight: isTablet ? 0 : 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
@@ -294,7 +296,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#366CD9',
   },
   tabText: {
-    fontSize: 15,
+    fontSize: isTablet ? 16 : 15,
     fontWeight: '400',
     color: '#666',
   },
@@ -305,15 +307,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f7f7f7',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    borderRadius: isTablet ? 16 : 12,
+    marginHorizontal: isTablet ? 20 : 20,
+    marginBottom: isTablet ? 16 : 12,
+    paddingHorizontal: isTablet ? 20 : 16,
+    paddingVertical: isTablet ? 16 : 12,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: isTablet ? 16 : 16,
     fontWeight: '400',
     color: '#363942',
     paddingVertical: 0,

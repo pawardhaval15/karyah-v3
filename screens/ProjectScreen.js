@@ -2,7 +2,12 @@ import { Feather } from '@expo/vector-icons'; // Add this import if not already 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, RefreshControl, FlatList, View
+  ActivityIndicator, Alert,
+  Dimensions,
+  FlatList,
+  RefreshControl,
+  StyleSheet, Text, TouchableOpacity,
+  View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 
@@ -22,6 +27,10 @@ export default function ProjectScreen({ navigation }) {
   const [showProjectPopup, setShowProjectPopup] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'working', 'delayed', 'completed'
   const [refreshing, setRefreshing] = useState(false);
+
+  // Get screen dimensions for responsive layout
+  const { width: screenWidth } = Dimensions.get('window');
+  const isTablet = screenWidth >= 768;
 
   const [projectForm, setProjectForm] = useState({
     projectName: '',
@@ -180,6 +189,8 @@ export default function ProjectScreen({ navigation }) {
           data={tabData}
           keyExtractor={(item, idx) => item.id?.toString() || idx.toString()}
           contentContainerStyle={{ paddingBottom: 24 }}
+          numColumns={isTablet ? 2 : 1}
+          columnWrapperStyle={isTablet ? styles.row : null}
           renderItem={({ item, index }) => {
             let delayedDays = 0;
             const now = new Date();
@@ -189,13 +200,16 @@ export default function ProjectScreen({ navigation }) {
               delayedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             }
             return (
-              <ProjectCard
-                key={item.id || index}
-                project={item}
-                theme={theme}
-                delayedDays={delayedDays}
-                endDate={item.endDate}
-              />
+              <View style={isTablet ? styles.cardContainer : null}>
+                <ProjectCard
+                  key={item.id || index}
+                  project={item}
+                  theme={theme}
+                  delayedDays={delayedDays}
+                  endDate={item.endDate}
+                  isTablet={isTablet}
+                />
+              </View>
             );
           }}
           ListEmptyComponent={
@@ -244,5 +258,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '400',
     marginLeft: 0,
+  },
+  row: {
+    justifyContent: 'space-around',
+    paddingHorizontal: 8,
+  },
+  cardContainer: {
+    flex: 1,
+    marginHorizontal: 4,
   },
 });

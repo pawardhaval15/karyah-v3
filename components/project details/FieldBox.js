@@ -1,4 +1,7 @@
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
 
 export default function FieldBox({
     label,
@@ -53,36 +56,36 @@ export default function FieldBox({
 
 const styles = StyleSheet.create({
     wrapper: {
-        marginHorizontal: 20,
-        marginBottom: 12,
+        marginHorizontal: isTablet ? 40 : 20,
+        marginBottom: isTablet ? 16 : 12,
     },
     label: {
-        fontSize: 10,
+        fontSize: isTablet ? 12 : 10,
         fontWeight: '400',
         color: '#222',
-        marginBottom: 6,
+        marginBottom: isTablet ? 8 : 6,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
-        lineHeight: 14,
+        lineHeight: isTablet ? 16 : 14,
         textAlign: 'left',
     },
     subtitle: {
-        fontSize: 13,
+        fontSize: isTablet ? 15 : 13,
         color: '#888',
-        marginBottom: 6,
+        marginBottom: isTablet ? 8 : 6,
     },
     fieldBox: {
         backgroundColor: '#fff',
-        borderRadius: 10,
+        borderRadius: isTablet ? 14 : 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        paddingHorizontal: 14,
-        paddingVertical: 12,
+        paddingHorizontal: isTablet ? 18 : 14,
+        paddingVertical: isTablet ? 16 : 12,
     },
     fieldBoxMultiline: {
-        minHeight: 108,
-        paddingTop: 12,
-        paddingBottom: 12,
+        minHeight: isTablet ? 120 : 108,
+        paddingTop: isTablet ? 16 : 12,
+        paddingBottom: isTablet ? 16 : 12,
     },
     fieldContent: {
         flex: 1,
@@ -92,11 +95,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fieldIcon: {
-        marginRight: 10,
+        marginRight: isTablet ? 12 : 10,
     },
     fieldInput: {
         flex: 1,
-        fontSize: 16,
+        fontSize: isTablet ? 18 : 16,
         color: '#363942',
         paddingVertical: 0,
         backgroundColor: 'transparent',
