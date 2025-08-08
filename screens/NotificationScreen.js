@@ -22,8 +22,8 @@ import {
 import {
   fetchNotifications,
   markAllNotificationsAsRead,
+  markNotificationAsRead,
 } from '../utils/notifications';
-import { markNotificationAsRead } from '../utils/notifications';
 
 const NotificationScreen = ({ navigation }) => {
   const [activeTab, setActiveTab] = useState('CRITICAL');
@@ -43,6 +43,7 @@ const NotificationScreen = ({ navigation }) => {
       const data = await fetchNotifications();
       if (!Array.isArray(data)) throw new Error('Invalid notification data');
       setNotifications(data);
+      console.log('Loaded notifications:', data);
     } catch (err) {
       // console.log('Load Error:', err.message);
     }
@@ -52,7 +53,7 @@ const NotificationScreen = ({ navigation }) => {
     try {
       const data = await getPendingRequests();
       setPendingRequests(Array.isArray(data) ? data : []);
-
+      console.log('Loaded pending requests:', data);
       // Only log if we actually got some data
       if (data && data.length > 0) {
         // console.log('Loaded pending requests:', data.length);
@@ -100,6 +101,7 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handleAccept = async (connectionId) => {
+    console.log('Accepting connectionId:', connectionId);
     try {
       await acceptConnectionRequest(connectionId);
       showMessage('Connection request accepted');
@@ -111,6 +113,7 @@ const NotificationScreen = ({ navigation }) => {
   };
 
   const handleReject = async (connectionId) => {
+    console.log('Rejecting connectionId:', connectionId);
     try {
       await rejectConnectionRequest(connectionId);
       showMessage('Connection request rejected');
@@ -162,6 +165,27 @@ const NotificationScreen = ({ navigation }) => {
         useNativeDriver: true,
       }).start(() => setMessage(null));
     }, 2000);
+  };
+
+  const formatDateTime = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    // For older dates, show actual date
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+    });
   };
 
   return (
@@ -320,6 +344,9 @@ const NotificationScreen = ({ navigation }) => {
                     <Text style={{ color: theme.secondaryText, fontSize: 13, marginBottom: 8, fontWeight: '300' }}>
                       wants to connect
                     </Text>
+                    <Text style={{ color: theme.secondaryText, fontSize: 11, marginBottom: 8, fontWeight: '300' }}>
+                      {formatDateTime(req.createdAt)}
+                    </Text>
                     <View style={{ flexDirection: 'row', gap: 0 }}>
                       <TouchableOpacity
                         onPress={() => handleAccept(req.id)}
@@ -355,7 +382,7 @@ const NotificationScreen = ({ navigation }) => {
             })}
           </>
         )}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Notifications</Text>
+        {/* <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Notifications</Text> */}
         {filteredNotifications.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications yet.</Text>
@@ -393,7 +420,7 @@ const NotificationScreen = ({ navigation }) => {
                 style={[
                   styles.card,
                   {
-                    backgroundColor: n.read ? theme.card : `${theme.primary}22`, // Slightly different shade if unread
+                    backgroundColor: n.read ? theme.card : `${theme.card}`, // Slightly different shade if unread
                     borderColor: theme.border || '#e0e0e0',
                   },
                 ]}
@@ -405,7 +432,12 @@ const NotificationScreen = ({ navigation }) => {
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.name, { color: theme.text }]}>{n.type}</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 2 }}>
+                      <Text style={[styles.name, { color: theme.text, flex: 1 }]}>{n.type}</Text>
+                      <Text style={{ color: theme.secondaryText, fontSize: 11, fontWeight: '300' }}>
+                        {formatDateTime(n.createdAt)}
+                      </Text>
+                    </View>
                     <Text style={{ color: theme.secondaryText, fontSize: 12, fontWeight: '300' }}>{n.message}</Text>
                   </View>
                 </View>
