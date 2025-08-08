@@ -80,7 +80,6 @@ const styles = StyleSheet.create({
         borderColor: '#E5E7EB',
         paddingHorizontal: 14,
         paddingVertical:12,
-        minHeight: 54,
     },
     fieldBoxMultiline: {
         minHeight: 84,
