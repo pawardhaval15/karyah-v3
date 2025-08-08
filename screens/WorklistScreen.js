@@ -1,4 +1,3 @@
-
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
@@ -9,37 +8,23 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-    ActivityIndicator, Modal, Alert,
+    ActivityIndicator,
+    Modal,
+    Alert,
+    RefreshControl,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
-import { createWorklist, getWorklistsByProjectId } from '../utils/worklist'; // adjust the path if needed
+import {
+    createWorklist,
+    getWorklistsByProjectId,
+    updateWorklist,
+    deleteWorklist,
+} from '../utils/worklist'; // make sure updateWorklist and deleteWorklist are exported
 import { Platform } from 'react-native';
-import CustomCircularProgress from 'components/task details/CustomCircularProgress';
 
-function WorklistBanner({ projectName, onAdd }) {
-    return (
-        <LinearGradient
-            colors={['#011F53', '#366CD9']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.banner}
-        >
-            <View style={{ flex: 1 }}>
-                <Text numberOfLines={2}
-                    ellipsizeMode="tail" style={styles.bannerTitle}>{projectName}</Text>
-                <Text style={styles.bannerDesc}>The list of worklists for this project</Text>
-            </View>
-            <TouchableOpacity style={styles.bannerAction} onPress={onAdd}>
-                <Text style={styles.bannerActionText}>Worklist</Text>
-                <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-        </LinearGradient>
-    );
-}
-
-function WorklistCard({ worklist, navigation, theme, project }) {
-    const percent = worklist.percent || 0;
+// WorklistCard component with Edit and Delete buttons
+function WorklistCard({ worklist, navigation, theme, project, onDelete, onEdit }) {
     return (
         <TouchableOpacity
             style={[styles.worklistCard, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -53,25 +38,66 @@ function WorklistCard({ worklist, navigation, theme, project }) {
             <View style={{ flex: 1 }}>
                 <Text style={[styles.worklistName, { color: theme.text }]}>{worklist.name}</Text>
             </View>
-            {/* <View>
-                <CustomCircularProgress percentage={worklist.progress || 0} />
-            </View> */}
+            {/* Edit button */}
+            <TouchableOpacity
+                onPress={() => onEdit(worklist)}
+                style={{ padding: 8, marginRight: 12 }}
+            >
+                <MaterialIcons name="edit" size={22} color={theme.primary} />
+            </TouchableOpacity>
+            {/* Delete button */}
+            <TouchableOpacity
+                onPress={() => onDelete(worklist.id)}
+                style={{ padding: 8 }}
+            >
+                <MaterialIcons name="delete-outline" size={22} color={theme.primary} />
+            </TouchableOpacity>
         </TouchableOpacity>
     );
 }
+
 
 export default function WorklistScreen({ navigation, route }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
     const [worklists, setWorklists] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    // Add states for modals and editing
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [newWorklistName, setNewWorklistName] = useState('');
+
+    const [editModalVisible, setEditModalVisible] = useState(false);
+    const [selectedWorklist, setSelectedWorklist] = useState(null);
+    const [editedWorklistName, setEditedWorklistName] = useState('');
 
     const project = route.params?.project;
     const projectId = project?.id;
     const projectName = project?.projectName || 'Project Name';
+    const fetchWorklists = async () => {
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const data = await getWorklistsByProjectId(projectId, token);
+            setWorklists(data);
+        } catch (error) {
+            console.error('Failed to fetch worklists:', error.message);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);  // Important to hide refresh spinner after fetch
+        }
+    };
 
+    useEffect(() => {
+        if (projectId) {
+            fetchWorklists();
+        }
+    }, [projectId]);
+
+    // Handler for Pull-to-Refresh
+    const onRefresh = () => {
+        setRefreshing(true);
+        fetchWorklists();
+    };
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -94,6 +120,7 @@ export default function WorklistScreen({ navigation, route }) {
         w.name?.toLowerCase().includes(search.toLowerCase())
     );
 
+    // Create new Worklist handlers
     const handleAddWorklist = () => {
         setIsModalVisible(true);
     };
@@ -114,7 +141,79 @@ export default function WorklistScreen({ navigation, route }) {
             Alert.alert('Error', error.message);
         }
     };
+    function WorklistBanner({ projectName, onAdd, theme }) {
+        return (
+            <LinearGradient
+                colors={['#011F53', '#366CD9']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.banner}
+            >
+                <View style={{ flex: 1 }}>
+                    <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerTitle}>{projectName}</Text>
+                    <Text style={styles.bannerDesc}>The list of worklists for this project</Text>
+                </View>
+                <TouchableOpacity style={styles.bannerAction} onPress={onAdd}>
+                    <Text style={styles.bannerActionText}>Worklist</Text>
+                    <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
+                </TouchableOpacity>
+            </LinearGradient>
+        );
+    }
 
+    // Delete worklist handler with confirmation
+    const handleDeleteWorklist = (id) => {
+        Alert.alert(
+            'Delete Worklist',
+            'Deleting this worklist will also delete all its associated tasks. Do you still want to proceed?',
+            [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                    text: 'Delete',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const token = await AsyncStorage.getItem('token');
+                            await deleteWorklist(id, token);
+                            setWorklists(prev => prev.filter(w => w.id !== id));
+                        } catch (error) {
+                            console.error('Failed to delete worklist:', error.message);
+                            Alert.alert('Error', 'Failed to delete worklist.');
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    // Edit worklist modal open
+    const openEditModal = (worklist) => {
+        setSelectedWorklist(worklist);
+        setEditedWorklistName(worklist.name);
+        setEditModalVisible(true);
+    };
+
+    // Handle worklist update
+    const handleUpdateWorklist = async () => {
+        if (!editedWorklistName.trim()) {
+            Alert.alert('Validation', 'Please enter a worklist name.');
+            return;
+        }
+
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const updated = await updateWorklist(selectedWorklist.id, editedWorklistName.trim(), token);
+            setWorklists(prev =>
+                prev.map(w => (w.id === updated.id ? updated : w))
+            );
+            setEditModalVisible(false);
+            setSelectedWorklist(null);
+            setEditedWorklistName('');
+        } catch (error) {
+            console.error('Failed to update worklist:', error.message);
+            Alert.alert('Error', error.message || 'Failed to update worklist.');
+        }
+    };
 
     if (loading) {
         return (
@@ -133,6 +232,8 @@ export default function WorklistScreen({ navigation, route }) {
             </TouchableOpacity>
 
             <WorklistBanner projectName={projectName} onAdd={handleAddWorklist} theme={theme} />
+
+            {/* Create Worklist Modal */}
             <Modal
                 visible={isModalVisible}
                 animationType="slide"
@@ -174,6 +275,49 @@ export default function WorklistScreen({ navigation, route }) {
                 </View>
             </Modal>
 
+            {/* Edit Worklist Modal */}
+            <Modal
+                visible={editModalVisible}
+                animationType="slide"
+                transparent
+                onRequestClose={() => setEditModalVisible(false)}
+            >
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#00000088' }}>
+                    <View style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
+                        <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
+                            Edit Worklist
+                        </Text>
+
+                        <TextInput
+                            placeholder="Worklist Name"
+                            placeholderTextColor={theme.secondaryText}
+                            value={editedWorklistName}
+                            onChangeText={setEditedWorklistName}
+                            style={{
+                                borderWidth: 1,
+                                borderColor: theme.border,
+                                borderRadius: 10,
+                                padding: 12,
+                                fontSize: 16,
+                                marginBottom: 16,
+                                color: theme.text,
+                            }}
+                        />
+
+                        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+                            <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity onPress={handleUpdateWorklist}>
+                                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Save</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
+            {/* Search bar */}
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
                 <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} />
                 <TextInput
@@ -185,12 +329,29 @@ export default function WorklistScreen({ navigation, route }) {
                 />
             </View>
 
+            {/* Worklist list */}
             <FlatList
                 data={filtered}
                 keyExtractor={item => item.id}
                 contentContainerStyle={{ paddingBottom: 24 }}
-                renderItem={({ item }) => <WorklistCard worklist={item} navigation={navigation} theme={theme} />}
-                project={project}
+                renderItem={({ item }) => (
+                    <WorklistCard
+                        worklist={item}
+                        navigation={navigation}
+                        theme={theme}
+                        project={project}
+                        onDelete={handleDeleteWorklist}
+                        onEdit={openEditModal}
+                    />
+                )}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                        colors={[theme.primary]}        // Android spinner color
+                        tintColor={theme.primary}       // iOS spinner color
+                    />
+                }
             />
         </View>
     );

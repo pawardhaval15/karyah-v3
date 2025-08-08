@@ -66,3 +66,54 @@ export const getWorklistsByProjectId = async (projectId, token) => {
     throw error;
   }
 };
+
+export const updateWorklist = async (id, name, token) => {
+  try {
+    const url = `${API_URL}api/worklists/${id}`;
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify({ name }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Update Worklist Error:', errorText);
+      throw new Error('Failed to update worklist');
+    }
+
+    const data = await response.json();
+    return data.worklist; // Or whatever you want to return
+  } catch (error) {
+    console.error('Error updating worklist:', error.message);
+    throw error;
+  }
+};
+
+export const deleteWorklist = async (id, token) => {
+  try {
+    const url = `${API_URL}api/worklists/${id}`;
+    const response = await fetch(url, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Delete Worklist Error:', errorText);
+      throw new Error('Failed to delete worklist');
+    }
+
+    // Success
+    return true; // or you can return response.json() if you need the message
+  } catch (error) {
+    console.error('Error deleting worklist:', error.message);
+    throw error;
+  }
+};
