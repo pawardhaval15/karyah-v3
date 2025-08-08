@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   Image,
   Modal,
   Platform,
@@ -175,7 +176,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </LinearGradient>
         {/* Action Buttons Row */}
-        <View style={{ flexDirection: 'row', marginHorizontal: 20, marginTop: 16, marginBottom: 16, gap: 8 }}>
+        <View style={{ flexDirection: 'row', marginHorizontal: isTablet ? 40 : 20, marginTop: isTablet ? 20 : 16, marginBottom: isTablet ? 20 : 16, gap: isTablet ? 12 : 8 }}>
           {/* Task Dependency Flow */}
           <TouchableOpacity
             activeOpacity={0.8}
@@ -195,14 +196,14 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             }}>
             <MaterialIcons
               name="device-hub"
-              size={18}
+              size={isTablet ? 20 : 18}
               color={theme.primary}
-              style={{ marginRight: 8 }}
+              style={{ marginRight: isTablet ? 10 : 8 }}
             />
             <Text
               numberOfLines={1}
               ellipsizeMode='tail'
-              style={{ color: theme.text, fontWeight: '400', fontSize: 13, flexWrap: 'nowrap' }}>
+              style={{ color: theme.text, fontWeight: '400', fontSize: isTablet ? 15 : 13, flexWrap: 'nowrap' }}>
               Task Dep.
             </Text>
           </TouchableOpacity>
@@ -233,14 +234,14 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             }}>
             <Feather
               name="message-circle"
-              size={18}
+              size={isTablet ? 20 : 18}
               color={theme.primary}
-              style={{ marginRight: 8 }}
+              style={{ marginRight: isTablet ? 10 : 8 }}
             />
             <Text
               numberOfLines={1}
               ellipsizeMode='tail'
-              style={{ color: theme.text, fontWeight: '400', fontSize: 13, flexWrap: 'nowrap' }}>
+              style={{ color: theme.text, fontWeight: '400', fontSize: isTablet ? 15 : 13, flexWrap: 'nowrap' }}>
               Discussion
             </Text>
           </TouchableOpacity>
@@ -272,14 +273,14 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               }}>
               <Feather
                 name="settings"
-                size={18}
+                size={isTablet ? 20 : 18}
                 color={theme.primary}
-                style={{ marginRight: 8 }}
+                style={{ marginRight: isTablet ? 10 : 8 }}
               />
               <Text
                 numberOfLines={1}
                 ellipsizeMode='tail'
-                style={{ color: theme.text, fontWeight: '400', fontSize: 13, flexWrap: 'nowrap' }}>
+                style={{ color: theme.text, fontWeight: '400', fontSize: isTablet ? 15 : 13, flexWrap: 'nowrap' }}>
                 Project Settings
               </Text>
             </TouchableOpacity>
@@ -602,6 +603,10 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     </View>
   );
 }
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
+
 const styles = StyleSheet.create({
   backBtn: {
     marginTop: Platform.OS === 'ios' ? 70 : 25,
@@ -618,39 +623,39 @@ const styles = StyleSheet.create({
     marginLeft: 0,
   },
   headerCard: {
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
+    marginHorizontal: isTablet ? 40 : 20,
+    borderRadius: isTablet ? 20 : 16,
+    padding: isTablet ? 24 : 20,
     marginTop: 0,
     marginBottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 110,
+    minHeight: isTablet ? 130 : 110,
   },
   projectName: {
     color: '#fff',
-    fontSize: 20,
+    fontSize: isTablet ? 24 : 20,
     fontWeight: '600',
-    marginBottom: 6,
+    marginBottom: isTablet ? 8 : 6,
   },
   dueDate: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: isTablet ? 15 : 13,
     opacity: 0.85,
     fontWeight: '400',
   },
   progressSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginHorizontal: 20,
-    marginBottom: 8,
-    marginTop: 8,
+    marginHorizontal: isTablet ? 40 : 20,
+    marginBottom: isTablet ? 12 : 8,
+    marginTop: isTablet ? 12 : 8,
     justifyContent: 'space-between',
   },
   progressLabel: {
     fontWeight: '400',
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
     color: '#222',
   },
   statusRow: {
@@ -667,7 +672,7 @@ const styles = StyleSheet.create({
   statusText: {
     color: '#F59E42',
     fontWeight: '400',
-    fontSize: 14,
+    fontSize: isTablet ? 16 : 14,
   },
   progressBarBg: {
     width: '90%',
@@ -685,9 +690,9 @@ const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginHorizontal: 24,
-    marginBottom: 12,
-    gap: 8,
+    marginHorizontal: isTablet ? 42 : 24,
+    marginBottom: isTablet ? 16 : 12,
+    gap: isTablet ? 12 : 8,
   },
   dateBox: {
     flex: 1,
@@ -713,27 +718,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 10,
+    borderRadius: isTablet ? 14 : 10,
     borderWidth: 1,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 14,
-    minHeight: 54,
-    paddingVertical: 8,
+    marginHorizontal: isTablet ? 40 : 20,
+    marginBottom: isTablet ? 16 : 12,
+    paddingHorizontal: isTablet ? 18 : 14,
+    minHeight: isTablet ? 64 : 54,
+    paddingVertical: isTablet ? 12 : 8,
   },
   inputLabel: {
-    fontSize: 10,
+    fontSize: isTablet ? 12 : 10,
     fontWeight: '400',
     color: '#222',
-    marginBottom: 6,
+    marginBottom: isTablet ? 8 : 6,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
-    lineHeight: 14,
+    lineHeight: isTablet ? 16 : 14,
     textAlign: 'left',
   },
   inputValue: {
     color: '#444',
-    fontSize: 14,
+    fontSize: isTablet ? 16 : 14,
     fontWeight: '400',
   },
   avatar: {
@@ -745,6 +750,7 @@ const styles = StyleSheet.create({
   issueBtnRow: {
     marginTop: 0,
     marginBottom: 8,
+    marginHorizontal: isTablet ? 20 : 0,
   },
   issueBtn: {
     flexDirection: 'row',

@@ -1,7 +1,10 @@
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import CustomCircularProgress from 'components/task details/CustomCircularProgress';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
 
 export default function ProjectCard({ project = {}, theme }) {
   const navigation = useNavigation();
@@ -86,31 +89,31 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
-    borderRadius: 14,
-    marginHorizontal: 16,
-    marginBottom: 10,
-    padding: 12,
+    borderRadius: isTablet ? 16 : 14,
+    marginHorizontal: isTablet ? 8 : 16,
+    marginBottom: isTablet ? 10 : 10,
+    padding: isTablet ? 16 : 12,
     borderWidth: 1,
     borderColor: '#e6eaf3',
   },
   projectIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: isTablet ? 44 : 44,
+    height: isTablet ? 44 : 44,
+    borderRadius: isTablet ? 14 : 12,
     backgroundColor: '#F2F6FF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 14,
+    marginRight: isTablet ? 14 : 14,
   },
   projectIconText: {
     color: '#366CD9',
     fontWeight: '600',
-    fontSize: 20,
+    fontSize: isTablet ? 24 : 20,
   },
   projectName: {
     color: '#222',
     fontWeight: '500',
-    fontSize: 16,
+    fontSize: isTablet ? 18 : 16,
     marginBottom: 2,
   },
   projectRow: {
@@ -120,7 +123,7 @@ const styles = StyleSheet.create({
   },
   projectInfo: {
     color: '#666',
-    fontSize: 12,
+    fontSize: isTablet ? 14 : 12,
     marginLeft: 5,
     fontWeight: '400',
   },
@@ -131,17 +134,17 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 50,
     borderWidth: 2,
-    width: 50,
-    height: 50,
+    width: isTablet ? 56 : 50,
+    height: isTablet ? 56 : 50,
   },
   endDateProgressContainer: {
     alignItems: 'center',
-    marginLeft: 10,
+    marginLeft: isTablet ? 12 : 10,
     justifyContent: 'flex-start',
     gap: 2,
   },
   endDateText: {
-    fontSize: 12,
+    fontSize: isTablet ? 14 : 12,
     fontWeight: '500',
   },
 });

@@ -1,4 +1,7 @@
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
 
 export default function FieldBox({
     label,
@@ -57,34 +60,34 @@ export default function FieldBox({
 
 const styles = StyleSheet.create({
     wrapper: {
-        marginHorizontal: 18,
-        marginBottom: 12,
+        marginHorizontal: isTablet ? 24 : 18,
+        marginBottom: isTablet ? 16 : 12,
     },
     label: {
-        fontSize: 10,
+        fontSize: isTablet ? 12 : 10,
         fontWeight: '500',
         color: '#222',
-        marginBottom: 6,
+        marginBottom: isTablet ? 8 : 6,
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     subtitle: {
-        fontSize: 13,
+        fontSize: isTablet ? 15 : 13,
         color: '#888',
-        marginBottom: 6,
+        marginBottom: isTablet ? 8 : 6,
     },
     fieldBox: {
         backgroundColor: '#fff',
-        borderRadius: 10,
+        borderRadius: isTablet ? 14 : 10,
         borderWidth: 1,
         borderColor: '#E5E7EB',
-        paddingHorizontal: 14,
-        paddingVertical:12,
+        paddingHorizontal: isTablet ? 18 : 14,
+        paddingVertical: isTablet ? 16 : 12,
     },
     fieldBoxMultiline: {
-        minHeight: 84,
-        paddingTop: 12,
-        paddingBottom: 12,
+        minHeight: isTablet ? 100 : 84,
+        paddingTop: isTablet ? 16 : 12,
+        paddingBottom: isTablet ? 16 : 12,
     },
     fieldContent: {
         flex: 1,
@@ -94,11 +97,11 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     fieldIcon: {
-        marginRight: 10,
+        marginRight: isTablet ? 12 : 10,
     },
     fieldInput: {
         flex: 1,
-        fontSize: 16,
+        fontSize: isTablet ? 18 : 16,
         color: '#000',
         paddingVertical: 0,
         backgroundColor: 'transparent',
@@ -107,7 +110,7 @@ const styles = StyleSheet.create({
     fieldInputMultiline: {
         textAlignVertical: 'top',
         height: '100%',
-        fontSize: 16,
+        fontSize: isTablet ? 18 : 16,
         color: '#000',
         fontWeight: '400',
     },
