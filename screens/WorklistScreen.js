@@ -116,9 +116,10 @@ export default function WorklistScreen({ navigation, route }) {
         }
     }, [projectId]);
 
-    const filtered = worklists.filter(w =>
-        w.name?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filtered = worklists
+        .filter(w => w.name?.toLowerCase().includes(search.toLowerCase()))
+        .sort((b, a) => new Date(b.createdAt) - new Date(a.createdAt));
+
 
     // Create new Worklist handlers
     const handleAddWorklist = () => {
