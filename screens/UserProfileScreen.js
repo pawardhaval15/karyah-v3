@@ -1,16 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, TextInput, ScrollView, ActivityIndicator, Alert } from 'react-native';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import GradientButton from 'components/Login/GradientButton';
+import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchUserDetails, updateUserDetails } from '../utils/auth';
-import GradientButton from 'components/Login/GradientButton';
-import * as Location from 'expo-location';
-import * as ImagePicker from 'expo-image-picker';
-import { Platform } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 
 const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
 
 export default function UserProfileScreen({ navigation, route }) {
   const theme = useTheme();
@@ -180,101 +181,115 @@ export default function UserProfileScreen({ navigation, route }) {
       <View style={styles.section}>
         {isEditing ? (
           <>
-            <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-              placeholder="Name"
-              placeholderTextColor={theme.secondaryText}
-              value={name}
-              onChangeText={setName}
-            />
-            <TextInput
-              style={[styles.bioInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-              placeholder="Bio"
-              placeholderTextColor={theme.secondaryText}
-              value={bio}
-              onChangeText={setBio}
-              multiline
-            />
-
-            <TextInput
-              style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-              placeholder="Email"
-              placeholderTextColor={theme.secondaryText}
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-            />
-            <View style={styles.row}>
+            <View style={styles.fieldWrapper}>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>FULL NAME</Text>
               <TextInput
-                style={[styles.input, { flex: 1, marginRight: 8, color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                placeholder="Phone Number"
+                style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                placeholder="Enter your full name"
                 placeholderTextColor={theme.secondaryText}
-                value={phone}
-                onChangeText={setPhone}
-                keyboardType="phone-pad"
+                value={name}
+                onChangeText={setName}
               />
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                onPress={() => setShowDatePicker(true)}
-                activeOpacity={0.8}
-              >
+            </View>
+
+            <View style={styles.fieldWrapper}>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>BIO</Text>
+              <TextInput
+                style={[styles.bioInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                placeholder="Tell us about yourself"
+                placeholderTextColor={theme.secondaryText}
+                value={bio}
+                onChangeText={setBio}
+                multiline
+              />
+            </View>
+
+            <View style={styles.fieldWrapper}>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                placeholder="Enter your email address"
+                placeholderTextColor={theme.secondaryText}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+              />
+            </View>
+
+            <View style={styles.row}>
+              <View style={[styles.fieldWrapper, { flex: 1, marginRight: 8 }]}>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>PHONE NUMBER</Text>
                 <TextInput
                   style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                  placeholder="Date of Birth (YYYY-MM-DD)"
+                  placeholder="Enter phone number"
                   placeholderTextColor={theme.secondaryText}
-                  value={dob}
-                  editable={false}
-                  pointerEvents="none"
+                  value={phone}
+                  onChangeText={setPhone}
+                  keyboardType="phone-pad"
                 />
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={dob ? new Date(dob) : new Date()}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(false);
-                    if (selectedDate) {
-                      const yyyy = selectedDate.getFullYear();
-                      const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                      const dd = String(selectedDate.getDate()).padStart(2, '0');
-                      setDob(`${yyyy}-${mm}-${dd}`);
-                    }
-                  }}
-                  maximumDate={new Date()}
-                />
-              )}
+              </View>
 
-              {/* <TextInput
-                style={[styles.input, { flex: 1, color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                placeholder="Gender"
-                placeholderTextColor={theme.secondaryText}
-                value={gender}
-                onChangeText={setGender}
-              /> */}
+              <View style={[styles.fieldWrapper, { flex: 1 }]}>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>DATE OF BIRTH</Text>
+                <TouchableOpacity
+                  onPress={() => setShowDatePicker(true)}
+                  activeOpacity={0.8}
+                >
+                  <TextInput
+                    style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                    placeholder="Select date of birth"
+                    placeholderTextColor={theme.secondaryText}
+                    value={dob}
+                    editable={false}
+                    pointerEvents="none"
+                  />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', borderColor: theme.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, backgroundColor: theme.card, minHeight: 54 }}>
-              <TextInput
-                style={[
-                  {
-                    flex: 1,
-                    fontSize: 16,
-                    paddingVertical: 10,
-                    color: theme.text,
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={dob ? new Date(dob) : new Date()}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={(event, selectedDate) => {
+                  setShowDatePicker(false);
+                  if (selectedDate) {
+                    const yyyy = selectedDate.getFullYear();
+                    const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                    const dd = String(selectedDate.getDate()).padStart(2, '0');
+                    setDob(`${yyyy}-${mm}-${dd}`);
                   }
-                ]}
-                placeholder="Address"
-                placeholderTextColor={theme.secondaryText}
-                value={address}
-                onChangeText={setAddress}
+                }}
+                maximumDate={new Date()}
               />
-              <TouchableOpacity
-                onPress={handleUseCurrentLocation}
-                style={{ marginLeft: 8 }}
-                disabled={gettingLocation}
-              >
-                <Feather name="map-pin" size={22} color={theme.primary} />
-              </TouchableOpacity>
+            )}
+
+            <View style={styles.fieldWrapper}>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>ADDRESS</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', borderColor: theme.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, backgroundColor: theme.card, minHeight: 54 }}>
+                <TextInput
+                  style={[
+                    {
+                      flex: 1,
+                      fontSize: 16,
+                      paddingVertical: 10,
+                      color: theme.text,
+                    }
+                  ]}
+                  placeholder="Enter your address"
+                  placeholderTextColor={theme.secondaryText}
+                  value={address}
+                  onChangeText={setAddress}
+                />
+                <TouchableOpacity
+                  onPress={handleUseCurrentLocation}
+                  style={{ marginLeft: 8 }}
+                  disabled={gettingLocation}
+                >
+                  <Feather name="map-pin" size={22} color={theme.primary} />
+                </TouchableOpacity>
+              </View>
             </View>
 
           </>
@@ -372,6 +387,20 @@ export default function UserProfileScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
+  fieldWrapper: {
+    marginBottom: isTablet ? 10 : 6,
+  },
+  fieldLabel: {
+    fontSize: isTablet ? 12 : 10,
+    fontWeight: '400',
+    color: '#222',
+    marginBottom: isTablet ? 8 : 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: isTablet ? 16 : 14,
+    textAlign: 'left',
+    marginLeft: 4,
+  },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -454,7 +483,7 @@ const styles = StyleSheet.create({
   },
   row: {
     flexDirection: 'row',
-    marginBottom: 16,
+    marginBottom: 0,
   },
   categoryLabel: {
     fontWeight: 'bold',
