@@ -648,7 +648,7 @@ const NotificationScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backBtn: {
-    marginTop: Platform.OS === 'ios' ? 70 : 25,
+    marginTop: Platform.OS === 'ios' ? 0 : 25,
     marginLeft: 16,
     marginBottom: 18,
     flexDirection: 'row',
