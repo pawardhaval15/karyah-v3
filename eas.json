@@ -34,6 +34,30 @@
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "appleId": "pva@techtech.in",
+        "ascAppId": "6749745342",
+        "appleTeamId": "2R7AXFA37K"
+      }
+    },
+    "production-new": {
+      "android": {
+        "serviceAccountKeyPath": "./path-to-your-service-account.json",
+        "track": "production"
+      },
+      "ios": {
+        "appleId": "pva@techtech.in",
+        "ascAppId": "6749745342",
+        "appleTeamId": "2R7AXFA37K"
+      }
+    },
+    "development": {
+      "ios": {
+        "appleId": "pva@techtech.in",
+        "ascAppId": "6749745342",
+        "appleTeamId": "2R7AXFA37K"
+      }
+    }
   }
 }

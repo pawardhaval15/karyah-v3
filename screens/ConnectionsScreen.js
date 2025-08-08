@@ -4,16 +4,16 @@ import { useEffect, useState } from 'react';
 import {
     FlatList,
     Image,
+    Platform,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View
 } from 'react-native';
-import ConnectionDetailsModal from './ConnectionDetailsModal';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserConnections } from '../utils/connections';
-import { Platform } from 'react-native';
+import ConnectionDetailsModal from './ConnectionDetailsModal';
 
 export default function ConnectionsScreen({ navigation }) {
     const theme = useTheme();
@@ -21,6 +21,7 @@ export default function ConnectionsScreen({ navigation }) {
     const [connections, setConnections] = useState([]);
     const [selectedConnection, setSelectedConnection] = useState(null);
     const [search, setSearch] = useState('');
+    const [revealedNumbers, setRevealedNumbers] = useState(new Set());
 
     useEffect(() => {
         const fetchConnections = async () => {
@@ -37,6 +38,27 @@ export default function ConnectionsScreen({ navigation }) {
     const filteredConnections = connections.filter(conn =>
         conn.name.toLowerCase().includes(search.toLowerCase())
     );
+
+    const toggleNumberVisibility = (connectionId) => {
+        setRevealedNumbers(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(connectionId)) {
+                newSet.delete(connectionId);
+            } else {
+                newSet.add(connectionId);
+            }
+            return newSet;
+        });
+    };
+
+    const maskPhoneNumber = (phone) => {
+        if (!phone) return '';
+        const phoneStr = phone.toString();
+        if (phoneStr.length <= 4) return phoneStr;
+        const visibleDigits = phoneStr.slice(-2);
+        const maskedPart = '*'.repeat(phoneStr.length - 2);
+        return maskedPart + visibleDigits;
+    };
 
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -89,9 +111,23 @@ export default function ConnectionsScreen({ navigation }) {
                         />
                         <View style={{ flex: 1 }}>
                             <Text style={[styles.name, { color: theme.text }]}>{item.name}</Text>
-                            <Text style={{ color: theme.secondaryText, fontSize: 13, marginTop: 2 }}>
-                                {item.phone ? `Phone: ${item.phone}` : ''}
-                            </Text>
+                            {item.phone && (
+                                <TouchableOpacity 
+                                    onPress={() => toggleNumberVisibility(item.connectionId)}
+                                    activeOpacity={0.7}
+                                    style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}
+                                >
+                                    <Text style={{ color: theme.secondaryText, fontSize: 13 }}>
+                                        Phone: {revealedNumbers.has(item.connectionId) ? item.phone : maskPhoneNumber(item.phone)}
+                                    </Text>
+                                    <MaterialIcons 
+                                        name={revealedNumbers.has(item.connectionId) ? "visibility-off" : "visibility"} 
+                                        size={16} 
+                                        color={theme.secondaryText} 
+                                        style={{ marginLeft: 6 }}
+                                    />
+                                </TouchableOpacity>
+                            )}
                         </View>
                         {/* <TouchableOpacity
                             style={[styles.actionBtn, { backgroundColor: theme.secCard }]}
