@@ -26,6 +26,7 @@ import TaskListScreen from '../screens/TaskListScreen';
 import UpdateProjectScreen from '../screens/UpdateProjectScreen';
 import WorklistScreen from '../screens/WorklistScreen';
 import { navigationRef } from './navigationRef';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -33,6 +34,7 @@ export default function AppNavigator() {
     <NavigationContainer ref={navigationRef}>
       <Stack.Navigator initialRouteName="AuthLoading" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="AuthLoading" component={AuthLoadingScreen} />
+        <Stack.Screen name="TermsAndPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="PinLogin" component={PinLoginScreen} />
