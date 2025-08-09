@@ -41,8 +41,8 @@ export default function RegistrationForm({ route, navigation }) {
 
   const handleSubmit = async () => {
     // Basic validation
-    if (!form.name || !form.pin || (!form.phone && !form.email)) {
-      Alert.alert('Error', 'Name, pin, and at least one of phone or email are required.');
+    if (!form.name || !form.phone) {
+      Alert.alert('Required', 'Name and phone are required.');
       return;
     }
     try {
