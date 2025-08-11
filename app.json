@@ -2,7 +2,7 @@
   "expo": {
     "name": "Karyah:",
     "slug": "karyah",
-    "version": "2.0.1",
+    "version": "2.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -48,7 +48,7 @@
       "compileSdkVersion": 35,
       "targetSdkVersion": 35,
       "buildToolsVersion": "35.0.0",
-      "versionCode": 12,
+      "versionCode": 13,
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -81,7 +81,7 @@
             "enableShrinkResourcesInReleaseBuilds": true,
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
-            "versionCode": 12,
+            "versionCode": 13,
             "buildToolsVersion": "35.0.0"
           },
           "ios": {
