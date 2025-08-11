@@ -189,7 +189,7 @@ export default function RegistrationForm({ route, navigation }) {
         {/* PIN */}
         <TextInput
           style={styles.input}
-          placeholder="Support PIN"
+          placeholder="Set PIN"
           value={form.pin}
           onChangeText={t => handleChange('pin', t)}
           keyboardType="numeric"

@@ -106,7 +106,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       setMessages(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
-      Alert.alert('Error', 'Failed to load discussion messages');
+      // Alert.alert('Error', 'Failed to load discussion messages');
     } finally {
       setLoading(false);
     }

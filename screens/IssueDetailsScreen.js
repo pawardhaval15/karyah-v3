@@ -5,17 +5,17 @@ import AttachmentSheet from 'components/popups/AttachmentSheet';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -26,11 +26,11 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth'; // import this
 import {
-    approveIssue,
-    deleteIssue,
-    fetchIssueById,
-    resolveIssueByAssignedUser,
-    updateIssue,
+  approveIssue,
+  deleteIssue,
+  fetchIssueById,
+  resolveIssueByAssignedUser,
+  updateIssue,
 } from '../utils/issues';
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -79,6 +79,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
     fetchIssueById(issueId)
       .then((data) => {
         setIssue(data);
+        console.log('Fetched Issue:', data);
         setEditFields({
           issueTitle: data.issueTitle || '',
           description: data.description || '',
@@ -425,7 +426,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               { backgroundColor: theme.card, borderColor: theme.border },
             ]}>
             {attachments.length > 0 ||
-            (issue?.unresolvedImages && issue.unresolvedImages.length > 0) ? (
+              (issue?.unresolvedImages && issue.unresolvedImages.length > 0) ? (
               <>
                 <Text style={[styles.attachmentCount, { color: theme.text }]}>
                   {isEditing
@@ -524,20 +525,35 @@ export default function IssueDetailsScreen({ navigation, route }) {
           value={issue.assignTo?.userName || ''}
           placeholder="Assigned To"
           rightComponent={
-            <Image
-              source={{ uri: userImg }}
-              style={{
-                width: 30,
-                height: 30,
-                borderRadius: 20,
-                marginLeft: 10,
-                borderWidth: 2,
-                borderColor: '#e6eaf3',
-              }}
-            />
+            issue.assignTo?.profilePhoto ? (
+              <Image
+                source={{ uri: issue.assignTo.profilePhoto }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 20,
+                  marginLeft: 10,
+                  borderWidth: 2,
+                  borderColor: '#e6eaf3',
+                }}
+              />
+            ) : (
+              <Image
+                source={{ uri: userImg }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 20,
+                  marginLeft: 10,
+                  borderWidth: 2,
+                  borderColor: '#e6eaf3',
+                }}
+              />
+            )
           }
           theme={theme}
         />
+
         <FieldBox
           label="DUE DATE"
           value={
@@ -580,7 +596,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               <View style={styles.attachmentHeader}>
                 <Text style={[styles.attachmentLabel, { color: theme.text }]}>RESOLVED ATTACHMENTS</Text>
               </View>
-              
+
               <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 {Array.isArray(issue.resolvedImages) && issue.resolvedImages.length > 0 ? (
                   <>
@@ -626,7 +642,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               <View style={styles.attachmentHeader}>
                 <Text style={[styles.attachmentLabel, { color: theme.text }]}>RESOLVED ATTACHMENTS</Text>
               </View>
-              
+
               <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 {Array.isArray(issue.resolvedImages) && issue.resolvedImages.length > 0 ? (
                   <>
@@ -850,18 +866,18 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    backgroundColor: issue.issueStatus === 'unresolved' || issue.isApproved === true 
-                      ? '#222' 
+                    backgroundColor: issue.issueStatus === 'unresolved' || issue.isApproved === true
+                      ? '#222'
                       : theme.buttonText + '22',
                     borderRadius: 16,
                     paddingVertical: 12,
                     alignItems: 'center',
                     borderWidth: 1,
-                    borderColor: issue.issueStatus === 'unresolved' || issue.isApproved === true 
-                      ? '#999' 
+                    borderColor: issue.issueStatus === 'unresolved' || issue.isApproved === true
+                      ? '#999'
                       : theme.buttonText,
-                    opacity: issue.issueStatus === 'unresolved' || issue.isApproved === true 
-                      ? 0.5 
+                    opacity: issue.issueStatus === 'unresolved' || issue.isApproved === true
+                      ? 0.5
                       : 1,
                   }}
                   onPress={async () => {
@@ -882,12 +898,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     }
                   }}
                   disabled={issue.isApproved === true || issue.issueStatus === 'unresolved'}>
-                  <Text style={{ 
-                    color: issue.issueStatus === 'unresolved' || issue.isApproved === true 
-                      ? '#FAFAFA' 
-                      : theme.buttonText, 
-                    fontWeight: '700', 
-                    fontSize: 16 
+                  <Text style={{
+                    color: issue.issueStatus === 'unresolved' || issue.isApproved === true
+                      ? '#FAFAFA'
+                      : theme.buttonText,
+                    fontWeight: '700',
+                    fontSize: 16
                   }}>
                     {issue.issueStatus === 'resolved' ? 'Resolved' : 'Approve & Complete'}
                   </Text>
@@ -908,9 +924,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 borderColor: theme.buttonText,
                 opacity:
                   issue.issueStatus === 'pending_approval' ||
-                  issue.issueStatus === 'resolved' ||
-                  attachments.length === 0 ||
-                  !remark
+                    issue.issueStatus === 'resolved' ||
+                    attachments.length === 0 ||
+                    !remark
                     ? 0.5
                     : 1,
               }}
@@ -971,7 +987,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           try {
             const updated = await fetchIssueById(issueId);
             setIssue(updated);
-          } catch {}
+          } catch { }
           setLoading(false);
         }}
         issueId={issue?.issueId || issueId}
