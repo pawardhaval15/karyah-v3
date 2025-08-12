@@ -42,6 +42,7 @@ export default function TaskChatPopup({
   const [mentionStartIndex, setMentionStartIndex] = useState(-1);
   const scrollViewRef = useRef(null);
   const textInputRef = useRef(null);
+  const [mentionMap, setMentionMap] = useState({});
 
   // Auto-scroll to bottom when messages change or popup opens
   useEffect(() => {
@@ -176,15 +177,23 @@ export default function TaskChatPopup({
   const handleMentionSelect = (user) => {
     const beforeMention = input.substring(0, mentionStartIndex);
     const afterMention = input.substring(mentionStartIndex + 1 + mentionSearch.length);
-    const mentionText = `@${user.name} `;
+
+    const mentionText = `@${user.userId}|${user.name} `;
 
     const newText = beforeMention + mentionText + afterMention;
+
     setInput(newText);
+
+    // store mapping: mention display text -> userId
+    setMentionMap((prev) => ({
+      ...prev,
+      [`@${user.name}`]: user.userId,
+    }));
+
     setShowMentions(false);
     setMentionStartIndex(-1);
     setMentionSearch('');
 
-    // Set cursor position after the mention
     setTimeout(() => {
       const newCursorPosition = beforeMention.length + mentionText.length;
       setCursorPosition(newCursorPosition);
@@ -192,26 +201,35 @@ export default function TaskChatPopup({
     }, 100);
   };
 
+
   // Extract mentions from text
   const extractMentions = (text) => {
     const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
-    const mentions = [];
+    const foundIds = [];
     let match;
 
     while ((match = mentionRegex.exec(text)) !== null) {
-      const mentionedName = match[1];
-      const mentionableUsers = getMentionableUsers();
-      const user = mentionableUsers.find(
-        (u) => u.name.toLowerCase() === mentionedName.toLowerCase()
-      );
+      const mentionString = `@${match[1]}`;
 
-      if (user) {
-        mentions.push(user.userId);
+      if (mentionMap[mentionString]) {
+        // ✅ Use ID from map if available
+        foundIds.push(mentionMap[mentionString]);
+      } else {
+        // fallback: match by name from mentionable users
+        const mentionedName = match[1];
+        const mentionableUsers = getMentionableUsers();
+        const user = mentionableUsers.find(
+          (u) => u.name.toLowerCase() === mentionedName.toLowerCase()
+        );
+        if (user) {
+          foundIds.push(user.userId);
+        }
       }
     }
 
-    return mentions;
+    return foundIds;
   };
+
 
   // Handle sending message with optimistic UI
   const handleSendMessage = async () => {
@@ -233,10 +251,8 @@ export default function TaskChatPopup({
       status: 'sending', // sending, sent, delivered, failed
       isTemp: true,
     };
-
     // Add optimistic message to local state
     setLocalMessages((prev) => [...prev, tempMessage]);
-
     // Clear input and attachments immediately
     setInput('');
     clearAttachments();
@@ -244,7 +260,6 @@ export default function TaskChatPopup({
     setShowMentions(false);
     setMentionStartIndex(-1);
     setMentionSearch('');
-
     // Scroll to bottom immediately
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
@@ -253,7 +268,6 @@ export default function TaskChatPopup({
     try {
       // Send message to server
       await onSend(messageText, messageAttachments, messageMentions);
-
       // Update message status to sent
       setLocalMessages((prev) =>
         prev.map((msg) => (msg.id === tempMessage.id ? { ...msg, status: 'sent' } : msg))
@@ -272,12 +286,10 @@ export default function TaskChatPopup({
   // Format timestamp for display
   const formatMessageTime = (timestamp) => {
     if (!timestamp) return '';
-
     const msgDate = new Date(timestamp);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
-
     if (msgDateOnly.getTime() === today.getTime()) {
       // Today: show only time
       return msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -295,7 +307,6 @@ export default function TaskChatPopup({
   // Get status icon for message
   const getStatusIcon = (msg) => {
     const status = msg.status;
-
     // For current user's messages, show read status if available
     if (msg.userId === currentUserId && msg.readBy && Array.isArray(msg.readBy)) {
       const isRead =
