@@ -129,7 +129,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
       {hideSimpleForm && (
         <ScrollView
           style={{ backgroundColor: theme.card }}
-          contentContainerStyle={{ paddingBottom: 80 }}
+          contentContainerStyle={{ paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
         >
           <FieldBox
