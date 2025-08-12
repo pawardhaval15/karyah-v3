@@ -87,6 +87,8 @@ class SystemNotificationService {
         }
         break;
       case 'task':
+      case 'task_message':
+      case 'task_mention':
         if (data.taskId) {
           navigationRef.navigate('TaskDetails', {
             taskId: data.taskId,
@@ -169,7 +171,7 @@ class SystemNotificationService {
       }
 
       const platformName = Platform.OS === 'ios' ? 'iOS' : 'Android';
-      
+
       const response = await fetch(`${API_URL}api/devices/deviceToken`, {
         method: 'POST',
         headers: {
@@ -185,10 +187,10 @@ class SystemNotificationService {
 
       const data = await response.json();
       console.log(`✅ ${platformName} FCM token registered:`, data);
-      
+
       // Store locally
       await AsyncStorage.setItem(`fcm_token_${Platform.OS}`, token);
-      
+
     } catch (error) {
       console.error('❌ Error registering FCM token:', error);
     }
