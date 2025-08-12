@@ -23,9 +23,11 @@ import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
 import ImageModal from '../components/issue details/ImageModal';
 import AddSubTaskPopup from '../components/popups/AddSubTaskPopup';
+import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
 import TaskChatPopup from '../components/popups/TaskChatPopup';
 import useAttachmentPicker from '../components/popups/useAttachmentPicker';
 import DateBox from '../components/project details/DateBox';
+import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
@@ -38,7 +40,6 @@ import {
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
-import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 export default function TaskDetailsScreen({ route, navigation }) {
   // Store decoded token globally for this component
   const decodedRef = useRef(null);
@@ -51,6 +52,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [showAddSubTaskPopup, setShowAddSubTaskPopup] = useState(false);
   const [showTaskChat, setShowTaskChat] = useState(false);
+  const [showMaterialRequest, setShowMaterialRequest] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [addSubTask, setAddSubTask] = useState({
@@ -479,27 +481,49 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </TouchableOpacity>
           )} */}
         </LinearGradient>
-        {/* Task Chat Button */}
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => setShowTaskChat(true)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            alignSelf: 'flex-start',
-            backgroundColor: theme.card,
-            borderRadius: 18,
-            paddingHorizontal: 14,
-            paddingVertical: 7,
-            marginHorizontal: 20,
-            marginTop: 0,
-            marginBottom: 12,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}>
-          <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 7 }} />
-          <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Task Chat</Text>
-        </TouchableOpacity>
+        {/* Task Action Buttons */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          marginHorizontal: 20,
+          marginTop: 0,
+          marginBottom: 12,
+          gap: 10,
+        }}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowTaskChat(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: theme.card,
+              borderRadius: 18,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}>
+            <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 7 }} />
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Task Chat</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowMaterialRequest(true)}
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: theme.card,
+              borderRadius: 18,
+              paddingHorizontal: 14,
+              paddingVertical: 7,
+              borderWidth: 1,
+              borderColor: theme.border,
+            }}>
+            <MaterialIcons name="inventory" size={18} color="#FF9800" style={{ marginRight: 7 }} />
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Requirements</Text>
+          </TouchableOpacity>
+        </View>
         <TaskChatPopup
           visible={showTaskChat}
           onClose={() => setShowTaskChat(false)}
@@ -510,6 +534,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
           loading={chatLoading}
           users={users}
           task={task}
+        />
+        
+        <MaterialRequestPopup
+          visible={showMaterialRequest}
+          onClose={() => setShowMaterialRequest(false)}
+          taskId={task.id || task._id || task.taskId}
+          projectId={task.projectId}
+          theme={theme}
         />
         {task && typeof editableProgress === 'number' && (
           <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>
