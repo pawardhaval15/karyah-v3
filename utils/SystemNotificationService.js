@@ -102,6 +102,10 @@ class SystemNotificationService {
           });
         }
         break;
+      case 'connection':
+    navigationRef.navigate('NotificationScreen', { defaultTab: 'Connections' });
+    break;
+
       default:
         console.warn('📬 Unknown notification type:', data.type);
     }

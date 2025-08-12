@@ -185,7 +185,6 @@ class CustomNotificationManager {
           });
         }
         break;
-
       case 'issue':
         if (data.issueId) {
           navigationRef.navigate('IssueDetails', {
@@ -193,6 +192,10 @@ class CustomNotificationManager {
           });
         }
         break;
+     case 'connection':
+    navigationRef.navigate('NotificationScreen', { defaultTab: 'Connections' });
+    break;
+
 
       default:
         console.warn('📬 Unknown notification type:', type);

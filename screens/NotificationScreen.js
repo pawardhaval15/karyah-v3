@@ -22,8 +22,9 @@ import {
   markNotificationAsRead,
 } from '../utils/notifications';
 
-const NotificationScreen = ({ navigation }) => {
-  const [activeTab, setActiveTab] = useState('CRITICAL');
+const NotificationScreen = ({ navigation, route }) => {
+  const { defaultTab } = route.params || {};
+  const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'CRITICAL');
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
