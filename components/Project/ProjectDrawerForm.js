@@ -127,7 +127,11 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
       )}
       {/* Embedded Full Form (when hideSimpleForm is true) */}
       {hideSimpleForm && (
-        <>
+        <ScrollView
+          style={{ backgroundColor: theme.card }}
+          contentContainerStyle={{ paddingBottom: 80 }}
+          keyboardShouldPersistTaps="handled"
+        >
           <FieldBox
             value={values?.projectName || ''}
             placeholder="Project Name"
@@ -199,7 +203,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               <Text style={styles.drawerBtnText}>Create Project</Text>
             </LinearGradient>
           </TouchableOpacity>
-        </>
+        </ScrollView>
       )}
       {/* Full Modal (only when not embedded) */}
       {!hideSimpleForm && (
