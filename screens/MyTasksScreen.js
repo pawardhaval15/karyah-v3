@@ -4,7 +4,16 @@ import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Platform, RefreshControl, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
@@ -194,10 +203,10 @@ export default function MyTasksScreen({ navigation }) {
       filters.projects.length === 0 ||
       filters.projects.includes(
         task.projectName ||
-        (task.project && task.project.projectName) ||
-        (task.project && task.project.name) ||
-        task.projectTitle ||
-        (typeof task.project === 'string' ? task.project : null)
+          (task.project && task.project.projectName) ||
+          (task.project && task.project.name) ||
+          task.projectTitle ||
+          (typeof task.project === 'string' ? task.project : null)
       );
 
     // Assigned to filter
@@ -223,7 +232,9 @@ export default function MyTasksScreen({ navigation }) {
       filters.locations.length === 0 ||
       filters.locations.includes((task.project && task.project.location) || '');
 
-    return searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch;
+    return (
+      searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch
+    );
   });
 
   // Filter users based on search query and hide selected users
@@ -362,9 +373,7 @@ export default function MyTasksScreen({ navigation }) {
     ];
     const locations = [
       ...new Set(
-        tasks
-          .map((task) => (task.project && task.project.location) || null)
-          .filter(Boolean)
+        tasks.map((task) => (task.project && task.project.location) || null).filter(Boolean)
       ),
     ];
 
@@ -406,7 +415,7 @@ export default function MyTasksScreen({ navigation }) {
       activeTab === 'mytasks'
         ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
         : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
-        'Unassigned';
+          'Unassigned';
 
     return (
       <>
@@ -465,10 +474,11 @@ export default function MyTasksScreen({ navigation }) {
               {taskName}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Feather name="folder" size={14} color={theme.secondaryText} style={{ marginRight: 4 }} />
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={[styles.taskProject, { color: theme.secondaryText, flexShrink: 1 }]}>
+                style={[styles.taskProject, { color: theme.secondaryText, flexShrink: 1 }]}> 
                 {item.projectName ||
                   (item.project && item.project.projectName) ||
                   (item.project && item.project.name) ||
@@ -478,7 +488,9 @@ export default function MyTasksScreen({ navigation }) {
               </Text>
               {((item.project && item.project.location) || '').length > 0 && (
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
-                  <Feather name="map-pin" size={14} color={theme.secondaryText} />
+                  <Text style={[styles.taskLocation, { color: theme.secondaryText }]}>
+                    | <Feather name="map-pin" size={14} color={theme.secondaryText} />
+                  </Text>
                   <Text
                     numberOfLines={1}
                     style={[styles.taskLocation, { color: theme.secondaryText, marginLeft: 2 }]}>

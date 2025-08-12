@@ -41,7 +41,7 @@ function WorklistCard({ worklist, navigation, theme, project, onDelete, onEdit }
             {/* Edit button */}
             <TouchableOpacity
                 onPress={() => onEdit(worklist)}
-                style={{ padding: 8, marginRight: 12 }}
+                style={{ padding: 8, marginRight: 2 }}
             >
                 <MaterialIcons name="edit" size={22} color={theme.primary} />
             </TouchableOpacity>

@@ -85,3 +85,57 @@ export const removeAccess = async (projectId, removeData) => {
     throw error;
   }
 };
+
+// Bulk set access for multiple users/modules
+export const bulkSetAccess = async (projectId, accessList) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/project-access/${projectId}/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ accessList }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to bulk set access');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Bulk Set Access Error:', error.message);
+    throw error;
+  }
+};
+
+// Bulk edit access for multiple users/modules
+export const bulkEditAccess = async (projectId, accessList) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/project-access/bulk-edit/${projectId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ accessList }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to bulk edit access');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Bulk Edit Access Error:', error.message);
+    throw error;
+  }
+};

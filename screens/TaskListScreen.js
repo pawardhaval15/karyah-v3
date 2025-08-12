@@ -261,7 +261,7 @@ export default function TaskListScreen({ navigation, route }) {
         </View>
       ) : sortedTasks.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <MaterialIcons name="error-outline" size={48} color="#AAA" />
+          <MaterialIcons name="error-outline" size={42} color="#AAA" />
           <Text style={styles.emptyText}>No Tasks Found for {worklistName}</Text>
         </View>
       ) : (
@@ -331,9 +331,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: '#AAA',
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: '300', // lightweight font
-    // marginTop: 12,
+    marginTop: 8,
   },
 
   bannerTitle: {

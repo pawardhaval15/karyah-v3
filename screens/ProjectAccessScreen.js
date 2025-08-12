@@ -17,7 +17,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { fetchUserConnections } from '../utils/issues';
 import { getProjectById } from '../utils/project';
-import { getAccessByProject, removeAccess, setAccess } from '../utils/projectAccess';
+import { bulkSetAccess, getAccessByProject, removeAccess, setAccess } from '../utils/projectAccess';
 
 export default function ProjectAccessScreen({ route, navigation }) {
   const { projectId, projectName } = route.params;
@@ -38,6 +38,14 @@ export default function ProjectAccessScreen({ route, navigation }) {
   const [selectedRole, setSelectedRole] = useState('all'); // all, owner, co-admin, connection
   const [listSearchQuery, setListSearchQuery] = useState('');
   const [listFilterRole, setListFilterRole] = useState('all');
+  const [showBulkAssign, setShowBulkAssign] = useState(false);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [bulkPermissions, setBulkPermissions] = useState({
+    canView: true,
+    canReply: false,
+    canEdit: false,
+  });
+  const [bulkSelectedModules, setBulkSelectedModules] = useState(['discussion']);
 
   const modules = [
     { key: 'discussion', label: 'Discussion', icon: 'message-circle' },
@@ -175,6 +183,36 @@ export default function ProjectAccessScreen({ route, navigation }) {
     }
   };
 
+  const handleBulkAssign = async () => {
+    if (selectedUsers.length === 0 || bulkSelectedModules.length === 0) {
+      Alert.alert('Error', 'Please select at least one user and one module');
+      return;
+    }
+
+    try {
+      const accessList = [];
+      
+      selectedUsers.forEach(user => {
+        bulkSelectedModules.forEach(module => {
+          accessList.push({
+            userId: user.id,
+            module: module,
+            ...bulkPermissions,
+          });
+        });
+      });
+
+      await bulkSetAccess(projectId, accessList);
+      await fetchAccesses();
+      setShowBulkAssign(false);
+      resetBulkForm();
+      Alert.alert('Success', `Access assigned to ${selectedUsers.length} user(s) for ${bulkSelectedModules.length} module(s)`);
+    } catch (error) {
+      console.error('Failed to bulk assign access:', error);
+      Alert.alert('Error', 'Failed to assign access');
+    }
+  };
+
   const handleRemoveAccess = async (userId, module) => {
     Alert.alert('Remove Access', 'Are you sure you want to remove this access?', [
       { text: 'Cancel', style: 'cancel' },
@@ -205,6 +243,71 @@ export default function ProjectAccessScreen({ route, navigation }) {
     });
     setSearchQuery('');
     setSelectedRole('all');
+  };
+
+  const resetBulkForm = () => {
+    setSelectedUsers([]);
+    setBulkSelectedModules(['discussion']);
+    setBulkPermissions({
+      canView: true,
+      canReply: false,
+      canEdit: false,
+    });
+    setSearchQuery('');
+    setSelectedRole('all');
+  };
+
+  const toggleUserSelection = (user) => {
+    setSelectedUsers(prev => {
+      const isSelected = prev.some(u => u.id === user.id);
+      if (isSelected) {
+        return prev.filter(u => u.id !== user.id);
+      } else {
+        return [...prev, user];
+      }
+    });
+  };
+
+  const selectAllUsers = () => {
+    const filteredUsers = getFilteredUsers();
+    setSelectedUsers(filteredUsers);
+  };
+
+  const deselectAllUsers = () => {
+    setSelectedUsers([]);
+  };
+
+  const toggleSelectAll = () => {
+    const filteredUsers = getFilteredUsers();
+    const allSelected = filteredUsers.length > 0 && 
+      filteredUsers.every(user => selectedUsers.some(selected => selected.id === user.id));
+    
+    if (allSelected) {
+      // Remove all filtered users from selection
+      setSelectedUsers(prev => 
+        prev.filter(selected => 
+          !filteredUsers.some(filtered => filtered.id === selected.id)
+        )
+      );
+    } else {
+      // Add all filtered users to selection (avoid duplicates)
+      setSelectedUsers(prev => {
+        const existingIds = prev.map(u => u.id);
+        const newUsers = filteredUsers.filter(user => !existingIds.includes(user.id));
+        return [...prev, ...newUsers];
+      });
+    }
+  };
+
+  const toggleModuleSelection = (moduleKey) => {
+    setBulkSelectedModules(prev => {
+      const isSelected = prev.includes(moduleKey);
+      if (isSelected) {
+        return prev.filter(m => m !== moduleKey);
+      } else {
+        return [...prev, moduleKey];
+      }
+    });
   };
 
   const getFilteredUsers = () => {
@@ -373,14 +476,22 @@ export default function ProjectAccessScreen({ route, navigation }) {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Project Settings</Text>
           <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>{projectName}</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => {
-            setSelectedModule(activeTab);
-            setShowAddUser(true);
-          }}
-          style={[styles.addButton, { backgroundColor: theme.primary }]}>
-          <MaterialIcons name="add" size={20} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerButtons}>
+          <TouchableOpacity
+            onPress={() => setShowBulkAssign(true)}
+            style={[styles.bulkButton, { backgroundColor: theme.primary }]}>
+            <MaterialIcons name="group-add" size={18} color={theme.text} />
+            <Text style={[styles.bulkButtonText, { color: theme.text }]}>Multi Assign</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              setSelectedModule(activeTab);
+              setShowAddUser(true);
+            }}
+            style={[styles.addButton, { backgroundColor: theme.primary }]}>
+            <MaterialIcons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Module Tabs */}
@@ -784,6 +895,409 @@ export default function ProjectAccessScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+
+      {/* Bulk Assign Modal */}
+      <Modal
+        visible={showBulkAssign}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowBulkAssign(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Multi User Access Assignment
+              </Text>
+              <TouchableOpacity onPress={() => setShowBulkAssign(false)}>
+                <MaterialIcons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Selected Users/Modules Summary */}
+            <View
+              style={[
+                styles.selectionSummary,
+                { backgroundColor: theme.background, borderColor: theme.border },
+              ]}>
+              <Text style={[styles.summaryText, { color: theme.text }]}>
+                {selectedUsers.length} user(s) selected • {bulkSelectedModules.length} module(s) selected
+              </Text>
+              {selectedUsers.length > 0 && (
+                <View style={styles.selectionBreakdown}>
+                  <Text style={[styles.breakdownText, { color: theme.secondaryText }]}>
+                    {selectedUsers.filter(u => u.role === 'owner').length} Owner • {' '}
+                    {selectedUsers.filter(u => u.role === 'co-admin').length} Co-Admin • {' '}
+                    {selectedUsers.filter(u => u.role === 'connection').length} Connections
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <ScrollView style={styles.bulkModalContent} showsVerticalScrollIndicator={false}>
+              {/* User Selection */}
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Select Users</Text>
+                  <View style={styles.selectAllContainer}>
+                    <TouchableOpacity
+                      style={[styles.selectAllButton, { backgroundColor: theme.primary }]}
+                      onPress={toggleSelectAll}>
+                      <MaterialIcons 
+                        name={
+                          getFilteredUsers().length > 0 && 
+                          getFilteredUsers().every(user => selectedUsers.some(selected => selected.id === user.id))
+                            ? "check-box" 
+                            : "check-box-outline-blank"
+                        } 
+                        size={16} 
+                        color="#fff" 
+                      />
+                      <Text style={styles.selectAllText}>
+                        {getFilteredUsers().length > 0 && 
+                         getFilteredUsers().every(user => selectedUsers.some(selected => selected.id === user.id))
+                          ? "Deselect All" 
+                          : "Select All"}
+                      </Text>
+                    </TouchableOpacity>
+                    {selectedUsers.length > 0 && (
+                      <TouchableOpacity
+                        style={[styles.clearSelectionButton, { borderColor: theme.border }]}
+                        onPress={deselectAllUsers}>
+                        <Text style={[styles.clearSelectionText, { color: theme.text }]}>
+                          Clear ({selectedUsers.length})
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </View>
+                
+                {users.length === 0 ? (
+                  <View
+                    style={[
+                      styles.noUsersContainer,
+                      { backgroundColor: theme.background, borderColor: theme.border },
+                    ]}>
+                    <MaterialIcons name="people-outline" size={24} color={theme.secondaryText} />
+                    <Text style={[styles.noUsersText, { color: theme.secondaryText }]}>
+                      No users found. Make sure you have connections.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {/* Search and Filter */}
+                    <View style={styles.searchFilterContainer}>
+                      <View
+                        style={[
+                          styles.searchContainer,
+                          { backgroundColor: theme.background, borderColor: theme.border },
+                        ]}>
+                        <MaterialIcons name="search" size={20} color={theme.secondaryText} />
+                        <TextInput
+                          style={[styles.searchInput, { color: theme.text }]}
+                          placeholder="Search users..."
+                          placeholderTextColor={theme.secondaryText}
+                          value={searchQuery}
+                          onChangeText={setSearchQuery}
+                        />
+                        {searchQuery.length > 0 && (
+                          <TouchableOpacity onPress={() => setSearchQuery('')}>
+                            <MaterialIcons name="clear" size={20} color={theme.secondaryText} />
+                          </TouchableOpacity>
+                        )}
+                      </View>
+
+                      {/* Quick Selection Actions */}
+                      <View style={styles.quickActionsContainer}>
+                        <Text style={[styles.quickActionsLabel, { color: theme.secondaryText }]}>
+                          Quick Select:
+                        </Text>
+                        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                          <TouchableOpacity
+                            style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            onPress={() => {
+                              const owners = users.filter(u => u.role === 'owner');
+                              setSelectedUsers(prev => {
+                                const existingIds = prev.map(u => u.id);
+                                const newUsers = owners.filter(user => !existingIds.includes(user.id));
+                                return [...prev, ...newUsers];
+                              });
+                            }}>
+                            <Text style={[styles.quickActionText, { color: theme.text }]}>
+                              + Owners ({users.filter(u => u.role === 'owner').length})
+                            </Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            onPress={() => {
+                              const coAdmins = users.filter(u => u.role === 'co-admin');
+                              setSelectedUsers(prev => {
+                                const existingIds = prev.map(u => u.id);
+                                const newUsers = coAdmins.filter(user => !existingIds.includes(user.id));
+                                return [...prev, ...newUsers];
+                              });
+                            }}>
+                            <Text style={[styles.quickActionText, { color: theme.text }]}>
+                              + Co-Admins ({users.filter(u => u.role === 'co-admin').length})
+                            </Text>
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            onPress={() => {
+                              const connections = users.filter(u => u.role === 'connection');
+                              setSelectedUsers(prev => {
+                                const existingIds = prev.map(u => u.id);
+                                const newUsers = connections.filter(user => !existingIds.includes(user.id));
+                                return [...prev, ...newUsers];
+                              });
+                            }}>
+                            <Text style={[styles.quickActionText, { color: theme.text }]}>
+                              + Connections ({users.filter(u => u.role === 'connection').length})
+                            </Text>
+                          </TouchableOpacity>
+                        </ScrollView>
+                      </View>
+
+                      {/* Role Filter */}
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.filterContainer}>
+                        {[
+                          { key: 'all', label: 'All', count: users.length },
+                          { key: 'owner', label: 'Owner', count: users.filter(u => u.role === 'owner').length },
+                          { key: 'co-admin', label: 'Co-Admin', count: users.filter(u => u.role === 'co-admin').length },
+                          { key: 'connection', label: 'Connections', count: users.filter(u => u.role === 'connection').length },
+                        ].map((filter) => (
+                          <TouchableOpacity
+                            key={filter.key}
+                            style={[
+                              styles.filterChip,
+                              {
+                                backgroundColor:
+                                  selectedRole === filter.key ? theme.primary : theme.background,
+                                borderColor: theme.border,
+                              },
+                            ]}
+                            onPress={() => setSelectedRole(filter.key)}>
+                            <Text
+                              style={[
+                                styles.filterChipText,
+                                { color: selectedRole === filter.key ? '#fff' : theme.text },
+                              ]}>
+                              {filter.label} ({filter.count})
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    {/* User List */}
+                    <View style={styles.userList}>
+                      {getFilteredUsers().map((user) => {
+                        const isSelected = selectedUsers.some(u => u.id === user.id);
+                        return (
+                          <TouchableOpacity
+                            key={user.id}
+                            style={[
+                              styles.userListItem,
+                              {
+                                backgroundColor: isSelected ? theme.primary : theme.background,
+                                borderColor: isSelected ? theme.primary : theme.border,
+                              },
+                            ]}
+                            onPress={() => toggleUserSelection(user)}>
+                            <View style={styles.userListContent}>
+                              <View style={styles.userListLeft}>
+                                <View style={[styles.userListAvatar, { backgroundColor: isSelected ? '#fff' : theme.primary }]}>
+                                  <Text style={[styles.userListAvatarText, { color: isSelected ? theme.primary : '#fff' }]}>
+                                    {user.name?.charAt(0).toUpperCase() || 'U'}
+                                  </Text>
+                                </View>
+                                <View style={styles.userListInfo}>
+                                  <Text
+                                    style={[
+                                      styles.userListName,
+                                      { color: isSelected ? '#fff' : theme.text },
+                                    ]}
+                                    numberOfLines={1}>
+                                    {user.name}
+                                  </Text>
+                                  {user.designation && (
+                                    <Text
+                                      style={[
+                                        styles.userListDesignation,
+                                        {
+                                          color: isSelected ? 'rgba(255,255,255,0.8)' : theme.secondaryText,
+                                        },
+                                      ]}>
+                                      {user.designation}
+                                    </Text>
+                                  )}
+                                  {user.email && (
+                                    <Text
+                                      style={[
+                                        styles.userListEmail,
+                                        {
+                                          color: isSelected ? 'rgba(255,255,255,0.7)' : theme.secondaryText,
+                                        },
+                                      ]}
+                                      numberOfLines={1}>
+                                      {user.email}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+                              <View style={styles.userListRight}>
+                                {isSelected && (
+                                  <MaterialIcons
+                                    name="check-circle"
+                                    size={20}
+                                    color="#fff"
+                                  />
+                                )}
+                              </View>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+
+                    {getFilteredUsers().length === 0 && (
+                      <View
+                        style={[
+                          styles.noFilterResultsContainer,
+                          { backgroundColor: theme.background, borderColor: theme.border },
+                        ]}>
+                        <MaterialIcons
+                          name="filter-list-off"
+                          size={24}
+                          color={theme.secondaryText}
+                        />
+                        <Text style={[styles.noFilterResultsText, { color: theme.secondaryText }]}>
+                          No users match your filters
+                        </Text>
+                      </View>
+                    )}
+                  </>
+                )}
+              </View>
+
+              {/* Module Selection */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>Select Modules</Text>
+                <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
+                  Choose which modules users will have access to
+                </Text>
+                <View style={styles.moduleSelectionGrid}>
+                  {modules.map((module) => {
+                    const isSelected = bulkSelectedModules.includes(module.key);
+                    return (
+                      <TouchableOpacity
+                        key={module.key}
+                        style={[
+                          styles.moduleSelectionItem,
+                          {
+                            backgroundColor: isSelected ? theme.primary : theme.background,
+                            borderColor: isSelected ? theme.primary : theme.border,
+                          },
+                        ]}
+                        onPress={() => toggleModuleSelection(module.key)}>
+                        <View style={styles.moduleSelectionContent}>
+                          <Feather
+                            name={module.icon}
+                            size={20}
+                            color={isSelected ? '#fff' : theme.text}
+                          />
+                          <Text
+                            style={[
+                              styles.moduleSelectionText,
+                              { color: isSelected ? '#fff' : theme.text },
+                            ]}>
+                            {module.label}
+                          </Text>
+                          {isSelected && (
+                            <MaterialIcons
+                              name="check-circle"
+                              size={16}
+                              color="#fff"
+                              style={styles.moduleCheckIcon}
+                            />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* Bulk Permissions */}
+              <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                  Permissions for Selected Modules
+                </Text>
+                <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
+                  These permissions will be applied to all selected users for all selected modules
+                </Text>
+                {Object.entries(bulkPermissions).map(([key, value]) => (
+                  <View key={key} style={styles.permissionRow}>
+                    <View style={styles.permissionInfo}>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>
+                        {key === 'canView'
+                          ? 'View Access'
+                          : key === 'canReply'
+                            ? 'Reply/Participate'
+                            : 'Edit/Manage'}
+                      </Text>
+                      <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
+                        {key === 'canView'
+                          ? 'Can view content in selected modules'
+                          : key === 'canReply'
+                            ? 'Can contribute and reply in selected modules'
+                            : 'Can edit and manage content in selected modules'}
+                      </Text>
+                    </View>
+                    <Switch
+                      value={value}
+                      onValueChange={(newValue) =>
+                        setBulkPermissions((prev) => ({ ...prev, [key]: newValue }))
+                      }
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                      thumbColor={value ? '#fff' : theme.secondaryText}
+                    />
+                  </View>
+                ))}
+              </View>
+            </ScrollView>
+
+            {/* Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.cancelButton, { borderColor: theme.border }]}
+                onPress={() => setShowBulkAssign(false)}>
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.saveButton,
+                  {
+                    backgroundColor: 
+                      selectedUsers.length > 0 && bulkSelectedModules.length > 0
+                        ? theme.primary
+                        : theme.border,
+                  },
+                ]}
+                onPress={handleBulkAssign}
+                disabled={selectedUsers.length === 0 || bulkSelectedModules.length === 0}>
+                <Text style={styles.saveButtonText}>
+                  Assign Access ({selectedUsers.length}×{bulkSelectedModules.length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -806,6 +1320,23 @@ const styles = StyleSheet.create({
   headerContent: {
     flex: 1,
     marginLeft: 12,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bulkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  bulkButtonText: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
   headerTitle: {
     fontSize: 18,
@@ -886,17 +1417,17 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   sectionDescription: {
-    fontSize: 14,
-    marginBottom: 12,
-    lineHeight: 20,
+    fontSize: 12,
+    marginBottom: 8,
+    lineHeight: 16,
   },
   permissionInfo: {
     flex: 1,
   },
   permissionDescription: {
-    fontSize: 12,
-    marginTop: 2,
-    lineHeight: 16,
+    fontSize: 11,
+    marginTop: 1,
+    lineHeight: 14,
   },
   loadingContainer: {
     flex: 1,
@@ -1032,38 +1563,91 @@ const styles = StyleSheet.create({
   modalContent: {
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: '80%',
+    padding: 16,
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '600',
   },
   section: {
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  selectAllContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  selectAllButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+  },
+  selectAllText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  clearSelectionButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  clearSelectionText: {
+    fontSize: 11,
+    fontWeight: '500',
+  },
+  quickActionsContainer: {
+    marginBottom: 8,
+  },
+  quickActionsLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 6,
+  },
+  quickActionButton: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginRight: 6,
+  },
+  quickActionText: {
+    fontSize: 10,
+    fontWeight: '500',
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   searchFilterContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 8,
     borderWidth: 1,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   searchInput: {
     flex: 1,
@@ -1072,14 +1656,14 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   filterContainer: {
-    marginBottom: 8,
+    marginBottom: 6,
   },
   filterChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
     borderWidth: 1,
-    marginRight: 8,
+    marginRight: 6,
   },
   filterChipText: {
     fontSize: 12,
@@ -1156,39 +1740,199 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingVertical: 12,
+    paddingVertical: 8,
   },
   permissionLabel: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   modalActions: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 20,
+    marginTop: 16,
   },
   cancelButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
-    marginRight: 8,
+    marginRight: 6,
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
   },
   saveButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
-    marginLeft: 8,
+    marginLeft: 6,
   },
   saveButtonText: {
     color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  selectionSummary: {
+    padding: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    marginBottom: 12,
+    alignItems: 'center',
+  },
+  summaryText: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  selectionBreakdown: {
+    marginTop: 4,
+  },
+  breakdownText: {
+    fontSize: 11,
+    textAlign: 'center',
+  },
+  bulkModalContent: {
+    maxHeight: 450,
+    paddingHorizontal: 2,
+  },
+  userList: {
+    marginTop: 6,
+  },
+  userListItem: {
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: 8,
+    padding: 12,
+  },
+  userListContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  userListLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  userListAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  userListAvatarText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  userListInfo: {
+    flex: 1,
+  },
+  userListName: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  userListDesignation: {
+    fontSize: 11,
+    fontWeight: '500',
+    marginBottom: 1,
+  },
+  userListEmail: {
+    fontSize: 10,
+    fontWeight: '400',
+  },
+  userListRight: {
+    marginLeft: 12,
+  },
+  userGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: 6,
+  },
+  userGridItem: {
+    width: '31%',
+    marginBottom: 8,
+    padding: 8,
+    borderRadius: 10,
+    borderWidth: 2,
+    minHeight: 60,
+  },
+  userGridContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  userGridText: {
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  userGridDesignation: {
+    fontSize: 9,
+    marginTop: 2,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  selectionIcon: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+  },
+  moduleGridItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginRight: 8,
+    marginBottom: 8,
+    minWidth: 100,
+  },
+  moduleGridIcon: {
+    marginRight: 8,
+  },
+  moduleGridText: {
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  moduleSelectionIcon: {
+    marginLeft: 8,
+  },
+  moduleSelectionGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  moduleSelectionItem: {
+    width: '48%',
+    borderRadius: 10,
+    borderWidth: 2,
+    marginBottom: 8,
+    padding: 10,
+    minHeight: 60,
+  },
+  moduleSelectionContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+  },
+  moduleSelectionText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  moduleCheckIcon: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
   },
 });
