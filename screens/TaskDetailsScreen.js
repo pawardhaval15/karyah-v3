@@ -38,7 +38,7 @@ import {
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
-
+import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 export default function TaskDetailsScreen({ route, navigation }) {
   // Store decoded token globally for this component
   const decodedRef = useRef(null);
@@ -120,10 +120,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [showEditModal, setShowEditModal] = useState(false);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
   const lastProgressRef = useRef(task?.progress ?? 0);
-
   const [showCoAdminListPopup, setShowCoAdminListPopup] = useState(false);
   const [coAdminListPopupData, setCoAdminListPopupData] = useState([]);
   const [coAdminListPopupTitle, setCoAdminListPopupTitle] = useState('');
+  const [showDependentPopup, setShowDependentPopup] = useState(false);
 
   const {
     attachments: newAttachments,
@@ -191,7 +191,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
         attachments: attachments,
         mentions: mentions,
       });
-
       // Add the server response to messages (this will replace the optimistic message)
       setChatMessages((prev) => [...prev, newMsg]);
     } catch (err) {
@@ -217,7 +216,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
           const { getWorklistsByProjectId } = await import('../utils/worklist');
           const worklistData = await getWorklistsByProjectId(UpdateTaskScreen.projectId, token);
           setWorklists(worklistData || []);
-
           // Fetch tasks by projectId
           const tasks = await getTasksByProjectId(UpdateTaskScreen.projectId);
           setProjectTasks(tasks || []);
@@ -234,7 +232,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [UpdateTaskScreen.projectId]);
 
@@ -834,7 +831,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           />
                         </TouchableOpacity>
                       ) : null}
-
                       {/* File/document icon for other types */}
                       {!att.type?.startsWith('image') && !att.type?.startsWith('audio') ? (
                         <MaterialCommunityIcons
@@ -844,14 +840,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           style={{ marginRight: 8 }}
                         />
                       ) : null}
-
                       {/* File name */}
                       <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
                         {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                           ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                           : att.name || att.uri?.split('/').pop()}
                       </Text>
-
                       {/* Remove button */}
                       <TouchableOpacity
                         onPress={() => {
@@ -916,26 +910,205 @@ export default function TaskDetailsScreen({ route, navigation }) {
         />
         {/* Dependencies */}
         {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
-          <FieldBox
-            label="Dependent Task(s)"
-            value={task.dependentTasks
-              .map((t) => {
-                const name = typeof t === 'string' ? t : t.taskName || t.name || '';
-                const progress = typeof t === 'object' && t.progress != null ? t.progress : null;
-                let statusText = '';
-                if (progress !== null) {
-                  statusText = progress < 70 ? ' 🟠 In Progress' : ' ✅ Ready to Proceed';
-                }
-                return name
-                  ? `• ${name} (${progress !== null ? progress + '%' : 'N/A'})${statusText}`
-                  : '';
-              })
-              .filter(Boolean)
-              .join('\n')}
-            rightComponent={<Feather name="link" size={18} color={theme.text} />}
-            theme={theme}
-          />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowDependentPopup(true)}
+          >
+            <FieldBox
+              label="Dependent Task(s)"
+              value={
+                (() => {
+                  // Prepare first 2 tasks for preview
+                  const previewLines = task.dependentTasks.slice(0, 2).map((t) => {
+                    const name =
+                      typeof t === 'string'
+                        ? t
+                        : t.taskName || t.name || '';
+                    const progress =
+                      typeof t === 'object' && t.progress != null
+                        ? t.progress
+                        : null;
+                    let statusText = '';
+                    if (progress !== null) {
+                      statusText =
+                        progress < 70
+                          ? ' 🟠 In Progress'
+                          : ' ✅ Ready to Proceed';
+                    }
+                    return name
+                      ? `• ${name} (${progress !== null ? progress + '%' : 'N/A'})${statusText}`
+                      : '';
+                  });
+                  let displayText = previewLines.filter(Boolean).join('\n');
+                  // Add "+X more" if more than 2
+                  if (task.dependentTasks.length > 2) {
+                    displayText += `\n+${task.dependentTasks.length - 2} more...`;
+                  }
+                  return displayText;
+                })() // <-- immediately invoke so value is a string
+              }
+              rightComponent={<Feather name="chevron-right" size={18} color={theme.text} />}
+              theme={theme}
+            />
+          </TouchableOpacity>
         )}
+
+        <Modal
+          visible={showDependentPopup}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setShowDependentPopup(false)}
+        >
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: 20
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: theme.card,
+                borderRadius: 16,
+                paddingVertical: 12, // reduced padding
+                paddingHorizontal: 10,
+                maxHeight: '80%',
+                width: '100%',
+                alignItems: 'center'
+              }}
+            >
+              <Text
+                style={{
+                  fontSize: 18,
+                  fontWeight: '600',
+                  marginBottom: 14,
+                  color: theme.text
+                }}
+              >
+                Dependent Task(s)
+              </Text>
+              <ScrollView
+                style={{ width: '100%', maxHeight: 380 }}
+                contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 8 }}
+                showsVerticalScrollIndicator={true}
+              >
+                {task.dependentTasks.map((t, idx) => {
+                  const name =
+                    typeof t === 'string' ? t : t.taskName || t.name || '';
+                  const progress =
+                    typeof t === 'object' && t.progress != null
+                      ? t.progress
+                      : 0;
+                  const statusText =
+                    progress < 70 ? '🟠 In Progress' : '✅ Ready to Proceed';
+                  const avatarText = name ? name[0].toUpperCase() : '?';
+                  return (
+                    <View
+                      key={idx}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        backgroundColor: theme.secCard || '#f2f4f8',
+                        borderRadius: 10, // smaller radius
+                        paddingVertical: 10, // reduced
+                        paddingHorizontal: 10,
+                        marginBottom: 8, // tighter
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                        shadowColor: '#000',
+                        shadowOpacity: 0.06,
+                        shadowOffset: { width: 0, height: 1 },
+                        shadowRadius: 4
+                      }}
+                    >
+                      {/* Avatar/Initial */}
+                      <View
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 10,
+                          backgroundColor: theme.avatarBg || '#e0e7ef',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 10
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: theme.primary,
+                            fontSize: 16,
+                            fontWeight: '700'
+                          }}
+                        >
+                          {avatarText}
+                        </Text>
+                      </View>
+                      {/* Task Details */}
+                      <View style={{ flex: 1 }}>
+                        <Text
+                          style={{
+                            color: theme.text,
+                            fontWeight: '600',
+                            fontSize: 15,
+                            marginBottom: 2
+                          }}
+                        >
+                          {name || 'Unnamed Task'}
+                        </Text>
+                        {statusText && (
+                          <Text
+                            style={{
+                              fontSize: 13,
+                              color:
+                                progress < 70
+                                  ? '#f59e42'
+                                  : theme.success || '#2e7d32',
+                              fontWeight: '500'
+                            }}
+                          >
+                            {statusText}
+                          </Text>
+                        )}
+                        {t.description && (
+                          <Text
+                            style={{
+                              color: theme.textSecondary || '#7986a0',
+                              fontSize: 12,
+                              marginTop: 2
+                            }}
+                          >
+                            {t.description}
+                          </Text>
+                        )}
+                      </View>
+                      {/* Progress Circle */}
+                      <View style={{ marginLeft: 10 }}>
+                        <CustomCircularProgress percentage={progress} size={48} strokeWidth={4} />
+                      </View>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              <TouchableOpacity
+                onPress={() => setShowDependentPopup(false)}
+                style={{
+                  marginTop: 10,
+                  alignSelf: 'center',
+                  backgroundColor: theme.primary,
+                  paddingVertical: 6,
+                  paddingHorizontal: 28,
+                  borderRadius: 16
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+                  Close
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
         {/* Subtasks */}
         <View style={styles.subTaskHeader}>
           <TouchableOpacity
