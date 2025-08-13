@@ -39,30 +39,48 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   );
 
   // Sort issues: critical first, then by creation date (newest first)
-  const sortedData = activeTab === 'issues'
-    ? filtered.sort((a, b) => {
-      // First sort by critical status
+  const getDaysDiff = (item) => {
+  const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
+  if (!dateVal.getTime()) return null; // no valid date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.ceil((dateVal - today) / (1000 * 60 * 60 * 24));
+};
+
+const sortByDueLogic = (a, b) => {
+  const diffA = getDaysDiff(a);
+  const diffB = getDaysDiff(b);
+
+  // Overdue first
+  const isOverdueA = diffA !== null && diffA < 0;
+  const isOverdueB = diffB !== null && diffB < 0;
+  if (isOverdueA && !isOverdueB) return -1;
+  if (!isOverdueA && isOverdueB) return 1;
+
+  // Both overdue → most overdue first (smaller diff comes first)
+  if (isOverdueA && isOverdueB) return diffA - diffB;
+
+  // Upcoming (diff >= 0) → soonest first
+  if (diffA !== null && diffB !== null) return diffA - diffB;
+
+  // Items without due date go last
+  if (diffA === null && diffB !== null) return 1;
+  if (diffA !== null && diffB === null) return -1;
+
+  // Otherwise no change
+  return 0;
+};
+
+const sortedData = activeTab === 'issues'
+  ? filtered.sort((a, b) => {
+      // Critical issues first
       if (a.isCritical && !b.isCritical) return -1;
       if (!a.isCritical && b.isCritical) return 1;
 
-      // Then sort by creation date (newest first)
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateB.getTime() - dateA.getTime();
+      // Then by due logic
+      return sortByDueLogic(a, b);
     })
-    : filtered.sort((a, b) => {
-      // For tasks, sort by due date (closest first), then by creation date
-      const dueDateA = new Date(a.endDate || a.dueDate || 0);
-      const dueDateB = new Date(b.endDate || b.dueDate || 0);
-
-      if (dueDateA.getTime() && dueDateB.getTime()) {
-        return dueDateA.getTime() - dueDateB.getTime();
-      }
-
-      const dateA = new Date(a.createdAt || 0);
-      const dateB = new Date(b.createdAt || 0);
-      return dateB.getTime() - dateA.getTime();
-    });
+  : filtered.sort(sortByDueLogic);
 
   if (parentLoading || loading) {
     return (
@@ -205,31 +223,45 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
       </View>
 
       <ScrollView contentContainerStyle={styles.gridContainer} showsVerticalScrollIndicator={false}>
-        {sortedData.map((item, idx) => (
-          <TouchableOpacity
-            key={(item.title || item.issueTitle || '') + idx}
-            style={styles.cardWrapper}
-            activeOpacity={0.8}
-            onPress={() =>
-              activeTab === 'tasks'
-                ? navigation.navigate('TaskDetails', { taskId: item.id || item.taskId })
-                : navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' })
-            }>
-            <TaskCard
-              title={item.title || item.issueTitle || item.name || 'Untitled'}
-              project={item.project?.projectName || item.project || item.projectName}
-              percent={item.percent || item.progress || 0}
-              desc={item.desc || item.description}
-              date={item.date || item.dueDate || item.endDate}
-              theme={theme}
-              creatorName={item.creatorName || item.createdBy || item.creator?.name}
-              isIssue={activeTab === 'issues'}
-              issueStatus={item.issueStatus}
-              isCritical={item.isCritical}
-            />
-          </TouchableOpacity>
-        ))}
+        {sortedData
+          .filter(item => {
+            if (activeTab === 'issues') {
+              // Hide resolved issues
+              return item.issueStatus !== 'resolved';
+            } else {
+              // Hide completed tasks (either by status or full percent)
+              const isCompletedByPercent = (item.percent || item.progress || 0) === 100;
+              const isCompletedByStatus = String(item.status || '').toLowerCase() === 'completed';
+              return !isCompletedByPercent && !isCompletedByStatus;
+            }
+          }) // <-- filter out resolved issues!
+          .map((item, idx) => (
+            <TouchableOpacity
+              key={(item.title || item.issueTitle || '') + idx}
+              style={styles.cardWrapper}
+              activeOpacity={0.8}
+              onPress={() =>
+                activeTab === 'tasks'
+                  ? navigation.navigate('TaskDetails', { taskId: item.id || item.taskId })
+                  : navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' })
+              }
+            >
+              <TaskCard
+                title={item.title || item.issueTitle || item.name || 'Untitled'}
+                project={item.project?.projectName || item.project || item.projectName}
+                percent={item.percent || item.progress || 0}
+                desc={item.desc || item.description}
+                date={item.date || item.dueDate || item.endDate}
+                theme={theme}
+                creatorName={item.creatorName || item.createdBy || item.creator?.name}
+                isIssue={activeTab === 'issues'}
+                issueStatus={item.issueStatus}
+                isCritical={item.isCritical}
+              />
+            </TouchableOpacity>
+          ))}
       </ScrollView>
+
     </View>
   );
 }
@@ -240,7 +272,7 @@ const isTablet = screenWidth >= 768;
 const styles = StyleSheet.create({
   gridContainer: {
     flexDirection: 'row',
-    flexWrap: 'wrap', 
+    flexWrap: 'wrap',
     gap: isTablet ? 10 : 6,
     paddingHorizontal: isTablet ? 20 : 20,
     paddingBottom: isTablet ? 24 : 20,

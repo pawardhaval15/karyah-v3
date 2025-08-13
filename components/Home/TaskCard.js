@@ -72,12 +72,26 @@ export default function TaskCard({
   // For example, "Apr 25, 2024"
   const dueDate = date
     ? new Date(date).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      })
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    })
     : 'No due date';
-
+  // Hide resolved issues entirely
+  if (isIssue && issueStatus === 'resolved') {
+    return null;
+  }
+  // Hide completed tasks entirely
+  if (!isIssue && percent === 100) {
+    return null;
+  }
+  // Map statuses for better labels
+  const formatIssueStatus = (status) => {
+    if (!status) return '';
+    if (status === 'pending_approval') return 'Unresolved';
+    if (status === 'resolved') return 'Resolved';
+    return status.replace(/_/g, ' ');
+  };
   return (
     <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
       {/* Uncomment if you want overdue banner, currently commented out */}
@@ -110,7 +124,7 @@ export default function TaskCard({
             )}
           </View>
         </View>
-        
+
         {/* Creator tooltip */}
         {showCreatorTooltip && creatorName && (
           <View style={[styles.tooltip, { backgroundColor: theme.background, borderColor: theme.border }]}>
@@ -153,13 +167,12 @@ export default function TaskCard({
                         : '#FF6F3C',
                   fontSize: 11,
                   fontWeight: '400',
-                  textTransform: 'capitalize',
                   marginLeft: 6,
                   fontStyle: 'italic',
                   flexShrink: 0,
-                  maxWidth: 60,
+                  maxWidth: 80,
                 }}>
-                {issueStatus.replace(/_/g, ' ')}
+                {formatIssueStatus(issueStatus)}
               </Text>
             )}
             {/* Show due date for both issues and tasks */}
