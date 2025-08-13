@@ -6,6 +6,7 @@ import { Dimensions, Linking, Platform, ScrollView, StyleSheet, Text, TouchableO
 import Animated from 'react-native-reanimated';
 import { useThemeContext } from '../../theme/ThemeContext'; // <-- import your theme context/provider
 import { fetchUserDetails } from '../../utils/auth';
+import * as FileSystem from 'expo-file-system';
 
 export default function CustomDrawer({ onClose, theme }) {
   const navigation = useNavigation();
@@ -74,7 +75,14 @@ export default function CustomDrawer({ onClose, theme }) {
 
       // Remove user token (auth)
       await AsyncStorage.removeItem('token');
-
+      // CLEAR APP CACHE (FileSystem)
+      try {
+        console.log('Clearing cache...');
+        await FileSystem.deleteAsync(FileSystem.cacheDirectory, { idempotent: true });
+        console.log('Cache cleared successfully');
+      } catch (cacheErr) {
+        console.error('Error clearing cache:', cacheErr);
+      }
       // Reset navigation to login screen
       navigation.reset({
         index: 0,
@@ -87,7 +95,7 @@ export default function CustomDrawer({ onClose, theme }) {
   };
 
   return (
-    <View style={[styles.drawer, { backgroundColor: theme.background, flex: 1 }]}> 
+    <View style={[styles.drawer, { backgroundColor: theme.background, flex: 1 }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.userSection}>
           <View style={[styles.avatarCircle, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
@@ -96,7 +104,7 @@ export default function CustomDrawer({ onClose, theme }) {
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.title, { color: theme.text }]}> 
+            <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.title, { color: theme.text }]}>
               {userName ? userName : 'User'}
             </Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Welcome to Karyah</Text>
@@ -203,10 +211,10 @@ export default function CustomDrawer({ onClose, theme }) {
                   <TouchableOpacity
                     onPress={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
                     style={[styles.themeBadge, { backgroundColor: theme.primary + '15' }]}>
-                    <Feather 
-                      name={colorMode === 'dark' ? 'moon' : 'sun'} 
-                      size={14} 
-                      color={theme.primary} 
+                    <Feather
+                      name={colorMode === 'dark' ? 'moon' : 'sun'}
+                      size={14}
+                      color={theme.primary}
                     />
                   </TouchableOpacity>
                 </View>
