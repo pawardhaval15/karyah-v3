@@ -46,7 +46,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
     if (visible && activeTab === 'view') {
       fetchRequests();
     }
-  }, [visible, activeTab, projectId]);
+  }, [visible, activeTab, taskId]);
 
   // Smart Search logic with enhanced matching
   useEffect(() => {
@@ -115,10 +115,10 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
   };
 
   const fetchRequests = async () => {
-    if (!projectId) return;
+    if (!taskId) return;
 
     setLoading(true);
-    const result = await materialRequestAPI.getProjectRequests(projectId);
+    const result = await materialRequestAPI.getProjectRequests(taskId);
 
     if (result.success) {
       setRequests(result.data);
