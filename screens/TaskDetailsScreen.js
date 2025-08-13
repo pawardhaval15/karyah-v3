@@ -1028,23 +1028,29 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <View
               style={{
                 backgroundColor: theme.card,
-                borderRadius: 16,
-                paddingVertical: 12, // reduced padding
-                paddingHorizontal: 10,
+                borderRadius: 18,
+                paddingVertical: 18,
+                paddingHorizontal: 18,
                 maxHeight: '80%',
                 width: '100%',
-                alignItems: 'center'
+                alignItems: 'center',
+                shadowColor: '#000',
+                shadowOpacity: 0.08,
+                shadowOffset: { width: 0, height: 2 },
+                shadowRadius: 8,
+                elevation: 8,
               }}
             >
               <Text
                 style={{
-                  fontSize: 18,
-                  fontWeight: '600',
-                  marginBottom: 14,
-                  color: theme.text
+                  fontSize: 20,
+                  fontWeight: '700',
+                  marginBottom: 18,
+                  color: theme.text,
+                  letterSpacing: 0.2,
                 }}
               >
-                Dependent Task(s)
+                Task Dependencies
               </Text>
               <ScrollView
                 style={{ width: '100%', maxHeight: 380 }}
@@ -1058,27 +1064,39 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     typeof t === 'object' && t.progress != null
                       ? t.progress
                       : 0;
-                  const statusText =
-                    progress < 70 ? '🟠 In Progress' : '✅ Ready to Proceed';
+                  const statusText = progress < 70 ? 'In Progress' : 'Ready to Proceed';
+                  const statusColor = progress < 70 ? '#f59e42' : theme.success || '#2e7d32';
                   const avatarText = name ? name[0].toUpperCase() : '?';
+                  const taskId = typeof t === 'object' ? (t.id || t.taskId || t._id) : null;
+                  
                   return (
-                    <View
+                    <TouchableOpacity
                       key={idx}
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        backgroundColor: theme.secCard || '#f2f4f8',
-                        borderRadius: 10, // smaller radius
-                        paddingVertical: 10, // reduced
-                        paddingHorizontal: 10,
-                        marginBottom: 8, // tighter
+                        backgroundColor: theme.secCard,
+                        borderRadius: 12,
+                        paddingVertical: 12,
+                        paddingHorizontal: 12,
+                        marginBottom: 10,
                         borderWidth: 1,
                         borderColor: theme.border,
                         shadowColor: '#000',
                         shadowOpacity: 0.06,
                         shadowOffset: { width: 0, height: 1 },
-                        shadowRadius: 4
+                        shadowRadius: 4,
                       }}
+                      onPress={() => {
+                        if (taskId) {
+                          setShowDependentPopup(false);
+                          navigation.push('TaskDetails', {
+                            taskId: taskId,
+                            refreshedAt: Date.now()
+                          });
+                        }
+                      }}
+                      activeOpacity={taskId ? 0.7 : 1}
                     >
                       {/* Avatar/Initial */}
                       <View
@@ -1089,14 +1107,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           backgroundColor: theme.avatarBg || '#e0e7ef',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          marginRight: 10
+                          marginRight: 12,
                         }}
                       >
                         <Text
                           style={{
                             color: theme.primary,
                             fontSize: 16,
-                            fontWeight: '700'
+                            fontWeight: '700',
                           }}
                         >
                           {avatarText}
@@ -1109,31 +1127,27 @@ export default function TaskDetailsScreen({ route, navigation }) {
                             color: theme.text,
                             fontWeight: '600',
                             fontSize: 15,
-                            marginBottom: 2
+                            marginBottom: 2,
                           }}
                         >
                           {name || 'Unnamed Task'}
                         </Text>
-                        {statusText && (
-                          <Text
-                            style={{
-                              fontSize: 13,
-                              color:
-                                progress < 70
-                                  ? '#f59e42'
-                                  : theme.success || '#2e7d32',
-                              fontWeight: '500'
-                            }}
-                          >
-                            {statusText}
-                          </Text>
-                        )}
+                        <Text
+                          style={{
+                            fontSize: 13,
+                            color: statusColor,
+                            fontWeight: '500',
+                            marginBottom: 2,
+                          }}
+                        >
+                          {statusText}
+                        </Text>
                         {t.description && (
                           <Text
                             style={{
                               color: theme.textSecondary || '#7986a0',
                               fontSize: 12,
-                              marginTop: 2
+                              marginTop: 2,
                             }}
                           >
                             {t.description}
@@ -1141,25 +1155,35 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         )}
                       </View>
                       {/* Progress Circle */}
-                      <View style={{ marginLeft: 10 }}>
+                      <View style={{ marginLeft: 12 }}>
                         <CustomCircularProgress percentage={progress} size={48} strokeWidth={4} />
                       </View>
-                    </View>
+                      {/* Navigation indicator */}
+                      {taskId && (
+                        <View style={{ marginLeft: 8 }}>
+                          <Feather name="chevron-right" size={16} color={theme.secondaryText} />
+                        </View>
+                      )}
+                    </TouchableOpacity>
                   );
                 })}
               </ScrollView>
               <TouchableOpacity
                 onPress={() => setShowDependentPopup(false)}
                 style={{
-                  marginTop: 10,
+                  marginTop: 14,
                   alignSelf: 'center',
                   backgroundColor: theme.primary,
-                  paddingVertical: 6,
-                  paddingHorizontal: 28,
-                  borderRadius: 16
+                  paddingVertical: 8,
+                  paddingHorizontal: 36,
+                  borderRadius: 16,
+                  shadowColor: theme.primary,
+                  shadowOpacity: 0.12,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowRadius: 6,
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
                   Close
                 </Text>
               </TouchableOpacity>

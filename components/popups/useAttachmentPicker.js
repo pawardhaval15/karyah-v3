@@ -7,13 +7,60 @@ export default function useAttachmentPicker() {
   const [attachments, setAttachments] = useState([]);
   const [attaching, setAttaching] = useState(false);
 
-  const normalize = (file) => ({
-    uri: file.uri,
-    name: file.name || file.fileName || file.uri?.split('/').pop(),
-    type: file.mimeType || file.type || 'application/octet-stream',
-    size: file.size || 0,
-    isExisting: false,
-  });
+  const normalize = (file) => {
+    console.log('Normalizing file:', file);
+    
+    // Try to get file size from multiple possible properties
+    let fileSize = 0;
+    if (file.size) fileSize = file.size;
+    else if (file.fileSize) fileSize = file.fileSize;
+    else if (file.file?.size) fileSize = file.file.size;
+    
+    // Try to get file type from multiple possible properties
+    let fileType = 'application/octet-stream';
+    if (file.type) fileType = file.type;
+    else if (file.mimeType) fileType = file.mimeType;
+    else if (file.file?.type) fileType = file.file.type;
+    else {
+      // Guess type from file extension
+      const extension = (file.name || file.uri || '').toLowerCase().split('.').pop();
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif':
+        case 'webp':
+          fileType = `image/${extension === 'jpg' ? 'jpeg' : extension}`;
+          break;
+        case 'pdf':
+          fileType = 'application/pdf';
+          break;
+        case 'mp4':
+        case 'mov':
+        case 'avi':
+          fileType = `video/${extension}`;
+          break;
+        case 'mp3':
+        case 'wav':
+        case 'm4a':
+          fileType = `audio/${extension}`;
+          break;
+        default:
+          fileType = 'application/octet-stream';
+      }
+    }
+    
+    const normalized = {
+      uri: file.uri,
+      name: file.name || file.fileName || file.uri?.split('/').pop() || 'Unknown file',
+      type: fileType,
+      size: fileSize,
+      isExisting: file.isExisting || false,
+    };
+    
+    console.log('Normalized file:', normalized);
+    return normalized;
+  };
 
   // Helper function to validate file size (limit: 50MB per file)
   const validateFileSize = (files) => {
@@ -45,7 +92,9 @@ export default function useAttachmentPicker() {
           quality: 0.8, // Optimize file size
         });
         if (!result.canceled) {
+          console.log('ImagePicker result:', result);
           const normalizedFiles = result.assets.map(normalize);
+          console.log('Normalized files:', normalizedFiles);
           const validFiles = validateFileSize(normalizedFiles);
           pickedFiles = validFiles;
           setAttachments(prev => [...prev, ...validFiles]);
@@ -131,12 +180,83 @@ export default function useAttachmentPicker() {
     return attachments.reduce((total, file) => total + (file.size || 0), 0);
   };
 
-  const getFormattedSize = (bytes) => {
-    if (bytes === 0) return '0 Bytes';
+  const getFormattedSize = (bytes, isExisting = false) => {
+    if (!bytes || bytes === 0) {
+      return isExisting ? 'Existing file' : 'Unknown size';
+    }
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getFileType = (file) => {
+    if (!file || !file.type) {
+      // Fallback to file extension if type is not available
+      const extension = (file?.name || file?.uri || '').toLowerCase().split('.').pop();
+      switch (extension) {
+        case 'jpg':
+        case 'jpeg':
+        case 'png':
+        case 'gif':
+        case 'webp':
+        case 'bmp':
+          return 'image';
+        case 'mp4':
+        case 'mov':
+        case 'avi':
+        case 'wmv':
+        case 'flv':
+          return 'video';
+        case 'mp3':
+        case 'wav':
+        case 'm4a':
+        case 'aac':
+        case 'ogg':
+          return 'audio';
+        case 'pdf':
+          return 'pdf';
+        case 'doc':
+        case 'docx':
+          return 'document';
+        case 'xls':
+        case 'xlsx':
+          return 'spreadsheet';
+        case 'ppt':
+        case 'pptx':
+          return 'presentation';
+        default:
+          return 'file';
+      }
+    }
+    
+    if (file.type.startsWith('image/')) return 'image';
+    if (file.type.startsWith('video/')) return 'video';
+    if (file.type.startsWith('audio/')) return 'audio';
+    if (file.type.includes('pdf')) return 'pdf';
+    if (file.type.includes('document') || file.type.includes('word')) return 'document';
+    if (file.type.includes('spreadsheet') || file.type.includes('excel')) return 'spreadsheet';
+    if (file.type.includes('presentation') || file.type.includes('powerpoint')) return 'presentation';
+    return 'file';
+  };
+
+  const isPreviewable = (file) => {
+    const type = getFileType(file);
+    return ['image', 'pdf'].includes(type);
+  };
+
+  const getFileIcon = (file) => {
+    const type = getFileType(file);
+    switch (type) {
+      case 'image': return 'image';
+      case 'video': return 'video';
+      case 'audio': return 'music';
+      case 'pdf': return 'file-text';
+      case 'document': return 'file-text';
+      case 'spreadsheet': return 'grid';
+      case 'presentation': return 'monitor';
+      default: return 'file';
+    }
   };
 
   return { 
@@ -147,6 +267,9 @@ export default function useAttachmentPicker() {
     setAttachments, 
     attaching,
     getTotalSize,
-    getFormattedSize
+    getFormattedSize,
+    getFileType,
+    isPreviewable,
+    getFileIcon
   };
 }

@@ -16,10 +16,12 @@ export default function ChangePinPopup({
 }) {
     const [currentPin, setCurrentPin] = useState('');
     const [newPin, setNewPin] = useState('');
+    const [confirmNewPin, setConfirmNewPin] = useState('');
     const [forgotMode, setForgotMode] = useState(false);
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [resetPinVal, setResetPinVal] = useState('');
+    const [confirmResetPin, setConfirmResetPin] = useState('');
     const [forgotStep, setForgotStep] = useState(1);
     const [forgotLoading, setForgotLoading] = useState(false);
     const [forgotError, setForgotError] = useState('');
@@ -27,11 +29,25 @@ export default function ChangePinPopup({
 
     const [changingMsg, setChangingMsg] = useState('');
     const handleSubmit = () => {
-        if (!currentPin || !newPin) return;
+        if (!currentPin || !newPin || !confirmNewPin) return;
+        
+        // Check if new PIN and confirm PIN match
+        if (newPin !== confirmNewPin) {
+            alert('New PIN and Confirm PIN do not match. Please try again.');
+            return;
+        }
+        
+        // Check PIN length (optional validation)
+        if (newPin.length < 4) {
+            alert('PIN must be at least 4 digits long.');
+            return;
+        }
+        
         setChangingMsg('Changing...');
         onSubmit(currentPin, newPin, (err) => {
             setCurrentPin('');
             setNewPin('');
+            setConfirmNewPin('');
             setChangingMsg('');
             if (err) {
                 setTimeout(() => {
@@ -57,6 +73,18 @@ export default function ChangePinPopup({
     };
 
     const handleResetPin = async () => {
+        if (!resetPinVal || !confirmResetPin) return;
+        
+        if (resetPinVal !== confirmResetPin) {
+            setForgotError('New PIN and Confirm PIN do not match.');
+            return;
+        }
+        
+        if (resetPinVal.length < 4) {
+            setForgotError('PIN must be at least 4 digits long.');
+            return;
+        }
+        
         setForgotError('');
         setForgotSuccess('');
         setForgotLoading(true);
@@ -68,6 +96,7 @@ export default function ChangePinPopup({
                 setEmail('');
                 setOtp('');
                 setResetPinVal('');
+                setConfirmResetPin('');
                 onClose();
                 alert('PIN reset successfully!');
             }, 500);
@@ -116,31 +145,60 @@ export default function ChangePinPopup({
                     {!forgotMode ? (
                         <>
                             <FieldBox
+                                label="Current PIN"
                                 value={currentPin}
                                 onChangeText={setCurrentPin}
-                                placeholder="Current PIN"
+                                placeholder="Enter your current PIN"
                                 editable
                                 theme={theme}
                                 inputStyle={{ letterSpacing: 0 }}
                                 containerStyle={{ marginHorizontal: 0, marginBottom: 10 }}
                                 rightComponent={null}
                                 multiline={false}
+                                secureTextEntry={true}
+                                keyboardType="numeric"
+                                maxLength={6}
                             />
                             <FieldBox
+                                label="New PIN"
                                 value={newPin}
                                 onChangeText={setNewPin}
-                                placeholder="New PIN"
+                                placeholder="Enter new PIN"
                                 editable
                                 theme={theme}
                                 inputStyle={{ letterSpacing: 0 }}
                                 containerStyle={{ marginHorizontal: 0, marginBottom: 10 }}
                                 rightComponent={null}
                                 multiline={false}
+                                secureTextEntry={true}
+                                keyboardType="numeric"
+                                maxLength={6}
                             />
+                            <FieldBox
+                                label="Confirm New PIN"
+                                value={confirmNewPin}
+                                onChangeText={setConfirmNewPin}
+                                placeholder="Re-enter new PIN"
+                                editable
+                                theme={theme}
+                                inputStyle={{ letterSpacing: 0 }}
+                                containerStyle={{ marginHorizontal: 0, marginBottom: 10 }}
+                                rightComponent={null}
+                                multiline={false}
+                                secureTextEntry={true}
+                                keyboardType="numeric"
+                                maxLength={6}
+                            />
+                            {/* PIN Mismatch Warning */}
+                            {newPin && confirmNewPin && newPin !== confirmNewPin && (
+                                <Text style={[styles.errorText, { color: theme.error || '#E53935', marginBottom: 10 }]}>
+                                    PINs do not match
+                                </Text>
+                            )}
                             <GradientButton
                                 title={loading ? (changingMsg || '') : 'Change PIN'}
                                 onPress={handleSubmit}
-                                disabled={loading || !currentPin || !newPin}
+                                disabled={loading || !currentPin || !newPin || !confirmNewPin || (newPin !== confirmNewPin)}
                                 style={{ marginTop: 10 }}
                             >
                                 {loading ? (
@@ -182,9 +240,10 @@ export default function ChangePinPopup({
                             {forgotStep === 2 && (
                                 <>
                                     <FieldBox
+                                        label="OTP"
                                         value={otp}
                                         onChangeText={setOtp}
-                                        placeholder="Enter OTP"
+                                        placeholder="Enter OTP from email"
                                         editable
                                         theme={theme}
                                         inputStyle={{ letterSpacing: 0 }}
@@ -193,20 +252,56 @@ export default function ChangePinPopup({
                                         multiline={false}
                                     />
                                     <FieldBox
+                                        label="New PIN"
                                         value={resetPinVal}
                                         onChangeText={setResetPinVal}
-                                        placeholder="New PIN"
+                                        placeholder="Enter new PIN"
                                         editable
                                         theme={theme}
                                         inputStyle={{ letterSpacing: 0 }}
                                         containerStyle={{ marginHorizontal: 0, marginBottom: 10 }}
                                         rightComponent={null}
                                         multiline={false}
+                                        secureTextEntry={true}
+                                        keyboardType="numeric"
+                                        maxLength={6}
                                     />
+                                    <FieldBox
+                                        label="Confirm New PIN"
+                                        value={confirmResetPin}
+                                        onChangeText={setConfirmResetPin}
+                                        placeholder="Re-enter new PIN"
+                                        editable
+                                        theme={theme}
+                                        inputStyle={{ letterSpacing: 0 }}
+                                        containerStyle={{ marginHorizontal: 0, marginBottom: 10 }}
+                                        rightComponent={null}
+                                        multiline={false}
+                                        secureTextEntry={true}
+                                        keyboardType="numeric"
+                                        maxLength={6}
+                                    />
+                                    {/* PIN Mismatch Warning for Reset */}
+                                    {resetPinVal && confirmResetPin && resetPinVal !== confirmResetPin && (
+                                        <Text style={[styles.errorText, { color: theme.error || '#E53935', marginBottom: 10 }]}>
+                                            PINs do not match
+                                        </Text>
+                                    )}
+                                    {/* Error/Success Messages */}
+                                    {forgotError ? (
+                                        <Text style={[styles.errorText, { color: theme.error || '#E53935', marginBottom: 10 }]}>
+                                            {forgotError}
+                                        </Text>
+                                    ) : null}
+                                    {forgotSuccess ? (
+                                        <Text style={[styles.successText, { color: theme.success || '#2e7d32', marginBottom: 10 }]}>
+                                            {forgotSuccess}
+                                        </Text>
+                                    ) : null}
                                     <GradientButton
                                         title={forgotLoading ? '' : 'Reset PIN'}
                                         onPress={handleResetPin}
-                                        disabled={forgotLoading || !otp || !resetPinVal}
+                                        disabled={forgotLoading || !otp || !resetPinVal || !confirmResetPin || (resetPinVal !== confirmResetPin)}
                                         style={{ marginTop: 10 }}
                                     >
                                         {forgotLoading && <ActivityIndicator size="small" color="#fff" />}
@@ -219,6 +314,7 @@ export default function ChangePinPopup({
                                 setEmail('');
                                 setOtp('');
                                 setResetPinVal('');
+                                setConfirmResetPin('');
                                 setForgotError('');
                                 setForgotSuccess('');
                             }}>

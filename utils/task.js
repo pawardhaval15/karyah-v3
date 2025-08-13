@@ -188,7 +188,7 @@ export const getTaskDetailsById = async (taskId) => {
     }
 
     const data = await response.json();
-    // console.log('Fetched task details:', data.task);
+    console.log('Fetched task details:', data.task);
     return data.task;
   } catch (error) {
     console.error('❌ Error fetching task details:', error.message);
