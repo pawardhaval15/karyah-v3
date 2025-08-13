@@ -3,23 +3,24 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import GradientButton from 'components/Login/GradientButton';
 import { useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { createIssue } from '../../utils/issues'; // adjust path as needed
 import AttachmentSheet from './AttachmentSheet';
 import CustomPickerDrawer from './CustomPickerDrawer';
+import FilePreviewModal from './FilePreviewModal';
 import ProjectPopup from './ProjectPopup';
 import useAttachmentPicker from './useAttachmentPicker';
 import useAudioRecorder from './useAudioRecorder';
@@ -42,7 +43,8 @@ export default function IssuePopup({
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const { attachments, pickAttachment, clearAttachments, setAttachments } = useAttachmentPicker();
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const { attachments, pickAttachment, clearAttachments, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
   const [recording, setRecording] = useState(null);
   const [loading, setLoading] = useState(false); // <-- Add loading state
   const [showAddProjectPopup, setShowAddProjectPopup] = useState(false);
@@ -216,6 +218,32 @@ export default function IssuePopup({
                 placeholderTextColor={theme.secondaryText}
                 editable={false}
               />
+              
+              {/* Preview Button */}
+              {attachments.length > 0 && (
+                <TouchableOpacity
+                  onPress={() => setShowPreviewModal(true)}
+                  style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    backgroundColor: theme.primary + '20',
+                    paddingHorizontal: 8,
+                    paddingVertical: 4,
+                    borderRadius: 12,
+                    marginRight: 8
+                  }}>
+                  <Feather name="eye" size={16} color={theme.primary} />
+                  <Text style={{ 
+                    color: theme.primary, 
+                    fontSize: 12, 
+                    fontWeight: '500',
+                    marginLeft: 4 
+                  }}>
+                    Preview ({attachments.length})
+                  </Text>
+                </TouchableOpacity>
+              )}
+              
               <Feather name="paperclip" size={20} color="#888" style={styles.inputIcon} onPress={() => setShowAttachmentSheet(true)} />
               <MaterialCommunityIcons
                 name={isRecording ? "microphone" : "microphone-outline"}
@@ -457,6 +485,20 @@ export default function IssuePopup({
           </ScrollView>
         </View>
       </View>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        visible={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        attachments={attachments}
+        onRemoveFile={(index) => {
+          setAttachments(prev => prev.filter((_, i) => i !== index));
+        }}
+        getFileType={getFileType}
+        getFileIcon={getFileIcon}
+        getFormattedSize={getFormattedSize}
+        theme={theme}
+      />
     </Modal>
   );
 }

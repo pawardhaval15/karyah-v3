@@ -16,12 +16,12 @@ import {
 } from 'react-native';
 import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
-import { getWorklistsByProjectId } from '../../utils/worklist';
+import { createWorklist, getWorklistsByProjectId } from '../../utils/worklist';
 import AttachmentSheet from '../popups/AttachmentSheet';
 import CustomPickerDrawer from '../popups/CustomPickerDrawer';
+import FilePreviewModal from '../popups/FilePreviewModal';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
-import { createWorklist } from '../../utils/worklist';
 
 
 export default function AddTaskForm({
@@ -43,13 +43,14 @@ export default function AddTaskForm({
     const [loading, setLoading] = useState(false);
     const [showAddProjectPopup, setShowAddProjectPopup] = useState(false);
     const [showAddWorklistPopup, setShowAddWorklistPopup] = useState(false);
+    const [showPreviewModal, setShowPreviewModal] = useState(false);
     // Local state for new project popup
     const [addProjectValues, setAddProjectValues] = useState({ projectName: '', projectDesc: '', projectCategory: '', startDate: '', endDate: '' });
     const handleAddProjectChange = (key, value) => {
         setAddProjectValues(prev => ({ ...prev, [key]: value }));
     };
 
-    const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
+    const { attachments, pickAttachment, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
     const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
         onRecordingFinished: (audioFile) => {
             setAttachments(prev => [...prev, audioFile]);
@@ -345,6 +346,31 @@ export default function AddTaskForm({
                 editable={false}
                 rightComponent={
                     <>
+                        {/* Preview Button */}
+                        {attachments.length > 0 && (
+                            <TouchableOpacity
+                                onPress={() => setShowPreviewModal(true)}
+                                style={{ 
+                                    flexDirection: 'row', 
+                                    alignItems: 'center', 
+                                    backgroundColor: theme.primary + '20',
+                                    paddingHorizontal: 8,
+                                    paddingVertical: 4,
+                                    borderRadius: 12,
+                                    marginRight: 8
+                                }}>
+                                <Feather name="eye" size={16} color={theme.primary} />
+                                <Text style={{ 
+                                    color: theme.primary, 
+                                    fontSize: 12, 
+                                    fontWeight: '500',
+                                    marginLeft: 4 
+                                }}>
+                                    Preview ({attachments.length})
+                                </Text>
+                            </TouchableOpacity>
+                        )}
+                        
                         <Feather
                             name="paperclip"
                             size={20}
@@ -389,9 +415,9 @@ export default function AddTaskForm({
                                             justifyContent: 'flex-start',
                                             padding: 8,
                                             borderWidth: 1,
-                                            borderColor: '#ccc',
+                                            borderColor: theme.border,
                                             borderRadius: 10,
-                                            backgroundColor: '#F9FAFB',
+                                            backgroundColor: theme.card,
                                             marginRight: colIdx === 0 ? 12 : 0,
                                         }}
                                     >
@@ -425,7 +451,7 @@ export default function AddTaskForm({
                                         )}
 
                                         {/* File Name */}
-                                        <Text style={{ color: '#444', fontSize: 13, flex: 1 }}>
+                                        <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
                                             {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                                                 ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                                                 : (att.name || att.uri?.split('/').pop())}
@@ -519,6 +545,20 @@ export default function AddTaskForm({
                     theme={theme}
                 />
             )}
+
+            {/* File Preview Modal */}
+            <FilePreviewModal
+                visible={showPreviewModal}
+                onClose={() => setShowPreviewModal(false)}
+                attachments={attachments}
+                onRemoveFile={(index) => {
+                    setAttachments(prev => prev.filter((_, i) => i !== index));
+                }}
+                getFileType={getFileType}
+                getFileIcon={getFileIcon}
+                getFormattedSize={getFormattedSize}
+                theme={theme}
+            />
         </>
     );
 }

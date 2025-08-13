@@ -230,10 +230,11 @@ export default function useAttachmentPicker() {
       }
     }
     
-    if (file.type.startsWith('image/')) return 'image';
-    if (file.type.startsWith('video/')) return 'video';
-    if (file.type.startsWith('audio/')) return 'audio';
-    if (file.type.includes('pdf')) return 'pdf';
+    // Handle both full MIME types and simplified types
+    if (file.type === 'image' || file.type.startsWith('image/')) return 'image';
+    if (file.type === 'video' || file.type.startsWith('video/')) return 'video';
+    if (file.type === 'audio' || file.type.startsWith('audio/')) return 'audio';
+    if (file.type === 'pdf' || file.type.includes('pdf')) return 'pdf';
     if (file.type.includes('document') || file.type.includes('word')) return 'document';
     if (file.type.includes('spreadsheet') || file.type.includes('excel')) return 'spreadsheet';
     if (file.type.includes('presentation') || file.type.includes('powerpoint')) return 'presentation';

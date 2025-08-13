@@ -13,6 +13,7 @@ import { createWorklist, getWorklistsByProjectId } from '../../utils/worklist';
 import AddWorklistPopup from '../popups/AddWorklistPopup';
 import AttachmentSheet from '../popups/AttachmentSheet';
 import CustomPickerDrawer from '../popups/CustomPickerDrawer';
+import FilePreviewModal from '../popups/FilePreviewModal';
 import ProjectPopup from '../popups/ProjectPopup';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
@@ -34,7 +35,8 @@ export default function TaskDrawerForm({
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [loading, setLoading] = useState(false);
   const [projects, setProjects] = useState(propProjects);
-  const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const { attachments, pickAttachment, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
   const [users, setUsers] = useState([]);
   const navigation = useNavigation();
   const prevProjectIdRef = useRef(values.projectId);
@@ -385,6 +387,31 @@ export default function TaskDrawerForm({
         editable={false}
         rightComponent={
           <>
+            {/* Preview Button */}
+            {attachments.length > 0 && (
+              <TouchableOpacity
+                onPress={() => setShowPreviewModal(true)}
+                style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  backgroundColor: theme.primary + '20',
+                  paddingHorizontal: 8,
+                  paddingVertical: 4,
+                  borderRadius: 12,
+                  marginRight: 8
+                }}>
+                <Feather name="eye" size={16} color={theme.primary} />
+                <Text style={{ 
+                  color: theme.primary, 
+                  fontSize: 12, 
+                  fontWeight: '500',
+                  marginLeft: 4 
+                }}>
+                  Preview ({attachments.length})
+                </Text>
+              </TouchableOpacity>
+            )}
+            
             <Feather
               name="paperclip"
               size={20}
@@ -424,9 +451,9 @@ export default function TaskDrawerForm({
                       justifyContent: 'flex-start',
                       padding: 8,
                       borderWidth: 1,
-                      borderColor: '#ccc',
+                      borderColor: theme.border,
                       borderRadius: 10,
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: theme.card,
                       marginRight: colIdx === 0 ? 12 : 0,
                     }}>
                     {/* Image Preview */}
@@ -467,7 +494,7 @@ export default function TaskDrawerForm({
                       />
                     )}
                     {/* File Name */}
-                    <Text style={{ color: '#444', fontSize: 13, flex: 1 }}>
+                    <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
                       {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                         ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                         : att.name || att.uri?.split('/').pop()}
@@ -550,6 +577,20 @@ export default function TaskDrawerForm({
             endDate: '',
           });
         }}
+        theme={theme}
+      />
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        visible={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        attachments={attachments}
+        onRemoveFile={(index) => {
+          setAttachments(prev => prev.filter((_, i) => i !== index));
+        }}
+        getFileType={getFileType}
+        getFileIcon={getFileIcon}
+        getFormattedSize={getFormattedSize}
         theme={theme}
       />
     </>

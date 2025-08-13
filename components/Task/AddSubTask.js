@@ -7,6 +7,7 @@ import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
 import AttachmentSheet from '../popups/AttachmentSheet';
 import CustomPickerDrawer from '../popups/CustomPickerDrawer';
+import FilePreviewModal from '../popups/FilePreviewModal';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
 export default function AddSubTask({
@@ -28,9 +29,10 @@ export default function AddSubTask({
   const [showDepPicker, setShowDepPicker] = useState(false);
   const [showWorklistPicker, setShowWorklistPicker] = useState(false);
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
+  const { attachments, pickAttachment, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
   const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
     onRecordingFinished: (audioFile) => {
       setAttachments((prev) => [...prev, audioFile]);
@@ -333,6 +335,32 @@ export default function AddSubTask({
           placeholderTextColor={theme.secondaryText}
           editable={false}
         />
+        
+        {/* Preview Button */}
+        {attachments.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setShowPreviewModal(true)}
+            style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              backgroundColor: theme.primary + '20',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 12,
+              marginRight: 8
+            }}>
+            <Feather name="eye" size={16} color={theme.primary} />
+            <Text style={{ 
+              color: theme.primary, 
+              fontSize: 12, 
+              fontWeight: '500',
+              marginLeft: 4 
+            }}>
+              Preview ({attachments.length})
+            </Text>
+          </TouchableOpacity>
+        )}
+        
         {/* Attachment Icon */}
         <Feather
           name="paperclip"
@@ -477,6 +505,20 @@ export default function AddSubTask({
           <Text style={styles.drawerBtnText}>Add Task</Text>
         </LinearGradient>
       </TouchableOpacity>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        visible={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        attachments={attachments}
+        onRemoveFile={(index) => {
+          setAttachments(prev => prev.filter((_, i) => i !== index));
+        }}
+        getFileType={getFileType}
+        getFileIcon={getFileIcon}
+        getFormattedSize={getFormattedSize}
+        theme={theme}
+      />
     </>
   );
 }

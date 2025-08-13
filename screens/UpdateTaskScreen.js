@@ -1,19 +1,18 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import AttachmentSheet from '../components/popups/AttachmentSheet';
@@ -24,7 +23,6 @@ import useAudioRecorder from '../components/popups/useAudioRecorder';
 import DateBox from '../components/task details/DateBox';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
-import { fetchUserConnections } from '../utils/issues';
 import { getUserConnections, searchConnections } from '../utils/connections';
 
 import { getTaskDetailsById, updateTaskDetails } from '../utils/task';

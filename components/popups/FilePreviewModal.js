@@ -1,17 +1,15 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  FlatList,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -44,6 +42,7 @@ export default function FilePreviewModal({
 
   const renderFilePreview = (file) => {
     const fileType = getFileType(file);
+    console.log('File preview - Type:', fileType, 'File:', file);
     
     switch (fileType) {
       case 'image':
@@ -57,6 +56,9 @@ export default function FilePreviewModal({
               resizeMode="contain"
               onError={(error) => {
                 console.log('Image load error:', error);
+              }}
+              onLoad={() => {
+                console.log('Image loaded successfully:', file.uri);
               }}
             />
             <View style={styles.imageOverlay}>
@@ -123,6 +125,33 @@ export default function FilePreviewModal({
         );
 
       default:
+        // Check if it might be an image based on URI or name even if type detection failed
+        const fileName = file.name || file.uri || '';
+        const isImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+        
+        if (isImageExtension) {
+          return (
+            <TouchableOpacity
+              onPress={() => setShowFullPreview(true)}
+              style={styles.imagePreview}>
+              <Image
+                source={{ uri: file.uri }}
+                style={styles.previewImage}
+                resizeMode="contain"
+                onError={(error) => {
+                  console.log('Fallback image load error:', error);
+                }}
+                onLoad={() => {
+                  console.log('Fallback image loaded successfully:', file.uri);
+                }}
+              />
+              <View style={styles.imageOverlay}>
+                <Feather name="maximize-2" size={24} color="white" />
+              </View>
+            </TouchableOpacity>
+          );
+        }
+        
         return (
           <View style={[styles.noPreview, { backgroundColor: theme.card }]}>
             <MaterialCommunityIcons 
@@ -146,6 +175,9 @@ export default function FilePreviewModal({
 
   const renderFileListItem = ({ item, index }) => {
     const fileType = getFileType(item);
+    const fileName = item.name || item.uri || '';
+    const isImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+    const isImage = fileType === 'image' || isImageExtension;
     
     return (
       <TouchableOpacity
@@ -158,7 +190,7 @@ export default function FilePreviewModal({
         ]}
         onPress={() => setSelectedFileIndex(index)}>
         <View style={styles.fileItemLeft}>
-          {fileType === 'image' ? (
+          {isImage ? (
             <Image
               source={{ uri: item.uri }}
               style={{
@@ -290,7 +322,12 @@ export default function FilePreviewModal({
       </Modal>
 
       {/* Full Image Preview Modal */}
-      {showFullPreview && selectedFile && getFileType(selectedFile) === 'image' && (
+      {showFullPreview && selectedFile && (() => {
+        const fileType = getFileType(selectedFile);
+        const fileName = selectedFile.name || selectedFile.uri || '';
+        const isImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
+        return fileType === 'image' || isImageExtension;
+      })() && (
         <Modal
           visible={true}
           animationType="fade"
@@ -401,6 +438,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 1,
     overflow: 'hidden',
+    minHeight: 300,
   },
   imagePreview: {
     flex: 1,
