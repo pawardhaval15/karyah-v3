@@ -11,6 +11,7 @@ import {
   TouchableWithoutFeedback,
   View,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { getUserConnections, removeConnection } from '../utils/connections';
 
@@ -26,7 +27,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
     const fetchDetails = async () => {
       try {
         const connections = await getUserConnections();
-        const matched = connections.find(c => c.connectionId === connection.connectionId);
+        const matched = connections.find((c) => c.connectionId === connection.connectionId);
         if (matched) {
           setBio(matched.bio || '');
           setDob(matched.dob || '');
@@ -43,16 +44,34 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
   }, [connection]);
 
   const handleRemove = async () => {
-    try {
-      setMenuVisible(false);
-      const message = await removeConnection(connection.connectionId);
-      console.log('Connection removed:', message);
-      if (onRemove) onRemove(connection.connectionId);
-      onClose();
-    } catch (err) {
-      console.error('Remove failed:', err.message);
-      alert('Failed to remove connection.');
-    }
+    setMenuVisible(false);
+    
+    // Show confirmation alert
+    Alert.alert(
+      'Remove Connection',
+      `Are you sure you want to remove ${connection.name} from your connections?`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const message = await removeConnection(connection.connectionId);
+              console.log('Connection removed:', message);
+              if (onRemove) onRemove(connection.connectionId);
+              onClose();
+            } catch (err) {
+              console.error('Remove failed:', err.message);
+              Alert.alert('Error', 'Failed to remove connection.');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -75,8 +94,13 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                 {menuVisible && (
                   <View style={[modalStyles.menu, { backgroundColor: theme.secCard }]}>
                     <TouchableOpacity style={modalStyles.menuItem} onPress={handleRemove}>
-                      <Feather name="user-x" size={18} color={theme.dangerText} style={{ marginRight: 8 }} />
-                      <Text style={[modalStyles.menuItemText, { color: theme.dangerText  }]}>
+                      <Feather
+                        name="user-x"
+                        size={18}
+                        color={theme.dangerText}
+                        style={{ marginRight: 8 }}
+                      />
+                      <Text style={[modalStyles.menuItemText, { color: theme.dangerText }]}>
                         Remove Connection
                       </Text>
                     </TouchableOpacity>
@@ -84,18 +108,33 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                 )}
 
                 {loadingDetails ? (
-                  <ActivityIndicator size="large" color={theme.primary} style={{ marginVertical: 40 }} />
+                  <ActivityIndicator
+                    size="large"
+                    color={theme.primary}
+                    style={{ marginVertical: 40 }}
+                  />
                 ) : (
                   <>
                     <View style={modalStyles.profileSection}>
                       <Image source={{ uri: connection.profilePhoto }} style={modalStyles.avatar} />
-                      <Text style={[modalStyles.name, { color: theme.text }]}>{connection.name}</Text>
+                      <Text style={[modalStyles.name, { color: theme.text }]}>
+                        {connection.name}
+                      </Text>
                     </View>
 
                     <View style={[modalStyles.card, { backgroundColor: theme.card }]}>
-                      <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>Bio</Text>
+                      <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
+                        Bio
+                      </Text>
                       <TextInput
-                        style={[modalStyles.bioInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                        style={[
+                          modalStyles.bioInput,
+                          {
+                            color: theme.text,
+                            backgroundColor: theme.card,
+                            borderColor: theme.border,
+                          },
+                        ]}
                         placeholder="Tell something about yourself..."
                         placeholderTextColor={theme.secondaryText}
                         value={bio}
@@ -105,9 +144,18 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
 
                       <View style={modalStyles.row}>
                         <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>Date of Birth</Text>
+                          <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
+                            Date of Birth
+                          </Text>
                           <TextInput
-                            style={[modalStyles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                            style={[
+                              modalStyles.input,
+                              {
+                                color: theme.text,
+                                backgroundColor: theme.card,
+                                borderColor: theme.border,
+                              },
+                            ]}
                             placeholder="DD/MM/YYYY"
                             placeholderTextColor={theme.secondaryText}
                             value={dob}
@@ -115,9 +163,18 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                           />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>Phone</Text>
+                          <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
+                            Phone
+                          </Text>
                           <TextInput
-                            style={[modalStyles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                            style={[
+                              modalStyles.input,
+                              {
+                                color: theme.text,
+                                backgroundColor: theme.card,
+                                borderColor: theme.border,
+                              },
+                            ]}
                             placeholder="Phone"
                             placeholderTextColor={theme.secondaryText}
                             value={phone}
@@ -126,11 +183,26 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                         </View>
                       </View>
 
-                      <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>Location</Text>
+                      <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
+                        Location
+                      </Text>
                       <View style={modalStyles.locationRow}>
-                        <Feather name="map-pin" size={18} color={theme.secondaryText} style={{ marginRight: 6 }} />
+                        <Feather
+                          name="map-pin"
+                          size={18}
+                          color={theme.secondaryText}
+                          style={{ marginRight: 6 }}
+                        />
                         <TextInput
-                          style={[modalStyles.input, { flex: 1, color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
+                          style={[
+                            modalStyles.input,
+                            {
+                              flex: 1,
+                              color: theme.text,
+                              backgroundColor: theme.card,
+                              borderColor: theme.border,
+                            },
+                          ]}
                           placeholder="Location"
                           placeholderTextColor={theme.secondaryText}
                           value={location}
@@ -255,7 +327,7 @@ const modalStyles = StyleSheet.create({
     fontSize: 15,
     borderWidth: 1,
     borderColor: '#e6eaf3',
-    fontWeight: "300"
+    fontWeight: '300',
   },
   row: {
     flexDirection: 'row',
