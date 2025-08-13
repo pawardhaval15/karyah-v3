@@ -1,8 +1,8 @@
 {
   "expo": {
     "name": "Karyah:",
-    "slug": "karyah",
-    "version": "2.0.2",
+    "slug": "karyahapp",
+    "version": "2.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -116,9 +116,9 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "41284ef7-67c7-4c81-a0c9-f0a86571c7b2"
+        "projectId": "316eb6dd-efd2-4ac6-8f1c-ca44de2cb821"
       }
     },
-    "owner": "piyushkatole16"
+    "owner": "dhavalpawar15"
   }
 }

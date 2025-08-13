@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, Feather } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
     FlatList,
@@ -30,7 +30,7 @@ export default function CustomPickerDrawer({
     placeholder = 'Search...',
     showImage = false,
     onAddProject, // <-- add this prop
-
+    multiSelect = false,
 }) {
     const [search, setSearch] = useState('');
 
@@ -41,31 +41,30 @@ export default function CustomPickerDrawer({
             item[valueKey] !== '__add_new__' &&
             item[labelKey]?.toLowerCase().includes(search.toLowerCase())
         );
-
+    // Helper: check if an item is selected
+    const isItemSelected = (item) => {
+        if (multiSelect && Array.isArray(selectedValue)) {
+            return selectedValue.includes(item[valueKey]);
+        }
+        return selectedValue === item[valueKey];
+    };
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            transparent
-            onRequestClose={onClose}
-        >
+        <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
             <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
                 <View style={styles.overlay}>
                     <KeyboardAvoidingView
                         style={{ flex: 1 }}
                         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
                     >
                         <TouchableWithoutFeedback onPress={onClose}>
                             <View style={styles.backdrop} />
                         </TouchableWithoutFeedback>
 
-                        <View
-                            style={[
-                                styles.sheet,
-                                { backgroundColor: theme.card, borderTopColor: theme.border }
-                            ]}
-                        >
+                        <View style={[
+                            styles.sheet,
+                            { backgroundColor: theme.card, borderTopColor: theme.border }
+                        ]}>
+                            {/* Header */}
                             <View style={styles.header}>
                                 <Text style={[styles.title, { color: theme.text }]}>Select</Text>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -92,6 +91,7 @@ export default function CustomPickerDrawer({
                                 </View>
                             </View>
 
+                            {/* Search */}
                             <TextInput
                                 style={[
                                     styles.search,
@@ -106,10 +106,13 @@ export default function CustomPickerDrawer({
                                 value={search}
                                 onChangeText={setSearch}
                             />
+
+                            {/* List */}
                             <FlatList
                                 data={filtered}
                                 keyExtractor={item => item[valueKey]?.toString()}
                                 contentContainerStyle={{ paddingBottom: 80 }}
+                                keyboardShouldPersistTaps="handled"
                                 renderItem={({ item, index }) => (
                                     <>
                                         <TouchableOpacity
@@ -117,17 +120,20 @@ export default function CustomPickerDrawer({
                                                 styles.item,
                                                 {
                                                     backgroundColor:
-                                                        selectedValue === item[valueKey]
+                                                        isItemSelected(item)
                                                             ? theme.secCard
                                                             : 'transparent',
                                                 },
                                             ]}
                                             onPress={() => {
                                                 onSelect(item[valueKey]);
-                                                onClose();
+                                                if (!multiSelect) {
+                                                    onClose();
+                                                }
                                             }}
                                         >
-                                            {showImage ? (
+                                            {/* Image */}
+                                            {showImage && (
                                                 <Image
                                                     source={{
                                                         uri:
@@ -137,7 +143,9 @@ export default function CustomPickerDrawer({
                                                     }}
                                                     style={styles.avatar}
                                                 />
-                                            ) : null}
+                                            )}
+
+                                            {/* Label */}
                                             <Text
                                                 style={[
                                                     styles.label,
@@ -147,16 +155,27 @@ export default function CustomPickerDrawer({
                                                 <Text style={{ color: theme.secondaryText }}>{index + 1}. </Text>
                                                 {item[labelKey]}
                                             </Text>
-                                            {selectedValue === item[valueKey] && (
-                                                <Ionicons
-                                                    name="checkmark"
-                                                    size={20}
-                                                    color={theme.primary || '#2563eb'}
+
+                                            {/* Tick Icon */}
+                                            {isItemSelected(item) && (
+                                                <Feather
+                                                    name="check-circle"
+                                                    size={22}
+                                                    color="#366CD9"
                                                     style={{ marginLeft: 'auto' }}
                                                 />
                                             )}
                                         </TouchableOpacity>
-                                        <View style={{ height: 1, backgroundColor: theme.border, marginLeft: showImage ? 42 : 0, marginRight: 0, opacity: 0.5 }} />
+
+                                        {/* Divider */}
+                                        <View
+                                            style={{
+                                                height: 1,
+                                                backgroundColor: theme.border,
+                                                marginLeft: showImage ? 42 : 0,
+                                                opacity: 0.5,
+                                            }}
+                                        />
                                     </>
                                 )}
                                 ListEmptyComponent={
@@ -164,7 +183,6 @@ export default function CustomPickerDrawer({
                                         No results found
                                     </Text>
                                 }
-                                keyboardShouldPersistTaps="handled"
                             />
                         </View>
                     </KeyboardAvoidingView>
