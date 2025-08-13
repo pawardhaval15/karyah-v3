@@ -126,6 +126,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [coAdminListPopupData, setCoAdminListPopupData] = useState([]);
   const [coAdminListPopupTitle, setCoAdminListPopupTitle] = useState('');
   const [showDependentPopup, setShowDependentPopup] = useState(false);
+  const [subtaskSearch, setSubtaskSearch] = useState('');
 
   const {
     attachments: newAttachments,
@@ -276,9 +277,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
         taskProject: task.projectId,
         taskWorklist: task.worklistId,
         parentTaskId: taskId,
+        parentId: taskId,
       }));
     }
-  }, [task]);
+  }, [task, taskId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -318,7 +320,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const handleTaskChange = (field, value) => {
     setAddSubTask((prev) => ({ ...prev, [field]: value }));
   };
-  const handleTaskSubmit = () => {
+  const handleTaskSubmit = async () => {
     console.log('Submit subtask:', addSubTask);
     setAddSubTask({
       taskName: '',
@@ -329,6 +331,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
       taskWorklist: task.worklistId,
     });
     setShowAddSubTaskPopup(false);
+    
+    // Refresh task data to show new subtask immediately
+    try {
+      const refreshedTask = await getTaskDetailsById(taskId);
+      setTask(refreshedTask);
+    } catch (err) {
+      console.error('Failed to refresh task after subtask creation:', err);
+    }
   };
   useEffect(() => {
     const getUserIdFromToken = async () => {
@@ -394,6 +404,21 @@ export default function TaskDetailsScreen({ route, navigation }) {
     userName && creatorName && userName.trim().toLowerCase() === creatorName.trim().toLowerCase();
   // console.log('[TaskDetailsScreen] Matching userName:', userName, 'with creatorName:', creatorName, '| isCreator:', isCreator);
   //   console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
+
+  // Filter subtasks based on search
+  const filteredSubtasks = (task?.subTasks || []).filter((sub) => {
+    if (!subtaskSearch.trim()) return true;
+    const searchLower = subtaskSearch.toLowerCase();
+    const taskName = (sub.taskName || sub.name || '').toLowerCase();
+    const description = (sub.description || '').toLowerCase();
+    const assignedUsers = (sub.assignedUserDetails || [])
+      .map(u => (u.name || '').toLowerCase())
+      .join(' ');
+    
+    return taskName.includes(searchLower) || 
+           description.includes(searchLower) || 
+           assignedUsers.includes(searchLower);
+  });
 
   if (loading) {
     return (
@@ -1141,33 +1166,42 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </View>
           </View>
         </Modal>
-        {/* Subtasks */}
-        <View style={styles.subTaskHeader}>
+        {/* Subtasks Section */}
+        <View style={[styles.subTaskHeader, { marginTop: 0 }]}>
           <TouchableOpacity
             style={[
               styles.viewSubtaskBtn,
               {
-                backgroundColor: theme.buttonBg,
-                borderRadius: 8,
-                paddingVertical: 8,
+                backgroundColor: theme.secCard,
+                borderRadius: 12,
+                paddingVertical: 10,
                 paddingHorizontal: 16,
                 flexDirection: 'row',
                 alignItems: 'center',
+                borderWidth: 1,
+                borderColor: theme.border,
               },
             ]}
-            onPress={() => setShowSubtasks((prev) => !prev)}
+            onPress={() => {
+              setShowSubtasks((prev) => !prev);
+              // Clear search when hiding subtasks
+              if (showSubtasks) {
+                setSubtaskSearch('');
+              }
+            }}
             activeOpacity={0.85}>
             <Feather
               name={showSubtasks ? 'chevron-down' : 'chevron-up'}
               size={18}
-              color={theme.buttonText}
+              color={theme.text}
             />
             <Text
               style={[
                 styles.viewSubtaskBtnText,
-                { color: theme.buttonText, fontWeight: '400', fontSize: 14, marginLeft: 8 },
+                { color: theme.text, fontWeight: '500', fontSize: 14, marginLeft: 8 },
               ]}>
-              {showSubtasks ? 'Hide Subtasks' : 'View All Subtasks'}
+              {showSubtasks ? 'Hide Subtasks' : `View Subtasks (${task.subTasks?.length || 0})`}
+              {subtaskSearch && showSubtasks && ` • Found: ${filteredSubtasks.length}`}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -1175,19 +1209,20 @@ export default function TaskDetailsScreen({ route, navigation }) {
               flexDirection: 'row',
               alignItems: 'center',
               backgroundColor: theme.primary,
-              borderRadius: 8,
-              paddingVertical: 8,
+              borderRadius: 12,
+              paddingVertical: 10,
               paddingHorizontal: 16,
               marginLeft: 10,
               shadowColor: '#000',
-              shadowOpacity: 0.08,
+              shadowOpacity: 0.1,
               shadowOffset: { width: 0, height: 2 },
               shadowRadius: 4,
+              elevation: 3,
             }}
             onPress={() => setShowAddSubTaskPopup(true)}
             activeOpacity={0.85}>
             <Feather name="plus" size={18} color="#fff" />
-            <Text style={{ color: '#fff', fontWeight: '400', fontSize: 14, marginLeft: 8 }}>
+            <Text style={{ color: '#fff', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>
               Add Subtask
             </Text>
           </TouchableOpacity>
@@ -1196,33 +1231,77 @@ export default function TaskDetailsScreen({ route, navigation }) {
           <View
             style={[
               styles.subtasksCard,
-              { backgroundColor: theme.background, borderColor: theme.border },
+              { backgroundColor: theme.card, borderColor: theme.border, marginTop: 0 },
             ]}>
-            <Text style={[styles.subtasksTitle, { color: theme.text }]}>Subtasks</Text>
-            {task.subTasks.length === 0 ? (
+            <Text style={[styles.subtasksTitle, { color: theme.text, marginBottom: 16 }]}>
+              Subtasks ({task.subTasks?.length || 0})
+            </Text>
+            
+            {/* Search Bar */}
+            {(task.subTasks?.length || 0) > 0 && (
+              <View style={[styles.searchContainer, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                <Feather name="search" size={16} color={theme.secondaryText} style={{ marginRight: 8 }} />
+                <TextInput
+                  style={[styles.searchInput, { color: theme.text }]}
+                  placeholder="Search subtasks..."
+                  placeholderTextColor={theme.secondaryText}
+                  value={subtaskSearch}
+                  onChangeText={setSubtaskSearch}
+                />
+                {subtaskSearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setSubtaskSearch('')} style={{ padding: 4 }}>
+                    <Feather name="x" size={16} color={theme.secondaryText} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
+            {!task.subTasks || task.subTasks.length === 0 ? (
               <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
                 No subtasks available
               </Text>
+            ) : filteredSubtasks.length === 0 ? (
+              <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
+                No subtasks found matching "{subtaskSearch}"
+              </Text>
             ) : (
-              task.subTasks.map((sub, idx) => (
-                <View key={idx} style={[styles.subtaskRow, { backgroundColor: theme.secCard }]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.subtaskName, { color: theme.text }]}>{sub.taskName}</Text>
-                    <Text style={[styles.subtaskDesc, { color: theme.secondaryText }]}>
-                      {sub.description}
-                    </Text>
-                    <Text style={[styles.subtaskAssigned, { color: theme.secondaryText }]}>
-                      Assigned To {sub.assignedUserDetails?.map((u) => u.name).join(', ') || 'N/A'}
-                    </Text>
-                    <Text style={[styles.subtaskProgress, { color: theme.secondaryText }]}>
-                      Progress: {sub.progress ?? 0}%
+              filteredSubtasks.map((sub, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.subtaskCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  onPress={() => {
+                    // Reset subtask search when navigating
+                    setSubtaskSearch('');
+                    // Navigate to subtask details
+                    navigation.push('TaskDetails', {
+                      taskId: sub.id || sub.taskId || sub._id,
+                      refreshedAt: Date.now()
+                    });
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.subtaskIcon, { backgroundColor: theme.avatarBg }]}>
+                    <Text style={[styles.subtaskIconText, { color: theme.primary }]}>
+                      {(sub.taskName || sub.name || 'T')[0]}
                     </Text>
                   </View>
-                  <Image
-                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
-                    style={[styles.subtaskAvatar, { borderColor: theme.border }]}
-                  />
-                </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.subtaskName, { color: theme.text }]}>{sub.taskName || sub.name}</Text>
+                    <View style={styles.subtaskMeta}>
+                      <View style={styles.subtaskAssignedRow}>
+                        <Feather name="user" size={12} color={theme.secondaryText} />
+                        <Text style={[styles.subtaskAssigned, { color: theme.secondaryText }]}>
+                          {sub.assignedUserDetails?.map((u) => u.name).join(', ') || 'Unassigned'}
+                        </Text>
+                      </View>
+                      <View style={[styles.progressBadge, { backgroundColor: theme.primary + '15' }]}>
+                        <Text style={[styles.progressText, { color: theme.primary }]}>
+                          {sub.progress ?? 0}%
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                </TouchableOpacity>
               ))
             )}
           </View>
@@ -1488,6 +1567,23 @@ const styles = StyleSheet.create({
     color: '#222',
     marginBottom: 10,
   },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FB',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '400',
+    paddingVertical: 4,
+  },
   subtaskRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1496,20 +1592,73 @@ const styles = StyleSheet.create({
     padding: 12,
     marginBottom: 10,
   },
+  subtaskCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  subtaskIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F2F6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  subtaskIconText: {
+    color: '#366CD9',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
   subtaskName: {
-    fontWeight: '400',
-    fontSize: 15,
+    fontWeight: '600',
+    fontSize: 16,
     color: '#222',
-    marginBottom: 6,
+    marginBottom: 0,
   },
   subtaskDesc: {
-    color: '#888',
-    fontSize: 13,
-    marginBottom: 2,
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 8,
+    lineHeight: 18,
+  },
+  subtaskMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  subtaskAssignedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   subtaskAssigned: {
-    color: '#bbb',
+    color: '#888',
+    fontSize: 13,
+    marginLeft: 4,
+    fontWeight: '400',
+  },
+  progressBadge: {
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  progressText: {
     fontSize: 12,
+    fontWeight: '600',
+    color: '#1976D2',
   },
   subtaskAvatar: {
     width: 38,

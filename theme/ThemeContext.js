@@ -57,7 +57,7 @@ const darkTheme = {
   danger: '#FFFAFA',
   dangerText: '#C6381E',
   // Critical UI colors
-  criticalBg: '#FFEDFA',
+  criticalBg: '#4d1300',
   criticalBorder: '#FF7D66',
   criticalIconBg: '#FFD8D8',
   criticalText: '#FF2700',

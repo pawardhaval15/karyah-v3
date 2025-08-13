@@ -827,7 +827,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                               borderWidth: 1,
                               borderColor: '#ccc',
                               borderRadius: 10,
-                              backgroundColor: '#F9FAFB',
+                              backgroundColor: theme.card,
                               marginRight: colIdx === 0 ? 12 : 0,
                             }}>
                             {att.type?.startsWith('image') && (
@@ -861,7 +861,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                                 style={{ marginRight: 8 }}
                               />
                             )}
-                            <Text style={{ color: '#444', fontSize: 13, flex: 1 }}>
+                            <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
                               {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                                 ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
                                 : att.name || att.uri?.split('/').pop()}
