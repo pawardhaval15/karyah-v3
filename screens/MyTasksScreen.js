@@ -533,7 +533,7 @@ export default function MyTasksScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home')}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
         <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
       </TouchableOpacity>
