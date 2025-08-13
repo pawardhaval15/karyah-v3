@@ -16,6 +16,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
@@ -66,6 +67,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
   const [showDueDatePicker, setShowDueDatePicker] = useState(false);
   const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+  const [showIssueTitleModal, setShowIssueTitleModal] = useState(false);
   useEffect(() => {
     getUserNameFromToken().then(setUserName);
   }, []);
@@ -380,9 +382,11 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 placeholderTextColor="#e6eaf3"
               />
             ) : (
-              <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600' }}>
-                {issue.issueTitle}
-              </Text>
+              <TouchableOpacity onPress={() => setShowIssueTitleModal(true)}>
+                <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600' }} numberOfLines={2} ellipsizeMode="tail">
+                  {issue.issueTitle}
+                </Text>
+              </TouchableOpacity>
             )}
             <Text style={styles.bannerDesc}>All issues details are listed here.</Text>
           </View>
@@ -1060,6 +1064,63 @@ export default function IssueDetailsScreen({ navigation, route }) {
         currentAssignee={issue?.assignTo}
         theme={theme}
       />
+
+      {/* Issue Title Modal */}
+      <Modal
+        visible={showIssueTitleModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowIssueTitleModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowIssueTitleModal(false)}>
+          <View style={{ 
+            flex: 1, 
+            backgroundColor: 'rgba(0,0,0,0.35)', 
+            justifyContent: 'center', 
+            alignItems: 'center' 
+          }}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={{ 
+                width: 280, 
+                borderRadius: 14, 
+                borderWidth: 1, 
+                padding: 18, 
+                alignItems: 'center', 
+                elevation: 8,
+                backgroundColor: theme.card, 
+                borderColor: theme.border 
+              }}>
+                <Text style={{ 
+                  fontSize: 18, 
+                  fontWeight: '700', 
+                  marginBottom: 12, 
+                  color: theme.text 
+                }}>Issue Title</Text>
+                <Text style={{ 
+                  color: theme.text, 
+                  fontSize: 16, 
+                  textAlign: 'center', 
+                  lineHeight: 22, 
+                  marginBottom: 12 
+                }}>
+                  {issue?.issueTitle}
+                </Text>
+                <TouchableOpacity
+                  style={{
+                    marginTop: 10,
+                    alignSelf: 'center',
+                    paddingVertical: 6,
+                    paddingHorizontal: 18,
+                    borderRadius: 8,
+                    backgroundColor: 'rgba(52, 120, 246, 0.08)',
+                  }}
+                  onPress={() => setShowIssueTitleModal(false)}>
+                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </View>
   );
 }

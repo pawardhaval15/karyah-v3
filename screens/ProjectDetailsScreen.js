@@ -3,18 +3,19 @@ import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
@@ -48,6 +49,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   });
   const [menuVisible, setMenuVisible] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [showProjectNameModal, setShowProjectNameModal] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -168,7 +170,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           end={{ x: 1, y: 0 }}
           style={styles.headerCard}>
           <View>
-            <Text style={styles.projectName}>{projectDetails.projectName}</Text>
+            <TouchableOpacity onPress={() => setShowProjectNameModal(true)}>
+              <Text style={styles.projectName} numberOfLines={2} ellipsizeMode="tail">
+                {projectDetails.projectName}
+              </Text>
+            </TouchableOpacity>
             <Text
               style={
                 styles.dueDate
@@ -599,6 +605,31 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
+      </Modal>
+
+      {/* Project Name Modal */}
+      <Modal
+        visible={showProjectNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowProjectNameModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowProjectNameModal(false)}>
+          <View style={styles.coAdminPopupOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={[styles.coAdminPopup, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>Project Name</Text>
+                <Text style={[{ color: theme.text, fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 12 }]}>
+                  {projectDetails?.projectName}
+                </Text>
+                <TouchableOpacity
+                  style={styles.coAdminPopupCloseBtn}
+                  onPress={() => setShowProjectNameModal(false)}>
+                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

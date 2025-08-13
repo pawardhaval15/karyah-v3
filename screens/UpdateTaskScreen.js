@@ -28,6 +28,17 @@ import { getUserConnections, searchConnections } from '../utils/connections';
 import { getTaskDetailsById, updateTaskDetails } from '../utils/task';
 export default function UpdateTaskScreen({ route, navigation }) {
   const { taskId, projects, users, worklists, projectTasks } = route.params;
+
+  // Safe navigation function to handle cases where there's no previous screen
+  const safeGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // Fallback to TaskDetails screen if no previous screen exists
+      navigation.navigate('TaskDetails', { taskId });
+    }
+  };
+
   const theme = useTheme();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -183,7 +194,8 @@ export default function UpdateTaskScreen({ route, navigation }) {
       console.log('[handleUpdate] Final updatePayload:', updatePayload);
       await updateTaskDetails(taskId, updatePayload);
       Alert.alert('Success', 'Task updated successfully.');
-      navigation.navigate('TaskDetails', {
+      // Navigate back to task details with updated data, replacing the edit screen
+      navigation.replace('TaskDetails', {
         taskId,
         refreshedAt: Date.now(),
       });
@@ -245,7 +257,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={safeGoBack}>
           <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
           <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
         </TouchableOpacity>

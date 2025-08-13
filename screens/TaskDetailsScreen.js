@@ -17,6 +17,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
@@ -44,6 +45,16 @@ export default function TaskDetailsScreen({ route, navigation }) {
   // Store decoded token globally for this component
   const decodedRef = useRef(null);
   const { taskId, refreshedAt } = route.params;
+
+  // Safe navigation function to handle cases where there's no previous screen
+  const safeGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.navigate('MyTasksScreen');
+    } else {
+      // Fallback to MyTasks screen if no previous screen exists
+      navigation.navigate('MyTasksScreen');
+    }
+  };
   const theme = useTheme();
   const [task, setTask] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
@@ -127,6 +138,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [coAdminListPopupTitle, setCoAdminListPopupTitle] = useState('');
   const [showDependentPopup, setShowDependentPopup] = useState(false);
   const [subtaskSearch, setSubtaskSearch] = useState('');
+  const [showTaskNameModal, setShowTaskNameModal] = useState(false);
 
   const {
     attachments: newAttachments,
@@ -331,7 +343,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
       taskWorklist: task.worklistId,
     });
     setShowAddSubTaskPopup(false);
-    
+
     // Refresh task data to show new subtask immediately
     try {
       const refreshedTask = await getTaskDetailsById(taskId);
@@ -412,12 +424,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
     const taskName = (sub.taskName || sub.name || '').toLowerCase();
     const description = (sub.description || '').toLowerCase();
     const assignedUsers = (sub.assignedUserDetails || [])
-      .map(u => (u.name || '').toLowerCase())
+      .map((u) => (u.name || '').toLowerCase())
       .join(' ');
-    
-    return taskName.includes(searchLower) || 
-           description.includes(searchLower) || 
-           assignedUsers.includes(searchLower);
+
+    return (
+      taskName.includes(searchLower) ||
+      description.includes(searchLower) ||
+      assignedUsers.includes(searchLower)
+    );
   });
 
   if (loading) {
@@ -464,7 +478,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             justifyContent: 'space-between',
             paddingHorizontal: 10,
           }}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity style={styles.backBtn} onPress={safeGoBack}>
             <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
             <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
           </TouchableOpacity>
@@ -479,9 +493,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
           end={{ x: 1, y: 0 }}
           style={styles.headerCard}>
           <View>
-            <Text style={styles.taskName} numberOfLines={2} ellipsizeMode="tail">
-              {task.taskName}
-            </Text>
+            <TouchableOpacity onPress={() => setShowTaskNameModal(true)}>
+              <Text style={styles.taskName} numberOfLines={2} ellipsizeMode="tail">
+                {task.taskName}
+              </Text>
+            </TouchableOpacity>
             <Text style={styles.dueDate}>
               Due Date: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
             </Text>
@@ -507,14 +523,15 @@ export default function TaskDetailsScreen({ route, navigation }) {
           )} */}
         </LinearGradient>
         {/* Task Action Buttons */}
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          marginHorizontal: 20,
-          marginTop: 0,
-          marginBottom: 12,
-          gap: 10,
-        }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginHorizontal: 20,
+            marginTop: 0,
+            marginBottom: 12,
+            gap: 10,
+          }}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setShowTaskChat(true)}
@@ -560,7 +577,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           users={users}
           task={task}
         />
-        
+
         <MaterialRequestPopup
           visible={showMaterialRequest}
           onClose={() => setShowMaterialRequest(false)}
@@ -654,7 +671,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
         </View>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6, paddingTop: 6 }]}>
+            <Text
+              style={[styles.inputLabel, { color: theme.text, marginBottom: 6, paddingTop: 6 }]}>
               ASSIGNED USERS
             </Text>
             <TouchableOpacity
@@ -664,15 +682,23 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 setCoAdminListPopupData(task.assignedUserDetails || []);
                 setShowCoAdminListPopup(true);
               }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
               {/* User names */}
               <View style={{ flex: 1, marginRight: 12 }}>
                 <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
                   {task.assignedUserDetails?.length > 0
-                    ? task.assignedUserDetails.slice(0, 2).map(user => user.name).join(', ') +
-                    (task.assignedUserDetails.length > 2 ? ` +${task.assignedUserDetails.length - 2} more` : '')
-                    : 'No users assigned'
-                  }
+                    ? task.assignedUserDetails
+                        .slice(0, 2)
+                        .map((user) => user.name)
+                        .join(', ') +
+                      (task.assignedUserDetails.length > 2
+                        ? ` +${task.assignedUserDetails.length - 2} more`
+                        : '')
+                    : 'No users assigned'}
                 </Text>
               </View>
               {/* Stacked avatars */}
@@ -690,7 +716,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         source={{
                           uri: hasPhoto
                             ? user.profilePhoto
-                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`,
                         }}
                         style={{
                           width: 40,
@@ -729,7 +755,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
         </View>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8, paddingTop: 6 }]}>
+            <Text
+              style={[styles.inputLabel, { color: theme.text, marginBottom: 8, paddingTop: 6 }]}>
               TASK CREATOR
             </Text>
             <TouchableOpacity
@@ -737,11 +764,17 @@ export default function TaskDetailsScreen({ route, navigation }) {
               onPress={() => {
                 setCoAdminListPopupTitle('Task Creator');
                 setCoAdminListPopupData(
-                  task.creatorName ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }] : []
+                  task.creatorName
+                    ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }]
+                    : []
                 );
                 setShowCoAdminListPopup(true);
               }}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
               {/* Creator name */}
               <View style={{ flex: 1, marginRight: 12 }}>
                 <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
@@ -752,9 +785,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Image
                   source={{
-                    uri: task.creatorPhoto && task.creatorPhoto !== ''
-                      ? task.creatorPhoto
-                      : `https://ui-avatars.com/api/?name=${encodeURIComponent(task.creatorName || 'Creator')}&background=random`
+                    uri:
+                      task.creatorPhoto && task.creatorPhoto !== ''
+                        ? task.creatorPhoto
+                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(task.creatorName || 'Creator')}&background=random`,
                   }}
                   style={{
                     width: 40,
@@ -779,9 +813,9 @@ export default function TaskDetailsScreen({ route, navigation }) {
         <FieldBox
           label="ADDED ATTACHMENTS"
           value=""
-          placeholder={allAttachments.length === 0
-            ? "No attachments added"
-            : "Tap on View to see attachments"}
+          placeholder={
+            allAttachments.length === 0 ? 'No attachments added' : 'Tap on View to see attachments'
+          }
           rightComponent={
             allAttachments.length > 0 && (
               <TouchableOpacity
@@ -824,11 +858,13 @@ export default function TaskDetailsScreen({ route, navigation }) {
               }}
               onPress={() => setShowAttachmentSheet(true)}>
               <Feather name="paperclip" size={16} color={theme.primary} />
-              <Text style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                {(uploadingAttachment || attaching)
-                  ? (uploadingAttachment ? 'Uploading...' : 'Attaching...')
-                  : 'Add Files'
-                }
+              <Text
+                style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
+                {uploadingAttachment || attaching
+                  ? uploadingAttachment
+                    ? 'Uploading...'
+                    : 'Attaching...'
+                  : 'Add Files'}
               </Text>
             </TouchableOpacity>
           }
@@ -967,30 +1003,19 @@ export default function TaskDetailsScreen({ route, navigation }) {
         />
         {/* Dependencies */}
         {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setShowDependentPopup(true)}
-          >
+          <TouchableOpacity activeOpacity={0.7} onPress={() => setShowDependentPopup(true)}>
             <FieldBox
               label="Dependent Task(s)"
               value={
                 (() => {
                   // Prepare first 2 tasks for preview
                   const previewLines = task.dependentTasks.slice(0, 2).map((t) => {
-                    const name =
-                      typeof t === 'string'
-                        ? t
-                        : t.taskName || t.name || '';
+                    const name = typeof t === 'string' ? t : t.taskName || t.name || '';
                     const progress =
-                      typeof t === 'object' && t.progress != null
-                        ? t.progress
-                        : null;
+                      typeof t === 'object' && t.progress != null ? t.progress : null;
                     let statusText = '';
                     if (progress !== null) {
-                      statusText =
-                        progress < 70
-                          ? ' 🟠 In Progress'
-                          : ' ✅ Ready to Proceed';
+                      statusText = progress < 70 ? ' 🟠 In Progress' : ' ✅ Ready to Proceed';
                     }
                     return name
                       ? `• ${name} (${progress !== null ? progress + '%' : 'N/A'})${statusText}`
@@ -1014,17 +1039,15 @@ export default function TaskDetailsScreen({ route, navigation }) {
           visible={showDependentPopup}
           transparent
           animationType="slide"
-          onRequestClose={() => setShowDependentPopup(false)}
-        >
+          onRequestClose={() => setShowDependentPopup(false)}>
           <View
             style={{
               flex: 1,
               backgroundColor: 'rgba(0,0,0,0.5)',
               justifyContent: 'center',
               alignItems: 'center',
-              padding: 20
-            }}
-          >
+              padding: 20,
+            }}>
             <View
               style={{
                 backgroundColor: theme.card,
@@ -1039,8 +1062,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 shadowOffset: { width: 0, height: 2 },
                 shadowRadius: 8,
                 elevation: 8,
-              }}
-            >
+              }}>
               <Text
                 style={{
                   fontSize: 20,
@@ -1048,27 +1070,21 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   marginBottom: 18,
                   color: theme.text,
                   letterSpacing: 0.2,
-                }}
-              >
+                }}>
                 Task Dependencies
               </Text>
               <ScrollView
                 style={{ width: '100%', maxHeight: 380 }}
                 contentContainerStyle={{ paddingHorizontal: 4, paddingBottom: 8 }}
-                showsVerticalScrollIndicator={true}
-              >
+                showsVerticalScrollIndicator={true}>
                 {task.dependentTasks.map((t, idx) => {
-                  const name =
-                    typeof t === 'string' ? t : t.taskName || t.name || '';
-                  const progress =
-                    typeof t === 'object' && t.progress != null
-                      ? t.progress
-                      : 0;
+                  const name = typeof t === 'string' ? t : t.taskName || t.name || '';
+                  const progress = typeof t === 'object' && t.progress != null ? t.progress : 0;
                   const statusText = progress < 70 ? 'In Progress' : 'Ready to Proceed';
                   const statusColor = progress < 70 ? '#f59e42' : theme.success || '#2e7d32';
                   const avatarText = name ? name[0].toUpperCase() : '?';
-                  const taskId = typeof t === 'object' ? (t.id || t.taskId || t._id) : null;
-                  
+                  const taskId = typeof t === 'object' ? t.id || t.taskId || t._id : null;
+
                   return (
                     <TouchableOpacity
                       key={idx}
@@ -1092,12 +1108,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           setShowDependentPopup(false);
                           navigation.push('TaskDetails', {
                             taskId: taskId,
-                            refreshedAt: Date.now()
+                            refreshedAt: Date.now(),
                           });
                         }
                       }}
-                      activeOpacity={taskId ? 0.7 : 1}
-                    >
+                      activeOpacity={taskId ? 0.7 : 1}>
                       {/* Avatar/Initial */}
                       <View
                         style={{
@@ -1108,15 +1123,13 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           alignItems: 'center',
                           justifyContent: 'center',
                           marginRight: 12,
-                        }}
-                      >
+                        }}>
                         <Text
                           style={{
                             color: theme.primary,
                             fontSize: 16,
                             fontWeight: '700',
-                          }}
-                        >
+                          }}>
                           {avatarText}
                         </Text>
                       </View>
@@ -1128,8 +1141,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                             fontWeight: '600',
                             fontSize: 15,
                             marginBottom: 2,
-                          }}
-                        >
+                          }}>
                           {name || 'Unnamed Task'}
                         </Text>
                         <Text
@@ -1138,8 +1150,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                             color: statusColor,
                             fontWeight: '500',
                             marginBottom: 2,
-                          }}
-                        >
+                          }}>
                           {statusText}
                         </Text>
                         {t.description && (
@@ -1148,8 +1159,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                               color: theme.textSecondary || '#7986a0',
                               fontSize: 12,
                               marginTop: 2,
-                            }}
-                          >
+                            }}>
                             {t.description}
                           </Text>
                         )}
@@ -1181,11 +1191,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   shadowOpacity: 0.12,
                   shadowOffset: { width: 0, height: 2 },
                   shadowRadius: 6,
-                }}
-              >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>
-                  Close
-                </Text>
+                }}>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1260,11 +1267,20 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <Text style={[styles.subtasksTitle, { color: theme.text, marginBottom: 16 }]}>
               Subtasks ({task.subTasks?.length || 0})
             </Text>
-            
+
             {/* Search Bar */}
             {(task.subTasks?.length || 0) > 0 && (
-              <View style={[styles.searchContainer, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
-                <Feather name="search" size={16} color={theme.secondaryText} style={{ marginRight: 8 }} />
+              <View
+                style={[
+                  styles.searchContainer,
+                  { backgroundColor: theme.secCard, borderColor: theme.border },
+                ]}>
+                <Feather
+                  name="search"
+                  size={16}
+                  color={theme.secondaryText}
+                  style={{ marginRight: 8 }}
+                />
                 <TextInput
                   style={[styles.searchInput, { color: theme.text }]}
                   placeholder="Search subtasks..."
@@ -1292,25 +1308,29 @@ export default function TaskDetailsScreen({ route, navigation }) {
               filteredSubtasks.map((sub, idx) => (
                 <TouchableOpacity
                   key={idx}
-                  style={[styles.subtaskCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                  style={[
+                    styles.subtaskCard,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}
                   onPress={() => {
                     // Reset subtask search when navigating
                     setSubtaskSearch('');
                     // Navigate to subtask details
                     navigation.push('TaskDetails', {
                       taskId: sub.id || sub.taskId || sub._id,
-                      refreshedAt: Date.now()
+                      refreshedAt: Date.now(),
                     });
                   }}
-                  activeOpacity={0.85}
-                >
+                  activeOpacity={0.85}>
                   <View style={[styles.subtaskIcon, { backgroundColor: theme.avatarBg }]}>
                     <Text style={[styles.subtaskIconText, { color: theme.primary }]}>
                       {(sub.taskName || sub.name || 'T')[0]}
                     </Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.subtaskName, { color: theme.text }]}>{sub.taskName || sub.name}</Text>
+                    <Text style={[styles.subtaskName, { color: theme.text }]}>
+                      {sub.taskName || sub.name}
+                    </Text>
                     <View style={styles.subtaskMeta}>
                       <View style={styles.subtaskAssignedRow}>
                         <Feather name="user" size={12} color={theme.secondaryText} />
@@ -1318,7 +1338,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           {sub.assignedUserDetails?.map((u) => u.name).join(', ') || 'Unassigned'}
                         </Text>
                       </View>
-                      <View style={[styles.progressBadge, { backgroundColor: theme.primary + '15' }]}>
+                      <View
+                        style={[styles.progressBadge, { backgroundColor: theme.primary + '15' }]}>
                         <Text style={[styles.progressText, { color: theme.primary }]}>
                           {sub.progress ?? 0}%
                         </Text>
@@ -1402,7 +1423,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                           Alert.alert('Deleted', 'Task deleted successfully.', [
                             {
                               text: 'OK',
-                              onPress: () => navigation.goBack(),
+                              onPress: safeGoBack,
                             },
                           ]);
                         } catch (err) {
@@ -1570,6 +1591,31 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </View>
           </View>
         </View>
+      </Modal>
+
+      {/* Task Name Modal */}
+      <Modal
+        visible={showTaskNameModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTaskNameModal(false)}>
+        <TouchableWithoutFeedback onPress={() => setShowTaskNameModal(false)}>
+          <View style={styles.coAdminPopupOverlay}>
+            <TouchableWithoutFeedback onPress={() => {}}>
+              <View style={[styles.coAdminPopup, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>Task Name</Text>
+                <Text style={[{ color: theme.text, fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 12 }]}>
+                  {task?.taskName}
+                </Text>
+                <TouchableOpacity
+                  style={styles.coAdminPopupCloseBtn}
+                  onPress={() => setShowTaskNameModal(false)}>
+                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
       </Modal>
     </View>
   );

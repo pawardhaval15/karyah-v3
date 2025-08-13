@@ -254,6 +254,7 @@ const styles = StyleSheet.create({
     label: {
         fontSize: 16,
         fontWeight: '500',
+        maxWidth: '85%',
     },
     avatar: {
         width: 32,

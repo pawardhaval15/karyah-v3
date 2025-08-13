@@ -1,27 +1,28 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
+    ActivityIndicator,
+    Alert,
     FlatList,
+    Modal,
+    Platform,
+    RefreshControl,
     StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
+    TouchableWithoutFeedback,
     View,
-    ActivityIndicator,
-    Modal,
-    Alert,
-    RefreshControl,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../theme/ThemeContext';
 import {
     createWorklist,
+    deleteWorklist,
     getWorklistsByProjectId,
     updateWorklist,
-    deleteWorklist,
 } from '../utils/worklist'; // make sure updateWorklist and deleteWorklist are exported
-import { Platform } from 'react-native';
 
 // WorklistCard component with Edit and Delete buttons
 function WorklistCard({ worklist, navigation, theme, project, onDelete, onEdit }) {
@@ -70,6 +71,7 @@ export default function WorklistScreen({ navigation, route }) {
     const [editModalVisible, setEditModalVisible] = useState(false);
     const [selectedWorklist, setSelectedWorklist] = useState(null);
     const [editedWorklistName, setEditedWorklistName] = useState('');
+    const [showProjectNameModal, setShowProjectNameModal] = useState(false);
 
     const project = route.params?.project;
     const projectId = project?.id;
@@ -142,7 +144,7 @@ export default function WorklistScreen({ navigation, route }) {
             Alert.alert('Error', error.message);
         }
     };
-    function WorklistBanner({ projectName, onAdd, theme }) {
+    function WorklistBanner({ projectName, onAdd, onProjectNamePress, theme }) {
         return (
             <LinearGradient
                 colors={['#011F53', '#366CD9']}
@@ -151,7 +153,9 @@ export default function WorklistScreen({ navigation, route }) {
                 style={styles.banner}
             >
                 <View style={{ flex: 1 }}>
-                    <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerTitle}>{projectName}</Text>
+                    <TouchableOpacity onPress={onProjectNamePress}>
+                        <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerTitle}>{projectName}</Text>
+                    </TouchableOpacity>
                     <Text style={styles.bannerDesc}>The list of worklists for this project</Text>
                 </View>
                 <TouchableOpacity style={styles.bannerAction} onPress={onAdd}>
@@ -232,7 +236,12 @@ export default function WorklistScreen({ navigation, route }) {
                 <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
             </TouchableOpacity>
 
-            <WorklistBanner projectName={projectName} onAdd={handleAddWorklist} theme={theme} />
+            <WorklistBanner 
+                projectName={projectName} 
+                onAdd={handleAddWorklist} 
+                onProjectNamePress={() => setShowProjectNameModal(true)}
+                theme={theme} 
+            />
 
             {/* Create Worklist Modal */}
             <Modal
@@ -354,6 +363,63 @@ export default function WorklistScreen({ navigation, route }) {
                     />
                 }
             />
+
+            {/* Project Name Modal */}
+            <Modal
+                visible={showProjectNameModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowProjectNameModal(false)}>
+                <TouchableWithoutFeedback onPress={() => setShowProjectNameModal(false)}>
+                    <View style={{ 
+                        flex: 1, 
+                        backgroundColor: 'rgba(0,0,0,0.35)', 
+                        justifyContent: 'center', 
+                        alignItems: 'center' 
+                    }}>
+                        <TouchableWithoutFeedback onPress={() => {}}>
+                            <View style={{ 
+                                width: 280, 
+                                borderRadius: 14, 
+                                borderWidth: 1, 
+                                padding: 18, 
+                                alignItems: 'center', 
+                                elevation: 8,
+                                backgroundColor: theme.card, 
+                                borderColor: theme.border 
+                            }}>
+                                <Text style={{ 
+                                    fontSize: 18, 
+                                    fontWeight: '700', 
+                                    marginBottom: 12, 
+                                    color: theme.text 
+                                }}>Project Name</Text>
+                                <Text style={{ 
+                                    color: theme.text, 
+                                    fontSize: 16, 
+                                    textAlign: 'center', 
+                                    lineHeight: 22, 
+                                    marginBottom: 12 
+                                }}>
+                                    {projectName}
+                                </Text>
+                                <TouchableOpacity
+                                    style={{
+                                        marginTop: 10,
+                                        alignSelf: 'center',
+                                        paddingVertical: 6,
+                                        paddingHorizontal: 18,
+                                        borderRadius: 8,
+                                        backgroundColor: 'rgba(52, 120, 246, 0.08)',
+                                    }}
+                                    onPress={() => setShowProjectNameModal(false)}>
+                                    <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
         </View>
     );
 }
