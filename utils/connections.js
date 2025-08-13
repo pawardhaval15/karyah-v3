@@ -15,7 +15,7 @@ export const getUserConnections = async () => {
     });
 
     const data = await response.json();
-
+    console.log('[getUserConnections] Response data:', data);
     if (!response.ok) {
       throw new Error(data.message || 'Failed to fetch connections');
     }
