@@ -34,9 +34,27 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   }, [refreshKey]);
 
   const data = activeTab === 'tasks' ? tasks : issues;
-  const filtered = data.filter((item) =>
-    (item.title || item.issueTitle || '').toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = data.filter((item) => {
+    const searchText = search.toLowerCase();
+    // For issues
+    if (activeTab === 'issues') {
+      return (
+        (item.title || '').toLowerCase().includes(searchText) ||
+        (item.issueTitle || '').toLowerCase().includes(searchText) ||
+        (item.desc || item.description || '').toLowerCase().includes(searchText) ||
+        (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
+        (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
+      );
+    }
+    // For tasks
+    return (
+      (item.title || '').toLowerCase().includes(searchText) ||
+      (item.name || '').toLowerCase().includes(searchText) ||
+      (item.desc || item.description || '').toLowerCase().includes(searchText) ||
+      (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
+      (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
+    );
+  });
 
   // Sort issues: critical first, then by creation date (newest first)
   const sortedData = activeTab === 'issues'

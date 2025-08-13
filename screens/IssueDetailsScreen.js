@@ -12,6 +12,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
@@ -50,6 +51,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
     issueTitle: '',
     description: '',
     dueDate: '',
+    isCritical: false,
   });
   // Add menuVisible state for three-dots menu
   const [menuVisible, setMenuVisible] = useState(false);
@@ -84,6 +86,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           issueTitle: data.issueTitle || '',
           description: data.description || '',
           dueDate: data.dueDate || '',
+          isCritical: data.isCritical || false,
         });
       })
       .catch(() => setIssue(null))
@@ -163,7 +166,8 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   if (
                     !editFields.issueTitle.trim() &&
                     !editFields.description.trim() &&
-                    !editFields.dueDate
+                    !editFields.dueDate &&
+                    editFields.isCritical === (issue.isCritical || false)
                   ) {
                     Alert.alert('Error', 'Please fill at least one field to update the issue.');
                     return;
@@ -192,8 +196,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
                       issueTitle: editFields.issueTitle.trim() || undefined,
                       description: editFields.description.trim() || undefined,
                       dueDate: editFields.dueDate || undefined,
+                      isCritical: editFields.isCritical,
                       ...(assignedUserId ? { assignTo: assignedUserId } : {}),
-                      // You can add assignTo, isCritical, issueStatus, remarks, removeImages, removeResolvedImages if needed
+                      // You can add issueStatus, remarks, removeImages, removeResolvedImages if needed
                     };
                     // Separate existing URLs and new files
                     let existingUnresolvedImages = [];
@@ -225,8 +230,8 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     const updated = await fetchIssueById(issue.issueId);
                     setIssue(updated);
                     setIsEditing(false);
-                    // Signal IssuesScreen to refresh
-                    navigation.navigate('IssuesScreen', { refresh: true });
+                    // Clear attachments after successful update
+                    setAttachments([]);
                   } catch (err) {
                     let errorMsg = 'Failed to update issue';
                     if (err && (typeof err === 'string' || typeof err?.message === 'string')) {
@@ -586,6 +591,67 @@ export default function IssueDetailsScreen({ navigation, route }) {
             accentColor={theme.buttonText}
           />
         )}
+
+        {/* Critical Toggle - Matching IssuePopup Design */}
+        <View style={[styles.criticalRow, {
+          backgroundColor: isEditing
+            ? theme.criticalBg
+            : (issue.isCritical ? theme.criticalBg : theme.normalBg),
+          borderColor: isEditing
+            ? theme.criticalBorder
+            : (issue.isCritical ? theme.criticalBorder : theme.normalBorder),
+        }]}> 
+          <View style={[styles.criticalIconBox, {
+            backgroundColor: isEditing
+              ? theme.criticalIconBg
+              : (issue.isCritical ? theme.criticalIconBg : theme.normalIconBg),
+          }]}> 
+            <MaterialIcons 
+              name="priority-high" 
+              size={24} 
+              color={isEditing
+                ? theme.criticalText
+                : (issue.isCritical ? theme.criticalText : theme.normalText)} 
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.criticalLabel, {
+              color: isEditing
+                ? theme.criticalText
+                : (issue.isCritical ? theme.criticalText : theme.normalText),
+            }]}> 
+              {isEditing ? 'Critical Issue?' : (issue.isCritical ? 'Critical Issue' : 'Normal Priority')}
+            </Text>
+            <Text style={[styles.criticalDesc, {color: theme.text}]}>
+              {isEditing 
+                ? 'Turn on the toggle only if the Issue needs immediate attention.'
+                : (issue.isCritical 
+                    ? 'This issue requires immediate attention.' 
+                    : 'This issue has normal priority.'
+                  )
+              }
+            </Text>
+          </View>
+          {isEditing ? (
+            <Switch
+              value={editFields.isCritical}
+              onValueChange={(value) => setEditFields((f) => ({ ...f, isCritical: value }))}
+              trackColor={{ false: '#ddd', true: theme.criticalText }}
+              thumbColor="#fff"
+            />
+          ) : (
+            <View style={[styles.criticalStatusBadge, {
+              backgroundColor: issue.isCritical ? theme.criticalBadgeBg : theme.normalBadgeBg,
+            }]}> 
+              <Text style={[styles.criticalStatusText, {
+                color: issue.isCritical ? theme.criticalBadgeText : theme.normalBadgeText,
+              }]}> 
+                {issue.isCritical ? 'CRITICAL' : 'NORMAL'}
+              </Text>
+            </View>
+          )}
+        </View>
+
         <View
           style={{ height: 1, backgroundColor: '#e6eaf3', marginTop: 18, marginHorizontal: 20 }}
         />
@@ -991,6 +1057,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           setLoading(false);
         }}
         issueId={issue?.issueId || issueId}
+        currentAssignee={issue?.assignTo}
         theme={theme}
       />
     </View>
@@ -1165,5 +1232,48 @@ const styles = StyleSheet.create({
   },
   removeAttachmentButton: {
     padding: 4,
+  },
+  criticalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 20,
+    marginTop: 16,
+    backgroundColor: '#FEF2F2',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FF7D66',
+    padding: 12,
+    gap: 12,
+  },
+  criticalIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#FEC8BE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  criticalLabel: {
+    color: '#FF2700',
+    fontWeight: '700',
+    fontSize: 16,
+    marginBottom: 2,
+  },
+  criticalDesc: {
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  criticalStatusBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  criticalStatusText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });
