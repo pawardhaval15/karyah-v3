@@ -1,6 +1,8 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
+  Alert,
   Image,
   Modal,
   ScrollView,
@@ -10,8 +12,6 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { getUserConnections, removeConnection } from '../utils/connections';
 

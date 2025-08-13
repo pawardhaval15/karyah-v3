@@ -5,7 +5,15 @@ import { useTheme } from '../../theme/ThemeContext';
 const CustomCircularProgress = ({ size = 52, strokeWidth = 4, percentage = 75 }) => {
   const radius = (size - strokeWidth - 10) / 2; // Reduce radius for a smaller circle
   const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+  
+  // Ensure percentage is clamped between 0 and 100
+  const clampedPercentage = Math.min(100, Math.max(0, percentage));
+  
+  // Calculate stroke dash offset with proper handling for 100%
+  const strokeDashoffset = clampedPercentage === 100 
+    ? 0 
+    : circumference - (clampedPercentage / 100) * circumference;
+  
   const theme = useTheme();
 
   return (
@@ -26,14 +34,14 @@ const CustomCircularProgress = ({ size = 52, strokeWidth = 4, percentage = 75 })
           cy={size / 2}
           r={radius}
           strokeWidth={strokeWidth}
-          strokeDasharray={`${circumference} ${circumference}`}
+          strokeDasharray={clampedPercentage === 100 ? "none" : `${circumference} ${circumference}`}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap="round"
           rotation="-90"
           origin={`${size / 2}, ${size / 2}`}
         />
       </Svg>
-      <Text style={[styles.text, { color: theme ? theme.text : "#fff" }]}>{percentage}%</Text>
+      <Text style={[styles.text, { color: theme ? theme.text : "#fff" }]}>{Math.round(clampedPercentage)}%</Text>
     </View>
   );
 };
