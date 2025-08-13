@@ -1,21 +1,21 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { materialRequestAPI } from '../../utils/materialRequests';
 
 export default function MaterialRequestPopup({ visible, onClose, taskId, projectId, theme }) {
-  const [activeTab, setActiveTab] = useState('submit'); // 'submit' or 'view'
+  const [activeTab, setActiveTab] = useState('submit'); // 'submit' or 'view
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
@@ -559,12 +559,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
               style={[
                 styles.elegantTab,
                 activeTab === 'submit' && {
-                  backgroundColor: theme.primary,
-                  shadowColor: theme.primary,
-                  shadowOpacity: 0.3,
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowRadius: 12,
-                  elevation: 8,
+                  backgroundColor: theme.primary,                  
                 },
               ]}
               onPress={() => setActiveTab('submit')}>
@@ -1134,7 +1129,7 @@ const styles = StyleSheet.create({
   },
   itemsScrollView: {
     flex: 1,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
   },
   itemsScrollContent: {
     paddingBottom: 20,
@@ -1307,14 +1302,10 @@ const styles = StyleSheet.create({
   },
   itemCard: {
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 18,
     marginBottom: 16,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 4,
-    elevation: 1,
+    marginTop: 8,
+    borderWidth: 1
   },
   itemHeader: {
     flexDirection: 'row',
@@ -1720,22 +1711,17 @@ const styles = StyleSheet.create({
   },
   // Elegant Request Card Styles
   elegantRequestCard: {
-    marginTop: 12,
-    marginBottom: 10,
-    borderRadius: 12,
+    marginTop: 16,
+    marginBottom: 2,
+    borderRadius: 16,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 2,
-    padding: 12,
+    padding: 20,
   },
   elegantCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 16,
   },
   cardLeftSection: {
     flexDirection: 'row',
@@ -1777,10 +1763,10 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   elegantTaskName: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
-    marginBottom: 6,
-    lineHeight: 18,
+    marginBottom: 10,
+    lineHeight: 22,
   },
   userInfoRow: {
     flexDirection: 'row',
@@ -1795,18 +1781,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   elegantUserName: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '400',
   },
   elegantItemsContainer: {
-    marginBottom: 10,
+    marginBottom: 16,
   },
   itemsLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
-    marginBottom: 6,
+    marginBottom: 8,
   },
   elegantItemsGrid: {
     gap: 6,
@@ -1814,11 +1800,11 @@ const styles = StyleSheet.create({
   elegantItemChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 6,
+    gap: 8,
   },
   itemIconContainer: {
     width: 16,
@@ -1831,33 +1817,33 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   elegantItemName: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '500',
-    marginBottom: 1,
+    marginBottom: 2,
   },
   elegantItemQty: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '600',
   },
   elegantMoreItemsChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 6,
-    paddingHorizontal: 8,
-    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
     borderWidth: 1,
-    gap: 4,
+    gap: 6,
     justifyContent: 'center',
   },
   elegantMoreItemsText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
   },
   elegantCardFooter: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: 10,
+    paddingTop: 14,
     borderTopWidth: 1,
   },
   dateContainer: {
@@ -1866,13 +1852,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   elegantDate: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '500',
   },
   elegantActionIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
