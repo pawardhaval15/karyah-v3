@@ -1,12 +1,21 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import * as FileSystem from 'expo-file-system';
 import { useEffect, useState } from 'react';
-import { Dimensions, Linking, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Dimensions,
+  Linking,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useThemeContext } from '../../theme/ThemeContext'; // <-- import your theme context/provider
 import { fetchUserDetails } from '../../utils/auth';
-import * as FileSystem from 'expo-file-system';
 
 export default function CustomDrawer({ onClose, theme }) {
   const navigation = useNavigation();
@@ -88,7 +97,6 @@ export default function CustomDrawer({ onClose, theme }) {
         index: 0,
         routes: [{ name: 'PinLogin' }],
       });
-
     } catch (err) {
       console.error('Logout failed:', err);
     }
@@ -98,24 +106,35 @@ export default function CustomDrawer({ onClose, theme }) {
     <View style={[styles.drawer, { backgroundColor: theme.background, flex: 1 }]}>
       <View style={[styles.header, { borderBottomColor: theme.border }]}>
         <View style={styles.userSection}>
-          <View style={[styles.avatarCircle, { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' }]}>
+          <View
+            style={[
+              styles.avatarCircle,
+              { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' },
+            ]}>
             <Text style={[styles.avatarText, { color: theme.primary }]}>
               {userName ? userName.charAt(0).toUpperCase() : 'U'}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.title, { color: theme.text }]}>
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.title, { color: theme.text }]}>
               {userName ? userName : 'User'}
             </Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Welcome to Karyah</Text>
           </View>
         </View>
-        <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.card }]}>
+        <TouchableOpacity
+          onPress={onClose}
+          style={[styles.closeBtn, { backgroundColor: theme.card }]}>
           <Feather name="x" size={20} color={iconColor} />
         </TouchableOpacity>
       </View>
       <View style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}>
           <View style={styles.menuSection}>
             <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>MAIN MENU</Text>
             <DrawerItem
@@ -126,6 +145,7 @@ export default function CustomDrawer({ onClose, theme }) {
               icon={<Octicons name="project" size={20} color={theme.primary} />}
               label="Projects"
               theme={theme}
+              showBorder={true}
             />
             <DrawerItem
               icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
@@ -135,6 +155,7 @@ export default function CustomDrawer({ onClose, theme }) {
                 onClose && onClose();
               }}
               theme={theme}
+              showBorder={true}
             />
             <DrawerItem
               icon={<Feather name="list" size={20} color="#4CAF50" />}
@@ -144,6 +165,7 @@ export default function CustomDrawer({ onClose, theme }) {
                 onClose && onClose();
               }}
               theme={theme}
+              showBorder={true}
             />
             <DrawerItem
               icon={
@@ -197,6 +219,7 @@ export default function CustomDrawer({ onClose, theme }) {
                 onClose && onClose();
               }}
               theme={theme}
+              showBorder={true}
             />
             <DrawerItem
               icon={<Feather name="settings" size={20} color="#607D8B" />}
@@ -206,6 +229,7 @@ export default function CustomDrawer({ onClose, theme }) {
                 onClose && onClose();
               }}
               theme={theme}
+              showBorder={true}
               rightComponent={
                 <View style={styles.themeToggleSmall}>
                   <TouchableOpacity
@@ -213,7 +237,7 @@ export default function CustomDrawer({ onClose, theme }) {
                     style={[styles.themeBadge, { backgroundColor: theme.primary + '15' }]}>
                     <Feather
                       name={colorMode === 'dark' ? 'moon' : 'sun'}
-                      size={14}
+                      size={12}
                       color={theme.primary}
                     />
                   </TouchableOpacity>
@@ -223,17 +247,15 @@ export default function CustomDrawer({ onClose, theme }) {
             <DrawerItem
               icon={<MaterialIcons name="help-outline" size={20} color={theme.primary} />}
               label="Help & Support"
+              showBorder={true}
               onPress={() => {
-                Linking.openURL(helpUrl).catch(err => {
-                  console.error("Failed to open URL:", err);
+                Linking.openURL(helpUrl).catch((err) => {
+                  console.error('Failed to open URL:', err);
                 });
                 onClose();
               }}
               theme={theme}
             />
-          </View>
-
-          <View style={[styles.logoutSection, { borderTopColor: theme.border }]}>
             <DrawerItem
               icon={<Feather name="log-out" size={20} color="#FF5722" />}
               label="Logout"
@@ -254,12 +276,25 @@ export default function CustomDrawer({ onClose, theme }) {
   );
 }
 
-function DrawerItem({ icon, label, labelStyle, onPress, theme, rightComponent }) {
+function DrawerItem({
+  icon,
+  label,
+  labelStyle,
+  onPress,
+  theme,
+  rightComponent,
+  showBorder = false,
+}) {
   return (
-    <TouchableOpacity style={[styles.item, { backgroundColor: 'transparent' }]} onPress={onPress} activeOpacity={0.7}>
-      <View style={styles.iconContainer}>
-        {icon}
-      </View>
+    <TouchableOpacity
+      style={[
+        styles.item,
+        { backgroundColor: 'transparent' },
+        showBorder && { borderBottomWidth: 1, borderBottomColor: theme.border },
+      ]}
+      onPress={onPress}
+      activeOpacity={0.7}>
+      <View style={styles.iconContainer}>{icon}</View>
       <Text
         style={[
           styles.itemLabel,
@@ -278,10 +313,7 @@ function ThemeToggle({ colorMode, setColorMode }) {
     <TouchableOpacity
       onPress={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
       activeOpacity={0.9}
-      style={[
-        styles.customSwitch,
-        { backgroundColor: colorMode === 'dark' ? '#333' : '#ddd' },
-      ]}>
+      style={[styles.customSwitch, { backgroundColor: colorMode === 'dark' ? '#333' : '#ddd' }]}>
       <Feather
         name="sun"
         size={12}
@@ -359,12 +391,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   themeToggleSmall: {
-    marginLeft: 8,
+    marginLeft: 4,
   },
   themeBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 20,
+    height: 20,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -471,7 +503,7 @@ const styles = StyleSheet.create({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     paddingHorizontal: 8,
     borderRadius: 8,
     marginBottom: 2,
