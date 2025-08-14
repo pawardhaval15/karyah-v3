@@ -31,8 +31,15 @@ export default function CustomDrawer({ onClose, theme }) {
   const helpUrl = 'https://wa.me/919619555596?text=Hi%20Team%20Karyah!';
   useEffect(() => {
     fetchUserDetails()
-      .then((user) => setUserName(user.name || user.userId || user.email || ''))
-      .catch(() => setUserName(''));
+      .then((user) => {
+        if (user && (user.name || user.userId || user.email)) {
+          // Ensure value is always a string
+          setUserName(String(user.name || user.userId || user.email));
+        } else {
+          setUserName('User'); // fallback
+        }
+      })
+      .catch(() => setUserName('User'));
   }, []);
 
   // const handleLogout = async () => {
@@ -112,7 +119,7 @@ export default function CustomDrawer({ onClose, theme }) {
               { backgroundColor: theme.primary + '15', borderColor: theme.primary + '30' },
             ]}>
             <Text style={[styles.avatarText, { color: theme.primary }]}>
-              {userName ? userName.charAt(0).toUpperCase() : 'U'}
+              {userName?.toString().trim() ? userName.charAt(0).toUpperCase() : 'U'}
             </Text>
           </View>
           <View style={styles.userInfo}>
@@ -120,7 +127,7 @@ export default function CustomDrawer({ onClose, theme }) {
               numberOfLines={1}
               ellipsizeMode="tail"
               style={[styles.title, { color: theme.text }]}>
-              {userName ? userName : 'User'}
+              {userName?.toString().trim() || 'User'}
             </Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Welcome to Karyah</Text>
           </View>
