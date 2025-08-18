@@ -17,19 +17,21 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { fetchUserConnections } from '../utils/issues';
 import { getProjectById } from '../utils/project';
-import { bulkSetAccess, getAccessByProject, removeAccess, setAccess } from '../utils/projectAccess';
+import { bulkSetRestrictions, getRestrictionsByProject, removeRestriction, setRestriction, editRestriction } from '../utils/projectAccess';
 
 export default function ProjectAccessScreen({ route, navigation }) {
   const { projectId, projectName } = route.params;
   const theme = useTheme();
-  const [accesses, setAccesses] = useState([]);
+  const [restrictions, setRestrictions] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showAddUser, setShowAddUser] = useState(false);
+  const [showEditRestriction, setShowEditRestriction] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedModule, setSelectedModule] = useState('discussion');
-  const [permissions, setPermissions] = useState({
-    canView: true,
+  const [editingRestriction, setEditingRestriction] = useState(null);
+  const [restrictionSettings, setRestrictionSettings] = useState({
+    canView: false,
     canReply: false,
     canEdit: false,
   });
@@ -40,8 +42,8 @@ export default function ProjectAccessScreen({ route, navigation }) {
   const [listFilterRole, setListFilterRole] = useState('all');
   const [showBulkAssign, setShowBulkAssign] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [bulkPermissions, setBulkPermissions] = useState({
-    canView: true,
+  const [bulkRestrictionSettings, setBulkRestrictionSettings] = useState({
+    canView: false,
     canReply: false,
     canEdit: false,
   });
@@ -55,18 +57,18 @@ export default function ProjectAccessScreen({ route, navigation }) {
   ];
 
   useEffect(() => {
-    fetchAccesses();
+    fetchRestrictions();
     fetchUsers();
   }, [projectId]);
 
-  const fetchAccesses = async () => {
+  const fetchRestrictions = async () => {
     try {
       setLoading(true);
-      const data = await getAccessByProject(projectId);
-      setAccesses(data || []);
+      const data = await getRestrictionsByProject(projectId);
+      setRestrictions(data || []);
     } catch (error) {
-      console.error('Failed to fetch accesses:', error);
-      Alert.alert('Error', 'Failed to load access data');
+      console.error('Failed to fetch restrictions:', error);
+      Alert.alert('Error', 'Failed to load restriction data');
     } finally {
       setLoading(false);
     }
@@ -159,27 +161,27 @@ export default function ProjectAccessScreen({ route, navigation }) {
     }
   };
 
-  const handleSetAccess = async () => {
+  const handleSetRestriction = async () => {
     if (!selectedUser || !selectedModule) {
       Alert.alert('Error', 'Please select a user and module');
       return;
     }
 
     try {
-      const accessData = {
+      const restrictionData = {
         userId: selectedUser.id,
         module: selectedModule,
-        ...permissions,
+        ...restrictionSettings,
       };
 
-      await setAccess(projectId, accessData);
-      await fetchAccesses();
+      await setRestriction(projectId, restrictionData);
+      await fetchRestrictions();
       setShowAddUser(false);
       resetForm();
-      Alert.alert('Success', 'Access updated successfully');
+      Alert.alert('Success', 'Restriction applied successfully');
     } catch (error) {
-      console.error('Failed to set access:', error);
-      Alert.alert('Error', 'Failed to update access');
+      console.error('Failed to set restriction:', error);
+      Alert.alert('Error', 'Failed to apply restriction');
     }
   };
 
@@ -190,43 +192,68 @@ export default function ProjectAccessScreen({ route, navigation }) {
     }
 
     try {
-      const accessList = [];
-      
-      selectedUsers.forEach(user => {
-        bulkSelectedModules.forEach(module => {
-          accessList.push({
+      const restrictionList = [];
+
+      selectedUsers.forEach((user) => {
+        bulkSelectedModules.forEach((module) => {
+          restrictionList.push({
             userId: user.id,
             module: module,
-            ...bulkPermissions,
+            ...bulkRestrictionSettings,
           });
         });
       });
 
-      await bulkSetAccess(projectId, accessList);
-      await fetchAccesses();
+      await bulkSetRestrictions(projectId, restrictionList);
+      await fetchRestrictions();
       setShowBulkAssign(false);
       resetBulkForm();
-      Alert.alert('Success', `Access assigned to ${selectedUsers.length} user(s) for ${bulkSelectedModules.length} module(s)`);
+      Alert.alert(
+        'Success',
+        `Restrictions applied to ${selectedUsers.length} user(s) for ${bulkSelectedModules.length} module(s)`
+      );
     } catch (error) {
-      console.error('Failed to bulk assign access:', error);
-      Alert.alert('Error', 'Failed to assign access');
+      console.error('Failed to bulk assign restrictions:', error);
+      Alert.alert('Error', 'Failed to assign restrictions');
     }
   };
 
-  const handleRemoveAccess = async (userId, module) => {
-    Alert.alert('Remove Access', 'Are you sure you want to remove this access?', [
+  const handleEditRestriction = async () => {
+    if (!editingRestriction) return;
+
+    try {
+      const updateData = {
+        userId: editingRestriction.userId,
+        module: editingRestriction.module,
+        canView: restrictionSettings.canView,
+        canReply: restrictionSettings.canReply,
+        canEdit: restrictionSettings.canEdit,
+      };
+      // Use the utils function for API call
+      await editRestriction(projectId, editingRestriction.userId, updateData);
+      Alert.alert('Success', 'Restriction updated successfully');
+      fetchRestrictions();
+      resetEditForm();
+    } catch (error) {
+      console.error('Failed to update restriction:', error);
+      Alert.alert('Error', 'Failed to update restriction. Please try again.');
+    }
+  };
+
+  const handleRemoveRestriction = async (userId, module) => {
+    Alert.alert('Remove Restriction', 'Are you sure you want to remove this restriction?', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Remove',
         style: 'destructive',
         onPress: async () => {
           try {
-            await removeAccess(projectId, { userId, module });
-            await fetchAccesses();
-            Alert.alert('Success', 'Access removed successfully');
+            await removeRestriction(projectId, { userId, module });
+            await fetchRestrictions();
+            Alert.alert('Success', 'Restriction removed successfully');
           } catch (error) {
-            console.error('Failed to remove access:', error);
-            Alert.alert('Error', 'Failed to remove access');
+            console.error('Failed to remove restriction:', error);
+            Alert.alert('Error', 'Failed to remove restriction');
           }
         },
       },
@@ -236,8 +263,8 @@ export default function ProjectAccessScreen({ route, navigation }) {
   const resetForm = () => {
     setSelectedUser(null);
     setSelectedModule(activeTab);
-    setPermissions({
-      canView: true,
+    setRestrictionSettings({
+      canView: false,
       canReply: false,
       canEdit: false,
     });
@@ -245,11 +272,42 @@ export default function ProjectAccessScreen({ route, navigation }) {
     setSelectedRole('all');
   };
 
+  const resetEditForm = () => {
+    setEditingRestriction(null);
+    setRestrictionSettings({
+      canView: false,
+      canReply: false,
+      canEdit: false,
+    });
+    setShowEditRestriction(false);
+  };
+
+  const handleEditClick = (restriction) => {
+    // Attach user object for modal display
+    const userObj = users.find((u) => u.id === restriction.userId);
+    console.log('Edit restriction clicked:', restriction);
+    setEditingRestriction({
+      ...restriction,
+      user: userObj || { name: 'Unknown User', email: '' }
+    });
+    setRestrictionSettings({
+      canView: restriction.canView,
+      canReply: restriction.canReply,
+      canEdit: restriction.canEdit,
+    });
+    console.log('Set restrictionSettings:', {
+      canView: restriction.canView,
+      canReply: restriction.canReply,
+      canEdit: restriction.canEdit,
+    });
+    setShowEditRestriction(true);
+  };
+
   const resetBulkForm = () => {
     setSelectedUsers([]);
     setBulkSelectedModules(['discussion']);
-    setBulkPermissions({
-      canView: true,
+    setBulkRestrictionSettings({
+      canView: false,
       canReply: false,
       canEdit: false,
     });
@@ -258,10 +316,10 @@ export default function ProjectAccessScreen({ route, navigation }) {
   };
 
   const toggleUserSelection = (user) => {
-    setSelectedUsers(prev => {
-      const isSelected = prev.some(u => u.id === user.id);
+    setSelectedUsers((prev) => {
+      const isSelected = prev.some((u) => u.id === user.id);
       if (isSelected) {
-        return prev.filter(u => u.id !== user.id);
+        return prev.filter((u) => u.id !== user.id);
       } else {
         return [...prev, user];
       }
@@ -279,31 +337,30 @@ export default function ProjectAccessScreen({ route, navigation }) {
 
   const toggleSelectAll = () => {
     const filteredUsers = getFilteredUsers();
-    const allSelected = filteredUsers.length > 0 && 
-      filteredUsers.every(user => selectedUsers.some(selected => selected.id === user.id));
-    
+    const allSelected =
+      filteredUsers.length > 0 &&
+      filteredUsers.every((user) => selectedUsers.some((selected) => selected.id === user.id));
+
     if (allSelected) {
       // Remove all filtered users from selection
-      setSelectedUsers(prev => 
-        prev.filter(selected => 
-          !filteredUsers.some(filtered => filtered.id === selected.id)
-        )
+      setSelectedUsers((prev) =>
+        prev.filter((selected) => !filteredUsers.some((filtered) => filtered.id === selected.id))
       );
     } else {
       // Add all filtered users to selection (avoid duplicates)
-      setSelectedUsers(prev => {
-        const existingIds = prev.map(u => u.id);
-        const newUsers = filteredUsers.filter(user => !existingIds.includes(user.id));
+      setSelectedUsers((prev) => {
+        const existingIds = prev.map((u) => u.id);
+        const newUsers = filteredUsers.filter((user) => !existingIds.includes(user.id));
         return [...prev, ...newUsers];
       });
     }
   };
 
   const toggleModuleSelection = (moduleKey) => {
-    setBulkSelectedModules(prev => {
+    setBulkSelectedModules((prev) => {
       const isSelected = prev.includes(moduleKey);
       if (isSelected) {
-        return prev.filter(m => m !== moduleKey);
+        return prev.filter((m) => m !== moduleKey);
       } else {
         return [...prev, moduleKey];
       }
@@ -335,22 +392,22 @@ export default function ProjectAccessScreen({ route, navigation }) {
     return filteredUsers;
   };
 
-  const getFilteredAccesses = () => {
-    let filteredAccesses = accesses.filter((access) => access.module === activeTab);
+  const getFilteredRestrictions = () => {
+    let filteredRestrictions = restrictions.filter((restriction) => restriction.module === activeTab);
 
     // Filter by search query
     if (listSearchQuery.trim()) {
-      filteredAccesses = filteredAccesses.filter(
-        (access) =>
-          access.User?.name?.toLowerCase().includes(listSearchQuery.toLowerCase()) ||
-          access.User?.email?.toLowerCase().includes(listSearchQuery.toLowerCase())
+      filteredRestrictions = filteredRestrictions.filter(
+        (restriction) =>
+          restriction.User?.name?.toLowerCase().includes(listSearchQuery.toLowerCase()) ||
+          restriction.User?.email?.toLowerCase().includes(listSearchQuery.toLowerCase())
       );
     }
 
     // Filter by role
     if (listFilterRole !== 'all') {
-      filteredAccesses = filteredAccesses.filter((access) => {
-        const user = users.find((u) => u.id === access.userId);
+      filteredRestrictions = filteredRestrictions.filter((restriction) => {
+        const user = users.find((u) => u.id === restriction.userId);
         if (listFilterRole === 'owner') return user?.role === 'owner';
         if (listFilterRole === 'co-admin') return user?.role === 'co-admin';
         if (listFilterRole === 'connection') return user?.role === 'connection';
@@ -358,26 +415,26 @@ export default function ProjectAccessScreen({ route, navigation }) {
       });
     }
 
-    return filteredAccesses;
+    return filteredRestrictions;
   };
 
-  const groupedAccesses = getFilteredAccesses().reduce((groups, access) => {
-    if (!access || !access.userId) return groups;
+  const groupedRestrictions = getFilteredRestrictions().reduce((groups, restriction) => {
+    if (!restriction || !restriction.userId) return groups;
 
-    const key = `${access.userId}-${access.User?.name || 'Unknown'}`;
+    const key = `${restriction.userId}-${restriction.User?.name || 'Unknown'}`;
     if (!groups[key]) {
       groups[key] = {
-        user: access.User,
+        user: restriction.User,
         modules: [],
       };
     }
-    groups[key].modules.push(access);
+    groups[key].modules.push(restriction);
     return groups;
   }, {});
 
-  const renderAccessItem = ({ item }) => {
+  const renderRestrictionItem = ({ item }) => {
     const [userId, userName] = item[0].split('-');
-    const accessData = item[1];
+    const restrictionData = item[1];
 
     // Find user role
     const user = users.find((u) => u.id === parseInt(userId));
@@ -394,13 +451,13 @@ export default function ProjectAccessScreen({ route, navigation }) {
         <View style={styles.userInfo}>
           <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
             <Text style={styles.avatarText}>
-              {accessData.user?.name?.charAt(0).toUpperCase() || 'U'}
+              {restrictionData.user?.name?.charAt(0).toUpperCase() || 'U'}
             </Text>
           </View>
           <View style={styles.userDetails}>
             <View style={styles.userNameRow}>
               <Text style={[styles.userName, { color: theme.text }]}>
-                {accessData.user?.name || 'Unknown User'}
+                {restrictionData.user?.name || 'Unknown User'}
               </Text>
               <View style={[styles.roleBadge, { backgroundColor: roleColors[userRole] }]}>
                 <Text style={styles.roleBadgeText}>
@@ -409,54 +466,61 @@ export default function ProjectAccessScreen({ route, navigation }) {
               </View>
             </View>
             <Text style={[styles.userEmail, { color: theme.secondaryText }]}>
-              {accessData.user?.email || ''}
+              {restrictionData.user?.email || ''}
             </Text>
           </View>
         </View>
 
         <View style={styles.modulesContainer}>
-          {accessData.modules.map((moduleAccess, index) => (
+          {restrictionData.modules.map((moduleRestriction, index) => (
             <View key={index} style={styles.moduleItem}>
               <View style={styles.moduleInfo}>
                 <Text style={[styles.moduleName, { color: theme.text }]}>
-                  {modules.find((m) => m.key === moduleAccess.module)?.label || moduleAccess.module}
+                  {modules.find((m) => m.key === moduleRestriction.module)?.label || moduleRestriction.module}
                 </Text>
 
                 <View style={styles.permissionsList}>
-                  {moduleAccess.canView && (
+                  {moduleRestriction.canView && (
                     <View
                       style={[
                         styles.permissionBox,
-                        { borderColor: theme.border, backgroundColor: theme.card },
+                        { borderColor: theme.danger, backgroundColor: theme.card },
                       ]}>
-                      <Text style={[styles.permission, { color: theme.primary }]}>View</Text>
+                      <Text style={[styles.permission, { color: theme.danger }]}>Can't View</Text>
                     </View>
                   )}
-                  {moduleAccess.canReply && (
+                  {moduleRestriction.canReply && (
                     <View
                       style={[
                         styles.permissionBox,
-                        { borderColor: theme.border, backgroundColor: theme.card },
+                        { borderColor: theme.danger, backgroundColor: theme.card },
                       ]}>
-                      <Text style={[styles.permission, { color: theme.primary }]}>Reply</Text>
+                      <Text style={[styles.permission, { color: theme.danger }]}>Can't Reply</Text>
                     </View>
                   )}
-                  {moduleAccess.canEdit && (
+                  {moduleRestriction.canEdit && (
                     <View
                       style={[
                         styles.permissionBox,
-                        { borderColor: theme.border, backgroundColor: theme.card },
+                        { borderColor: theme.danger, backgroundColor: theme.card },
                       ]}>
-                      <Text style={[styles.permission, { color: theme.primary }]}>Edit</Text>
+                      <Text style={[styles.permission, { color: theme.danger }]}>Can't Edit</Text>
                     </View>
                   )}
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => handleRemoveAccess(moduleAccess.userId, moduleAccess.module)}
-                style={styles.removeButton}>
-                <MaterialIcons name="delete-outline" size={20} color={theme.danger} />
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <TouchableOpacity
+                  onPress={() => handleEditClick(moduleRestriction)}
+                  style={[styles.removeButton, { marginRight: 8 }]}>
+                  <MaterialIcons name="edit" size={20} color={theme.primary} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => handleRemoveRestriction(moduleRestriction.userId, moduleRestriction.module)}
+                  style={styles.removeButton}>
+                  <MaterialIcons name="delete-outline" size={20} color={theme.danger} />
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </View>
@@ -481,7 +545,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
             onPress={() => setShowBulkAssign(true)}
             style={[styles.bulkButton, { backgroundColor: theme.primary }]}>
             <MaterialIcons name="group-add" size={18} color={theme.text} />
-            <Text style={[styles.bulkButtonText, { color: theme.text }]}>Multi Assign</Text>
+            <Text style={[styles.bulkButtonText, { color: theme.text }]}>Multi Restrict</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => {
@@ -562,26 +626,26 @@ export default function ProjectAccessScreen({ route, navigation }) {
           showsHorizontalScrollIndicator={false}
           style={styles.filterContainer}>
           {[
-            { key: 'all', label: 'All', count: getFilteredAccesses().length },
+            { key: 'all', label: 'All', count: getFilteredRestrictions().length },
             {
               key: 'owner',
               label: 'Owner',
-              count: getFilteredAccesses().filter(
-                (access) => users.find((u) => u.id === access.userId)?.role === 'owner'
+              count: getFilteredRestrictions().filter(
+                (restriction) => users.find((u) => u.id === restriction.userId)?.role === 'owner'
               ).length,
             },
             {
               key: 'co-admin',
               label: 'Co-Admin',
-              count: getFilteredAccesses().filter(
-                (access) => users.find((u) => u.id === access.userId)?.role === 'co-admin'
+              count: getFilteredRestrictions().filter(
+                (restriction) => users.find((u) => u.id === restriction.userId)?.role === 'co-admin'
               ).length,
             },
             {
               key: 'connection',
               label: 'Connections',
-              count: getFilteredAccesses().filter(
-                (access) => users.find((u) => u.id === access.userId)?.role === 'connection'
+              count: getFilteredRestrictions().filter(
+                (restriction) => users.find((u) => u.id === restriction.userId)?.role === 'connection'
               ).length,
             },
           ].map((filter) => (
@@ -612,13 +676,13 @@ export default function ProjectAccessScreen({ route, navigation }) {
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={[styles.loadingText, { color: theme.secondaryText }]}>
-            Loading access data...
+            Loading restriction data...
           </Text>
         </View>
       ) : (
         <FlatList
-          data={Object.entries(groupedAccesses)}
-          renderItem={renderAccessItem}
+          data={Object.entries(groupedRestrictions)}
+          renderItem={renderRestrictionItem}
           keyExtractor={(item) => item[0]}
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
@@ -632,12 +696,12 @@ export default function ProjectAccessScreen({ route, navigation }) {
               <Text style={[styles.emptyTitle, { color: theme.text }]}>
                 {listSearchQuery || listFilterRole !== 'all'
                   ? 'No matching results found'
-                  : `No ${modules.find((m) => m.key === activeTab)?.label} Access Configured`}
+                  : `No ${modules.find((m) => m.key === activeTab)?.label} Restrictions Applied`}
               </Text>
               <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
                 {listSearchQuery || listFilterRole !== 'all'
                   ? 'Try adjusting your search or filter criteria'
-                  : `Add users to grant them access to ${modules.find((m) => m.key === activeTab)?.label.toLowerCase()}`}
+                  : `Apply restrictions to control user access to ${modules.find((m) => m.key === activeTab)?.label.toLowerCase()}`}
               </Text>
               {(listSearchQuery || listFilterRole !== 'all') && (
                 <TouchableOpacity
@@ -656,7 +720,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                     setSelectedModule('discussion');
                     setShowAddUser(true);
                   }}>
-                  <Text style={styles.quickAddButtonText}>Add Discussion Access</Text>
+                  <Text style={styles.quickAddButtonText}>Add Discussion Restrictions</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -674,7 +738,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Add {modules.find((m) => m.key === selectedModule)?.label} Access
+                Add {modules.find((m) => m.key === selectedModule)?.label} Restrictions
               </Text>
               <TouchableOpacity onPress={() => setShowAddUser(false)}>
                 <MaterialIcons name="close" size={24} color={theme.text} />
@@ -693,7 +757,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 color={theme.primary}
               />
               <Text style={[styles.currentModuleText, { color: theme.text }]}>
-                {modules.find((m) => m.key === selectedModule)?.label} Access
+                {modules.find((m) => m.key === selectedModule)?.label} Restrictions
               </Text>
             </View>
 
@@ -837,42 +901,42 @@ export default function ProjectAccessScreen({ route, navigation }) {
 
             {/* Module Selection - Removed since we're using tabs */}
 
-            {/* Permissions */}
+            {/* Restrictions */}
             <View style={styles.section}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Permissions for {modules.find((m) => m.key === selectedModule)?.label}
+                Restrictions for {modules.find((m) => m.key === selectedModule)?.label}
               </Text>
               {selectedModule === 'discussion' && (
                 <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
-                  Configure what this user can do in project discussions
+                  Configure what this user cannot do in project discussions
                 </Text>
               )}
-              {Object.entries(permissions).map(([key, value]) => (
+              {Object.entries(restrictionSettings).map(([key, value]) => (
                 <View key={key} style={styles.permissionRow}>
                   <View style={styles.permissionInfo}>
                     <Text style={[styles.permissionLabel, { color: theme.text }]}>
                       {key === 'canView'
-                        ? 'View Messages'
+                        ? 'Block Viewing Messages'
                         : key === 'canReply'
-                          ? 'Send Messages'
-                          : 'Manage Discussion'}
+                          ? 'Block Sending Messages'
+                          : 'Block Managing Discussion'}
                     </Text>
                     {selectedModule === 'discussion' && (
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
                         {key === 'canView'
-                          ? 'Can see discussion messages'
+                          ? 'User cannot see discussion messages'
                           : key === 'canReply'
-                            ? 'Can post messages and replies'
-                            : 'Can pin messages and moderate discussion'}
+                            ? 'User cannot post messages and replies'
+                            : 'User cannot pin messages and moderate discussion'}
                       </Text>
                     )}
                   </View>
                   <Switch
                     value={value}
                     onValueChange={(newValue) =>
-                      setPermissions((prev) => ({ ...prev, [key]: newValue }))
+                      setRestrictionSettings((prev) => ({ ...prev, [key]: newValue }))
                     }
-                    trackColor={{ false: theme.border, true: theme.primary }}
+                    trackColor={{ false: theme.border, true: theme.danger }}
                     thumbColor={value ? '#fff' : theme.secondaryText}
                   />
                 </View>
@@ -888,8 +952,121 @@ export default function ProjectAccessScreen({ route, navigation }) {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.saveButton, { backgroundColor: theme.primary }]}
-                onPress={handleSetAccess}>
-                <Text style={styles.saveButtonText}>Save Access</Text>
+                onPress={handleSetRestriction}>
+                <Text style={styles.saveButtonText}>Apply Restrictions</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Edit Restriction Modal */}
+      <Modal
+        visible={showEditRestriction}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowEditRestriction(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
+                Edit {modules.find((m) => m.key === editingRestriction?.module)?.label} Restrictions
+              </Text>
+              <TouchableOpacity onPress={() => setShowEditRestriction(false)}>
+                <MaterialIcons name="close" size={24} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            {editingRestriction && (
+              <>
+                {/* User Info */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>User</Text>
+                  <View style={[styles.userChip, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                    <View style={styles.userChipContent}>
+                      <Text style={[styles.userChipText, { color: theme.text }]}>
+                        {editingRestriction.user?.name || 'Unknown User'}
+                      </Text>
+                      <Text style={[styles.userChipDesignation, { color: theme.secondaryText }]}>
+                        {editingRestriction.user?.email || ''}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* Module Info */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Module</Text>
+                  <View style={[styles.moduleChip, { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                    <Text style={[styles.moduleChipText, { color: '#fff' }]}>
+                      {modules.find((m) => m.key === editingRestriction.module)?.label}
+                    </Text>
+                  </View>
+                </View>
+
+                {/* Restriction Settings */}
+                <View style={styles.section}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>Restriction Settings</Text>
+                  <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
+                    Select which actions to restrict for this user in the {modules.find((m) => m.key === editingRestriction.module)?.label.toLowerCase()} module
+                  </Text>
+
+                  <View style={styles.permissionRow}>
+                    <View style={styles.permissionInfo}>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can't View</Text>
+                      <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
+                        User cannot see content in this module
+                      </Text>
+                    </View>
+                    <Switch
+                      value={restrictionSettings.canView}
+                      onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canView: value }))}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                    />
+                  </View>
+
+                  <View style={styles.permissionRow}>
+                    <View style={styles.permissionInfo}>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can't Reply</Text>
+                      <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
+                        User cannot post new content or replies
+                      </Text>
+                    </View>
+                    <Switch
+                      value={restrictionSettings.canReply}
+                      onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canReply: value }))}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                    />
+                  </View>
+
+                  <View style={styles.permissionRow}>
+                    <View style={styles.permissionInfo}>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can't Edit</Text>
+                      <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
+                        User cannot modify or manage content
+                      </Text>
+                    </View>
+                    <Switch
+                      value={restrictionSettings.canEdit}
+                      onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canEdit: value }))}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                    />
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Actions */}
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[styles.cancelButton, { borderColor: theme.border }]}
+                onPress={() => setShowEditRestriction(false)}>
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.saveButton, { backgroundColor: theme.primary }]}
+                onPress={handleEditRestriction}>
+                <Text style={styles.saveButtonText}>Update Restrictions</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -906,7 +1083,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
-                Multi User Access Assignment
+                Multi User Restriction Assignment
               </Text>
               <TouchableOpacity onPress={() => setShowBulkAssign(false)}>
                 <MaterialIcons name="close" size={24} color={theme.text} />
@@ -920,14 +1097,15 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 { backgroundColor: theme.background, borderColor: theme.border },
               ]}>
               <Text style={[styles.summaryText, { color: theme.text }]}>
-                {selectedUsers.length} user(s) selected • {bulkSelectedModules.length} module(s) selected
+                {selectedUsers.length} user(s) selected • {bulkSelectedModules.length} module(s)
+                selected
               </Text>
               {selectedUsers.length > 0 && (
                 <View style={styles.selectionBreakdown}>
                   <Text style={[styles.breakdownText, { color: theme.secondaryText }]}>
-                    {selectedUsers.filter(u => u.role === 'owner').length} Owner • {' '}
-                    {selectedUsers.filter(u => u.role === 'co-admin').length} Co-Admin • {' '}
-                    {selectedUsers.filter(u => u.role === 'connection').length} Connections
+                    {selectedUsers.filter((u) => u.role === 'owner').length} Owner •{' '}
+                    {selectedUsers.filter((u) => u.role === 'co-admin').length} Co-Admin •{' '}
+                    {selectedUsers.filter((u) => u.role === 'connection').length} Connections
                   </Text>
                 </View>
               )}
@@ -942,21 +1120,25 @@ export default function ProjectAccessScreen({ route, navigation }) {
                     <TouchableOpacity
                       style={[styles.selectAllButton, { backgroundColor: theme.primary }]}
                       onPress={toggleSelectAll}>
-                      <MaterialIcons 
+                      <MaterialIcons
                         name={
-                          getFilteredUsers().length > 0 && 
-                          getFilteredUsers().every(user => selectedUsers.some(selected => selected.id === user.id))
-                            ? "check-box" 
-                            : "check-box-outline-blank"
-                        } 
-                        size={16} 
-                        color="#fff" 
+                          getFilteredUsers().length > 0 &&
+                          getFilteredUsers().every((user) =>
+                            selectedUsers.some((selected) => selected.id === user.id)
+                          )
+                            ? 'check-box'
+                            : 'check-box-outline-blank'
+                        }
+                        size={16}
+                        color="#fff"
                       />
                       <Text style={styles.selectAllText}>
-                        {getFilteredUsers().length > 0 && 
-                         getFilteredUsers().every(user => selectedUsers.some(selected => selected.id === user.id))
-                          ? "Deselect All" 
-                          : "Select All"}
+                        {getFilteredUsers().length > 0 &&
+                        getFilteredUsers().every((user) =>
+                          selectedUsers.some((selected) => selected.id === user.id)
+                        )
+                          ? 'Deselect All'
+                          : 'Select All'}
                       </Text>
                     </TouchableOpacity>
                     {selectedUsers.length > 0 && (
@@ -970,7 +1152,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                     )}
                   </View>
                 </View>
-                
+
                 {users.length === 0 ? (
                   <View
                     style={[
@@ -1013,47 +1195,62 @@ export default function ProjectAccessScreen({ route, navigation }) {
                         </Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                           <TouchableOpacity
-                            style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            style={[
+                              styles.quickActionButton,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                            ]}
                             onPress={() => {
-                              const owners = users.filter(u => u.role === 'owner');
-                              setSelectedUsers(prev => {
-                                const existingIds = prev.map(u => u.id);
-                                const newUsers = owners.filter(user => !existingIds.includes(user.id));
+                              const owners = users.filter((u) => u.role === 'owner');
+                              setSelectedUsers((prev) => {
+                                const existingIds = prev.map((u) => u.id);
+                                const newUsers = owners.filter(
+                                  (user) => !existingIds.includes(user.id)
+                                );
                                 return [...prev, ...newUsers];
                               });
                             }}>
                             <Text style={[styles.quickActionText, { color: theme.text }]}>
-                              + Owners ({users.filter(u => u.role === 'owner').length})
+                              + Owners ({users.filter((u) => u.role === 'owner').length})
                             </Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity
-                            style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            style={[
+                              styles.quickActionButton,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                            ]}
                             onPress={() => {
-                              const coAdmins = users.filter(u => u.role === 'co-admin');
-                              setSelectedUsers(prev => {
-                                const existingIds = prev.map(u => u.id);
-                                const newUsers = coAdmins.filter(user => !existingIds.includes(user.id));
+                              const coAdmins = users.filter((u) => u.role === 'co-admin');
+                              setSelectedUsers((prev) => {
+                                const existingIds = prev.map((u) => u.id);
+                                const newUsers = coAdmins.filter(
+                                  (user) => !existingIds.includes(user.id)
+                                );
                                 return [...prev, ...newUsers];
                               });
                             }}>
                             <Text style={[styles.quickActionText, { color: theme.text }]}>
-                              + Co-Admins ({users.filter(u => u.role === 'co-admin').length})
+                              + Co-Admins ({users.filter((u) => u.role === 'co-admin').length})
                             </Text>
                           </TouchableOpacity>
-                          
+
                           <TouchableOpacity
-                            style={[styles.quickActionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+                            style={[
+                              styles.quickActionButton,
+                              { backgroundColor: theme.card, borderColor: theme.border },
+                            ]}
                             onPress={() => {
-                              const connections = users.filter(u => u.role === 'connection');
-                              setSelectedUsers(prev => {
-                                const existingIds = prev.map(u => u.id);
-                                const newUsers = connections.filter(user => !existingIds.includes(user.id));
+                              const connections = users.filter((u) => u.role === 'connection');
+                              setSelectedUsers((prev) => {
+                                const existingIds = prev.map((u) => u.id);
+                                const newUsers = connections.filter(
+                                  (user) => !existingIds.includes(user.id)
+                                );
                                 return [...prev, ...newUsers];
                               });
                             }}>
                             <Text style={[styles.quickActionText, { color: theme.text }]}>
-                              + Connections ({users.filter(u => u.role === 'connection').length})
+                              + Connections ({users.filter((u) => u.role === 'connection').length})
                             </Text>
                           </TouchableOpacity>
                         </ScrollView>
@@ -1066,9 +1263,21 @@ export default function ProjectAccessScreen({ route, navigation }) {
                         style={styles.filterContainer}>
                         {[
                           { key: 'all', label: 'All', count: users.length },
-                          { key: 'owner', label: 'Owner', count: users.filter(u => u.role === 'owner').length },
-                          { key: 'co-admin', label: 'Co-Admin', count: users.filter(u => u.role === 'co-admin').length },
-                          { key: 'connection', label: 'Connections', count: users.filter(u => u.role === 'connection').length },
+                          {
+                            key: 'owner',
+                            label: 'Owner',
+                            count: users.filter((u) => u.role === 'owner').length,
+                          },
+                          {
+                            key: 'co-admin',
+                            label: 'Co-Admin',
+                            count: users.filter((u) => u.role === 'co-admin').length,
+                          },
+                          {
+                            key: 'connection',
+                            label: 'Connections',
+                            count: users.filter((u) => u.role === 'connection').length,
+                          },
                         ].map((filter) => (
                           <TouchableOpacity
                             key={filter.key}
@@ -1096,7 +1305,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                     {/* User List */}
                     <View style={styles.userList}>
                       {getFilteredUsers().map((user) => {
-                        const isSelected = selectedUsers.some(u => u.id === user.id);
+                        const isSelected = selectedUsers.some((u) => u.id === user.id);
                         return (
                           <TouchableOpacity
                             key={user.id}
@@ -1110,8 +1319,16 @@ export default function ProjectAccessScreen({ route, navigation }) {
                             onPress={() => toggleUserSelection(user)}>
                             <View style={styles.userListContent}>
                               <View style={styles.userListLeft}>
-                                <View style={[styles.userListAvatar, { backgroundColor: isSelected ? '#fff' : theme.primary }]}>
-                                  <Text style={[styles.userListAvatarText, { color: isSelected ? theme.primary : '#fff' }]}>
+                                <View
+                                  style={[
+                                    styles.userListAvatar,
+                                    { backgroundColor: isSelected ? '#fff' : theme.primary },
+                                  ]}>
+                                  <Text
+                                    style={[
+                                      styles.userListAvatarText,
+                                      { color: isSelected ? theme.primary : '#fff' },
+                                    ]}>
                                     {user.name?.charAt(0).toUpperCase() || 'U'}
                                   </Text>
                                 </View>
@@ -1129,7 +1346,9 @@ export default function ProjectAccessScreen({ route, navigation }) {
                                       style={[
                                         styles.userListDesignation,
                                         {
-                                          color: isSelected ? 'rgba(255,255,255,0.8)' : theme.secondaryText,
+                                          color: isSelected
+                                            ? 'rgba(255,255,255,0.8)'
+                                            : theme.secondaryText,
                                         },
                                       ]}>
                                       {user.designation}
@@ -1140,7 +1359,9 @@ export default function ProjectAccessScreen({ route, navigation }) {
                                       style={[
                                         styles.userListEmail,
                                         {
-                                          color: isSelected ? 'rgba(255,255,255,0.7)' : theme.secondaryText,
+                                          color: isSelected
+                                            ? 'rgba(255,255,255,0.7)'
+                                            : theme.secondaryText,
                                         },
                                       ]}
                                       numberOfLines={1}>
@@ -1151,11 +1372,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                               </View>
                               <View style={styles.userListRight}>
                                 {isSelected && (
-                                  <MaterialIcons
-                                    name="check-circle"
-                                    size={20}
-                                    color="#fff"
-                                  />
+                                  <MaterialIcons name="check-circle" size={20} color="#fff" />
                                 )}
                               </View>
                             </View>
@@ -1232,38 +1449,38 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 </View>
               </View>
 
-              {/* Bulk Permissions */}
+              {/* Bulk Restrictions */}
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                  Permissions for Selected Modules
+                  Restrictions for Selected Modules
                 </Text>
                 <Text style={[styles.sectionDescription, { color: theme.secondaryText }]}>
-                  These permissions will be applied to all selected users for all selected modules
+                  These restrictions will be applied to all selected users for all selected modules
                 </Text>
-                {Object.entries(bulkPermissions).map(([key, value]) => (
+                {Object.entries(bulkRestrictionSettings).map(([key, value]) => (
                   <View key={key} style={styles.permissionRow}>
                     <View style={styles.permissionInfo}>
                       <Text style={[styles.permissionLabel, { color: theme.text }]}>
                         {key === 'canView'
-                          ? 'View Access'
+                          ? 'Block View Access'
                           : key === 'canReply'
-                            ? 'Reply/Participate'
-                            : 'Edit/Manage'}
+                            ? 'Block Reply/Participate'
+                            : 'Block Edit/Manage'}
                       </Text>
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
                         {key === 'canView'
-                          ? 'Can view content in selected modules'
+                          ? 'User cannot view content in selected modules'
                           : key === 'canReply'
-                            ? 'Can contribute and reply in selected modules'
-                            : 'Can edit and manage content in selected modules'}
+                            ? 'User cannot contribute and reply in selected modules'
+                            : 'User cannot edit and manage content in selected modules'}
                       </Text>
                     </View>
                     <Switch
                       value={value}
                       onValueChange={(newValue) =>
-                        setBulkPermissions((prev) => ({ ...prev, [key]: newValue }))
+                        setBulkRestrictionSettings((prev) => ({ ...prev, [key]: newValue }))
                       }
-                      trackColor={{ false: theme.border, true: theme.primary }}
+                      trackColor={{ false: theme.border, true: theme.danger }}
                       thumbColor={value ? '#fff' : theme.secondaryText}
                     />
                   </View>
@@ -1282,7 +1499,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 style={[
                   styles.saveButton,
                   {
-                    backgroundColor: 
+                    backgroundColor:
                       selectedUsers.length > 0 && bulkSelectedModules.length > 0
                         ? theme.primary
                         : theme.border,
@@ -1291,7 +1508,7 @@ export default function ProjectAccessScreen({ route, navigation }) {
                 onPress={handleBulkAssign}
                 disabled={selectedUsers.length === 0 || bulkSelectedModules.length === 0}>
                 <Text style={styles.saveButtonText}>
-                  Assign Access ({selectedUsers.length}×{bulkSelectedModules.length})
+                  Apply Restrictions ({selectedUsers.length}×{bulkSelectedModules.length})
                 </Text>
               </TouchableOpacity>
             </View>

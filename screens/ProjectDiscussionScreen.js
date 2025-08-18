@@ -5,22 +5,23 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import {
+  checkUserDiscussionRestrictions,
   getMessagesByProject,
   postMessage,
   reactToMessage,
   togglePinMessage,
 } from '../utils/discussion';
-import { getAccessByProject } from '../utils/projectAccess';
 
 export default function ProjectDiscussionScreen({ route, navigation }) {
   const { projectId, projectName } = route.params;
@@ -30,26 +31,33 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
   const [sending, setSending] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [currentUserId, setCurrentUserId] = useState(null);
-  const [userAccess, setUserAccess] = useState({
+  const [userPermissions, setUserPermissions] = useState({
     canView: false,
     canReply: false,
     canEdit: false,
   });
-  const [accessLoading, setAccessLoading] = useState(true);
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [selectedPinnedMessage, setSelectedPinnedMessage] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const inputRef = useRef(null);
   const scrollViewRef = useRef(null);
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchMessages();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     fetchCurrentUser();
-    checkUserAccess();
+    checkUserRestrictions();
   }, [projectId]);
 
   useEffect(() => {
-    if (userAccess.canView) {
+    if (userPermissions.canView) {
       fetchMessages();
     }
-  }, [userAccess.canView]);
+  }, [userPermissions.canView]);
 
   const fetchCurrentUser = async () => {
     try {
@@ -60,41 +68,22 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     }
   };
 
-  const checkUserAccess = async () => {
+  const checkUserRestrictions = async () => {
     try {
-      setAccessLoading(true);
-      const accesses = await getAccessByProject(projectId);
-      const userId = await getUserIdFromToken();
-
-      // Find discussion access for current user
-      const discussionAccess = accesses.find(
-        (access) => access.userId === userId && access.module === 'discussion'
-      );
-
-      if (discussionAccess) {
-        setUserAccess({
-          canView: discussionAccess.canView || false,
-          canReply: discussionAccess.canReply || false,
-          canEdit: discussionAccess.canEdit || false,
-        });
-      } else {
-        // Default access if no specific access is set (you might want to change this logic)
-        setUserAccess({
-          canView: true, // Allow viewing by default
-          canReply: false,
-          canEdit: false,
-        });
-      }
+      setPermissionsLoading(true);
+      const permissions = await checkUserDiscussionRestrictions(projectId);
+      
+      setUserPermissions(permissions);
     } catch (error) {
-      console.error('Failed to check user access:', error);
-      // On error, allow basic access
-      setUserAccess({
-        canView: true,
+      console.error('Failed to check user restrictions:', error);
+      // On error, default to no access for security
+      setUserPermissions({
+        canView: false,
         canReply: false,
         canEdit: false,
       });
     } finally {
-      setAccessLoading(false);
+      setPermissionsLoading(false);
     }
   };
 
@@ -102,25 +91,46 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     try {
       setLoading(true);
       const data = await getMessagesByProject(projectId);
-      // Backend returns messages array directly, not wrapped in a messages property
-      setMessages(Array.isArray(data) ? data : []);
+      // Normalize reactions for each message
+      const normalizedMessages = Array.isArray(data)
+        ? data.map((msg) => ({
+            ...msg,
+            reactions:
+              msg.reactions && typeof msg.reactions === 'object'
+                ? Object.entries(msg.reactions).map(([userId, reaction]) => ({
+                    userId,
+                    type: reaction,
+                    count: 1,
+                  }))
+                : [],
+          }))
+        : [];
+      setMessages(normalizedMessages);
     } catch (error) {
       console.error('Failed to fetch messages:', error);
-      // Alert.alert('Error', 'Failed to load discussion messages');
+      if (error.message.includes('Access restricted')) {
+        // Handle restriction-based access denial
+        setUserPermissions({
+          canView: false,
+          canReply: false,
+          canEdit: false,
+        });
+      }
+      // Don't show alert for restriction errors as they're handled in UI
     } finally {
       setLoading(false);
     }
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || sending || !userAccess.canReply) return;
+    if (!newMessage.trim() || sending || !userPermissions.canReply) return;
 
     try {
       setSending(true);
       const messageData = {
         content: newMessage.trim(),
         type: 'text',
-        replyTo: replyingTo?.id || null,
+        replyToId: replyingTo?.id || null, // send replyToId
       };
 
       const response = await postMessage(projectId, messageData);
@@ -143,7 +153,11 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       }, 100);
     } catch (error) {
       console.error('Failed to send message:', error);
-      Alert.alert('Error', 'Failed to send message');
+      if (error.message.includes('access restricted')) {
+        Alert.alert('Access Restricted', 'You do not have permission to send messages in this discussion.');
+      } else {
+        Alert.alert('Error', 'Failed to send message. Please try again.');
+      }
     } finally {
       setSending(false);
     }
@@ -151,6 +165,9 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
   const handleReply = (message) => {
     setReplyingTo(message);
+    setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
   };
 
   const cancelReply = () => {
@@ -178,13 +195,17 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       );
     } catch (error) {
       console.error('Failed to react to message:', error);
-      Alert.alert('Error', 'Failed to add reaction');
+      if (error.message.includes('access restricted')) {
+        Alert.alert('Access Restricted', 'You do not have permission to react to messages in this discussion.');
+      } else {
+        Alert.alert('Error', 'Failed to add reaction. Please try again.');
+      }
     }
   };
 
   const handleTogglePin = async (messageId) => {
-    if (!userAccess.canEdit) {
-      Alert.alert('Access Denied', 'You do not have permission to pin messages');
+    if (!userPermissions.canEdit) {
+      Alert.alert('Access Restricted', 'You do not have permission to pin messages');
       return;
     }
 
@@ -215,7 +236,11 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       );
     } catch (error) {
       console.error('Failed to toggle pin:', error);
-      Alert.alert('Error', 'Failed to toggle pin status');
+      if (error.message.includes('access restricted')) {
+        Alert.alert('Access Restricted', 'You do not have permission to pin/unpin messages in this discussion.');
+      } else {
+        Alert.alert('Error', 'Failed to toggle pin status. Please try again.');
+      }
     }
   };
 
@@ -270,43 +295,44 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
     const totalReactions = reactions.length;
 
+    // Find parent message for reply indicator
+    let parentMessageContent = '';
+    if (message.replyToId) {
+      const parentMsg = messages.find((m) => m.id === message.replyToId);
+      parentMessageContent = parentMsg ? parentMsg.content : 'Message';
+    }
+
     return (
       <View
         key={message.id}
-        style={[
-          styles.messageContainer,
-          {
-            alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
-            marginBottom: isLastInGroup ? 16 : 3,
-            marginTop: isFirstInGroup ? 8 : 0,
-          },
-        ]}>
+        style={[styles.messageContainer, {
+          alignItems: isOwnMessage ? 'flex-end' : 'flex-start',
+          marginBottom: isLastInGroup ? 16 : 3,
+          marginTop: isFirstInGroup ? 8 : 0,
+        }]}
+      >
         <View
-          style={[
-            styles.messageBubble,
-            {
-              backgroundColor: isOwnMessage ? '#17313E' : theme.card,
-              borderColor: isSelected ? theme.primary : theme.border,
-              borderWidth: isSelected ? 2 : 1,
-              alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
-              shadowColor: isSelected ? theme.primary : 'transparent',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: isSelected ? 0.3 : 0,
-              shadowRadius: isSelected ? 4 : 0,
-              elevation: isSelected ? 3 : 1,
-              // WhatsApp-like bubble shaping
-              borderTopLeftRadius: isOwnMessage ? 16 : isFirstInGroup ? 16 : 4,
-              borderTopRightRadius: isOwnMessage ? (isFirstInGroup ? 16 : 4) : 16,
-              borderBottomLeftRadius: isOwnMessage ? 16 : isLastInGroup ? 16 : 4,
-              borderBottomRightRadius: isOwnMessage ? (isLastInGroup ? 16 : 4) : 16,
-            },
-          ]}>
+          style={[styles.messageBubble, {
+            backgroundColor: isOwnMessage ? '#17313E' : theme.card,
+            borderColor: isSelected ? theme.primary : theme.border,
+            borderWidth: isSelected ? 2 : 1,
+            alignSelf: isOwnMessage ? 'flex-end' : 'flex-start',
+            shadowColor: isSelected ? theme.primary : 'transparent',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: isSelected ? 0.3 : 0,
+            shadowRadius: isSelected ? 4 : 0,
+            elevation: isSelected ? 3 : 1,
+            // WhatsApp-like bubble shaping
+            borderTopLeftRadius: isOwnMessage ? 16 : isFirstInGroup ? 16 : 4,
+            borderTopRightRadius: isOwnMessage ? (isFirstInGroup ? 16 : 4) : 16,
+            borderBottomLeftRadius: isOwnMessage ? 16 : isLastInGroup ? 16 : 4,
+            borderBottomRightRadius: isOwnMessage ? (isLastInGroup ? 16 : 4) : 16,
+          }]}
+        >
           {/* Show sender name only for first message in group from others */}
           {!isOwnMessage && isFirstInGroup && (
             <View style={styles.messageHeader}>
-              <Text style={[styles.senderName, { color: theme.primary }]}>
-                {message.User?.name || message.sender?.name || 'Unknown User'}
-              </Text>
+              <Text style={[styles.senderName, { color: theme.primary }]}> {message.User?.name || message.sender?.name || 'Unknown User'} </Text>
               {isPinned && (
                 <View style={styles.pinnedBadge}>
                   <MaterialIcons name="push-pin" size={12} color={theme.primary} />
@@ -317,7 +343,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
           {/* Show pinned badge for own messages */}
           {isOwnMessage && isPinned && (
-            <View style={[styles.messageHeader, { justifyContent: 'flex-end' }]}>
+            <View style={[styles.messageHeader, { justifyContent: 'flex-end' }]}> 
               <View style={styles.pinnedBadge}>
                 <MaterialIcons name="push-pin" size={12} color="rgba(255,255,255,0.8)" />
               </View>
@@ -325,23 +351,23 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
           )}
 
           {/* Show reply indicator if this message is a reply */}
-          {message.replyTo && (
+          {message.replyToId && (
             <View style={styles.replyIndicator}>
               <View style={[styles.replyLine, { backgroundColor: theme.primary }]} />
               <Text style={[styles.replyText, { color: theme.secondaryText }]} numberOfLines={1}>
-                Replying to: {message.replyToContent || 'Message'}
+                Replying to: {parentMessageContent}
               </Text>
             </View>
           )}
 
-          <Text style={[styles.messageText, { color: isOwnMessage ? '#fff' : theme.text }]}>
+          <Text style={[styles.messageText, { color: isOwnMessage ? '#fff' : theme.text }]}> 
             {message.content}
           </Text>
 
           {/* Always show time and actions for better UX */}
           <View style={styles.messageFooter}>
             <Text
-              style={[
+              style={[ 
                 styles.messageTime,
                 { color: isOwnMessage ? 'rgba(255,255,255,0.7)' : theme.secondaryText },
               ]}>
@@ -369,7 +395,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                 />
               </TouchableOpacity>
 
-              {userAccess.canEdit && (
+              {userPermissions.canEdit && (
                 <TouchableOpacity
                   onPress={() => handleTogglePin(message.id)}
                   style={styles.actionButton}>
@@ -394,15 +420,15 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               {reactions.slice(0, 3).map((reaction, idx) => (
                 <View
                   key={idx}
-                  style={[styles.reactionBadge, { backgroundColor: theme.background }]}>
-                  <Text style={[styles.reactionText, { color: theme.text }]}>
+                  style={[styles.reactionBadge, { backgroundColor: theme.background }]}> 
+                  <Text style={[styles.reactionText, { color: theme.text }]}> 
                     👍 {reaction.count || 1}
                   </Text>
                 </View>
               ))}
               {totalReactions > 3 && (
-                <View style={[styles.reactionBadge, { backgroundColor: theme.background }]}>
-                  <Text style={[styles.reactionText, { color: theme.text }]}>
+                <View style={[styles.reactionBadge, { backgroundColor: theme.background }]}> 
+                  <Text style={[styles.reactionText, { color: theme.text }]}> 
                     +{totalReactions - 3}
                   </Text>
                 </View>
@@ -423,17 +449,22 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <View
-        style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
+        style={[styles.header, { backgroundColor: theme.card, borderBottomColor: theme.border }]}> 
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}> 
+          <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} /> 
         </TouchableOpacity>
-        <View style={styles.headerContent}>
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Discussion</Text>
-          <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>{projectName}</Text>
+        <View style={styles.headerContent}> 
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Discussion</Text> 
+          <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>{projectName}</Text> 
         </View>
-        <TouchableOpacity style={styles.headerAction}>
-          <MaterialIcons name="info-outline" size={20} color={theme.text} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row' }}>
+          <TouchableOpacity style={styles.headerAction} onPress={handleRefresh}>
+            <MaterialIcons name="refresh" size={20} color={theme.text} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerAction}>
+            <MaterialIcons name="info-outline" size={20} color={theme.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Sticky Pinned Messages */}
@@ -484,7 +515,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                   <Text style={[styles.compactPinnedText, { color: theme.text }]} numberOfLines={1}>
                     {senderName}: {message.content}
                   </Text>
-                  {userAccess.canEdit && (
+                  {userPermissions.canEdit && (
                     <TouchableOpacity
                       onPress={(e) => {
                         e.stopPropagation();
@@ -523,15 +554,24 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
           onContentSizeChange={() => {
             // Scroll to bottom to see latest messages
             scrollViewRef.current?.scrollToEnd({ animated: false });
-          }}>
-          {accessLoading ? (
+          }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+            />
+          }
+        >
+          {permissionsLoading ? (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="large" color={theme.primary} />
               <Text style={[styles.loadingText, { color: theme.secondaryText }]}>
-                Checking access permissions...
+                Checking discussion restrictions...
               </Text>
             </View>
-          ) : !userAccess.canView ? (
+          ) : !userPermissions.canView ? (
             <View style={styles.emptyContainer}>
               <MaterialIcons name="lock" size={48} color={theme.secondaryText} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>Access Restricted</Text>
@@ -552,7 +592,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               <MaterialIcons name="chat-bubble-outline" size={48} color={theme.secondaryText} />
               <Text style={[styles.emptyTitle, { color: theme.text }]}>Start the Discussion</Text>
               <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
-                {userAccess.canReply
+                {userPermissions.canReply
                   ? 'Be the first to share your thoughts about this project'
                   : 'No messages yet. You can view messages but cannot post replies.'}
               </Text>
@@ -564,27 +604,27 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
         </ScrollView>
 
         {/* Input - Only show if user can reply and has view access */}
-        {userAccess.canView && (
+        {userPermissions.canView && (
           <>
             {/* Reply Preview - Outside of input container for better positioning */}
             {replyingTo && (
-              <View style={[styles.replyPreviewContainer, { backgroundColor: theme.card }]}>
-                <View style={[styles.replyPreview, { backgroundColor: theme.background, borderColor: theme.border }]}>
-                  <View style={styles.replyPreviewContent}>
-                    <MaterialIcons name="reply" size={16} color={theme.primary} />
-                    <View style={styles.replyPreviewText}>
-                      <Text style={[styles.replyPreviewTitle, { color: theme.primary }]}>
-                        Replying to {replyingTo.User?.name || replyingTo.sender?.name || 'Unknown'}
-                      </Text>
-                      <Text style={[styles.replyPreviewMessage, { color: theme.secondaryText }]} numberOfLines={1}>
-                        {replyingTo.content}
-                      </Text>
-                    </View>
-                  </View>
-                  <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyButton}>
-                    <MaterialIcons name="close" size={18} color={theme.secondaryText} />
-                  </TouchableOpacity>
-                </View>
+              <View style={[styles.replyPreviewContainer, { backgroundColor: theme.card }]}> 
+                <View style={[styles.replyPreview, { backgroundColor: theme.background, borderColor: theme.border }]}> 
+                  <View style={styles.replyPreviewContent}> 
+                    <MaterialIcons name="reply" size={16} color={theme.primary} /> 
+                    <View style={styles.replyPreviewText}> 
+                      <Text style={[styles.replyPreviewTitle, { color: theme.primary }]}> 
+                        Replying to {replyingTo.User?.name || replyingTo.sender?.name || 'Unknown'} 
+                      </Text> 
+                      <Text style={[styles.replyPreviewMessage, { color: theme.secondaryText }]} numberOfLines={1}> 
+                        {replyingTo.content} 
+                      </Text> 
+                    </View> 
+                  </View> 
+                  <TouchableOpacity onPress={cancelReply} style={styles.cancelReplyButton}> 
+                    <MaterialIcons name="close" size={18} color={theme.secondaryText} /> 
+                  </TouchableOpacity> 
+                </View> 
               </View>
             )}
 
@@ -593,9 +633,10 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                 styles.inputContainer,
                 { backgroundColor: theme.card, borderTopColor: theme.border },
               ]}>
-              {userAccess.canReply ? (
+              {userPermissions.canReply ? (
               <>
                 <TextInput
+                  ref={inputRef}
                   style={[
                     styles.textInput,
                     {
@@ -610,6 +651,13 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                   onChangeText={setNewMessage}
                   multiline
                   maxLength={1000}
+                  onSubmitEditing={() => {
+                    if (!newMessage.includes('\n')) {
+                      handleSendMessage();
+                    }
+                  }}
+                  blurOnSubmit={!newMessage.includes('\n')}
+                  returnKeyType="send"
                 />
                 <TouchableOpacity
                   style={[

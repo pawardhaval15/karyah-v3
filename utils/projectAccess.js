@@ -1,9 +1,35 @@
+// Edit restriction for a user on a project and module
+export const editRestriction = async (projectId, userId, updateData) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/project-access/${projectId}/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to update restriction');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Edit Restriction Error:', error.message);
+    throw error;
+  }
+};
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getUserIdFromToken } from './auth';
 import { API_URL } from './config';
 
-// Get all access entries for a project
-export const getAccessByProject = async (projectId) => {
+// Get all restrictions for a project
+export const getRestrictionsByProject = async (projectId) => {
   try {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('User not authenticated');
@@ -22,18 +48,18 @@ export const getAccessByProject = async (projectId) => {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch access data');
+      throw new Error(data.error || 'Failed to fetch restrictions data');
     }
 
     return data;
   } catch (error) {
-    console.error('Get Access Error:', error.message);
+    console.error('Get Restrictions Error:', error.message);
     throw error;
   }
 };
 
-// Add or update access for a user on a project and module
-export const setAccess = async (projectId, accessData) => {
+// Set restriction for a user on a project and module
+export const setRestriction = async (projectId, restrictionData) => {
   try {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('User not authenticated');
@@ -44,23 +70,23 @@ export const setAccess = async (projectId, accessData) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify(accessData),
+      body: JSON.stringify(restrictionData),
     });
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to set access');
+      throw new Error(data.error || 'Failed to set restriction');
     }
 
     return data;
   } catch (error) {
-    console.error('Set Access Error:', error.message);
+    console.error('Set Restriction Error:', error.message);
     throw error;
   }
 };
 
-// Remove access for a user on a project and module
-export const removeAccess = async (projectId, removeData) => {
+// Remove restriction for a user on a project and module
+export const removeRestriction = async (projectId, removeData) => {
   try {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('User not authenticated');
@@ -76,18 +102,18 @@ export const removeAccess = async (projectId, removeData) => {
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to remove access');
+      throw new Error(data.error || 'Failed to remove restriction');
     }
 
     return data;
   } catch (error) {
-    console.error('Remove Access Error:', error.message);
+    console.error('Remove Restriction Error:', error.message);
     throw error;
   }
 };
 
-// Bulk set access for multiple users/modules
-export const bulkSetAccess = async (projectId, accessList) => {
+// Bulk set restrictions for multiple users/modules
+export const bulkSetRestrictions = async (projectId, restrictionList) => {
   try {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('User not authenticated');
@@ -98,44 +124,44 @@ export const bulkSetAccess = async (projectId, accessList) => {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ accessList }),
+      body: JSON.stringify({ restrictionList }),
     });
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to bulk set access');
+      throw new Error(data.error || 'Failed to bulk set restrictions');
     }
 
     return data;
   } catch (error) {
-    console.error('Bulk Set Access Error:', error.message);
+    console.error('Bulk Set Restrictions Error:', error.message);
     throw error;
   }
 };
 
-// Bulk edit access for multiple users/modules
-export const bulkEditAccess = async (projectId, accessList) => {
+// Bulk remove restrictions for multiple users/modules
+export const bulkRemoveRestrictions = async (projectId, restrictionList) => {
   try {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('User not authenticated');
 
-    const response = await fetch(`${API_URL}api/project-access/bulk-edit/${projectId}`, {
-      method: 'PATCH',
+    const response = await fetch(`${API_URL}api/project-access/${projectId}/bulk`, {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ accessList }),
+      body: JSON.stringify({ restrictionList }),
     });
 
     const data = await response.json();
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to bulk edit access');
+      throw new Error(data.error || 'Failed to bulk remove restrictions');
     }
 
     return data;
   } catch (error) {
-    console.error('Bulk Edit Access Error:', error.message);
+    console.error('Bulk Remove Restrictions Error:', error.message);
     throw error;
   }
 };
