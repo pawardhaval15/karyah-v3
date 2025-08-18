@@ -17,7 +17,7 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { fetchUserConnections } from '../utils/issues';
 import { getProjectById } from '../utils/project';
-import { bulkSetRestrictions, getRestrictionsByProject, removeRestriction, setRestriction, editRestriction } from '../utils/projectAccess';
+import { bulkSetRestrictions, editRestriction, getRestrictionsByProject, removeRestriction, setRestriction } from '../utils/projectAccess';
 
 export default function ProjectAccessScreen({ route, navigation }) {
   const { projectId, projectName } = route.params;
