@@ -66,7 +66,7 @@ export default function ProjectProgressCard({
           <Text ellipsizeMode="tail" style={[styles.timeline, { color: theme.text }]}>{formatShortDateRange(timeline)}</Text>
         </View>
       </View>
-      <Text style={[styles.assigned, { color: theme.text }]}>
+      <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.assigned, { color: theme.text }]}>
         Location: <Text style={[styles.assignedBy, { color: theme.text }]}>{location || "N/A"}</Text>
       </Text>
     </TouchableOpacity>

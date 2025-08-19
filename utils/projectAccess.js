@@ -4,7 +4,7 @@ export const editRestriction = async (projectId, userId, updateData) => {
     const token = await AsyncStorage.getItem('token');
     if (!token) throw new Error('User not authenticated');
 
-    const response = await fetch(`${API_URL}api/project-access/${projectId}/${userId}`, {
+    const response = await fetch(`${API_URL}api/project-access/${projectId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',

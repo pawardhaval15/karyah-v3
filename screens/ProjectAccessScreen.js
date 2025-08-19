@@ -447,83 +447,136 @@ export default function ProjectAccessScreen({ route, navigation }) {
     };
 
     return (
-      <View style={[styles.accessItem, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.userInfo}>
-          <View style={[styles.avatar, { backgroundColor: theme.primary }]}>
-            <Text style={styles.avatarText}>
+      <View style={{
+        backgroundColor: theme.card,
+        borderRadius: 18,
+        borderWidth: 0,
+        marginBottom: 18,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.10,
+        shadowRadius: 8,
+        elevation: 4,
+        padding: 18,
+      }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 10 }}>
+          <View style={{
+            width: 48,
+            height: 48,
+            borderRadius: 24,
+            backgroundColor: theme.primary,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 14,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 20, fontWeight: '700' }}>
               {restrictionData.user?.name?.charAt(0).toUpperCase() || 'U'}
             </Text>
           </View>
-          <View style={styles.userDetails}>
-            <View style={styles.userNameRow}>
-              <Text style={[styles.userName, { color: theme.text }]}>
-                {restrictionData.user?.name || 'Unknown User'}
-              </Text>
-              <View style={[styles.roleBadge, { backgroundColor: roleColors[userRole] }]}>
-                <Text style={styles.roleBadgeText}>
-                  {userRole === 'co-admin' ? 'Admin' : userRole?.toUpperCase()}
-                </Text>
-              </View>
-            </View>
-            <Text style={[styles.userEmail, { color: theme.secondaryText }]}>
-              {restrictionData.user?.email || ''}
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
+              {restrictionData.user?.name || restrictionData.User?.name || 'Unknown User'}
+            </Text>
+            <Text style={{ fontSize: 13, color: theme.secondaryText, marginTop: 2 }}>
+              {restrictionData.user?.email || restrictionData.User?.email || ''}
+            </Text>
+          </View>
+          <View style={{
+            backgroundColor: roleColors[userRole],
+            borderRadius: 12,
+            paddingHorizontal: 12,
+            paddingVertical: 4,
+            marginLeft: 8,
+          }}>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700', textTransform: 'uppercase' }}>
+              {userRole === 'co-admin' ? 'Admin' : userRole?.toUpperCase()}
             </Text>
           </View>
         </View>
 
-        <View style={styles.modulesContainer}>
-          {restrictionData.modules.map((moduleRestriction, index) => (
-            <View key={index} style={styles.moduleItem}>
-              <View style={styles.moduleInfo}>
-                <Text style={[styles.moduleName, { color: theme.text }]}>
-                  {modules.find((m) => m.key === moduleRestriction.module)?.label || moduleRestriction.module}
-                </Text>
-
-                <View style={styles.permissionsList}>
-                  {moduleRestriction.canView && (
-                    <View
-                      style={[
-                        styles.permissionBox,
-                        { borderColor: theme.danger, backgroundColor: theme.card },
-                      ]}>
-                      <Text style={[styles.permission, { color: theme.danger }]}>Can't View</Text>
-                    </View>
-                  )}
-                  {moduleRestriction.canReply && (
-                    <View
-                      style={[
-                        styles.permissionBox,
-                        { borderColor: theme.danger, backgroundColor: theme.card },
-                      ]}>
-                      <Text style={[styles.permission, { color: theme.danger }]}>Can't Reply</Text>
-                    </View>
-                  )}
-                  {moduleRestriction.canEdit && (
-                    <View
-                      style={[
-                        styles.permissionBox,
-                        { borderColor: theme.danger, backgroundColor: theme.card },
-                      ]}>
-                      <Text style={[styles.permission, { color: theme.danger }]}>Can't Edit</Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <TouchableOpacity
-                  onPress={() => handleEditClick(moduleRestriction)}
-                  style={[styles.removeButton, { marginRight: 8 }]}>
-                  <MaterialIcons name="edit" size={20} color={theme.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={() => handleRemoveRestriction(moduleRestriction.userId, moduleRestriction.module)}
-                  style={styles.removeButton}>
-                  <MaterialIcons name="delete-outline" size={20} color={theme.danger} />
-                </TouchableOpacity>
+        {restrictionData.modules.map((moduleRestriction, index) => (
+          <View key={index} style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 8,
+            marginLeft: 62,
+          }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: theme.primary, marginBottom: 6 }}>
+                {modules.find((m) => m.key === moduleRestriction.module)?.label || moduleRestriction.module}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {!moduleRestriction.canView && (
+                  <View style={{
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    backgroundColor: theme.card,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    marginRight: 0,
+                  }}>
+                    <Text style={{ color: theme.danger, fontWeight: '600', fontSize: 12 }}>No View</Text>
+                  </View>
+                )}
+                {!moduleRestriction.canReply && (
+                  <View style={{
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    backgroundColor: theme.card,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    marginRight: 0,
+                  }}>
+                    <Text style={{ color: theme.danger, fontWeight: '600', fontSize: 12 }}>No Reply</Text>
+                  </View>
+                )}
+                {!moduleRestriction.canEdit && (
+                  <View style={{
+                    borderRadius: 16,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                    backgroundColor: theme.card,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    marginRight: 0,
+                  }}>
+                    <Text style={{ color: theme.danger, fontWeight: '600', fontSize: 12 }}>No Edit</Text>
+                  </View>
+                )}
               </View>
             </View>
-          ))}
-        </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => handleEditClick(moduleRestriction)}
+                style={{
+                  backgroundColor: theme.background,
+                  borderRadius: 20,
+                  padding: 6,
+                  marginRight: 2,
+                  shadowColor: theme.primary,
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                }}>
+                <MaterialIcons name="edit" size={20} color={theme.primary} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => handleRemoveRestriction(moduleRestriction.userId, moduleRestriction.module)}
+                style={{
+                  backgroundColor: theme.background,
+                  borderRadius: 20,
+                  padding: 6,
+                  shadowColor: theme.danger,
+                  shadowOpacity: 0.08,
+                  shadowRadius: 4,
+                }}>
+                <MaterialIcons name="delete-outline" size={20} color={theme.danger} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ))}
       </View>
     );
   };
@@ -916,28 +969,28 @@ export default function ProjectAccessScreen({ route, navigation }) {
                   <View style={styles.permissionInfo}>
                     <Text style={[styles.permissionLabel, { color: theme.text }]}>
                       {key === 'canView'
-                        ? 'Block Viewing Messages'
+                        ? 'Allow Viewing Messages'
                         : key === 'canReply'
-                          ? 'Block Sending Messages'
-                          : 'Block Managing Discussion'}
+                          ? 'Allow Sending Messages'
+                          : 'Allow Managing Discussion'}
                     </Text>
                     {selectedModule === 'discussion' && (
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
                         {key === 'canView'
-                          ? 'User cannot see discussion messages'
+                          ? 'User can see discussion messages'
                           : key === 'canReply'
-                            ? 'User cannot post messages and replies'
-                            : 'User cannot pin messages and moderate discussion'}
+                            ? 'User can post messages and replies'
+                            : 'User can pin messages and moderate discussion'}
                       </Text>
                     )}
                   </View>
                   <Switch
-                    value={value}
+                    value={!value}
                     onValueChange={(newValue) =>
-                      setRestrictionSettings((prev) => ({ ...prev, [key]: newValue }))
+                      setRestrictionSettings((prev) => ({ ...prev, [key]: !newValue }))
                     }
-                    trackColor={{ false: theme.border, true: theme.danger }}
-                    thumbColor={value ? '#fff' : theme.secondaryText}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                    thumbColor={!value ? '#fff' : theme.secondaryText}
                   />
                 </View>
               ))}
@@ -984,11 +1037,11 @@ export default function ProjectAccessScreen({ route, navigation }) {
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>User</Text>
                   <View style={[styles.userChip, { backgroundColor: theme.background, borderColor: theme.border }]}>
                     <View style={styles.userChipContent}>
-                      <Text style={[styles.userChipText, { color: theme.text }]}>
-                        {editingRestriction.user?.name || 'Unknown User'}
+                      <Text style={[styles.userChipText, { color: theme.text }]}> 
+                        {editingRestriction.user?.name || editingRestriction.User?.name || 'Unknown User'}
                       </Text>
-                      <Text style={[styles.userChipDesignation, { color: theme.secondaryText }]}>
-                        {editingRestriction.user?.email || ''}
+                      <Text style={[styles.userChipDesignation, { color: theme.secondaryText }]}> 
+                        {editingRestriction.user?.email || editingRestriction.User?.email || ''}
                       </Text>
                     </View>
                   </View>
@@ -1013,44 +1066,44 @@ export default function ProjectAccessScreen({ route, navigation }) {
 
                   <View style={styles.permissionRow}>
                     <View style={styles.permissionInfo}>
-                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can't View</Text>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can View</Text>
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
-                        User cannot see content in this module
+                        User can see content in this module
                       </Text>
                     </View>
-                    <Switch
-                      value={restrictionSettings.canView}
-                      onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canView: value }))}
-                      trackColor={{ false: theme.border, true: theme.primary }}
-                    />
+                  <Switch
+                    value={restrictionSettings.canView}
+                    onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canView: value }))}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                  />
                   </View>
 
                   <View style={styles.permissionRow}>
                     <View style={styles.permissionInfo}>
-                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can't Reply</Text>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can Reply</Text>
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
-                        User cannot post new content or replies
+                        User can post new content and replies
                       </Text>
                     </View>
-                    <Switch
-                      value={restrictionSettings.canReply}
-                      onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canReply: value }))}
-                      trackColor={{ false: theme.border, true: theme.primary }}
-                    />
+                  <Switch
+                    value={restrictionSettings.canReply}
+                    onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canReply: value }))}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                  />
                   </View>
 
                   <View style={styles.permissionRow}>
                     <View style={styles.permissionInfo}>
-                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can't Edit</Text>
+                      <Text style={[styles.permissionLabel, { color: theme.text }]}>Can Edit</Text>
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
-                        User cannot modify or manage content
+                        User can modify and manage content
                       </Text>
                     </View>
-                    <Switch
-                      value={restrictionSettings.canEdit}
-                      onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canEdit: value }))}
-                      trackColor={{ false: theme.border, true: theme.primary }}
-                    />
+                  <Switch
+                    value={restrictionSettings.canEdit}
+                    onValueChange={(value) => setRestrictionSettings(prev => ({ ...prev, canEdit: value }))}
+                    trackColor={{ false: theme.border, true: theme.primary }}
+                  />
                   </View>
                 </View>
               </>
@@ -1462,26 +1515,26 @@ export default function ProjectAccessScreen({ route, navigation }) {
                     <View style={styles.permissionInfo}>
                       <Text style={[styles.permissionLabel, { color: theme.text }]}>
                         {key === 'canView'
-                          ? 'Block View Access'
+                          ? 'Allow View Access'
                           : key === 'canReply'
-                            ? 'Block Reply/Participate'
-                            : 'Block Edit/Manage'}
+                            ? 'Allow Reply/Participate'
+                            : 'Allow Edit/Manage'}
                       </Text>
                       <Text style={[styles.permissionDescription, { color: theme.secondaryText }]}>
                         {key === 'canView'
-                          ? 'User cannot view content in selected modules'
+                          ? 'User can view content in selected modules'
                           : key === 'canReply'
-                            ? 'User cannot contribute and reply in selected modules'
-                            : 'User cannot edit and manage content in selected modules'}
+                            ? 'User can contribute and reply in selected modules'
+                            : 'User can edit and manage content in selected modules'}
                       </Text>
                     </View>
                     <Switch
-                      value={value}
+                      value={!value}
                       onValueChange={(newValue) =>
-                        setBulkRestrictionSettings((prev) => ({ ...prev, [key]: newValue }))
+                        setBulkRestrictionSettings((prev) => ({ ...prev, [key]: !newValue }))
                       }
-                      trackColor={{ false: theme.border, true: theme.danger }}
-                      thumbColor={value ? '#fff' : theme.secondaryText}
+                      trackColor={{ false: theme.border, true: theme.primary }}
+                      thumbColor={!value ? '#fff' : theme.secondaryText}
                     />
                   </View>
                 ))}
@@ -1766,7 +1819,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   permission: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '500',
   },
   removeButton: {
