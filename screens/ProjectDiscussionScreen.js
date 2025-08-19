@@ -236,8 +236,10 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       );
     } catch (error) {
       console.error('Failed to toggle pin:', error);
-      if (error.message.includes('access restricted')) {
-        Alert.alert('Access Restricted', 'You do not have permission to pin/unpin messages in this discussion.');
+      if (error.message && error.message.includes('Only the project creator can pin/unpin messages')) {
+        Alert.alert('No Access', 'You do not have access to pin/unpin messages. Only the project owner can perform this action.');
+      } else if (error.message && error.message.includes('access restricted')) {
+        Alert.alert('Access Restricted', 'You do not have permission to pin messages');
       } else {
         Alert.alert('Error', 'Failed to toggle pin status. Please try again.');
       }
