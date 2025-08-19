@@ -474,11 +474,16 @@ export default function MyTasksScreen({ navigation }) {
               {taskName}
             </Text>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Feather name="folder" size={14} color={theme.secondaryText} style={{ marginRight: 4 }} />
+              <Feather
+                name="folder"
+                size={14}
+                color={theme.secondaryText}
+                style={{ marginRight: 4 }}
+              />
               <Text
                 numberOfLines={1}
                 ellipsizeMode="tail"
-                style={[styles.taskProject, { color: theme.secondaryText, flexShrink: 1 }]}> 
+                style={[styles.taskProject, { color: theme.secondaryText, flexShrink: 1 }]}>
                 {item.projectName ||
                   (item.project && item.project.projectName) ||
                   (item.project && item.project.name) ||
@@ -493,7 +498,11 @@ export default function MyTasksScreen({ navigation }) {
                   </Text>
                   <Text
                     numberOfLines={1}
-                    style={[styles.taskLocation, { color: theme.secondaryText, marginLeft: 2 }]}>
+                    ellipsizeMode="tail"
+                    style={[
+                      styles.taskLocationName,
+                      { color: theme.secondaryText, marginLeft: 2 },
+                    ]}>
                     {item.project.location}
                   </Text>
                 </View>
@@ -1275,6 +1284,11 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     fontWeight: '400',
   },
+  taskLocationName: {
+    fontSize: 13,
+    minWidth: 50,
+    maxWidth: '70%',
+  },
   filterButton: {
     position: 'relative',
     marginLeft: 8,
@@ -1396,7 +1410,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '400',
     marginBottom: 0,
-    maxWidth: '80%',
+    minWidth: 50,
+    maxWidth: '70%',
   },
   assignedInfoRow: {
     flexDirection: 'row',

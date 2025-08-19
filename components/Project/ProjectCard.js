@@ -60,7 +60,7 @@ export default function ProjectCard({ project = {}, theme }) {
       </View>
 
       <View style={{ flex: 1 }}>
-        <Text style={[styles.projectName, { color: theme.text }]}>{projectName}</Text>
+        <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.projectName, { color: theme.text }]}>{projectName}</Text>
 
         <View style={styles.projectRow}>
           <Feather name="clock" size={14} color={statusColor} style={{ marginRight: 6 }} />
@@ -69,7 +69,7 @@ export default function ProjectCard({ project = {}, theme }) {
 
         <View style={styles.projectRow}>
           <Feather name="map-pin" size={14} color={theme.secondaryText || '#666'} />
-          <Text style={[styles.projectInfo, { color: theme.secondaryText || '#666' }]}>{location || 'N/A'}</Text>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.projectInfo, { color: theme.secondaryText || '#666' }]}>{location || 'N/A'}</Text>
         </View>
       </View>
 
@@ -126,6 +126,7 @@ const styles = StyleSheet.create({
     fontSize: isTablet ? 14 : 12,
     marginLeft: 5,
     fontWeight: '400',
+    maxWidth: isTablet ? 200 : 180,
   },
   progressCircle: {
     alignItems: 'center',
