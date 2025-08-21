@@ -3,22 +3,23 @@ import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Dimensions,
-    Image,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  Dimensions,
+  Image,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
+import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
 import ProjectIssuePopup from '../components/popups/ProjectIssuePopup';
 import DateBox from '../components/project details/DateBox';
 import FieldBox from '../components/project details/FieldBox';
@@ -50,6 +51,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
+  const [showMaterialRequestPopup, setShowMaterialRequestPopup] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -181,116 +183,106 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
           </View>
         </LinearGradient>
-        {/* Action Buttons Row */}
-        <View style={{ flexDirection: 'row', marginHorizontal: isTablet ? 40 : 20, marginTop: isTablet ? 20 : 16, marginBottom: isTablet ? 20 : 16, gap: isTablet ? 12 : 8 }}>
-          {/* Task Dependency Flow */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowDependencyChart(true)}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.card,
-              borderRadius: 18,
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              borderWidth: 1,
-              borderColor: theme.border,
-              minHeight: 48,
-            }}>
-            <MaterialIcons
-              name="device-hub"
-              size={isTablet ? 20 : 18}
-              color={theme.primary}
-              style={{ marginRight: isTablet ? 10 : 8 }}
-            />
-            <Text
-              numberOfLines={1}
-              ellipsizeMode='tail'
-              style={{ color: theme.text, fontWeight: '400', fontSize: isTablet ? 15 : 13, flexWrap: 'nowrap' }}>
-              Task Dep.
-            </Text>
-          </TouchableOpacity>
-
-          {/* Discussion */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => {
-              if (projectDetails?.id) {
-                navigation.navigate('ProjectDiscussionScreen', {
-                  projectId: projectDetails.id,
-                  projectName: projectDetails.projectName
-                });
-              }
-            }}
-            style={{
-              flex: 1,
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: theme.card,
-              borderRadius: 18,
-              paddingHorizontal: 20,
-              paddingVertical: 10,
-              borderWidth: 1,
-              borderColor: theme.border,
-              minHeight: 48,
-            }}>
-            <Feather
-              name="message-circle"
-              size={isTablet ? 20 : 18}
-              color={theme.primary}
-              style={{ marginRight: isTablet ? 10 : 8 }}
-            />
-            <Text
-              numberOfLines={1}
-              ellipsizeMode='tail'
-              style={{ color: theme.text, fontWeight: '400', fontSize: isTablet ? 15 : 13, flexWrap: 'nowrap' }}>
-              Discussion
-            </Text>
-          </TouchableOpacity>
-
-          {/* Project Settings - Only show for project owner */}
-          {projectDetails?.userId === userId && (
+        {/* Modern Pill-Style Tab Buttons */}
+        <View style={[styles.tabButtonsContainer, { backgroundColor: theme.background }]}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.tabButtonsWrapper}>
+            {/* Task Dependencies Tab */}
             <TouchableOpacity
-              activeOpacity={0.8}
+              key="taskdep"
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowDependencyChart(true);
+              }}
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}>
+              <MaterialIcons name="device-hub" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
+                Task Dep.
+              </Text>
+            </TouchableOpacity>
+
+            {/* Discussion Tab */}
+            <TouchableOpacity
+              key="discussion"
+              activeOpacity={0.7}
               onPress={() => {
                 if (projectDetails?.id) {
-                  navigation.navigate('ProjectAccessScreen', {
+                  navigation.navigate('ProjectDiscussionScreen', {
                     projectId: projectDetails.id,
-                    projectName: projectDetails.projectName
+                    projectName: projectDetails.projectName,
                   });
                 }
               }}
-              style={{
-                flex: 1,
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                backgroundColor: theme.card,
-                borderRadius: 18,
-                paddingHorizontal: 20,
-                paddingVertical: 10,
-                borderWidth: 1,
-                borderColor: theme.border,
-                minHeight: 48,
-              }}>
-              <Feather
-                name="settings"
-                size={isTablet ? 20 : 18}
-                color={theme.primary}
-                style={{ marginRight: isTablet ? 10 : 8 }}
-              />
-              <Text
-                numberOfLines={1}
-                ellipsizeMode='tail'
-                style={{ color: theme.text, fontWeight: '400', fontSize: isTablet ? 15 : 13, flexWrap: 'nowrap' }}>
-                Project Settings
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                },
+              ]}>
+              <Feather name="message-circle" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
+                Discussion
               </Text>
             </TouchableOpacity>
-          )}
+
+            {/* Materials Tab */}
+            <TouchableOpacity
+              key="materials"
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowMaterialRequestPopup(true);
+              }}
+              style={[ 
+                styles.tabButton,
+                { 
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                }
+              ]}
+            >
+              <Feather name="package" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
+                Materials
+              </Text>
+            </TouchableOpacity>
+
+            {/* Settings Tab - Only show for project owner */}
+            {projectDetails?.userId === userId && (
+              <TouchableOpacity
+                key="settings"
+                activeOpacity={0.7}
+                onPress={() => {
+                  if (projectDetails?.id) {
+                    navigation.navigate('ProjectAccessScreen', {
+                      projectId: projectDetails.id,
+                      projectName: projectDetails.projectName,
+                    });
+                  }
+                }}
+                style={[ 
+                styles.tabButton,
+                { 
+                  backgroundColor: theme.background,
+                  borderColor: theme.border,
+                }
+              ]}
+            >
+                <Feather name="settings" size={16} color={theme.primary} />
+                <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
+                  Settings
+                </Text>
+              </TouchableOpacity>
+            )}
+          </ScrollView>
         </View>
         <View style={styles.progressSection}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
@@ -400,16 +392,16 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 borderColor: theme.border,
                 maxHeight: 140,
                 flexDirection: 'column',
-                alignItems: 'flex-start'
+                alignItems: 'flex-start',
               },
-            ]}
-          >
-            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>DESCRIPTION</Text>
+            ]}>
+            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
+              DESCRIPTION
+            </Text>
             <Text
               numberOfLines={5} // Limit lines in main screen for preview
               ellipsizeMode="tail"
-              style={[styles.inputValue, { color: theme.text, width: '100%' }]}
-            >
+              style={[styles.inputValue, { color: theme.text, width: '100%' }]}>
               {projectDetails.description && projectDetails.description.trim() !== ''
                 ? projectDetails.description
                 : 'No description available'}
@@ -422,26 +414,27 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             visible={showDescriptionModal}
             animationType="slide"
             transparent={true}
-            onRequestClose={() => setShowDescriptionModal(false)}
-          >
+            onRequestClose={() => setShowDescriptionModal(false)}>
             <View
               style={{
                 flex: 1,
                 backgroundColor: 'rgba(0,0,0,0.5)',
                 justifyContent: 'center',
                 padding: 20,
-              }}
-            >
+              }}>
               <View
                 style={{
                   backgroundColor: theme.card,
                   borderRadius: 12,
                   padding: 20,
                   maxHeight: '80%',
-                }}
-              >
+                }}>
                 <ScrollView>
-                  <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 12, fontSize: 18 }]}>
+                  <Text
+                    style={[
+                      styles.inputLabel,
+                      { color: theme.text, marginBottom: 12, fontSize: 18 },
+                    ]}>
                     Description
                   </Text>
                   <Text style={[styles.inputValue, { color: theme.text, fontSize: 16 }]}>
@@ -459,8 +452,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                     paddingHorizontal: 30,
                     backgroundColor: theme.primary,
                     borderRadius: 25,
-                  }}
-                >
+                  }}>
                   <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
                 </Pressable>
               </View>
@@ -616,9 +608,22 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         <TouchableWithoutFeedback onPress={() => setShowProjectNameModal(false)}>
           <View style={styles.coAdminPopupOverlay}>
             <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={[styles.coAdminPopup, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View
+                style={[
+                  styles.coAdminPopup,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}>
                 <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>Project Name</Text>
-                <Text style={[{ color: theme.text, fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 12 }]}>
+                <Text
+                  style={[
+                    {
+                      color: theme.text,
+                      fontSize: 16,
+                      textAlign: 'center',
+                      lineHeight: 22,
+                      marginBottom: 12,
+                    },
+                  ]}>
                   {projectDetails?.projectName}
                 </Text>
                 <TouchableOpacity
@@ -631,6 +636,14 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
+
+      {/* Material Request Popup */}
+      <MaterialRequestPopup
+        visible={showMaterialRequestPopup}
+        onClose={() => setShowMaterialRequestPopup(false)}
+        projectId={projectDetails?.id}
+        theme={theme}
+      />
     </View>
   );
 }
@@ -844,5 +857,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 8,
     backgroundColor: 'rgba(52, 120, 246, 0.08)',
+  },
+  // Modern Tab Button Styles
+  tabButtonsContainer: {
+    marginHorizontal: 0,
+    marginTop: isTablet ? 20 : 16,
+    marginBottom: isTablet ? 20 : 16,
+  },
+  tabButtonsWrapper: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: isTablet ? 40 : 20,
+    backgroundColor: 'transparent',
+  },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  tabButtonText: {
+    fontSize: isTablet ? 13 : 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    letterSpacing: 0.2,
   },
 });

@@ -1,21 +1,21 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    Modal,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { materialRequestAPI } from '../../utils/materialRequests';
 
 export default function MaterialRequestPopup({ visible, onClose, taskId, projectId, theme }) {
-  const [activeTab, setActiveTab] = useState('submit'); // 'submit' or 'view
+  const [activeTab, setActiveTab] = useState(taskId ? 'submit' : 'view'); // 'submit' or 'view
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
@@ -46,7 +46,12 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
     if (visible && activeTab === 'view') {
       fetchRequests();
     }
-  }, [visible, activeTab, taskId]);
+  }, [visible, activeTab, taskId, projectId]);
+
+  // Update activeTab when taskId changes
+  useEffect(() => {
+    setActiveTab(taskId ? 'submit' : 'view');
+  }, [taskId]);
 
   // Smart Search logic with enhanced matching
   useEffect(() => {
@@ -115,15 +120,23 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
   };
 
   const fetchRequests = async () => {
-    if (!taskId) return;
+    if (!taskId && !projectId) return;
 
     setLoading(true);
-    const result = await materialRequestAPI.getProjectRequests(taskId);
+    let result;
+    
+    // If we have a taskId, fetch requests for that specific task
+    // If we have projectId but no taskId, fetch all requests for the project
+    if (taskId) {
+      result = await materialRequestAPI.getProjectRequests(taskId);
+    } else if (projectId) {
+      result = await materialRequestAPI.getProjectTaskRequests(projectId);
+    }
 
-    if (result.success) {
+    if (result && result.success) {
       setRequests(result.data);
     } else {
-      Alert.alert('Error', result.error);
+      Alert.alert('Error', result?.error || 'Failed to fetch requests');
     }
     setLoading(false);
   };
@@ -546,7 +559,9 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View style={styles.headerLeft}>
               <Feather name="package" size={20} color={theme.primary} />
-              <Text style={[styles.title, { color: theme.text }]}>Material Request</Text>
+              <Text style={[styles.title, { color: theme.text }]}>
+                {taskId ? 'Material Request' : 'Project Material Requests'}
+              </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Feather name="x" size={20} color={theme.secondaryText} />
@@ -555,46 +570,49 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
 
           {/* Elegant Tabs */}
           <View style={[styles.elegantTabContainer, { backgroundColor: theme.background }]}>
-            <TouchableOpacity
-              style={[
-                styles.elegantTab,
-                activeTab === 'submit' && {
-                  backgroundColor: theme.primary,                  
-                },
-              ]}
-              onPress={() => setActiveTab('submit')}>
-              <View
+            {/* Only show Add Request tab if taskId is provided */}
+            {taskId && (
+              <TouchableOpacity
                 style={[
-                  styles.tabIconContainer,
-                  {
-                    backgroundColor: activeTab === 'submit' ? 'rgba(255,255,255,0.2)' : theme.card,
+                  styles.elegantTab,
+                  activeTab === 'submit' && {
+                    backgroundColor: theme.primary,                  
                   },
-                ]}>
-                <Feather
-                  name="plus"
-                  size={18}
-                  color={activeTab === 'submit' ? '#fff' : theme.primary}
-                />
-              </View>
-              <View style={styles.tabContent}>
-                <Text
+                ]}
+                onPress={() => setActiveTab('submit')}>
+                <View
                   style={[
-                    styles.elegantTabTitle,
-                    { color: activeTab === 'submit' ? '#fff' : theme.text },
-                  ]}>
-                  Add Request
-                </Text>
-                <Text
-                  style={[
-                    styles.elegantTabSubtitle,
+                    styles.tabIconContainer,
                     {
-                      color: activeTab === 'submit' ? 'rgba(255,255,255,0.8)' : theme.secondaryText,
+                      backgroundColor: activeTab === 'submit' ? 'rgba(255,255,255,0.2)' : theme.card,
                     },
                   ]}>
-                  Create new material request
-                </Text>
-              </View>
-            </TouchableOpacity>
+                  <Feather
+                    name="plus"
+                    size={18}
+                    color={activeTab === 'submit' ? '#fff' : theme.primary}
+                  />
+                </View>
+                <View style={styles.tabContent}>
+                  <Text
+                    style={[
+                      styles.elegantTabTitle,
+                      { color: activeTab === 'submit' ? '#fff' : theme.text },
+                    ]}>
+                    Add Request
+                  </Text>
+                  <Text
+                    style={[
+                      styles.elegantTabSubtitle,
+                      {
+                        color: activeTab === 'submit' ? 'rgba(255,255,255,0.8)' : theme.secondaryText,
+                      },
+                    ]}>
+                    Create new material request
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity
               style={[
@@ -603,6 +621,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                   backgroundColor: theme.primary,
                   elevation: 8,
                 },
+                // If no taskId, make this tab full width
+                !taskId && { flex: 1 }
               ]}
               onPress={() => setActiveTab('view')}>
               <View
@@ -622,14 +642,14 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     styles.elegantTabTitle,
                     { color: activeTab === 'view' ? '#fff' : theme.text },
                   ]}>
-                  View Requests
+                  {taskId ? 'View Requests' : 'Material Requests'}
                 </Text>
                 <Text
                   style={[
                     styles.elegantTabSubtitle,
                     { color: activeTab === 'view' ? 'rgba(255,255,255,0.8)' : theme.secondaryText },
                   ]}>
-                  Browse all material requests
+                  {taskId ? 'Browse all material requests' : 'View all project material requests'}
                 </Text>
               </View>
             </TouchableOpacity>
@@ -930,16 +950,23 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                       style={[styles.modernEmptyIcon, { backgroundColor: theme.primary + '10' }]}>
                       <Feather name="inbox" size={24} color={theme.primary} />
                     </View>
-                    <Text style={[styles.emptyText, { color: theme.text }]}>No requests yet</Text>
-                    <Text style={[styles.emptySubtext, { color: theme.secondaryText }]}>
-                      Create your first material request
+                    <Text style={[styles.emptyText, { color: theme.text }]}>
+                      {taskId ? 'No requests yet' : 'No material requests'}
                     </Text>
-                    <TouchableOpacity
-                      style={[styles.modernClearBtn, { backgroundColor: theme.primary }]}
-                      onPress={() => setActiveTab('submit')}>
-                      <Feather name="plus" size={14} color="#fff" />
-                      <Text style={styles.modernClearBtnText}>Add Request</Text>
-                    </TouchableOpacity>
+                    <Text style={[styles.emptySubtext, { color: theme.secondaryText }]}>
+                      {taskId 
+                        ? 'Create your first material request' 
+                        : 'No material requests have been made for this project yet'
+                      }
+                    </Text>
+                    {taskId && (
+                      <TouchableOpacity
+                        style={[styles.modernClearBtn, { backgroundColor: theme.primary }]}
+                        onPress={() => setActiveTab('submit')}>
+                        <Feather name="plus" size={14} color="#fff" />
+                        <Text style={styles.modernClearBtnText}>Add Request</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 ) : (
                   <FlatList

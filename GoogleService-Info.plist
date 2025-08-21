@@ -9,7 +9,7 @@
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
-	<string>com.piyushkatole16.karyah</string>
+	<string>in.techtech.karyah</string>
 	<key>PROJECT_ID</key>
 	<string>karyah-ca25c</string>
 	<key>STORAGE_BUCKET</key>
@@ -25,6 +25,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:64077778336:ios:4bba6ecc0412b1ffc5e8c5</string>
+	<string>1:64077778336:ios:cb526d7b5030d8c4c5e8c5</string>
 </dict>
 </plist>
