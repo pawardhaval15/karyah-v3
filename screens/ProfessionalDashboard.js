@@ -9,8 +9,8 @@ import DailyProgressCard from '../components/professionalDashboard/DailyProgress
 import { useTheme } from '../theme/ThemeContext';
 import { fetchNotifications } from '../utils/notifications';
 import usePushNotifications from '../utils/usePushNotifications';
-
-
+import ProjectsSnagBarChart from '../components/professionalDashboard/BarChart';
+import AssignedIssuesBarChart from '../components/professionalDashboard/IssuesBarChar';
 const DRAWER_WIDTH = 300;
 
 function AnalyticsSection({ theme }) {
@@ -41,6 +41,7 @@ export default function ProfessionalDashboard({ navigation }) {
     const [refreshing, setRefreshing] = useState(false);
     const [refreshKey, setRefreshKey] = useState(0);
     const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
+    const [selectedChart, setSelectedChart] = useState('projects');
     usePushNotifications();
 
     useEffect(() => {
@@ -78,12 +79,12 @@ export default function ProfessionalDashboard({ navigation }) {
     };
 
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}> 
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             {/* Drawer Overlay */}
             {drawerOpen && (
                 <View style={styles.drawerOverlay}>
                     <Pressable style={styles.overlayBg} onPress={() => setDrawerOpen(false)} />
-                    <Animated.View style={[styles.animatedDrawer, { left: drawerAnim }]}> 
+                    <Animated.View style={[styles.animatedDrawer, { left: drawerAnim }]}>
                         <CustomDrawer onClose={() => setDrawerOpen(false)} theme={theme} />
                     </Animated.View>
                 </View>
@@ -92,19 +93,19 @@ export default function ProfessionalDashboard({ navigation }) {
             {/* Modern Header */}
             <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
                 <View style={styles.headerRow}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setDrawerOpen(true)}
                         style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
                     >
                         <Feather name="menu" size={22} color={theme.text} />
                     </TouchableOpacity>
-                    
+
                     <View style={styles.titleContainer}>
                         <Text style={[styles.modernTitle, { color: theme.text }]}>Analytics</Text>
                         <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Data Insights & Performance</Text>
                     </View>
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         onPress={() => navigation.navigate('NotificationScreen')}
                         style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
                     >
@@ -134,6 +135,51 @@ export default function ProfessionalDashboard({ navigation }) {
             >
                 <StatCardList navigation={navigation} theme={theme} refreshKey={refreshKey} key={`stat-${refreshKey}`} />
                 <DailyProgressCard theme={theme} refreshKey={refreshKey} key={`daily-${refreshKey}`} />
+                {/* BarChart component inserted below Weekly Progress */}
+                <View style={styles.container}>
+                    {/* Toggle buttons */}
+                    <View style={styles.toggleContainer}>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleButton,
+                                selectedChart === 'projects' && { backgroundColor: theme.primary },
+                            ]}
+                            onPress={() => setSelectedChart('projects')}
+                        >
+                            <Feather
+                                name="bar-chart-2"
+                                size={20}
+                                color={selectedChart === 'projects' ? '#fff' : theme.primary}
+                            />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={[
+                                styles.toggleButton,
+                                selectedChart === 'issues' && { backgroundColor: theme.primary },
+                            ]}
+                            onPress={() => setSelectedChart('issues')}
+                        >
+                            <Feather
+                                name="alert-circle"
+                                size={20}
+                                color={selectedChart === 'issues' ? '#fff' : theme.primary}
+                            />
+                        </TouchableOpacity>
+                    </View>
+
+                    {/* Render selected chart */}
+                    <View style={styles.chartContainer}>
+                        {selectedChart === 'projects' ? (
+                            <ProjectsSnagBarChart
+                                theme={theme}
+                                refreshKey={refreshKey}
+                                key={`bar-${refreshKey}`}
+                            />
+                        ) : (
+                            <AssignedIssuesBarChart theme={theme} />
+                        )}
+                    </View>
+                </View>
                 <CriticalIssueCard
                     theme={theme}
                     refreshKey={refreshKey}
@@ -169,6 +215,32 @@ export default function ProfessionalDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+    container: {
+        marginTop: 16,
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        justifyContent: 'flex-end',
+        marginRight: 12,
+        marginBottom: 12,
+    },
+    toggleButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 18,
+        borderRadius: 18,
+        borderWidth: 1,
+        borderColor: '#366CD9',
+        marginLeft: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toggleText: {
+        fontWeight: '600',
+        fontSize: 14,
+    },
+    chartContainer: {
+        minHeight: 260, // or your desired height
+    },
     activityOverlay: {
         position: 'absolute',
         top: 0,
