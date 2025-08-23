@@ -309,7 +309,7 @@ export default function ProjectsSnagBarChart({ theme }) {
 
 const styles = StyleSheet.create({
     card: {
-        borderRadius: 16,
+        borderRadius: 12,
         padding: 16,
         marginHorizontal: 16,
         marginBottom: 16,
