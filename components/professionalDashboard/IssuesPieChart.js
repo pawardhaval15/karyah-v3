@@ -4,22 +4,21 @@ import {
     ActivityIndicator,
     Dimensions,
     Modal,
-    ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
 } from 'react-native';
-import { BarChart } from 'react-native-chart-kit';
+import { PieChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { fetchAssignedIssues, fetchCreatedByMeIssues } from '../../utils/issues';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function AssignedIssuesBarChart({ theme }) {
+export default function IssuesPieChart({ theme }) {
     const [loading, setLoading] = useState(true);
     const [dataByPOC, setDataByPOC] = useState([]);
-    const [selectedBar, setSelectedBar] = useState(null);
+    const [selectedSlice, setSelectedSlice] = useState(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -91,21 +90,16 @@ export default function AssignedIssuesBarChart({ theme }) {
                     }
                 });
 
-                // Add logged-in user with count 0 if absent
-                if (loggedInUserId && !grouped[loggedInUserId]) {
-                    grouped[loggedInUserId] = 0;
-                }
-
                 // Prepare chart data array with better data validation
                 const chartData = Object.entries(grouped)
                     .map(([userId, count]) => ({
                         userId: String(userId),
                         userName: userIdToName[userId] || `User-${userId}`,
-                        count: Math.max(count, 0), // Ensure no negative values
+                        count: Math.max(count, 0),
                     }))
-                    .filter(item => item.count > 0) // Only show users with issues
-                    .sort((a, b) => b.count - a.count) // Sort by count descending
-                    .slice(0, 15); // Show more users for better data visibility
+                    .filter(item => item.count > 0)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 8); // Limit to 8 slices for better pie chart visibility
 
                 setDataByPOC(chartData);
             } catch (err) {
@@ -117,14 +111,6 @@ export default function AssignedIssuesBarChart({ theme }) {
         };
         fetchData();
     }, []);
-
-    // Calculate dynamic chart width based on number of users
-    const barWidth = 70; // Width per bar including spacing
-    const chartWidth = Math.max(screenWidth - 32, dataByPOC.length * barWidth);
-
-    // Add debug logging
-    console.log('🔍 Issues Chart Data:', dataByPOC);
-    console.log('🔍 Issues Chart Counts:', dataByPOC.map(item => item.count));
 
     if (loading) {
         return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
@@ -139,68 +125,50 @@ export default function AssignedIssuesBarChart({ theme }) {
     }
 
     // Helper function for consistent color coding
-    const getIssueColor = (count) => {
-        if (count === 0) return theme.border || '#E5E7EB';
-        if (count >= 8) return '#FF2700'; // Critical issues - red (matching theme.criticalText)
-        if (count >= 4) return '#FF9500'; // High issues - orange
-        if (count >= 2) return theme.primary || '#366CD9'; // Medium issues - primary blue
-        return '#10B981'; // Low issues - green
+    const getIssueColor = (index, count) => {
+        const colors = [
+            '#FF2700', // Critical - red
+            '#FF9500', // High - orange  
+            '#366CD9', // Medium - primary blue
+            '#10B981', // Low - green
+            '#8B5CF6', // Purple
+            '#F59E0B', // Amber
+            '#EF4444', // Red variant
+            '#06B6D4', // Cyan
+        ];
+        return colors[index % colors.length];
     };
 
-    // Prepare chart data with better validation
-    const chartData = {
-        labels: dataByPOC.map(item => {
-            const name = item.userName || 'Unknown';
-            return name.length > 8 ? name.slice(0, 6) + '…' : name;
-        }),
-        datasets: [
-            {
-                data: dataByPOC.map(item => Math.max(item.count, 1)), // Minimum 1 for visibility
-                colors: dataByPOC.map(item => () => getIssueColor(item.count))
-            }
-        ]
-    };
+    // Prepare pie chart data
+    const pieData = dataByPOC.map((item, index) => ({
+        name: item.userName,
+        population: item.count,
+        color: getIssueColor(index, item.count),
+        legendFontColor: theme.text,
+        legendFontSize: 12,
+    }));
 
     const chartConfig = {
         backgroundColor: theme.card,
         backgroundGradientFrom: theme.card,
         backgroundGradientTo: theme.card,
-        decimalPlaces: 0,
-        color: (opacity = 1) => theme.secondaryText || `rgba(100, 100, 100, ${opacity})`,
-        labelColor: (opacity = 1) => theme.secondaryText || `rgba(100, 100, 100, ${opacity})`,
+        color: (opacity = 1) => theme.text,
+        labelColor: (opacity = 1) => theme.text,
         style: {
             borderRadius: 8,
         },
-        propsForBackgroundLines: {
-            strokeDasharray: "",
-            stroke: theme.border || '#E5E7EB',
-            strokeOpacity: 0.3,
-        },
-        barPercentage: 0.6,
-        fillShadowGradient: 'transparent',
-        fillShadowGradientOpacity: 0,
-        propsForLabels: {
-            fontSize: 10,
-        },
-    };
-
-    const handleBarPress = (data) => {
-        const index = data.index;
-        if (dataByPOC[index]) {
-            setSelectedBar({ ...dataByPOC[index], index });
-        }
     };
 
     return (
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {/* Compact Header */}
+            {/* Header */}
             <View style={styles.header}>
                 <View style={styles.titleRow}>
                     <View style={[styles.iconBadge, { backgroundColor: `${theme.primary}20` }]}>
-                        <Ionicons name="bar-chart" size={20} color={theme.primary} />
+                        <Ionicons name="pie-chart" size={20} color={theme.primary} />
                     </View>
                     <View style={styles.titleContent}>
-                        <Text style={[styles.title, { color: theme.text }]}>Issues Analytics</Text>
+                        <Text style={[styles.title, { color: theme.text }]}>Issues Distribution</Text>
                         <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
                             by team member
                         </Text>
@@ -213,66 +181,66 @@ export default function AssignedIssuesBarChart({ theme }) {
                 </View>
             </View>
 
-            {/* Compact Legend */}
-            <View style={styles.compactLegend}>
-                <View style={styles.legendRow}>
-                    <View style={[styles.dot, { backgroundColor: '#FF6B6B' }]} />
-                    <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Critical</Text>
-                </View>
-                <View style={styles.legendRow}>
-                    <View style={[styles.dot, { backgroundColor: '#FFB84D' }]} />
-                    <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Medium</Text>
-                </View>
-                <View style={styles.legendRow}>
-                    <View style={[styles.dot, { backgroundColor: theme.primary }]} />
-                    <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Low</Text>
-                </View>
-            </View>
-
-            {/* Chart */}
+            {/* Pie Chart */}
             <View style={styles.chartSection}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.chartScrollContainer}>
-                    <BarChart
-                        data={chartData}
-                        width={chartWidth} // Dynamic width based on number of users
-                        height={200}
-                        chartConfig={chartConfig}
-                        verticalLabelRotation={0}
-                        showValuesOnTopOfBars={true}
-                        fromZero={true}
-                        onDataPointClick={handleBarPress}
-                        style={styles.chart}
-                    />
-                </ScrollView>
+                <PieChart
+                    data={pieData}
+                    width={screenWidth - 64}
+                    height={180}
+                    chartConfig={chartConfig}
+                    accessor="population"
+                    backgroundColor="transparent"
+                    paddingLeft="0"
+                    center={[0, 0]}
+                    absolute
+                />
             </View>
 
-            {/* Compact Modern Modal */}
-            <Modal transparent visible={!!selectedBar} animationType="fade">
+            {/* Legend */}
+            <View style={styles.legend}>
+                {dataByPOC.map((item, index) => (
+                    <TouchableOpacity
+                        key={item.userId}
+                        style={styles.legendItem}
+                        onPress={() => setSelectedSlice(item)}
+                    >
+                        <View style={[styles.legendDot, { backgroundColor: getIssueColor(index, item.count) }]} />
+                        <Text style={[styles.legendText, { color: theme.text }]}>
+                            {item.userName} ({item.count})
+                        </Text>
+                    </TouchableOpacity>
+                ))}
+            </View>
+
+            {/* Modal for slice details */}
+            <Modal transparent visible={!!selectedSlice} animationType="fade">
                 <TouchableOpacity
                     style={styles.modalOverlay}
-                    onPress={() => setSelectedBar(null)}
-                    activeOpacity={1}
+                    onPress={() => setSelectedSlice(null)}
                 >
-                    <View style={[styles.compactModal, { 
+                    <View style={[styles.modal, { 
                         backgroundColor: theme.card, 
                         borderColor: theme.border 
                     }]}>
                         <View style={styles.modalHeader}>
                             <View style={[styles.userAvatar, { 
-                                backgroundColor: getIssueColor(selectedBar?.count || 0)
+                                backgroundColor: getIssueColor(
+                                    dataByPOC.findIndex(item => item.userId === selectedSlice?.userId),
+                                    selectedSlice?.count || 0
+                                )
                             }]}>
                                 <Ionicons name="person" size={20} color="#fff" />
                             </View>
                             <View style={styles.userDetails}>
                                 <Text style={[styles.userName, { color: theme.text }]}>
-                                    {selectedBar?.userName}
+                                    {selectedSlice?.userName}
                                 </Text>
                                 <Text style={[styles.userRole, { color: theme.secondaryText }]}>
                                     Team Member
                                 </Text>
                             </View>
                             <TouchableOpacity 
-                                onPress={() => setSelectedBar(null)}
+                                onPress={() => setSelectedSlice(null)}
                                 style={styles.closeBtn}
                             >
                                 <Ionicons name="close" size={18} color={theme.secondaryText} />
@@ -281,24 +249,26 @@ export default function AssignedIssuesBarChart({ theme }) {
                         
                         <View style={styles.modalContent}>
                             <View style={[styles.metricBox, { 
-                                backgroundColor: `${getIssueColor(selectedBar?.count || 0)}15` 
+                                backgroundColor: `${getIssueColor(
+                                    dataByPOC.findIndex(item => item.userId === selectedSlice?.userId),
+                                    selectedSlice?.count || 0
+                                )}15` 
                             }]}>
                                 <Text style={[styles.metricNumber, { 
-                                    color: getIssueColor(selectedBar?.count || 0)
+                                    color: getIssueColor(
+                                        dataByPOC.findIndex(item => item.userId === selectedSlice?.userId),
+                                        selectedSlice?.count || 0
+                                    )
                                 }]}>
-                                    {selectedBar?.count}
+                                    {selectedSlice?.count}
                                 </Text>
                                 <Text style={[styles.metricText, { color: theme.secondaryText }]}>
                                     Unresolved Issues
                                 </Text>
+                                <Text style={[styles.percentageText, { color: theme.secondaryText }]}>
+                                    {((selectedSlice?.count || 0) / dataByPOC.reduce((sum, item) => sum + item.count, 0) * 100).toFixed(1)}% of total
+                                </Text>
                             </View>
-                            
-                            <Text style={[styles.statusText, { color: theme.secondaryText }]}>
-                                {selectedBar?.count >= 10 ? 'Needs immediate attention' : 
-                                 selectedBar?.count >= 5 ? 'Monitor closely' : 
-                                 selectedBar?.count > 0 ? 'Manageable workload' :
-                                 'All issues resolved'}
-                            </Text>
                         </View>
                     </View>
                 </TouchableOpacity>
@@ -357,32 +327,34 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
     },
-    compactLegend: {
-        flexDirection: 'row',
-        justifyContent: 'space-around',
+    chartSection: {
+        alignItems: 'center',
         marginBottom: 16,
         paddingHorizontal: 8,
     },
-    legendRow: {
+    legend: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'flex-start',
+        paddingHorizontal: 8,
+    },
+    legendItem: {
         flexDirection: 'row',
         alignItems: 'center',
+        marginBottom: 8,
+        marginRight: 16,
+        maxWidth: '45%',
     },
-    dot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginRight: 6,
+    legendDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        marginRight: 8,
     },
-    legendLabel: {
-        fontSize: 11,
+    legendText: {
+        fontSize: 12,
         fontWeight: '500',
-    },
-    chartSection: {
-        flex: 1,
-        alignItems: 'center',
-    },
-    chart: {
-        borderRadius: 8,
+        flexShrink: 1,
     },
     messageWrap: {
         padding: 40,
@@ -397,7 +369,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: 24,
     },
-    compactModal: {
+    modal: {
         borderRadius: 16,
         padding: 20,
         width: '100%',
@@ -448,7 +420,6 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         padding: 16,
         alignItems: 'center',
-        marginBottom: 12,
         width: '100%',
     },
     metricNumber: {
@@ -461,12 +432,11 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '500',
         opacity: 0.8,
+        marginBottom: 4,
     },
-    statusText: {
-        fontSize: 12,
-        fontWeight: '500',
-        textAlign: 'center',
-        opacity: 0.8,
-        lineHeight: 16,
+    percentageText: {
+        fontSize: 11,
+        fontWeight: '400',
+        opacity: 0.7,
     },
 });
