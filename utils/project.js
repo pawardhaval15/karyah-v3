@@ -13,10 +13,18 @@ export const getProjectsByUserId = async () => {
         },
     });
     const data = await response.json();
-    // console.log('Response data:', data);
+    console.log('Projects API Response data:', data);
 
     if (!response.ok) throw new Error(data.message || 'Failed to fetch projects');
-    return data.projects;
+    
+    // Ensure we return an array even if data.projects is undefined/null
+    const projects = data && data.projects ? data.projects : [];
+    if (!Array.isArray(projects)) {
+        console.warn('API returned non-array for projects:', projects);
+        return [];
+    }
+    
+    return projects;
 };
 
 export const getProjectById = async (id) => {
@@ -32,12 +40,26 @@ export const getProjectById = async (id) => {
   });
 
   const data = await response.json();
-  console.log('[getProjectById] Response:', data);
+  console.log(`[getProjectById] Response for ID ${id}:`, data);
+  
   if (!response.ok) {
     throw new Error(data.message || 'Failed to fetch project details');
   }
 
-  return data.project;
+  // Ensure we return a valid project object
+  const project = data && data.project ? data.project : {};
+  
+  // Ensure issues and worklists are arrays
+  if (project) {
+    if (!Array.isArray(project.issues)) {
+      project.issues = [];
+    }
+    if (!Array.isArray(project.worklists)) {
+      project.worklists = [];
+    }
+  }
+  
+  return project;
 };
 
 export const createProject = async (projectData) => {

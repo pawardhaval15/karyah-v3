@@ -4,13 +4,13 @@ import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomDrawer from '../components/Home/CustomDrawer';
+import ProjectsSnagBarChart from '../components/professionalDashboard/BarChartNew';
 import CriticalIssueCard from '../components/professionalDashboard/CriticalIssueCard';
 import DailyProgressCard from '../components/professionalDashboard/DailyProgressCard';
+import AssignedIssuesBarChart from '../components/professionalDashboard/IssuesBarCharNew';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchNotifications } from '../utils/notifications';
 import usePushNotifications from '../utils/usePushNotifications';
-import ProjectsSnagBarChart from '../components/professionalDashboard/BarChart';
-import AssignedIssuesBarChart from '../components/professionalDashboard/IssuesBarChar';
 const DRAWER_WIDTH = 300;
 
 function AnalyticsSection({ theme }) {
@@ -135,36 +135,52 @@ export default function ProfessionalDashboard({ navigation }) {
             >
                 <StatCardList navigation={navigation} theme={theme} refreshKey={refreshKey} key={`stat-${refreshKey}`} />
                 <DailyProgressCard theme={theme} refreshKey={refreshKey} key={`daily-${refreshKey}`} />
-                {/* BarChart component inserted below Weekly Progress */}
-                <View style={styles.container}>
-                    {/* Toggle buttons */}
+                {/* Analytics Charts Section */}
+                <View style={[styles.chartsSection, { backgroundColor: theme.background }]}>
+                    {/* Toggle buttons with improved design */}
                     <View style={styles.toggleContainer}>
-                        <TouchableOpacity
-                            style={[
-                                styles.toggleButton,
-                                selectedChart === 'projects' && { backgroundColor: theme.primary },
-                            ]}
-                            onPress={() => setSelectedChart('projects')}
-                        >
-                            <Feather
-                                name="bar-chart-2"
-                                size={20}
-                                color={selectedChart === 'projects' ? '#fff' : theme.primary}
-                            />
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                            style={[
-                                styles.toggleButton,
-                                selectedChart === 'issues' && { backgroundColor: theme.primary },
-                            ]}
-                            onPress={() => setSelectedChart('issues')}
-                        >
-                            <Feather
-                                name="alert-circle"
-                                size={20}
-                                color={selectedChart === 'issues' ? '#fff' : theme.primary}
-                            />
-                        </TouchableOpacity>
+                        <View style={[styles.toggleWrapper, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleButton,
+                                    { backgroundColor: selectedChart === 'projects' ? theme.primary : 'transparent' },
+                                ]}
+                                onPress={() => setSelectedChart('projects')}
+                                activeOpacity={0.8}
+                            >
+                                <Feather
+                                    name="bar-chart-2"
+                                    size={18}
+                                    color={selectedChart === 'projects' ? '#fff' : theme.primary}
+                                />
+                                <Text style={[
+                                    styles.toggleText,
+                                    { color: selectedChart === 'projects' ? '#fff' : theme.primary }
+                                ]}>
+                                    Projects
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.toggleButton,
+                                    { backgroundColor: selectedChart === 'issues' ? theme.primary : 'transparent' },
+                                ]}
+                                onPress={() => setSelectedChart('issues')}
+                                activeOpacity={0.8}
+                            >
+                                <Feather
+                                    name="alert-circle"
+                                    size={18}
+                                    color={selectedChart === 'issues' ? '#fff' : theme.primary}
+                                />
+                                <Text style={[
+                                    styles.toggleText,
+                                    { color: selectedChart === 'issues' ? '#fff' : theme.primary }
+                                ]}>
+                                    Issues
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* Render selected chart */}
@@ -215,31 +231,38 @@ export default function ProfessionalDashboard({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        marginTop: 16,
+    chartsSection: {
+        marginTop: 8,
+        marginBottom: 0,
     },
     toggleContainer: {
+        alignItems: 'flex-end',
+        paddingHorizontal: 16,
+        marginBottom: 8,
+    },
+    toggleWrapper: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
-        marginRight: 12,
-        marginBottom: 12,
+        borderRadius: 25,
+        padding: 4,
+        borderWidth: 1
     },
     toggleButton: {
-        paddingVertical: 8,
-        paddingHorizontal: 18,
-        borderRadius: 18,
-        borderWidth: 1,
-        borderColor: '#366CD9',
-        marginLeft: 8,
+        flexDirection: 'row',
         alignItems: 'center',
+        paddingVertical: 6,
+        paddingHorizontal: 10,
+        borderRadius: 20,
+        minWidth: 100,
         justifyContent: 'center',
     },
     toggleText: {
         fontWeight: '600',
-        fontSize: 14,
+        fontSize: 13,
+        marginLeft: 6,
+        letterSpacing: 0.2,
     },
     chartContainer: {
-        minHeight: 260, // or your desired height
+        minHeight: 320,
     },
     activityOverlay: {
         position: 'absolute',
@@ -338,13 +361,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
-    headerRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        width: '100%',
-        justifyContent: 'space-between',
-        paddingHorizontal: 24,
-    },
     header: {
         alignItems: 'center',
         marginTop: 8,
@@ -383,5 +399,12 @@ const styles = StyleSheet.create({
         position: 'absolute',
         top: 0,
         left: 0,
+    },
+    headerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        width: '100%',
+        justifyContent: 'space-between',
+        paddingHorizontal: 24,
     },
 });

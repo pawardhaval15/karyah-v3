@@ -1,227 +1,25 @@
-// import React, { useEffect, useState } from 'react';
-// import {
-//   View,
-//   Text,
-//   ActivityIndicator,
-//   StyleSheet,
-//   ScrollView,
-//   TouchableOpacity,
-//   Modal,
-// } from 'react-nativimport React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Dimensions,
     Modal,
     ScrollView,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View
+    View,
 } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getProjectById, getProjectsByUserId } from '../../utils/project';
-// import * as scale from 'd3-scale';
-// import { getProjectsByUserId, getProjectById } from '../../utils/project';
 
-// export default function ProjectsSnagBarChart({ theme }) {
-//   const [loading, setLoading] = useState(true);
-//   const [projects, setProjects] = useState([]);
-//   const [selectedBar, setSelectedBar] = useState(null);
-
-//   useEffect(() => {
-//     const fetchData = async () => {
-//       setLoading(true);
-//       try {
-//         // Get all projects
-//         const fetchedProjects = await getProjectsByUserId();
-
-//         // For each project, get its details for issues array
-//         const projectsWithCounts = await Promise.all(
-//           fetchedProjects.map(async (proj) => {
-//             try {
-//               const details = await getProjectById(proj.id);
-//               // Issues/snags count
-//               const issuesCount = Array.isArray(details.issues) ? details.issues.length : 0;
-//               return {
-//                 id: proj.id,
-//                 name: proj.projectName,
-//                 endDate: proj.endDate,
-//                 count: issuesCount,
-//               };
-//             } catch {
-//               return {
-//                 id: proj.id,
-//                 name: proj.projectName,
-//                 endDate: proj.endDate,
-//                 count: 0,
-//               };
-//             }
-//           })
-//         );
-
-//         setProjects(projectsWithCounts);
-//       } catch (err) {
-//         setProjects([]);
-//       }
-//       setLoading(false);
-//     };
-//     fetchData();
-//   }, []);
-
-//   if (loading) {
-//     return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
-//   }
-
-//   if (!projects.length) {
-//     return (
-//       <View style={styles.messageWrap}>
-//         <Text style={{ color: theme.text }}>No project data available</Text>
-//       </View>
-//     );
-//   }
-
-//   const counts = projects.map((p) => p.count);
-//   const labels = projects.map((p) => p.name);
-
-//   // For correct visual width with many bars, auto-sizing
-//   const chartWidth = Math.max(350, projects.length * 36);
-
-//   return (
-//     <View style={[styles.card, { backgroundColor: theme.card }]}>
-//       <Text style={[styles.title, { color: theme.text }]}>
-//         Delayed and Upcoming Snags by Project
-//       </Text>
-//       <ScrollView horizontal>
-//         <View style={{ flexDirection: 'row', alignItems: 'flex-end' }}>
-//           <YAxis
-//             data={counts}
-//             style={{ marginBottom: 30 }}
-//             contentInset={{ top: 10, bottom: 10 }}
-//             svg={{ fontSize: 12, fill: '#888' }}
-//             numberOfTicks={8}
-//             min={0}
-//             formatLabel={(val) => val}
-//           />
-//           <View>
-//             <BarChart
-//               style={{ height: 180, width: chartWidth }}
-//               data={counts}
-//               svg={{ fill: '#61A0EA' }}
-//               yAccessor={({ item }) => item}
-//               contentInset={{ top: 10, bottom: 10 }}
-//               spacingInner={0.17}
-//               spacingOuter={0.15}
-//               gridMin={0}
-//             >
-//               <Grid direction={Grid.Direction.HORIZONTAL} />
-//             </BarChart>
-//             <XAxis
-//               data={labels}
-//               scale={scale.scaleBand}
-//               formatLabel={(val, idx) =>
-//                 labels[idx] && labels[idx].length > 10 ? labels[idx].slice(0, 9) + '…' : labels[idx]
-//               }
-//               style={{
-//                 marginHorizontal: -8,
-//                 height: 32,
-//                 width: chartWidth,
-//               }}
-//               svg={{
-//                 fontSize: 11,
-//                 fill: '#555',
-//                 rotation: 40,
-//                 originY: 16,
-//                 y: 18,
-//                 fontWeight: '600',
-//               }}
-//             />
-//           </View>
-//         </View>
-//       </ScrollView>
-
-//       {/* Modal Tooltip on Bar Press */}
-//       <Modal transparent visible={!!selectedBar} animationType="fade">
-//         <TouchableOpacity
-//           style={styles.modalBackdrop}
-//           onPress={() => setSelectedBar(null)}
-//         >
-//           <View style={styles.tooltipBox}>
-//             <Text style={[styles.tooltipTitle, { color: theme.primary }]}>
-//               {selectedBar?.name}
-//             </Text>
-//             <Text style={{ color: theme.text }}>
-//               Snags: {selectedBar?.count}
-//             </Text>
-//             {selectedBar?.endDate && (
-//               <Text style={{ color: theme.text }}>
-//                 End Date: {selectedBar.endDate.slice(0, 10)}
-//               </Text>
-//             )}
-//           </View>
-//         </TouchableOpacity>
-//       </Modal>
-//     </View>
-//   );
-// }
-
-// const styles = StyleSheet.create({
-//   card: {
-//     backgroundColor: '#fff',
-//     borderRadius: 12,
-//     padding: 12,
-//     margin: 12,
-//     borderWidth: 1,
-//     borderColor: '#e6eaf3',
-//     elevation: 2,
-//     minHeight: 240,
-//   },
-//   title: {
-//     fontWeight: 'bold',
-//     fontSize: 16,
-//     marginBottom: 8,
-//     letterSpacing: 0.1,
-//     marginLeft: 4,
-//   },
-//   messageWrap: {
-//     padding: 20,
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-//   modalBackdrop: {
-//     flex: 1,
-//     backgroundColor: '#0008',
-//     alignItems: 'center',
-//     justifyContent: 'center',
-//   },
-//   tooltipBox: {
-//     backgroundColor: '#fff',
-//     padding: 18,
-//     borderRadius: 10,
-//     minWidth: 180,
-//     shadowColor: '#000',
-//     shadowOpacity: 0.2,
-//     shadowRadius: 8,
-//     alignItems: 'flex-start',
-//   },
-//   tooltipTitle: {
-//     fontWeight: 'bold',
-//     fontSize: 15,
-//     marginBottom: 8,
-//   },
-// });
-
-
-
-import * as scale from 'd3-scale';
-import { useEffect, useState } from 'react';
-import { Text as SvgText } from 'react-native-svg';
-import { Grid, XAxis, YAxis } from 'react-native-svg-charts';
+const screenWidth = Dimensions.get('window').width;
 
 export default function ProjectsSnagBarChart({ theme }) {
     const [loading, setLoading] = useState(true);
     const [projects, setProjects] = useState([]);
     const [selectedBar, setSelectedBar] = useState(null);
-    const [tooltip, setTooltip] = useState(null);
+
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -263,7 +61,6 @@ export default function ProjectsSnagBarChart({ theme }) {
                             // Final count (exclude resolved issues and completed tasks)
                             const totalCount = issuesCount + incompleteTasks;
 
-
                             return {
                                 id: proj.id,
                                 name: proj.projectName,
@@ -286,9 +83,11 @@ export default function ProjectsSnagBarChart({ theme }) {
                 );
                 setProjects(projectsWithCounts);
             } catch (err) {
+                console.error('Error fetching projects data:', err);
                 setProjects([]);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchData();
     }, []);
@@ -309,57 +108,65 @@ export default function ProjectsSnagBarChart({ theme }) {
         );
     }
 
-    const counts = projects.map((p) => p.count);
-    const labels = projects.map((p) => p.name);
-    const chartWidth = Math.max(350, labels.length * 70); // Increased spacing for better design
-
-    // Enhanced color scheme for projects
-    const getBarColor = (value, index) => {
-        if (value === 0) return '#E5E7EB'; // Light gray for zero
-        if (value >= 15) return '#DC2626'; // Red for critical
-        if (value >= 8) return '#F59E0B'; // Amber for high
-        if (value >= 3) return '#3B82F6'; // Blue for medium
+    // Show all projects, not just filtered ones for complete data visibility
+    const displayProjects = projects; // Show all projects
+    
+    // Calculate dynamic chart width based on number of projects
+    const barWidth = 80; // Width per bar including spacing
+    const chartWidth = Math.max(screenWidth - 32, displayProjects.length * barWidth);
+    
+    // Helper function for consistent color coding
+    const getProjectColor = (count) => {
+        if (count === 0) return '#E5E7EB'; // Light gray for zero
+        if (count >= 15) return '#DC2626'; // Red for critical
+        if (count >= 8) return '#F59E0B'; // Amber for high
+        if (count >= 3) return '#3B82F6'; // Blue for medium
         return '#10B981'; // Green for low
     };
 
-    // Enhanced bar labels with better positioning and styling
-    const BarLabels = ({ x, y, bandwidth, data }) =>
-        data.map((value, index) => {
-            if (value === 0) return null;
-            const centerX = x(index) + bandwidth / 2;
-            const centerY = y(value) - 15;
+    // Prepare chart data with better label management
+    const chartData = {
+        labels: displayProjects.map(p => {
+            const name = p.name || 'Untitled';
+            return name.length > 10 ? name.slice(0, 8) + '…' : name;
+        }),
+        datasets: [
+            {
+                data: displayProjects.map(p => Math.max(p.count, 0.1)), // Ensure no negative values, minimum 0.1 for visibility
+                colors: displayProjects.map(p => () => getProjectColor(p.count))
+            }
+        ]
+    };
 
-            return (
-                <SvgText
-                    key={index}
-                    x={centerX}
-                    y={centerY}
-                    fontSize={12}
-                    fill="#fff"
-                    fontWeight="700"
-                    textAnchor="middle"
-                    alignmentBaseline="middle"
-                >
-                    {value}
-                </SvgText>
-            );
-        });
+    const chartConfig = {
+        backgroundColor: theme.card,
+        backgroundGradientFrom: theme.card,
+        backgroundGradientTo: theme.card,
+        decimalPlaces: 0,
+        color: (opacity = 1) => theme.secondaryText || `rgba(100, 100, 100, ${opacity})`,
+        labelColor: (opacity = 1) => theme.secondaryText || `rgba(100, 100, 100, ${opacity})`,
+        style: {
+            borderRadius: 8,
+        },
+        propsForBackgroundLines: {
+            strokeDasharray: "",
+            stroke: theme.border || '#E5E7EB',
+            strokeOpacity: 0.3,
+        },
+        barPercentage: 0.6,
+        fillShadowGradient: 'transparent',
+        fillShadowGradientOpacity: 0,
+        propsForLabels: {
+            fontSize: 10,
+        },
+    };
 
-    const BarDecorator = ({ x, y, bandwidth, data }) =>
-        data.map((value, index) => (
-            <TouchableOpacity
-                key={index}
-                activeOpacity={0.6}
-                onPress={() => setSelectedBar({ ...projects[index], index })}
-                style={{
-                    position: 'absolute',
-                    left: x(index),
-                    top: y(value),
-                    width: bandwidth,
-                    height: y(0) - y(value),
-                }}
-            />
-        ));
+    const handleBarPress = (data) => {
+        const index = data.index;
+        if (displayProjects[index]) {
+            setSelectedBar({ ...displayProjects[index], index });
+        }
+    };
 
     return (
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -403,82 +210,23 @@ export default function ProjectsSnagBarChart({ theme }) {
                 </View>
             </View>
 
-            {/* Compact Chart */}
+            {/* Chart */}
             <View style={styles.chartSection}>
-                <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.chartScrollContent}
-                >
-                    <View style={styles.chartLayout}>
-                        <YAxis
-                            data={counts}
-                            style={styles.compactYAxis}
-                            contentInset={{ top: 15, bottom: 15 }}
-                            svg={{ fontSize: 11, fill: theme.secondaryText, fontWeight: '500' }}
-                            numberOfTicks={4}
-                            min={0}
-                            formatLabel={(val) => Math.round(val)}
-                        />
-                        <View style={styles.mainChart}>
-                            <BarChart
-                                style={{ height: 160, width: chartWidth }}
-                                data={counts}
-                                svg={{ 
-                                    fill: ({ index }) => getBarColor(counts[index], index),
-                                    rx: 4,
-                                    ry: 4
-                                }}
-                                yAccessor={({ item }) => item}
-                                contentInset={{ top: 15, bottom: 15 }}
-                                spacingInner={0.5}
-                                spacingOuter={0.4}
-                                gridMin={0}
-                                gridMax={Math.max(...counts, 10) * 1.1} // Add 10% padding at top, minimum 10 for scale
-                            >
-                                <Grid
-                                    direction={Grid.Direction.HORIZONTAL}
-                                    svg={{ 
-                                        stroke: theme.border, 
-                                        strokeOpacity: 0.3, 
-                                        strokeWidth: 1
-                                    }}
-                                />
-                                <BarLabels
-                                    x={(i) => i * (chartWidth / counts.length) + (chartWidth / counts.length) * 0.25}
-                                    y={(val) => 160 - 15 - ((val / Math.max(...counts, 1)) * (160 - 30))}
-                                    bandwidth={(chartWidth / counts.length) * 0.5}
-                                    data={counts}
-                                />
-                                <BarDecorator
-                                    x={(i) => i * (chartWidth / counts.length) + (chartWidth / counts.length) * 0.25}
-                                    y={(val) => 160 - 15 - ((val / Math.max(...counts, 1)) * (160 - 30))}
-                                    bandwidth={(chartWidth / counts.length) * 0.5}
-                                    data={counts}
-                                />
-                            </BarChart>
-                            <XAxis
-                                data={labels}
-                                scale={scale.scaleBand}
-                                formatLabel={(val, idx) =>
-                                    labels[idx] && labels[idx].length > 8
-                                        ? labels[idx].slice(0, 6) + '…'
-                                        : labels[idx]
-                                }
-                                style={styles.compactXAxis}
-                                svg={{
-                                    fontSize: 10,
-                                    fill: theme.secondaryText,
-                                    rotation: -8,
-                                    originY: 12,
-                                    y: 15,
-                                    fontWeight: '500',
-                                }}
-                            />
-                        </View>
-                    </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.chartScrollContainer}>
+                    <BarChart
+                        data={chartData}
+                        width={chartWidth} // Dynamic width based on number of projects
+                        height={200}
+                        chartConfig={chartConfig}
+                        verticalLabelRotation={0}
+                        showValuesOnTopOfBars={true}
+                        fromZero={true}
+                        onDataPointClick={handleBarPress}
+                        style={styles.chart}
+                    />
                 </ScrollView>
             </View>
+
             {/* Compact Modern Modal */}
             <Modal transparent visible={!!selectedBar} animationType="fade">
                 <TouchableOpacity
@@ -490,7 +238,9 @@ export default function ProjectsSnagBarChart({ theme }) {
                         borderColor: theme.border
                     }]}>
                         <View style={styles.modalHeader}>
-                            <View style={[styles.projectIcon, { backgroundColor: getBarColor(selectedBar?.count || 0) }]}>
+                            <View style={[styles.projectIcon, { 
+                                backgroundColor: getProjectColor(selectedBar?.count || 0)
+                            }]}>
                                 <Ionicons name="construct-outline" size={18} color="#fff" />
                             </View>
                             <View style={styles.projectDetails}>
@@ -529,8 +279,12 @@ export default function ProjectsSnagBarChart({ theme }) {
                                 </View>
                             </View>
 
-                            <View style={[styles.totalBox, { backgroundColor: `${getBarColor(selectedBar?.count || 0)}15` }]}>
-                                <Text style={[styles.totalNumber, { color: getBarColor(selectedBar?.count || 0) }]}>
+                            <View style={[styles.totalBox, { 
+                                backgroundColor: `${getProjectColor(selectedBar?.count || 0)}15` 
+                            }]}>
+                                <Text style={[styles.totalNumber, { 
+                                    color: getProjectColor(selectedBar?.count || 0)
+                                }]}>
                                     {selectedBar?.count || 0}
                                 </Text>
                                 <Text style={[styles.totalText, { color: theme.secondaryText }]}>
@@ -577,9 +331,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginRight: 12,
     },
-    iconText: {
-        fontSize: 16,
-    },
     titleContent: {
         flex: 1,
     },
@@ -602,12 +353,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     totalText: {
+        color: '#fff',
         fontSize: 14,
         fontWeight: '700',
     },
     compactLegend: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'space-around',
         marginBottom: 16,
         paddingHorizontal: 8,
     },
@@ -627,26 +379,10 @@ const styles = StyleSheet.create({
     },
     chartSection: {
         flex: 1,
+        alignItems: 'center',
     },
-    chartScrollContent: {
-        paddingHorizontal: 8,
-    },
-    chartLayout: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        paddingBottom: 8,
-    },
-    compactYAxis: {
-        width: 30,
-        marginBottom: 35,
-    },
-    mainChart: {
-        marginLeft: 8,
-    },
-    compactXAxis: {
-        marginHorizontal: -6,
-        height: 45,
-        marginTop: 8,
+    chart: {
+        borderRadius: 8,
     },
     messageWrap: {
         padding: 40,
@@ -665,7 +401,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         padding: 20,
         width: '100%',
-        maxWidth: 300,
+        maxWidth: 320,
         borderWidth: 1,
         shadowColor: '#000',
         shadowOpacity: 0.15,
@@ -710,20 +446,22 @@ const styles = StyleSheet.create({
     },
     metricsRow: {
         flexDirection: 'row',
+        justifyContent: 'space-between',
         width: '100%',
         marginBottom: 16,
-        gap: 12,
     },
     metricItem: {
         flex: 1,
-        borderRadius: 10,
+        borderRadius: 12,
         padding: 12,
         alignItems: 'center',
+        marginHorizontal: 4,
     },
     metricValue: {
-        fontSize: 18,
+        fontSize: 20,
         fontWeight: '700',
-        marginBottom: 2,
+        lineHeight: 24,
+        marginBottom: 4,
     },
     metricLabel: {
         fontSize: 11,
@@ -743,11 +481,6 @@ const styles = StyleSheet.create({
         lineHeight: 32,
         marginBottom: 4,
     },
-    totalText: {
-        fontSize: 12,
-        fontWeight: '500',
-        opacity: 0.8,
-    },
     statusText: {
         fontSize: 12,
         fontWeight: '500',
@@ -756,5 +489,3 @@ const styles = StyleSheet.create({
         lineHeight: 16,
     },
 });
-
-

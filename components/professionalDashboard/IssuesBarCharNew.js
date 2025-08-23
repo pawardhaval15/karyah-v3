@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as scale from 'd3-scale';
 import { useEffect, useState } from 'react';
 import {
     ActivityIndicator,
+    Dimensions,
     Modal,
     ScrollView,
     StyleSheet,
@@ -10,10 +10,11 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { Text as SvgText } from 'react-native-svg';
-import { BarChart, Grid, XAxis, YAxis } from 'react-native-svg-charts';
+import { BarChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { fetchAssignedIssues, fetchCreatedByMeIssues } from '../../utils/issues';
+
+const screenWidth = Dimensions.get('window').width;
 
 export default function AssignedIssuesBarChart({ theme }) {
     const [loading, setLoading] = useState(true);
@@ -38,7 +39,6 @@ export default function AssignedIssuesBarChart({ theme }) {
                     fetchAssignedIssues(),
                     fetchCreatedByMeIssues(),
                 ]);
-                // console.log('✅ Assigned Issues fetched:', assignedIssues);
 
                 // Helper to normalize issues for consistent assigned user info
                 const normalizeIssues = (issues, isCreatedByMe = false) =>
@@ -46,13 +46,13 @@ export default function AssignedIssuesBarChart({ theme }) {
                         id: issue.issueId || issue.id,
                         status: (issue.issueStatus || '').toLowerCase(),
                         assignedUserId: isCreatedByMe ? issue.assignToUserId : issue.assignTo,
-                        assignedUserName: isCreatedByMe ? issue.assignToUserName : null, // will map from ID to Name below for assignedIssues
+                        assignedUserName: isCreatedByMe ? issue.assignToUserName : null,
                     }));
 
                 const normalizedCreated = normalizeIssues(createdByMeIssues, true);
                 const normalizedAssigned = normalizeIssues(assignedIssues, false);
 
-                // Create a map from assigned user ID to name using createdByMe data (more complete)
+                // Create a map from assigned user ID to name using createdByMe data
                 const userIdToName = {};
                 normalizedCreated.forEach(issue => {
                     if (issue.assignedUserId && issue.assignedUserName) {
@@ -63,7 +63,7 @@ export default function AssignedIssuesBarChart({ theme }) {
                 // For assigned issues, fill in user name from map or generate fallback name
                 normalizedAssigned.forEach(issue => {
                     if (issue.assignedUserId && !userIdToName[issue.assignedUserId]) {
-                        userIdToName[issue.assignedUserId] = 'User-' + issue.assignedUserId;
+                        userIdToName[issue.assignedUserId] = `User-${issue.assignedUserId}`;
                     }
                 });
 
@@ -85,8 +85,10 @@ export default function AssignedIssuesBarChart({ theme }) {
                 // Group by assignedUserId counting issues
                 const grouped = {};
                 combinedIssues.forEach(issue => {
-                    const id = issue.assignedUserId || 'Unassigned';
-                    grouped[id] = (grouped[id] || 0) + 1;
+                    const userId = issue.assignedUserId;
+                    if (userId) {
+                        grouped[userId] = (grouped[userId] || 0) + 1;
+                    }
                 });
 
                 // Add logged-in user with count 0 if absent
@@ -94,28 +96,35 @@ export default function AssignedIssuesBarChart({ theme }) {
                     grouped[loggedInUserId] = 0;
                 }
 
-                // Prepare chart data array
-                const chartData = Object.entries(grouped).map(([userId, count]) => ({
-                    userId,
-                    userName: userIdToName[userId] || 'Unassigned',
-                    count,
-                }));
+                // Prepare chart data array with better data validation
+                const chartData = Object.entries(grouped)
+                    .map(([userId, count]) => ({
+                        userId: String(userId),
+                        userName: userIdToName[userId] || `User-${userId}`,
+                        count: Math.max(count, 0), // Ensure no negative values
+                    }))
+                    .filter(item => item.count > 0) // Only show users with issues
+                    .sort((a, b) => b.count - a.count) // Sort by count descending
+                    .slice(0, 15); // Show more users for better data visibility
 
                 setDataByPOC(chartData);
             } catch (err) {
+                console.error('Error fetching issues data:', err);
                 setDataByPOC([]);
-                console.error('Error fetching combined issues:', err);
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
         fetchData();
     }, []);
 
+    // Calculate dynamic chart width based on number of users
+    const barWidth = 70; // Width per bar including spacing
+    const chartWidth = Math.max(screenWidth - 32, dataByPOC.length * barWidth);
+
     // Add debug logging
     console.log('🔍 Issues Chart Data:', dataByPOC);
     console.log('🔍 Issues Chart Counts:', dataByPOC.map(item => item.count));
-
-
 
     if (loading) {
         return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
@@ -129,57 +138,57 @@ export default function AssignedIssuesBarChart({ theme }) {
         );
     }
 
-    const counts = dataByPOC.map(item => item.count);
-    const labels = dataByPOC.map(item => item.userName);
-    const chartWidth = Math.max(300, labels.length * 60); // Better spacing for bars
-
-    // Custom bar colors based on data values
-    const getBarColor = (value, index) => {
-        if (value === 0) return theme.border;
-        if (value >= 10) return '#FF6B6B'; // High issues - red
-        if (value >= 5) return '#FFB84D'; // Medium issues - orange  
-        return theme.primary; // Low issues - primary color
+    // Helper function for consistent color coding
+    const getIssueColor = (count) => {
+        if (count === 0) return theme.border || '#E5E7EB';
+        if (count >= 10) return '#FF6B6B'; // High issues - red
+        if (count >= 5) return '#FFB84D'; // Medium issues - orange  
+        return theme.primary || '#3B82F6'; // Low issues - primary color
     };
 
-    // Enhanced bar labels with better positioning
-    const BarLabels = ({ x, y, bandwidth, data }) =>
-        data.map((value, index) => {
-            if (value === 0) return null;
-            const centerX = x(index) + bandwidth / 2;
-            const centerY = y(value) - 12; // Position above the bar
+    // Prepare chart data with better validation
+    const chartData = {
+        labels: dataByPOC.map(item => {
+            const name = item.userName || 'Unknown';
+            return name.length > 8 ? name.slice(0, 6) + '…' : name;
+        }),
+        datasets: [
+            {
+                data: dataByPOC.map(item => Math.max(item.count, 1)), // Minimum 1 for visibility
+                colors: dataByPOC.map(item => () => getIssueColor(item.count))
+            }
+        ]
+    };
 
-            return (
-                <SvgText
-                    key={index}
-                    x={centerX}
-                    y={centerY}
-                    fontSize={11}
-                    fill={theme.text}
-                    fontWeight="600"
-                    textAnchor="middle"
-                    alignmentBaseline="middle"
-                >
-                    {value}
-                </SvgText>
-            );
-        });
+    const chartConfig = {
+        backgroundColor: theme.card,
+        backgroundGradientFrom: theme.card,
+        backgroundGradientTo: theme.card,
+        decimalPlaces: 0,
+        color: (opacity = 1) => theme.secondaryText || `rgba(100, 100, 100, ${opacity})`,
+        labelColor: (opacity = 1) => theme.secondaryText || `rgba(100, 100, 100, ${opacity})`,
+        style: {
+            borderRadius: 8,
+        },
+        propsForBackgroundLines: {
+            strokeDasharray: "",
+            stroke: theme.border || '#E5E7EB',
+            strokeOpacity: 0.3,
+        },
+        barPercentage: 0.6,
+        fillShadowGradient: 'transparent',
+        fillShadowGradientOpacity: 0,
+        propsForLabels: {
+            fontSize: 10,
+        },
+    };
 
-    // Touchable bar decorator to open popup
-    const BarDecorator = ({ x, y, bandwidth, data }) =>
-        data.map((value, index) => (
-            <TouchableOpacity
-                key={index}
-                activeOpacity={0.6}
-                onPress={() => setSelectedBar({ ...dataByPOC[index], index })}
-                style={{
-                    position: 'absolute',
-                    left: x(index),
-                    top: y(value),
-                    width: bandwidth,
-                    height: y(0) - y(value),
-                }}
-            />
-        ));
+    const handleBarPress = (data) => {
+        const index = data.index;
+        if (dataByPOC[index]) {
+            setSelectedBar({ ...dataByPOC[index], index });
+        }
+    };
 
     return (
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -219,88 +228,23 @@ export default function AssignedIssuesBarChart({ theme }) {
                 </View>
             </View>
 
-            {/* Compact Chart */}
+            {/* Chart */}
             <View style={styles.chartSection}>
-                <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.chartScrollContent}
-                >
-                    <View style={styles.chartLayout}>
-                        <YAxis
-                            data={counts}
-                            contentInset={{ top: 15, bottom: 15 }}
-                            svg={{ 
-                                fontSize: 11, 
-                                fill: theme.secondaryText, 
-                                fontWeight: '500'
-                            }}
-                            numberOfTicks={4}
-                            min={0}
-                            style={styles.compactYAxis}
-                            formatLabel={(val) => Math.round(val)}
-                        />
-                        
-                        <View style={styles.mainChart}>
-                            <BarChart
-                                style={{ height: 160, width: chartWidth }}
-                                data={counts}
-                                svg={{ 
-                                    fill: ({ index }) => getBarColor(counts[index], index),
-                                    rx: 4,
-                                    ry: 4
-                                }}
-                                yAccessor={({ item }) => item}
-                                contentInset={{ top: 15, bottom: 15 }}
-                                spacingInner={0.4}
-                                spacingOuter={0.3}
-                                gridMin={0}
-                                gridMax={Math.max(...counts, 10) * 1.1} // Add 10% padding at top, minimum 10 for scale
-                            >
-                                <Grid 
-                                    direction={Grid.Direction.HORIZONTAL} 
-                                    svg={{ 
-                                        stroke: theme.border, 
-                                        strokeOpacity: 0.3, 
-                                        strokeWidth: 1
-                                    }} 
-                                />
-                                <BarLabels
-                                    x={(i) => i * (chartWidth / labels.length) + (chartWidth / labels.length) * 0.3}
-                                    y={(val) => 160 - 15 - ((val / Math.max(...counts, 1)) * (160 - 30))}
-                                    bandwidth={(chartWidth / labels.length) * 0.4}
-                                    data={counts}
-                                />
-                                <BarDecorator
-                                    x={(i) => i * (chartWidth / labels.length) + (chartWidth / labels.length) * 0.3}
-                                    y={(val) => 160 - 15 - ((val / Math.max(...counts, 1)) * (160 - 30))}
-                                    bandwidth={(chartWidth / labels.length) * 0.4}
-                                    data={counts}
-                                />
-                            </BarChart>
-
-                            <XAxis
-                                data={labels}
-                                scale={scale.scaleBand}
-                                formatLabel={(val, idx) => {
-                                    const label = labels[idx];
-                                    if (!label) return '';
-                                    return label.length > 6 ? label.slice(0, 4) + '…' : label;
-                                }}
-                                style={styles.compactXAxis}
-                                svg={{
-                                    fontSize: 10,
-                                    fill: theme.secondaryText,
-                                    rotation: -10,
-                                    originY: 10,
-                                    y: 12,
-                                    fontWeight: '500',
-                                }}
-                            />
-                        </View>
-                    </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.chartScrollContainer}>
+                    <BarChart
+                        data={chartData}
+                        width={chartWidth} // Dynamic width based on number of users
+                        height={200}
+                        chartConfig={chartConfig}
+                        verticalLabelRotation={0}
+                        showValuesOnTopOfBars={true}
+                        fromZero={true}
+                        onDataPointClick={handleBarPress}
+                        style={styles.chart}
+                    />
                 </ScrollView>
             </View>
+
             {/* Compact Modern Modal */}
             <Modal transparent visible={!!selectedBar} animationType="fade">
                 <TouchableOpacity
@@ -313,7 +257,9 @@ export default function AssignedIssuesBarChart({ theme }) {
                         borderColor: theme.border 
                     }]}>
                         <View style={styles.modalHeader}>
-                            <View style={[styles.userAvatar, { backgroundColor: getBarColor(selectedBar?.count || 0) }]}>
+                            <View style={[styles.userAvatar, { 
+                                backgroundColor: getIssueColor(selectedBar?.count || 0)
+                            }]}>
                                 <Ionicons name="person" size={20} color="#fff" />
                             </View>
                             <View style={styles.userDetails}>
@@ -333,8 +279,12 @@ export default function AssignedIssuesBarChart({ theme }) {
                         </View>
                         
                         <View style={styles.modalContent}>
-                            <View style={[styles.metricBox, { backgroundColor: `${getBarColor(selectedBar?.count || 0)}15` }]}>
-                                <Text style={[styles.metricNumber, { color: getBarColor(selectedBar?.count || 0) }]}>
+                            <View style={[styles.metricBox, { 
+                                backgroundColor: `${getIssueColor(selectedBar?.count || 0)}15` 
+                            }]}>
+                                <Text style={[styles.metricNumber, { 
+                                    color: getIssueColor(selectedBar?.count || 0)
+                                }]}>
                                     {selectedBar?.count}
                                 </Text>
                                 <Text style={[styles.metricText, { color: theme.secondaryText }]}>
@@ -363,7 +313,7 @@ const styles = StyleSheet.create({
         marginHorizontal: 16,
         marginBottom: 16,
         borderWidth: 1,
-        minHeight: 280,
+        minHeight: 300,
     },
     header: {
         marginBottom: 16,
@@ -428,26 +378,10 @@ const styles = StyleSheet.create({
     },
     chartSection: {
         flex: 1,
+        alignItems: 'center',
     },
-    chartScrollContent: {
-        paddingHorizontal: 8,
-    },
-    chartLayout: {
-        flexDirection: 'row',
-        alignItems: 'flex-end',
-        paddingBottom: 8,
-    },
-    compactYAxis: {
-        width: 30,
-        marginBottom: 30,
-    },
-    mainChart: {
-        marginLeft: 8,
-    },
-    compactXAxis: {
-        marginHorizontal: -6,
-        height: 40,
-        marginTop: 8,
+    chart: {
+        borderRadius: 8,
     },
     messageWrap: {
         padding: 40,
@@ -486,11 +420,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         marginRight: 12,
-    },
-    avatarLetter: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '700',
     },
     userDetails: {
         flex: 1,
