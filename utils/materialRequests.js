@@ -3,19 +3,34 @@ import { API_URL } from './config';
 
 export const materialRequestAPI = {
   // Submit a new material request
-  createRequest: async (requestData) => {
+  createRequest: async ({ projectId, taskId = null, requestedItems }) => {
     try {
       const token = await AsyncStorage.getItem('token');
+
+      const payload = {
+        projectId,
+        taskId,           // can be null (optional)
+        requestedItems,   // [{ itemName, quantityRequested, unit }]
+      };
+
       const response = await fetch(`${API_URL}api/material-requests`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(requestData),
+        body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const text = await response.text(); // Read raw response text for debug
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (jsonError) {
+        console.error('Failed to parse JSON:', jsonError);
+        console.error('Response text:', text);  // Log raw response to help debug HTML error pages
+        throw new Error(`Invalid JSON response from server.`);
+      }
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to submit request');
@@ -24,12 +39,13 @@ export const materialRequestAPI = {
       return { success: true, data };
     } catch (error) {
       console.error('Create material request error:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: error.message || 'Unknown error' };
     }
   },
 
+
   // Get all material requests for a project
-  getProjectTaskRequests: async (projectId) => {
+  getProjectRequests: async (projectId) => {  // Renamed from getProjectTaskRequests for clarity
     try {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}api/material-requests/project/${projectId}`, {
@@ -39,19 +55,22 @@ export const materialRequestAPI = {
           'Authorization': `Bearer ${token}`,
         },
       });
+
       const data = await response.json();
-      console.log(data)
+      console.log('Project Requests:', data);
+
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch requests');
       }
 
       return { success: true, data: data.requests || [] };
     } catch (error) {
-      console.error('Fetch requests error:', error);
+      console.error('Fetch project requests error:', error);
       return { success: false, error: error.message };
     }
   },
-  getProjectRequests: async (taskId) => {
+
+  getTaskRequests: async (taskId) => {
     try {
       const token = await AsyncStorage.getItem('token');
       const response = await fetch(`${API_URL}api/material-requests/task/${taskId}`, {

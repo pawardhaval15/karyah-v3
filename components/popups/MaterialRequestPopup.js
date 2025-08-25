@@ -1,16 +1,16 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { materialRequestAPI } from '../../utils/materialRequests';
 
@@ -21,14 +21,11 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
-
   // Reference for scrolling to new items
   const scrollViewRef = useRef(null);
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
-
   // Form state for new request
   const [formData, setFormData] = useState({
     items: [
@@ -47,6 +44,9 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
       fetchRequests();
     }
   }, [visible, activeTab, taskId, projectId]);
+  useEffect(() => {
+    console.log('MaterialRequestPopup received props:', { projectId, taskId });
+  }, [projectId, taskId]);
 
   // Update activeTab when taskId changes
   useEffect(() => {
@@ -77,7 +77,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         // Check if all search terms are found (AND logic)
         return searchTerms.every((term) => searchableText.includes(term));
       });
-
       // Sort results by relevance (exact matches first, then partial matches)
       filtered.sort((a, b) => {
         const aSearchableText = [
@@ -124,13 +123,12 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
 
     setLoading(true);
     let result;
-    
     // If we have a taskId, fetch requests for that specific task
     // If we have projectId but no taskId, fetch all requests for the project
     if (taskId) {
-      result = await materialRequestAPI.getProjectRequests(taskId);
+      result = await materialRequestAPI.getTaskRequests(taskId);
     } else if (projectId) {
-      result = await materialRequestAPI.getProjectTaskRequests(projectId);
+      result = await materialRequestAPI.getProjectRequests(projectId);
     }
 
     if (result && result.success) {
@@ -143,34 +141,40 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
 
   const submitRequest = async () => {
     const validItems = formData.items.filter(
-      (item) => item.itemName.trim() && item.quantityRequested.trim()
+      item => item.itemName.trim() && item.quantityRequested.trim()
     );
-
     if (validItems.length === 0) {
       Alert.alert('Error', 'Please add at least one item with name and quantity');
       return;
     }
 
-    setLoading(true);
-    const requestData = {
-      taskId,
-      requestedItems: validItems.map((item) => ({
+    const requestPayload = {
+      projectId,
+      ...(taskId ? { taskId } : {}),
+      requestedItems: validItems.map(item => ({
         itemName: item.itemName.trim(),
-        quantityRequested: parseFloat(item.quantityRequested),
+        quantityRequested: parseFloat(item.quantityRequested) || 0,
         unit: item.unit,
       })),
     };
 
-    const result = await materialRequestAPI.createRequest(requestData);
+    console.log('Submitting Material Request:', requestPayload);
+
+    setLoading(true);
+
+    const result = await materialRequestAPI.createRequest(requestPayload);
 
     if (result.success) {
+      console.log('Material Request created successfully:', result.data);
       Alert.alert('Success', 'Material request submitted successfully');
       resetForm();
       setActiveTab('view');
       fetchRequests();
     } else {
+      console.error('Failed to create Material Request:', result.error);
       Alert.alert('Error', result.error);
     }
+
     setLoading(false);
   };
 
@@ -198,7 +202,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         },
       ],
     }));
-    
     // Auto-scroll to the new item after a brief delay
     setTimeout(() => {
       if (scrollViewRef.current) {
@@ -213,12 +216,12 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
       quantityRequested: '',
       unit: 'pcs',
     }));
-    
+
     setFormData((prev) => ({
       ...prev,
       items: [...prev.items, ...newItems],
     }));
-    
+
     // Auto-scroll to the new items after a brief delay
     setTimeout(() => {
       if (scrollViewRef.current) {
@@ -237,7 +240,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ...prev.items.slice(index + 1),
       ],
     }));
-    
+
     // Auto-scroll to show the duplicated item
     setTimeout(() => {
       if (scrollViewRef.current) {
@@ -341,7 +344,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                 <Text style={[styles.detailsSectionTitle, { color: theme.text }]}>
                   Requested Items
                 </Text>
-
                 {selectedRequest.requestedItems?.map((item, index) => (
                   <View
                     key={index}
@@ -360,7 +362,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                   </View>
                 ))}
               </View>
-
               {/* Additional Details */}
               {selectedRequest.remarks && (
                 <View
@@ -387,7 +388,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ...prev,
         items: prev.items.filter((_, i) => i !== index),
       }));
-      
+
       // If we removed the last item and there are still items, scroll to show the new last item
       setTimeout(() => {
         if (scrollViewRef.current && index === formData.items.length - 1 && formData.items.length > 1) {
@@ -570,50 +571,52 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
 
           {/* Elegant Tabs */}
           <View style={[styles.elegantTabContainer, { backgroundColor: theme.background }]}>
-            {/* Only show Add Request tab if taskId is provided */}
-            {taskId && (
-              <TouchableOpacity
+
+            {/* Always show Add Request tab */}
+            <TouchableOpacity
+              style={[
+                styles.elegantTab,
+                activeTab === 'submit' && {
+                  backgroundColor: theme.primary,
+                },
+              ]}
+              onPress={() => setActiveTab('submit')}>
+              <View
                 style={[
-                  styles.elegantTab,
-                  activeTab === 'submit' && {
-                    backgroundColor: theme.primary,                  
+                  styles.tabIconContainer,
+                  {
+                    backgroundColor: activeTab === 'submit' ? 'rgba(255,255,255,0.2)' : theme.card,
                   },
-                ]}
-                onPress={() => setActiveTab('submit')}>
-                <View
+                ]}>
+                <Feather
+                  name="plus"
+                  size={18}
+                  color={activeTab === 'submit' ? '#fff' : theme.primary}
+                />
+              </View>
+              <View style={styles.tabContent}>
+                <Text
                   style={[
-                    styles.tabIconContainer,
+                    styles.elegantTabTitle,
+                    { color: activeTab === 'submit' ? '#fff' : theme.text },
+                  ]}>
+                  Add Request
+                </Text>
+                <Text
+                  style={[
+                    styles.elegantTabSubtitle,
                     {
-                      backgroundColor: activeTab === 'submit' ? 'rgba(255,255,255,0.2)' : theme.card,
+                      color: activeTab === 'submit'
+                        ? 'rgba(255,255,255,0.8)'
+                        : theme.secondaryText,
                     },
                   ]}>
-                  <Feather
-                    name="plus"
-                    size={18}
-                    color={activeTab === 'submit' ? '#fff' : theme.primary}
-                  />
-                </View>
-                <View style={styles.tabContent}>
-                  <Text
-                    style={[
-                      styles.elegantTabTitle,
-                      { color: activeTab === 'submit' ? '#fff' : theme.text },
-                    ]}>
-                    Add Request
-                  </Text>
-                  <Text
-                    style={[
-                      styles.elegantTabSubtitle,
-                      {
-                        color: activeTab === 'submit' ? 'rgba(255,255,255,0.8)' : theme.secondaryText,
-                      },
-                    ]}>
-                    Create new material request
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
+                  Create new material request
+                </Text>
+              </View>
+            </TouchableOpacity>
 
+            {/* View Requests tab */}
             <TouchableOpacity
               style={[
                 styles.elegantTab,
@@ -653,7 +656,9 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                 </Text>
               </View>
             </TouchableOpacity>
+
           </View>
+
 
           {/* Content */}
           <View style={styles.content}>
@@ -676,8 +681,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                                 'Are you sure you want to remove all items? This action cannot be undone.',
                                 [
                                   { text: 'Cancel', style: 'cancel' },
-                                  { 
-                                    text: 'Clear All', 
+                                  {
+                                    text: 'Clear All',
                                     style: 'destructive',
                                     onPress: () => setFormData({ items: [{ itemName: '', quantityRequested: '', unit: 'pcs' }] })
                                   }
@@ -697,7 +702,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                         <Feather name="plus" size={16} color="#fff" />
                         <Text style={styles.stickyAddBtnText}>Add Item</Text>
                       </TouchableOpacity>
-                      
+
                       <TouchableOpacity
                         onPress={() => {
                           Alert.alert(
@@ -749,7 +754,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                             style={[styles.duplicateItemBtn, { backgroundColor: theme.primary + '15' }]}>
                             <Feather name="copy" size={12} color={theme.primary} />
                           </TouchableOpacity>
-                          
+
                           {/* Remove Item Button */}
                           {formData.items.length > 1 && (
                             <TouchableOpacity
@@ -829,7 +834,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                       </View>
                     </View>
                   ))}
-                  
+
                   {/* Bottom spacing for scroll */}
                   <View style={styles.scrollBottomSpacing} />
                 </ScrollView>
@@ -954,8 +959,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                       {taskId ? 'No requests yet' : 'No material requests'}
                     </Text>
                     <Text style={[styles.emptySubtext, { color: theme.secondaryText }]}>
-                      {taskId 
-                        ? 'Create your first material request' 
+                      {taskId
+                        ? 'Create your first material request'
                         : 'No material requests have been made for this project yet'
                       }
                     </Text>
