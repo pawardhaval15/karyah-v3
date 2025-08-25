@@ -43,7 +43,6 @@ export const materialRequestAPI = {
     }
   },
 
-
   // Get all material requests for a project
   getProjectRequests: async (projectId) => {  // Renamed from getProjectTaskRequests for clarity
     try {
@@ -85,7 +84,6 @@ export const materialRequestAPI = {
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch requests');
       }
-
       return { success: true, data: data.requests || [] };
     } catch (error) {
       console.error('Fetch requests error:', error);
@@ -114,6 +112,26 @@ export const materialRequestAPI = {
       return { success: true, data };
     } catch (error) {
       console.error('Update request error:', error);
+      return { success: false, error: error.message };
+    }
+  },
+  // New: Edit material request details (task, requested items, remarks, etc.)
+  editRequest: async (requestId, updateData) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const response = await fetch(`${API_URL}api/material-requests/material/${requestId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(updateData),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Failed to update request');
+      return { success: true, data };
+    } catch (error) {
+      console.error('Edit request error:', error);
       return { success: false, error: error.message };
     }
   },
