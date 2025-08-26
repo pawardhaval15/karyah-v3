@@ -1,16 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  Modal,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+  ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { materialRequestAPI } from '../../utils/materialRequests';
 
@@ -36,7 +27,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
       },
     ],
   });
-
+  const [editMode, setEditMode] = useState(false); // controls whether in edit
+  const [editRequestId, setEditRequestId] = useState(null); // which request to edit
   const units = ['pcs', 'kg', 'ltr', 'm', 'box', 'bag', 'ton', 'ft', 'sqm', 'cum'];
 
   useEffect(() => {
@@ -56,11 +48,9 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
   // Smart Search logic with enhanced matching
   useEffect(() => {
     let filtered = [...requests];
-
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       const searchTerms = query.split(' ').filter((term) => term.length > 0);
-
       filtered = filtered.filter((request) => {
         // Create searchable text from all relevant fields
         const searchableText = [
@@ -73,7 +63,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ]
           .join(' ')
           .toLowerCase();
-
         // Check if all search terms are found (AND logic)
         return searchTerms.every((term) => searchableText.includes(term));
       });
@@ -88,7 +77,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ]
           .join(' ')
           .toLowerCase();
-
         const bSearchableText = [
           b.id,
           b.Task?.name || '',
@@ -98,14 +86,11 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ]
           .join(' ')
           .toLowerCase();
-
         // Prioritize exact matches at word boundaries
         const aExactMatch = searchTerms.some((term) => aSearchableText.includes(term));
         const bExactMatch = searchTerms.some((term) => bSearchableText.includes(term));
-
         if (aExactMatch && !bExactMatch) return -1;
         if (!aExactMatch && bExactMatch) return 1;
-
         // Then sort by creation date (newest first)
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
@@ -120,7 +105,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
 
   const fetchRequests = async () => {
     if (!taskId && !projectId) return;
-
     setLoading(true);
     let result;
     // If we have a taskId, fetch requests for that specific task
@@ -130,7 +114,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
     } else if (projectId) {
       result = await materialRequestAPI.getProjectRequests(projectId);
     }
-
     if (result && result.success) {
       setRequests(result.data);
     } else {
@@ -147,34 +130,50 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
       Alert.alert('Error', 'Please add at least one item with name and quantity');
       return;
     }
-
-    const requestPayload = {
-      projectId,
-      ...(taskId ? { taskId } : {}),
-      requestedItems: validItems.map(item => ({
-        itemName: item.itemName.trim(),
-        quantityRequested: parseFloat(item.quantityRequested) || 0,
-        unit: item.unit,
-      })),
-    };
-
-    console.log('Submitting Material Request:', requestPayload);
-
     setLoading(true);
-
-    const result = await materialRequestAPI.createRequest(requestPayload);
-
-    if (result.success) {
-      console.log('Material Request created successfully:', result.data);
-      Alert.alert('Success', 'Material request submitted successfully');
-      resetForm();
-      setActiveTab('view');
-      fetchRequests();
+    if (editMode && editRequestId) {
+      // EDIT REQUEST
+      const updatePayload = {
+        requestedItems: validItems.map(item => ({
+          itemName: item.itemName.trim(),
+          quantityRequested: parseFloat(item.quantityRequested) || 0,
+          unit: item.unit,
+        })),
+        remarks: formData.remarks || '',
+      };
+      const result = await materialRequestAPI.editRequest(editRequestId, updatePayload);
+      if (result.success) {
+        Alert.alert('Success', 'Material request updated successfully');
+        resetForm();
+        setActiveTab('view');
+        setEditMode(false);
+        setEditRequestId(null);
+        fetchRequests();
+      } else {
+        Alert.alert('Error', result.error);
+      }
     } else {
-      console.error('Failed to create Material Request:', result.error);
-      Alert.alert('Error', result.error);
+      // CREATE REQUEST
+      const requestPayload = {
+        projectId,
+        ...(taskId ? { taskId } : {}),
+        requestedItems: validItems.map(item => ({
+          itemName: item.itemName.trim(),
+          quantityRequested: parseFloat(item.quantityRequested) || 0,
+          unit: item.unit,
+        })),
+        remarks: formData.remarks || '',
+      };
+      const result = await materialRequestAPI.createRequest(requestPayload);
+      if (result.success) {
+        Alert.alert('Success', 'Material request submitted successfully');
+        resetForm();
+        setActiveTab('view');
+        fetchRequests();
+      } else {
+        Alert.alert('Error', result.error);
+      }
     }
-
     setLoading(false);
   };
 
@@ -221,7 +220,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
       ...prev,
       items: [...prev.items, ...newItems],
     }));
-
     // Auto-scroll to the new items after a brief delay
     setTimeout(() => {
       if (scrollViewRef.current) {
@@ -240,7 +238,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ...prev.items.slice(index + 1),
       ],
     }));
-
     // Auto-scroll to show the duplicated item
     setTimeout(() => {
       if (scrollViewRef.current) {
@@ -268,7 +265,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
               <Text style={[styles.detailsTitle, { color: theme.text }]}>Request Details</Text>
               <View style={{ width: 20 }} />
             </View>
-
             <ScrollView style={styles.detailsContent} showsVerticalScrollIndicator={false}>
               {/* Request Info */}
               <View
@@ -279,7 +275,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                 <Text style={[styles.detailsSectionTitle, { color: theme.text }]}>
                   Request Information
                 </Text>
-
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>
                     Request ID:
@@ -288,14 +283,12 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     #{selectedRequest.id.slice(-8)}
                   </Text>
                 </View>
-
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>Task:</Text>
                   <Text style={[styles.detailsValue, { color: theme.text }]}>
                     {selectedRequest.Task?.name || 'Unknown Task'}
                   </Text>
                 </View>
-
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>
                     Requested by:
@@ -304,14 +297,12 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     {selectedRequest.User?.name || 'Unknown User'}
                   </Text>
                 </View>
-
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>Date:</Text>
                   <Text style={[styles.detailsValue, { color: theme.text }]}>
                     {new Date(selectedRequest.createdAt).toLocaleDateString()}
                   </Text>
                 </View>
-
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>Status:</Text>
                   <View
@@ -334,7 +325,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                   </View>
                 </View>
               </View>
-
               {/* Requested Items */}
               <View
                 style={[
@@ -388,7 +378,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         ...prev,
         items: prev.items.filter((_, i) => i !== index),
       }));
-
       // If we removed the last item and there are still items, scroll to show the new last item
       setTimeout(() => {
         if (scrollViewRef.current && index === formData.items.length - 1 && formData.items.length > 1) {
@@ -464,11 +453,23 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
             <Text style={styles.elegantStatusText}>{item.status.toUpperCase()}</Text>
           </View>
         </View>
-        <TouchableOpacity style={[styles.elegantMoreBtn, { backgroundColor: theme.background }]}>
+        <TouchableOpacity onPress={() => {
+          setEditMode(true);
+          setEditRequestId(item.id);
+          setFormData({
+            items: item.requestedItems.map(i => ({
+              itemName: i.itemName,
+              quantityRequested: String(i.quantityRequested),
+              unit: i.unit,
+            })),
+            remarks: item.remarks || '',
+          });
+          setActiveTab('submit'); // Show the form tab
+        }}
+          style={[styles.elegantMoreBtn, { backgroundColor: theme.background }]}>
           <Feather name="more-horizontal" size={16} color={theme.secondaryText} />
         </TouchableOpacity>
       </View>
-
       {/* Task and User Information */}
       <View style={styles.elegantCardContent}>
         <Text style={[styles.elegantTaskName, { color: theme.text }]} numberOfLines={1}>
@@ -483,7 +484,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
           </Text>
         </View>
       </View>
-
       {/* Elegant Items Display */}
       <View style={styles.elegantItemsContainer}>
         <Text style={[styles.itemsLabel, { color: theme.secondaryText }]}>
@@ -527,7 +527,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
           )}
         </View>
       </View>
-
       {/* Elegant Footer */}
       <View style={[styles.elegantCardFooter, { borderTopColor: theme.border }]}>
         <View style={styles.dateContainer}>
@@ -568,10 +567,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
               <Feather name="x" size={20} color={theme.secondaryText} />
             </TouchableOpacity>
           </View>
-
           {/* Elegant Tabs */}
           <View style={[styles.elegantTabContainer, { backgroundColor: theme.background }]}>
-
             {/* Always show Add Request tab */}
             <TouchableOpacity
               style={[
@@ -615,7 +612,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                 </Text>
               </View>
             </TouchableOpacity>
-
             {/* View Requests tab */}
             <TouchableOpacity
               style={[
@@ -656,10 +652,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                 </Text>
               </View>
             </TouchableOpacity>
-
           </View>
-
-
           {/* Content */}
           <View style={styles.content}>
             {activeTab === 'submit' ? (
@@ -702,7 +695,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                         <Feather name="plus" size={16} color="#fff" />
                         <Text style={styles.stickyAddBtnText}>Add Item</Text>
                       </TouchableOpacity>
-
                       <TouchableOpacity
                         onPress={() => {
                           Alert.alert(
@@ -722,7 +714,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     </View>
                   </View>
                 </View>
-
                 {/* Scrollable Items Section */}
                 <ScrollView
                   ref={scrollViewRef}
@@ -754,7 +745,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                             style={[styles.duplicateItemBtn, { backgroundColor: theme.primary + '15' }]}>
                             <Feather name="copy" size={12} color={theme.primary} />
                           </TouchableOpacity>
-
                           {/* Remove Item Button */}
                           {formData.items.length > 1 && (
                             <TouchableOpacity
@@ -765,7 +755,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                           )}
                         </View>
                       </View>
-
                       {/* Item Name */}
                       <View style={styles.inputGroup}>
                         <Text style={[styles.itemLabel, { color: theme.text }]}>Item Name *</Text>
@@ -784,7 +773,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                           onChangeText={(text) => updateItem(index, 'itemName', text)}
                         />
                       </View>
-
                       {/* Quantity & Unit Row */}
                       <View style={styles.row}>
                         <View style={[styles.inputGroup, { flex: 1, marginRight: 8 }]}>
@@ -805,7 +793,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                             keyboardType="numeric"
                           />
                         </View>
-
                         <View style={[styles.inputGroup, { flex: 1, marginLeft: 8 }]}>
                           <Text style={[styles.itemLabel, { color: theme.text }]}>Unit</Text>
                           <TouchableOpacity
@@ -834,11 +821,9 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                       </View>
                     </View>
                   ))}
-
                   {/* Bottom spacing for scroll */}
                   <View style={styles.scrollBottomSpacing} />
                 </ScrollView>
-
                 {/* Scroll Helper for Many Items */}
                 {formData.items.length > 5 && (
                   <View style={[styles.scrollHelper, { backgroundColor: theme.primary + '10', borderColor: theme.primary + '30' }]}>
@@ -853,7 +838,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     </TouchableOpacity>
                   </View>
                 )}
-
                 {/* Sticky Submit Button */}
                 <View style={[styles.submitSection, { backgroundColor: theme.background, borderTopColor: theme.border }]}>
                   <TouchableOpacity
@@ -905,7 +889,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     </TouchableOpacity>
                   )}
                 </View>
-
                 {/* Search Results Summary */}
                 {searchQuery.trim() && (
                   <View style={styles.searchSummary}>
@@ -921,7 +904,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     )}
                   </View>
                 )}
-
                 {/* Request List */}
                 {loading ? (
                   <View style={styles.loadingContainer}>
@@ -989,7 +971,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
           </View>
         </View>
       </View>
-
       {/* Request Details Modal */}
       {renderRequestDetails()}
     </Modal>
