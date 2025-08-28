@@ -329,8 +329,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 style={
                   styles.dueDate
                 }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
+                <Text
+                style={
+                  styles.creator
+                }>{`Project Creator: ${projectDetails.creatorName || '-'}`}</Text>
             </View>
-            
             {/* Compact Project Details Toggle Button */}
             <TouchableOpacity
               onPress={() => setShowProjectDetails((prev) => !prev)}
@@ -354,7 +357,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 color="#fff"
                 style={{ marginLeft: 4 }}
               />
+              
             </TouchableOpacity>
+            
           </View>
         </LinearGradient>
         {/* Modern Pill-Style Tab Buttons */}
@@ -1065,6 +1070,12 @@ const styles = StyleSheet.create({
     marginBottom: isTablet ? 8 : 6,
   },
   dueDate: {
+    color: '#fff',
+    fontSize: isTablet ? 15 : 13,
+    opacity: 0.85,
+    fontWeight: '400',
+  },
+  creator: {
     color: '#fff',
     fontSize: isTablet ? 15 : 13,
     opacity: 0.85,
