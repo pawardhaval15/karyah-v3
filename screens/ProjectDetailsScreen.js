@@ -1,6 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
+import CustomCircularProgress from 'components/task details/CustomCircularProgress';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
@@ -28,7 +29,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 import { deleteProjectById, getProjectById } from '../utils/project';
-import { deleteWorklist, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
+import { deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
 
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
@@ -57,6 +58,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   // New state variables
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [worklists, setWorklists] = useState([]);
+  const [worklistsProgress, setWorklistsProgress] = useState([]);
   const [loadingWorklists, setLoadingWorklists] = useState(false);
   const [searchWorklist, setSearchWorklist] = useState('');
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -110,8 +112,12 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       setLoadingWorklists(true);
       try {
         const token = await AsyncStorage.getItem('token');
-        const data = await getWorklistsByProjectId(projectDetails.id, token);
-        setWorklists(data);
+        const [worklistData, progressData] = await Promise.all([
+          getWorklistsByProjectId(projectDetails.id, token),
+          getProjectWorklistsProgress(projectDetails.id, token)
+        ]);
+        setWorklists(worklistData);
+        setWorklistsProgress(progressData);
       } catch (error) {
         console.error('Failed to fetch worklists:', error.message);
       } finally {
@@ -123,6 +129,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       fetchWorklists();
     }
   }, [projectDetails?.id]);
+
+  // Get progress for a specific worklist
+  const getWorklistProgress = (worklistId) => {
+    return worklistsProgress.find(p => p.worklistId === worklistId);
+  };
 
   // Worklist handlers
   const handleDeleteWorklist = (id) => {
@@ -174,76 +185,60 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   };
 
   // WorklistCard component - Compact Design
-  const WorklistCard = ({ worklist }) => (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('TaskListScreen', { worklist, project: projectDetails })}
-      activeOpacity={0.7}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.card,
-        borderColor: theme.border,
-        borderWidth: 1,
-        borderRadius: 12,
-        paddingHorizontal: 12,
-        paddingVertical: 14,
-        marginHorizontal: 20,
-        marginBottom: 10,
-      }}>
-      <View
+  const WorklistCard = ({ worklist }) => {
+    const progress = getWorklistProgress(worklist.id);
+    
+    return (
+      <TouchableOpacity
+        onPress={() => navigation.navigate('TaskListScreen', { worklist, project: projectDetails })}
+        activeOpacity={0.7}
         style={{
-          width: 36,
-          height: 36,
-          borderRadius: 10,
-          backgroundColor: `${theme.primary}12`,
+          flexDirection: 'row',
           alignItems: 'center',
-          justifyContent: 'center',
-          marginRight: 12,
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+          borderWidth: 1,
+          borderRadius: 12,
+          paddingHorizontal: 14,
+          paddingVertical: 16,
+          marginHorizontal: 20,
+          marginBottom: 10,
         }}>
-        <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 16 }}>
-          {worklist.name?.[0]?.toUpperCase() || '?'}
-        </Text>
-      </View>
-
-      <View style={{ flex: 1 }}>
-        <Text style={{ color: theme.text, fontSize: 15, fontWeight: '500' }} numberOfLines={1}>
-          {worklist.name}
-        </Text>
-        <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
-          Tap to view tasks
-        </Text>
-      </View>
-
-      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            openEditModal(worklist);
-          }}
+        <View
           style={{
-            padding: 6,
-            marginRight: 4,
-            borderRadius: 6,
-            backgroundColor: `${theme.primary}08`,
+            width: 36,
+            height: 36,
+            borderRadius: 10,
+            backgroundColor: `${theme.primary}12`,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 12,
           }}>
-          <MaterialIcons name="edit" size={16} color={theme.primary} />
-        </TouchableOpacity>
+          <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 16 }}>
+            {worklist.name?.[0]?.toUpperCase() || '?'}
+          </Text>
+        </View>
 
-        <TouchableOpacity
-          onPress={(e) => {
-            e.stopPropagation();
-            handleDeleteWorklist(worklist.id);
-          }}
-          style={{
-            padding: 6,
-            borderRadius: 6,
-            backgroundColor: `${theme.error || '#EF4444'}08`,
-          }}>
-          <MaterialIcons name="delete-outline" size={16} color={theme.error || '#EF4444'} />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
-  );
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={1}>
+            {worklist.name}
+          </Text>
+          <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
+            {progress?.totalTasks || 0} tasks
+          </Text>
+        </View>
+
+        {/* Circular Progress Component */}
+        <View style={{ marginLeft: 10 }}>
+          <CustomCircularProgress 
+            size={48} 
+            strokeWidth={4} 
+            percentage={progress?.progress || 0}
+          />
+        </View>
+      </TouchableOpacity>
+    );
+  };
 
   const handleIssueChange = (field, value) => {
     setIssueForm((prev) => ({ ...prev, [field]: value }));
@@ -323,16 +318,43 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.headerCard}>
-          <View>
-            <TouchableOpacity onPress={() => setShowProjectNameModal(true)}>
-              <Text style={styles.projectName} numberOfLines={2} ellipsizeMode="tail">
-                {projectDetails.projectName}
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <View style={{ flex: 1 }}>
+              <TouchableOpacity onPress={() => setShowProjectNameModal(true)}>
+                <Text style={styles.projectName} numberOfLines={2} ellipsizeMode="tail">
+                  {projectDetails.projectName}
+                </Text>
+              </TouchableOpacity>
+              <Text
+                style={
+                  styles.dueDate
+                }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
+            </View>
+            
+            {/* Compact Project Details Toggle Button */}
+            <TouchableOpacity
+              onPress={() => setShowProjectDetails((prev) => !prev)}
+              style={{
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.3)',
+              }}>
+              <MaterialIcons name="description" size={16} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                Details
               </Text>
+              <MaterialIcons
+                name={showProjectDetails ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                size={16}
+                color="#fff"
+                style={{ marginLeft: 4 }}
+              />
             </TouchableOpacity>
-            <Text
-              style={
-                styles.dueDate
-              }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
           </View>
         </LinearGradient>
         {/* Modern Pill-Style Tab Buttons */}
@@ -453,60 +475,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             ]}
           />
         </View>
-
-        {/* Project Details Toggle Button */}
-        <TouchableOpacity
-          onPress={() => setShowProjectDetails((prev) => !prev)}
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginHorizontal: 20,
-            backgroundColor: theme.card,
-            borderRadius: 16,
-            paddingHorizontal: 20,
-            paddingVertical: 12,
-            borderWidth: 1,
-            borderColor: theme.border,
-          }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 18,
-                backgroundColor: `${theme.primary}15`,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-              }}>
-              <MaterialIcons name="description" size={20} color={theme.primary} />
-            </View>
-            <View>
-              <Text style={{ color: theme.text, fontWeight: '600', fontSize: 14 }}>
-                Project Details
-              </Text>
-              <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
-                {showProjectDetails ? 'Tap to hide details' : 'View project information'}
-              </Text>
-            </View>
-          </View>
-          <View
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 16,
-              backgroundColor: `${theme.primary}10`,
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}>
-            <MaterialIcons
-              name={showProjectDetails ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-              size={20}
-              color={theme.primary}
-            />
-          </View>
-        </TouchableOpacity>
 
         {/* Collapsible Project Details */}
         {showProjectDetails && (
@@ -672,7 +640,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         )}
 
         {/* Compact Worklist Section */}
-        <View style={{ marginTop: 12 }}>
+        <View style={{ marginTop: 0 }}>
           {/* Compact Worklist Header */}
           <View
             style={{
@@ -1074,7 +1042,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   backText: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#222',
     fontWeight: '400',
     marginLeft: 0,
@@ -1107,7 +1075,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: isTablet ? 40 : 20,
     marginBottom: isTablet ? 12 : 8,
-    marginTop: isTablet ? 12 : 8,
+    marginTop: isTablet ? 6 : 0,
     justifyContent: 'space-between',
   },
   progressLabel: {
@@ -1150,7 +1118,7 @@ const styles = StyleSheet.create({
     marginHorizontal: isTablet ? 42 : 24,
     marginBottom: isTablet ? 16 : 12,
     gap: isTablet ? 12 : 8,
-    marginTop: 12,
+    marginTop: 0,
   },
   dateBox: {
     flex: 1,

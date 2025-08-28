@@ -3,6 +3,7 @@ import CustomDrawer from 'components/Home/CustomDrawer';
 import ProjectProgressCard from 'components/Home/ProjectProgressCard';
 import TaskSection from 'components/Home/TaskSection';
 import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
+import SmartSearchBar from 'components/ui/SmartSearchBar';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -69,6 +70,7 @@ export default function HomeScreen({ navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showSmartSearch, setShowSmartSearch] = useState(false);
   usePushNotifications();
 
   useEffect(() => {
@@ -186,6 +188,18 @@ export default function HomeScreen({ navigation }) {
               </View>
             </View>
 
+            {/* Smart Search Bar */}
+            <TouchableOpacity
+              style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}
+              onPress={() => setShowSmartSearch(true)}
+              activeOpacity={0.7}
+            >
+              {/* <Feather name="search" size={18} color={theme.secondaryText} style={styles.searchIcon} /> */}
+              <Text style={[styles.searchPlaceholder, { color: theme.secondaryText }]}>
+                Search projects, tasks, users...
+              </Text>
+            </TouchableOpacity>
+
             <ScrollView
               contentContainerStyle={{ paddingBottom: 0 }}
               showsVerticalScrollIndicator={false}
@@ -271,6 +285,13 @@ export default function HomeScreen({ navigation }) {
               </Animated.View>
             </View>
           )}
+          {showSmartSearch && (
+            <SmartSearchBar 
+              navigation={navigation}
+              theme={theme}
+              onClose={() => setShowSmartSearch(false)}
+            />
+          )}
         </>
       )}
     </View>
@@ -292,21 +313,19 @@ const styles = StyleSheet.create({
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f7f7f7',
-    borderRadius: 12,
     marginHorizontal: 20,
-    marginBottom: 12,
+    marginBottom: 0,
+    marginTop: 10,
     paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#363942',
-    paddingVertical: 0,
+    paddingVertical: 14,
+    borderRadius: 12,
   },
   searchIcon: {
-    marginLeft: 8,
+    marginRight: 12,
+  },
+  searchPlaceholder: {
+    fontSize: 16,
+    flex: 1,
   },
   drawerOverlay: {
     zIndex: 1000,
@@ -382,7 +401,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   greeting: {
-    fontSize: 22,
+    fontSize: 12,
     fontWeight: '600',
     marginLeft: 20,
     marginBottom: 0,

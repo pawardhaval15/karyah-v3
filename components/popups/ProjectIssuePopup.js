@@ -156,7 +156,7 @@ export default function ProjectIssuePopup({
                     </View>
                     <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
                         {/* Title */}
-                        <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TextInput
                                 style={[styles.input, { color: theme.text }]}
                                 placeholder="Issue Title"
@@ -166,9 +166,9 @@ export default function ProjectIssuePopup({
                             />
                         </View>
 
-                        <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TouchableOpacity
-                                style={{ flex: 1, justifyContent: 'center', height: 54 }}
+                                style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
                                 onPress={() => {
                                     if (!values.projectId) setShowProjectPicker(true); // disable if projectId is already set
                                 }}
@@ -176,7 +176,8 @@ export default function ProjectIssuePopup({
                             >
                                 <Text style={{
                                     color: values.projectId ? theme.text : theme.secondaryText,
-                                    fontWeight: '500'
+                                    fontWeight: '500',
+                                    fontSize: 16,
                                 }}>
                                     {values.projectId
                                         ? (projects.find(p => String(p.id) === String(values.projectId))?.projectName || 'Select Project')
@@ -199,7 +200,7 @@ export default function ProjectIssuePopup({
                         />
 
                         {/* Description */}
-                        <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TextInput
                                 style={[styles.input, { color: theme.text, height: 70 }]}
                                 placeholder="Description"
@@ -316,16 +317,16 @@ export default function ProjectIssuePopup({
                         />
 
                         {/* Assign To Picker Field */}
-                        <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TouchableOpacity
-                                style={{ flex: 1, justifyContent: 'center', height: 54 }}
+                                style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
                                 onPress={() => setShowUserPicker(true)}
                                 activeOpacity={0.8}
                             >
                                 <Text style={{
                                     color: values.assignTo ? theme.text : theme.secondaryText,
                                     fontSize: 16,
-                                    fontWeight: '500'
+                                    fontWeight: '400'
                                 }}>
                                     {values.assignTo
                                         ? (users.find(u => u.userId === values.assignTo)?.name || 'Assign To')
@@ -347,7 +348,7 @@ export default function ProjectIssuePopup({
                             showImage={true}
                         />
 
-                        <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
+                        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TouchableOpacity
                                 style={[styles.rowInput, { color: theme.text }]}
                                 onPress={() => setShowDatePicker(true)}
@@ -479,16 +480,13 @@ const styles = StyleSheet.create({
         marginLeft: 12,
     },
     inputBox: {
-        backgroundColor: '#F8FAFC',
-        borderRadius: 14,
+        borderRadius: 10,
         marginHorizontal: 16,
-        marginBottom: 14,
+        marginBottom: 10,
         paddingHorizontal: 16,
         borderWidth: 1,
-        borderColor: '#E2E8F0',
         flexDirection: 'row',
         alignItems: 'center',
-        minHeight: 54,
     },
     input: {
         flex: 1,
@@ -505,7 +503,6 @@ const styles = StyleSheet.create({
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
-        height: 54,
     },
     criticalRow: {
         flexDirection: 'row',
