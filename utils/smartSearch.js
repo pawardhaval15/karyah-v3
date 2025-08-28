@@ -21,11 +21,11 @@ export const performSmartSearch = async (query) => {
       const description = project.description || '';
       const location = project.location || '';
       const mainUserName = project.mainUserName || '';
-      
+
       return projectName.toLowerCase().includes(searchQuery) ||
-             description.toLowerCase().includes(searchQuery) ||
-             location.toLowerCase().includes(searchQuery) ||
-             mainUserName.toLowerCase().includes(searchQuery);
+        description.toLowerCase().includes(searchQuery) ||
+        location.toLowerCase().includes(searchQuery) ||
+        mainUserName.toLowerCase().includes(searchQuery);
     }).map(project => ({
       id: project.id,
       type: 'project',
@@ -46,10 +46,10 @@ export const performSmartSearch = async (query) => {
         const title = task.title || '';
         const description = task.description || '';
         const projectName = task.projectName || '';
-        
+
         return title.toLowerCase().includes(searchQuery) ||
-               description.toLowerCase().includes(searchQuery) ||
-               projectName.toLowerCase().includes(searchQuery);
+          description.toLowerCase().includes(searchQuery) ||
+          projectName.toLowerCase().includes(searchQuery);
       }).map(task => ({
         id: task.id,
         type: 'task',
@@ -73,10 +73,10 @@ export const performSmartSearch = async (query) => {
         const title = task.title || '';
         const description = task.description || '';
         const projectName = task.projectName || '';
-        
+
         return title.toLowerCase().includes(searchQuery) ||
-               description.toLowerCase().includes(searchQuery) ||
-               projectName.toLowerCase().includes(searchQuery);
+          description.toLowerCase().includes(searchQuery) ||
+          projectName.toLowerCase().includes(searchQuery);
       }).map(task => ({
         id: `created-${task.id}`,
         type: 'created-task',
@@ -99,9 +99,10 @@ export const performSmartSearch = async (query) => {
       const userResults = users.map(user => ({
         id: `user-${user.id}`,
         type: 'user',
-        title: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+        title: `${user.name || ''}`.trim() || 'Unknown User',
         subtitle: user.email || 'No email',
-        metadata: user.role || 'User',
+        metadata: user.phone || 'NA',
+        icon: user.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
         data: user,
         navigationTarget: 'UserProfileScreen',
         navigationParams: { userId: user.id, user }
@@ -127,9 +128,9 @@ export const performSmartSearch = async (query) => {
           metadata: `Project: ${project.projectName || 'Unknown'}`,
           data: { worklist, project },
           navigationTarget: 'TaskListScreen',
-          navigationParams: { 
-            projectId: project.id, 
-            worklistId: worklist.id, 
+          navigationParams: {
+            projectId: project.id,
+            worklistId: worklist.id,
             worklistName: worklist.name || 'Untitled Worklist',
             projectName: project.projectName || 'Unknown Project'
           }
@@ -145,19 +146,19 @@ export const performSmartSearch = async (query) => {
     const sortedResults = results.sort((a, b) => {
       const aTitle = (a.title || '').toLowerCase();
       const bTitle = (b.title || '').toLowerCase();
-      
+
       const aExactMatch = aTitle === searchQuery;
       const bExactMatch = bTitle === searchQuery;
-      
+
       if (aExactMatch && !bExactMatch) return -1;
       if (!aExactMatch && bExactMatch) return 1;
-      
+
       const aStartsWithMatch = aTitle.startsWith(searchQuery);
       const bStartsWithMatch = bTitle.startsWith(searchQuery);
-      
+
       if (aStartsWithMatch && !bStartsWithMatch) return -1;
       if (!aStartsWithMatch && bStartsWithMatch) return 1;
-      
+
       return aTitle.localeCompare(bTitle);
     });
 
@@ -208,6 +209,7 @@ export const getQuickSearchSuggestions = () => [
     title: 'Connections',
     subtitle: 'Manage your connections',
     metadata: 'Quick access',
+    icon: 'connections-icon.png',
     navigationTarget: 'ConnectionsScreen',
     navigationParams: {}
   },

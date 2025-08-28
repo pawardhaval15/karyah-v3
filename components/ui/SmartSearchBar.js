@@ -1,16 +1,17 @@
 import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Keyboard,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Keyboard,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Image
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSearchHistory, saveSearchHistory } from '../../utils/searchHistory';
@@ -32,10 +33,10 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
   useEffect(() => {
     // Show quick suggestions when component mounts
     setSuggestions(getQuickSearchSuggestions());
-    
+
     // Load search history
     loadSearchHistory();
-    
+
     // Auto-focus search input
     setTimeout(() => {
       searchInputRef.current?.focus();
@@ -90,14 +91,14 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
   const handleResultPress = (item) => {
     Keyboard.dismiss();
     setShowResults(false);
-    
+
     // Save to search history if it's a search result
     if (item.type !== 'suggestion' && searchQuery.trim().length > 0) {
       saveSearchHistory(searchQuery, item.type);
     }
-    
+
     onClose?.();
-    
+
     // Navigate to the target screen
     if (item.navigationTarget && navigation) {
       navigation.navigate(item.navigationTarget, item.navigationParams || {});
@@ -165,7 +166,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
 
   const renderSearchResult = ({ item }) => {
     if (!item) return null;
-    
+
     return (
       <TouchableOpacity
         style={[styles.resultItem, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
@@ -173,31 +174,53 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
         activeOpacity={0.7}
       >
         <View style={styles.resultContent}>
-          <View style={[styles.iconContainer, { backgroundColor: getTypeColor(item.type) + '20' }]}>
-            <Feather 
-              name={getTypeIcon(item.type)} 
-              size={18} 
-              color={getTypeColor(item.type)} 
-            />
+          <View style={styles.iconContainer}>
+            {item.type === 'user' && item.icon ? (
+              <Image
+                source={{ uri: item.icon }}
+                style={styles.userAvatar}
+                resizeMode="cover"
+              />
+            ) : (
+              <Feather
+                name={getTypeIcon(item.type)}
+                size={18}
+                color={getTypeColor(item.type)}
+              />
+            )}
           </View>
-          
+
+          {/* Text */}
           <View style={styles.textContainer}>
-            <Text style={[styles.resultTitle, { color: theme.text }]} numberOfLines={1}>
+            <Text
+              style={[styles.resultTitle, { color: theme.text }]}
+              numberOfLines={1}
+            >
               {item.title || 'Untitled'}
             </Text>
             {item.subtitle && (
-              <Text style={[styles.resultSubtitle, { color: theme.secondaryText }]} numberOfLines={1}>
+              <Text
+                style={[styles.resultSubtitle, { color: theme.secondaryText }]}
+                numberOfLines={1}
+              >
                 {item.subtitle}
               </Text>
             )}
             {item.metadata && (
-              <Text style={[styles.resultMetadata, { color: theme.secondaryText }]} numberOfLines={1}>
+              <Text
+                style={[styles.resultMetadata, { color: theme.secondaryText }]}
+                numberOfLines={1}
+              >
                 {item.metadata}
               </Text>
             )}
           </View>
-          
-          <Feather name="chevron-right" size={16} color={theme.secondaryText} />
+
+          <Feather
+            name="chevron-right"
+            size={16}
+            color={theme.secondaryText}
+          />
         </View>
       </TouchableOpacity>
     );
@@ -205,7 +228,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
 
   const renderSuggestion = ({ item }) => {
     if (!item) return null;
-    
+
     return (
       <TouchableOpacity
         style={[styles.suggestionItem, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
@@ -214,13 +237,13 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
       >
         <View style={styles.resultContent}>
           <View style={[styles.iconContainer, { backgroundColor: theme.primary + '20' }]}>
-            <Feather 
-              name={getTypeIcon(item.type)} 
-              size={18} 
-              color={theme.primary || '#366CD9'} 
+            <Feather
+              name={getTypeIcon(item.type)}
+              size={18}
+              color={theme.primary || '#366CD9'}
             />
           </View>
-          
+
           <View style={styles.textContainer}>
             <Text style={[styles.resultTitle, { color: theme.text }]} numberOfLines={1}>
               {item.title || 'Untitled'}
@@ -229,7 +252,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
               {item.subtitle || 'No description'}
             </Text>
           </View>
-          
+
           <Feather name="chevron-right" size={16} color={theme.secondaryText} />
         </View>
       </TouchableOpacity>
@@ -246,7 +269,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
 
   const renderHistoryItem = ({ item }) => {
     if (!item) return null;
-    
+
     return (
       <TouchableOpacity
         style={[styles.historyItem, { backgroundColor: theme.card, borderBottomColor: theme.border }]}
@@ -255,13 +278,13 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
       >
         <View style={styles.resultContent}>
           <View style={[styles.historyIconContainer, { backgroundColor: theme.secondaryText + '15' }]}>
-            <Feather 
-              name="clock" 
-              size={16} 
-              color={theme.secondaryText} 
+            <Feather
+              name="clock"
+              size={16}
+              color={theme.secondaryText}
             />
           </View>
-          
+
           <View style={styles.textContainer}>
             <Text style={[styles.historyTitle, { color: theme.text }]} numberOfLines={1}>
               {item.query || item.title || 'Unknown search'}
@@ -270,7 +293,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
               Recent search
             </Text>
           </View>
-          
+
           <Feather name="arrow-up-left" size={14} color={theme.secondaryText} style={{ opacity: 0.6 }} />
         </View>
       </TouchableOpacity>
@@ -278,25 +301,25 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
   };
 
   // Combine suggestions and history when no search query
-  const combinedSuggestions = searchQuery.length === 0 
+  const combinedSuggestions = searchQuery.length === 0
     ? [
-        ...(suggestions || []),
-        // Add separator if we have both suggestions and history
-        ...((suggestions || []).length > 0 && (searchHistory || []).length > 0 ? [{
-          id: 'separator-history',
-          type: 'separator',
-          title: 'Recent Searches',
-          isSeparator: true
-        }] : []),
-        ...(searchHistory || []).slice(0, 5).map(item => ({
-          ...item,
-          id: item.id || `history-${Date.now()}-${Math.random()}`,
-          type: 'history',
-          title: item.query || item.title || 'Unknown search',
-          subtitle: 'Recent search',
-          metadata: 'Search history'
-        }))
-      ]
+      ...(suggestions || []),
+      // Add separator if we have both suggestions and history
+      ...((suggestions || []).length > 0 && (searchHistory || []).length > 0 ? [{
+        id: 'separator-history',
+        type: 'separator',
+        title: 'Recent Searches',
+        isSeparator: true
+      }] : []),
+      ...(searchHistory || []).slice(0, 5).map(item => ({
+        ...item,
+        id: item.id || `history-${Date.now()}-${Math.random()}`,
+        type: 'history',
+        title: item.query || item.title || 'Unknown search',
+        subtitle: 'Recent search',
+        metadata: 'Search history'
+      }))
+    ]
     : [];
 
   const displayResults = showResults ? searchResults : combinedSuggestions;
@@ -309,20 +332,20 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
       onRequestClose={handleClose}
     >
       <View style={[styles.overlay, { backgroundColor: 'rgba(0,0,0,0.5)' }]}>
-        <View style={[styles.container, { 
+        <View style={[styles.container, {
           backgroundColor: theme.background,
           paddingTop: insets.top + 10,
           paddingBottom: insets.bottom + 10
         }]}>
           {/* Search Header */}
           <View style={styles.searchHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={handleClose}
               style={[styles.backButton, { backgroundColor: theme.card }]}
             >
               <Feather name="arrow-left" size={20} color={theme.text} />
             </TouchableOpacity>
-            
+
             <View style={[styles.searchInputContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <Feather name="search" size={18} color={theme.secondaryText} style={styles.searchIcon} />
               <TextInput
@@ -373,9 +396,9 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
               displayResults.length > 0 ? (
                 <View style={styles.resultsHeader}>
                   <Text style={[styles.resultsHeaderText, { color: theme.secondaryText }]}>
-                    {showResults 
+                    {showResults
                       ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} for "${searchQuery}"`
-                      : combinedSuggestions.length > suggestions.length 
+                      : combinedSuggestions.length > suggestions.length
                         ? 'QUICK ACTIONS & RECENT SEARCHES'
                         : 'QUICK ACTIONS'
                     }
@@ -402,6 +425,11 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
 };
 
 const styles = StyleSheet.create({
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
   overlay: {
     flex: 1,
   },
@@ -426,10 +454,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -477,12 +505,27 @@ const styles = StyleSheet.create({
   },
   resultItem: {
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    marginVertical: 4,
+    marginHorizontal: 8,
+    backgroundColor: '#222',
+    overflow: 'hidden',
   },
   suggestionItem: {
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    marginVertical: 4,
+    marginHorizontal: 8,
+    backgroundColor: '#222',
+    overflow: 'hidden',
   },
   historyItem: {
     borderBottomWidth: StyleSheet.hairlineWidth,
+    borderRadius: 14,
+    marginVertical: 4,
+    marginHorizontal: 8,
+    backgroundColor: '#222',
+    overflow: 'hidden',
   },
   resultContent: {
     flexDirection: 'row',
