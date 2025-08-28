@@ -205,7 +205,7 @@ export default function IssuesPieChart({ theme }) {
                         onPress={() => setSelectedSlice(item)}
                     >
                         <View style={[styles.legendDot, { backgroundColor: getIssueColor(index, item.count) }]} />
-                        <Text style={[styles.legendText, { color: theme.text }]}>
+                        <Text ellipsizeMode='tail' numberOfLines={1} style={[styles.legendText, { color: theme.text }]}>
                             {item.userName} ({item.count})
                         </Text>
                     </TouchableOpacity>
@@ -331,6 +331,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
         paddingHorizontal: 8,
+        paddingLeft: '50%',
     },
     legend: {
         flexDirection: 'row',
