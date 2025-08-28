@@ -7,8 +7,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+  View
 } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
