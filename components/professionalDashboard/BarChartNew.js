@@ -12,6 +12,7 @@ import {
 import { BarChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getProjectById, getProjectsByUserId } from '../../utils/project';
+import { useNavigation } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -19,6 +20,7 @@ export default function ProjectsSnagBarChart({ theme }) {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [selectedBar, setSelectedBar] = useState(null);
+  const navigation = useNavigation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,11 +92,11 @@ export default function ProjectsSnagBarChart({ theme }) {
   }, []);
 
   // Add debug logging
-  console.log('🔍 Projects Chart Data:', projects);
-  console.log(
-    '🔍 Projects Chart Counts:',
-    projects.map((p) => p.count)
-  );
+  // console.log('🔍 Projects Chart Data:', projects);
+  // console.log(
+  //   '🔍 Projects Chart Counts:',
+  //   projects.map((p) => p.count)
+  // );
 
   if (loading) {
     return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
@@ -165,7 +167,7 @@ export default function ProjectsSnagBarChart({ theme }) {
   };
 
   const handleBarPress = (data) => {
-    console.log('🔍 Bar clicked - Raw data:', data);
+    // console.log('🔍 Bar clicked - Raw data:', data);
 
     // Handle different data structures from react-native-chart-kit
     let index = -1;
@@ -178,9 +180,8 @@ export default function ProjectsSnagBarChart({ theme }) {
       // Find index by matching the value
       index = data.dataset.data.findIndex(val => Math.abs(val - data.value) < 0.01);
     }
-
-    console.log('🔍 Calculated index:', index);
-    console.log('🔍 Available projects:', displayProjects.length);
+    // console.log('🔍 Calculated index:', index);
+    // console.log('🔍 Available projects:', displayProjects.length);
 
     if (index >= 0 && index < displayProjects.length && displayProjects[index]) {
       console.log('✅ Selected project:', displayProjects[index]);
@@ -270,7 +271,6 @@ export default function ProjectsSnagBarChart({ theme }) {
                   const paddingRight = 40; // Chart internal side padding, adjust if needed
                   const chartUsableWidth = Math.max(screenWidth - 64, displayProjects.length * 60) - paddingRight;
                   const labelLeft = paddingRight + index * chartUsableWidth / displayProjects.length;
-
                   return (
                     <TouchableOpacity
                       key={`label-touch-${index}`}
@@ -281,8 +281,8 @@ export default function ProjectsSnagBarChart({ theme }) {
                           width: chartUsableWidth / displayProjects.length * 0.9, // 90% to cover most of label area
                           height: labelHeight,
                           top: 180, // as needed for label position
-                          borderColor: 'red', // <-- Add during debugging
-                          borderWidth: 1,
+                          // borderColor: 'red',
+                          // borderWidth: 1,
                         }
                       ]}
                       onPress={() => setSelectedBar({ ...project, index })}
@@ -405,7 +405,7 @@ export default function ProjectsSnagBarChart({ theme }) {
                   style={[styles.actionBtn, { backgroundColor: `${theme.primary}20` }]}
                   onPress={() => {
                     console.log('View project details:', selectedBar);
-                    // Add navigation to project details screen here
+                    navigation.navigate('ProjectDetailsScreen', { projectId: selectedBar.id });
                     setSelectedBar(null);
                   }}>
                   <Ionicons name="eye-outline" size={16} color={theme.primary} />
@@ -435,9 +435,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    // Place overlay at bottom of chart area, adjust 'top' as needed to sit over labels
-    // If your labels are at height 200 in a 220px chart, set top: 180 or similar
-    height: 40, // Only tall enough to cover label area
+    height: 40,
     flexDirection: 'row',
     pointerEvents: 'box-none',
   },
@@ -447,8 +445,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 4,
-    // left and width set inline
-    // top set inline to match label area
   },
 
   card: {

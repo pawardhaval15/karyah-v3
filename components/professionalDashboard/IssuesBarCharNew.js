@@ -20,69 +20,68 @@ export default function AssignedIssuesBarChart({ theme }) {
     const [loading, setLoading] = useState(true);
     const [dataByPOC, setDataByPOC] = useState([]);
     const [selectedBar, setSelectedBar] = useState(null);
+    const [assignedIssues, setAssignedIssues] = useState([]);
+    const [createdByMeIssues, setCreatedByMeIssues] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                // Get logged-in user info from AsyncStorage
                 const loggedInUserIdRaw = await AsyncStorage.getItem('userId');
                 const loggedInUserName = await AsyncStorage.getItem('userName');
 
-                // Normalize logged-in userId to number if possible
                 const loggedInUserId = loggedInUserIdRaw
                     ? (isNaN(Number(loggedInUserIdRaw)) ? loggedInUserIdRaw : Number(loggedInUserIdRaw))
                     : null;
 
-                // Fetch both assigned and created by me issues
-                const [assignedIssues, createdByMeIssues] = await Promise.all([
+                // Fetch both assigned and created by me issues simultaneously
+                const [assignedRaw, createdRaw] = await Promise.all([
                     fetchAssignedIssues(),
                     fetchCreatedByMeIssues(),
                 ]);
 
-                // Helper to normalize issues for consistent assigned user info
+                console.log('Fetched assignedIssues:', assignedRaw);
+                console.log('Fetched createdByMeIssues:', createdRaw);
+
                 const normalizeIssues = (issues, isCreatedByMe = false) =>
                     issues.map(issue => ({
                         id: issue.issueId || issue.id,
                         status: (issue.issueStatus || '').toLowerCase(),
                         assignedUserId: isCreatedByMe ? issue.assignToUserId : issue.assignTo,
                         assignedUserName: isCreatedByMe ? issue.assignToUserName : null,
+                        creatorUserId: issue.creatorUserId,  // add creatorUserId to each issue
                     }));
 
-                const normalizedCreated = normalizeIssues(createdByMeIssues, true);
-                const normalizedAssigned = normalizeIssues(assignedIssues, false);
 
-                // Create a map from assigned user ID to name using createdByMe data
+                const normalizedCreated = normalizeIssues(createdRaw, true);
+                const normalizedAssigned = normalizeIssues(assignedRaw, false);
+
+                setAssignedIssues(normalizedAssigned); // preserve full normalized arrays
+                setCreatedByMeIssues(normalizedCreated);
+
                 const userIdToName = {};
                 normalizedCreated.forEach(issue => {
                     if (issue.assignedUserId && issue.assignedUserName) {
                         userIdToName[issue.assignedUserId] = issue.assignedUserName;
                     }
                 });
-
-                // For assigned issues, fill in user name from map or generate fallback name
                 normalizedAssigned.forEach(issue => {
                     if (issue.assignedUserId && !userIdToName[issue.assignedUserId]) {
                         userIdToName[issue.assignedUserId] = `User-${issue.assignedUserId}`;
                     }
                 });
-
-                // Add logged-in user explicitly to userIdToName map
                 if (loggedInUserId && loggedInUserName) {
                     userIdToName[loggedInUserId] = loggedInUserName;
                 }
 
-                // Filter unresolved issues helper
                 const isUnresolved = (status) =>
                     !status || !['resolved', 'closed', 'done', 'completed'].includes(status);
 
-                // Combine normalized lists filtering only unresolved
                 const combinedIssues = [
                     ...normalizedCreated.filter(issue => isUnresolved(issue.status)),
                     ...normalizedAssigned.filter(issue => isUnresolved(issue.status)),
                 ];
 
-                // Group by assignedUserId counting issues
                 const grouped = {};
                 combinedIssues.forEach(issue => {
                     const userId = issue.assignedUserId;
@@ -91,21 +90,19 @@ export default function AssignedIssuesBarChart({ theme }) {
                     }
                 });
 
-                // Add logged-in user with count 0 if absent
                 if (loggedInUserId && !grouped[loggedInUserId]) {
                     grouped[loggedInUserId] = 0;
                 }
 
-                // Prepare chart data array with better data validation
                 const chartData = Object.entries(grouped)
                     .map(([userId, count]) => ({
                         userId: String(userId),
                         userName: userIdToName[userId] || `User-${userId}`,
-                        count: Math.max(count, 0), // Ensure no negative values
+                        count: Math.max(count, 0),
                     }))
-                    .filter(item => item.count > 0) // Only show users with issues
-                    .sort((a, b) => b.count - a.count) // Sort by count descending
-                    .slice(0, 15); // Show more users for better data visibility
+                    .filter(item => item.count > 0)
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 15);
 
                 setDataByPOC(chartData);
             } catch (err) {
@@ -117,50 +114,6 @@ export default function AssignedIssuesBarChart({ theme }) {
         };
         fetchData();
     }, []);
-
-    // Calculate dynamic chart width based on number of users
-    const barWidth = 70; // Width per bar including spacing
-    const chartWidth = Math.max(screenWidth - 32, dataByPOC.length * barWidth);
-
-    // Add debug logging
-    console.log('🔍 Issues Chart Data:', dataByPOC);
-    console.log('🔍 Issues Chart Counts:', dataByPOC.map(item => item.count));
-
-    if (loading) {
-        return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
-    }
-
-    if (!dataByPOC.length) {
-        return (
-            <View style={styles.messageWrap}>
-                <Text style={{ color: theme.text }}>No unresolved issues found</Text>
-            </View>
-        );
-    }
-
-    // Helper function for consistent color coding
-    const getIssueColor = (count) => {
-        if (count === 0) return theme.border || '#E5E7EB';
-        if (count >= 8) return '#FF2700'; // Critical issues - red (matching theme.criticalText)
-        if (count >= 4) return '#FF9500'; // High issues - orange
-        if (count >= 2) return theme.primary || '#366CD9'; // Medium issues - primary blue
-        return '#10B981'; // Low issues - green
-    };
-
-    // Prepare chart data with better validation
-    const chartData = {
-        labels: dataByPOC.map(item => {
-            const name = item.userName || 'Unknown';
-            return name.length > 8 ? name.slice(0, 6) + '…' : name;
-        }),
-        datasets: [
-            {
-                data: dataByPOC.map(item => Math.max(item.count, 1)), // Minimum 1 for visibility
-                colors: dataByPOC.map(item => () => getIssueColor(item.count))
-            }
-        ]
-    };
-
     const chartConfig = {
         backgroundColor: theme.card,
         backgroundGradientFrom: theme.card,
@@ -183,17 +136,63 @@ export default function AssignedIssuesBarChart({ theme }) {
             fontSize: 10,
         },
     };
+    const barWidth = 70;
+    const chartWidth = Math.max(screenWidth - 32, dataByPOC.length * barWidth);
+
+    const getIssueColor = (count) => {
+        if (count === 0) return theme.border || '#E5E7EB';
+        if (count >= 8) return '#FF2700'; // Critical red
+        if (count >= 4) return '#FF9500'; // High orange
+        if (count >= 2) return theme.primary || '#366CD9'; // Medium blue
+        return '#10B981'; // Low green
+    };
+
+    const chartData = {
+        labels: dataByPOC.map(item => {
+            const name = item.userName || 'Unknown';
+            return name.length > 8 ? name.slice(0, 6) + '…' : name;
+        }),
+        datasets: [
+            {
+                data: dataByPOC.map(item => Math.max(item.count, 1)),
+                colors: dataByPOC.map(item => () => getIssueColor(item.count)),
+            }
+        ],
+    };
 
     const handleBarPress = (data) => {
         const index = data.index;
         if (dataByPOC[index]) {
-            setSelectedBar({ ...dataByPOC[index], index });
+            const userId = dataByPOC[index].userId;
+
+            const assignedCount = assignedIssues.filter(
+                issue => String(issue.assignedUserId) === userId &&
+                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+            ).length;
+
+            const createdCount = createdByMeIssues.filter(
+                issue => String(issue.assignedUserId) === userId &&
+                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+            ).length;
+
+            setSelectedBar({ ...dataByPOC[index], assignedCount, createdCount, index });
         }
     };
 
+    if (loading) {
+        return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
+    }
+
+    if (!dataByPOC.length) {
+        return (
+            <View style={styles.messageWrap}>
+                <Text style={{ color: theme.text }}>No unresolved issues found</Text>
+            </View>
+        );
+    }
+
     return (
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            {/* Compact Header */}
             <View style={styles.header}>
                 <View style={styles.titleRow}>
                     <View style={[styles.iconBadge, { backgroundColor: `${theme.primary}20` }]}>
@@ -201,9 +200,7 @@ export default function AssignedIssuesBarChart({ theme }) {
                     </View>
                     <View style={styles.titleContent}>
                         <Text style={[styles.title, { color: theme.text }]}>Issues Analytics</Text>
-                        <Text style={[styles.subtitle, { color: theme.secondaryText }]}>
-                            by team member
-                        </Text>
+                        <Text style={[styles.subtitle, { color: theme.secondaryText }]}>by team member</Text>
                     </View>
                     <View style={[styles.totalBadge, { backgroundColor: theme.primary }]}>
                         <Text style={styles.totalText}>
@@ -213,7 +210,6 @@ export default function AssignedIssuesBarChart({ theme }) {
                 </View>
             </View>
 
-            {/* Compact Legend */}
             <View style={styles.compactLegend}>
                 <View style={styles.legendRow}>
                     <View style={[styles.dot, { backgroundColor: '#FF6B6B' }]} />
@@ -229,85 +225,156 @@ export default function AssignedIssuesBarChart({ theme }) {
                 </View>
             </View>
 
-            {/* Chart */}
             <View style={styles.chartSection}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={true} style={styles.chartScrollContainer}>
-                    <BarChart
-                        data={chartData}
-                        width={chartWidth} // Dynamic width based on number of users
-                        height={200}
-                        chartConfig={chartConfig}
-                        verticalLabelRotation={0}
-                        showValuesOnTopOfBars={true}
-                        fromZero={true}
-                        onDataPointClick={handleBarPress}
-                        style={styles.chart}
-                    />
+                <ScrollView horizontal showsHorizontalScrollIndicator style={{ flexGrow: 0 }}>
+                    <View style={{ width: chartWidth }}>
+                        <BarChart
+                            data={chartData}
+                            width={chartWidth}
+                            height={200}
+                            chartConfig={chartConfig}
+                            verticalLabelRotation={0}
+                            showValuesOnTopOfBars={true}
+                            fromZero={true}
+                            onDataPointClick={handleBarPress}
+                            style={styles.chart}
+                        />
+
+                        {/* Overlay for username label touch */}
+                        <View style={styles.labelTouchOverlay}>
+                            {dataByPOC.map((item, index) => {
+                                const paddingRight = 40;
+                                const chartUsableWidth = chartWidth - paddingRight;
+                                const labelLeft = paddingRight + index * (chartUsableWidth / dataByPOC.length);
+                                const labelWidth = (chartUsableWidth / dataByPOC.length) * 0.9;
+                                const labelHeight = 40;
+                                const labelTop = 160;
+
+                                return (
+                                    <TouchableOpacity
+                                        key={`label-touch-${index}`}
+                                        style={[
+                                            styles.labelTouchRegion,
+                                            {
+                                                position: 'absolute',
+                                                left: labelLeft,
+                                                top: labelTop,
+                                                width: labelWidth,
+                                                height: labelHeight,
+                                                backgroundColor: 'transparent',
+                                            },
+                                        ]}
+                                        activeOpacity={0.7}
+                                        onPress={() => {
+                                            const userIdStr = String(item.userId);
+
+                                            // Count unresolved issues assigned to user
+                                            const assignedCount = assignedIssues.filter(
+                                                issue =>
+                                                    (String(issue.assignedUserId) === userIdStr ||
+                                                        String(issue.creatorUserId) === userIdStr) && // Include also where user is creator
+                                                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+                                            ).length;
+
+                                            // Count unresolved issues created by user (same as before)
+                                            const createdCount = createdByMeIssues.filter(
+                                                issue =>
+                                                    String(issue.assignedUserId) === userIdStr &&
+                                                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+                                            ).length;
+
+                                            setSelectedBar({ ...item, assignedCount, createdCount, index });
+                                        }}
+
+                                    />
+                                );
+                            })}
+                        </View>
+                    </View>
                 </ScrollView>
             </View>
 
-            {/* Compact Modern Modal */}
+            {/* Modal */}
             <Modal transparent visible={!!selectedBar} animationType="fade">
                 <TouchableOpacity
                     style={styles.modalOverlay}
                     onPress={() => setSelectedBar(null)}
                     activeOpacity={1}
                 >
-                    <View style={[styles.compactModal, { 
-                        backgroundColor: theme.card, 
-                        borderColor: theme.border 
-                    }]}>
+                    <TouchableOpacity
+                        activeOpacity={1}
+                        onPress={(e) => e.stopPropagation()}
+                        style={[
+                            styles.compactModal,
+                            {
+                                backgroundColor: theme.card,
+                                borderColor: theme.border,
+                            },
+                        ]}
+                    >
                         <View style={styles.modalHeader}>
-                            <View style={[styles.userAvatar, { 
-                                backgroundColor: getIssueColor(selectedBar?.count || 0)
-                            }]}>
+                            <View style={[styles.userAvatar, { backgroundColor: getIssueColor(selectedBar?.count || 0) }]}>
                                 <Ionicons name="person" size={20} color="#fff" />
                             </View>
                             <View style={styles.userDetails}>
-                                <Text style={[styles.userName, { color: theme.text }]}>
-                                    {selectedBar?.userName}
-                                </Text>
-                                <Text style={[styles.userRole, { color: theme.secondaryText }]}>
-                                    Team Member
-                                </Text>
+                                <Text style={[styles.userName, { color: theme.text }]}>{selectedBar?.userName}</Text>
+                                <Text style={[styles.userRole, { color: theme.secondaryText }]}>Team Member</Text>
                             </View>
-                            <TouchableOpacity 
-                                onPress={() => setSelectedBar(null)}
-                                style={styles.closeBtn}
-                            >
+                            <TouchableOpacity style={styles.closeBtn} onPress={() => setSelectedBar(null)}>
                                 <Ionicons name="close" size={18} color={theme.secondaryText} />
                             </TouchableOpacity>
                         </View>
-                        
+
                         <View style={styles.modalContent}>
-                            <View style={[styles.metricBox, { 
-                                backgroundColor: `${getIssueColor(selectedBar?.count || 0)}15` 
-                            }]}>
-                                <Text style={[styles.metricNumber, { 
-                                    color: getIssueColor(selectedBar?.count || 0)
-                                }]}>
-                                    {selectedBar?.count}
-                                </Text>
-                                <Text style={[styles.metricText, { color: theme.secondaryText }]}>
-                                    Unresolved Issues
-                                </Text>
+                            <View style={styles.metricsRow}>
+                                <View style={[styles.metricBox, { backgroundColor: '#FF6B6B20' }]}>
+                                    <Text style={[styles.metricNumber, { color: '#FF6B6B' }]}>
+                                        {selectedBar?.assignedCount ?? 0}
+                                    </Text>
+                                    <Text style={[styles.metricText, { color: theme.secondaryText }]}>
+                                        Assigned Unresolved Issues
+                                    </Text>
+                                </View>
+                                <View style={[styles.metricBox, { backgroundColor: '#3B82F620' }]}>
+                                    <Text style={[styles.metricNumber, { color: '#3B82F6' }]}>
+                                        {selectedBar?.createdCount ?? 0}
+                                    </Text>
+                                    <Text style={[styles.metricText, { color: theme.secondaryText }]}>
+                                        Created By Me Unresolved Issues
+                                    </Text>
+                                </View>
                             </View>
-                            
+
                             <Text style={[styles.statusText, { color: theme.secondaryText }]}>
-                                {selectedBar?.count >= 10 ? 'Needs immediate attention' : 
-                                 selectedBar?.count >= 5 ? 'Monitor closely' : 
-                                 selectedBar?.count > 0 ? 'Manageable workload' :
-                                 'All issues resolved'}
+                                {(selectedBar?.assignedCount + selectedBar?.createdCount) >= 10
+                                    ? 'Needs immediate attention'
+                                    : (selectedBar?.assignedCount + selectedBar?.createdCount) >= 5
+                                        ? 'Monitor closely'
+                                        : (selectedBar?.assignedCount + selectedBar?.createdCount) > 0
+                                            ? 'Manageable workload'
+                                            : 'All issues resolved'}
                             </Text>
                         </View>
-                    </View>
+                    </TouchableOpacity>
                 </TouchableOpacity>
             </Modal>
         </View>
     );
 }
 
+
 const styles = StyleSheet.create({
+    labelTouchOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 200,
+        pointerEvents: 'box-none',
+    },
+    labelTouchRegion: {
+        // style applied inline
+    },
     card: {
         borderRadius: 16,
         padding: 16,
@@ -444,12 +511,18 @@ const styles = StyleSheet.create({
     modalContent: {
         alignItems: 'center',
     },
+    metricsRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        width: '100%',
+        marginBottom: 16,
+    },
     metricBox: {
         borderRadius: 12,
         padding: 16,
         alignItems: 'center',
-        marginBottom: 12,
-        width: '100%',
+        marginHorizontal: 8,
+        width: '48%',
     },
     metricNumber: {
         fontSize: 28,
