@@ -35,12 +35,12 @@ export default function ProjectsSnagBarChart({ theme }) {
               // 1. Only UNRESOLVED issues
               const issuesCount = Array.isArray(details.issues)
                 ? details.issues.filter(
-                    (issue) =>
-                      !issue.issueStatus || // no status = unresolved
-                      !['resolved', 'closed', 'done', 'completed'].includes(
-                        String(issue.issueStatus).toLowerCase()
-                      )
-                  ).length
+                  (issue) =>
+                    !issue.issueStatus || // no status = unresolved
+                    !['resolved', 'closed', 'done', 'completed'].includes(
+                      String(issue.issueStatus).toLowerCase()
+                    )
+                ).length
                 : 0;
 
               // 2. Only INCOMPLETE tasks (progress < 100)
@@ -167,10 +167,10 @@ export default function ProjectsSnagBarChart({ theme }) {
 
   const handleBarPress = (data) => {
     console.log('🔍 Bar clicked - Raw data:', data);
-    
+
     // Handle different data structures from react-native-chart-kit
     let index = -1;
-    
+
     if (data && typeof data.index !== 'undefined') {
       index = data.index;
     } else if (data && typeof data.datasetIndex !== 'undefined' && typeof data.dataIndex !== 'undefined') {
@@ -179,10 +179,10 @@ export default function ProjectsSnagBarChart({ theme }) {
       // Find index by matching the value
       index = data.dataset.data.findIndex(val => Math.abs(val - data.value) < 0.01);
     }
-    
+
     console.log('🔍 Calculated index:', index);
     console.log('🔍 Available projects:', displayProjects.length);
-    
+
     if (index >= 0 && index < displayProjects.length && displayProjects[index]) {
       console.log('✅ Selected project:', displayProjects[index]);
       setSelectedBar({ ...displayProjects[index], index });
@@ -249,44 +249,53 @@ export default function ProjectsSnagBarChart({ theme }) {
             <View style={styles.chartWrapper}>
               <BarChart
                 data={chartData}
-                width={Math.max(screenWidth - 64, displayProjects.length * 60)} // Dynamic width
+                width={Math.max(screenWidth - 64, displayProjects.length * 60)}
                 height={220}
                 chartConfig={chartConfig}
                 verticalLabelRotation={0}
                 showValuesOnTopOfBars={true}
                 fromZero={true}
-                onDataPointClick={handleBarPress}
+                // Remove bar touch handlers
                 withInnerLines={false}
                 showBarTops={false}
                 style={styles.chart}
               />
-              {/* Invisible overlay for touch handling */}
-              <View style={styles.touchOverlay}>
+
+              {/* Add overlay for label touches */}
+              <View style={styles.labelTouchOverlay}>
                 {displayProjects.map((project, index) => {
                   const chartWidth = Math.max(screenWidth - 64, displayProjects.length * 60);
                   const barWidth = chartWidth / displayProjects.length;
+                  const labelHeight = 40; // Estimate vertical label area
                   const leftOffset = index * barWidth;
-                  
+                  const paddingRight = 40; // Chart internal side padding, adjust if needed
+                  const chartUsableWidth = Math.max(screenWidth - 64, displayProjects.length * 60) - paddingRight;
+                  const labelLeft = paddingRight + index * chartUsableWidth / displayProjects.length;
+
                   return (
                     <TouchableOpacity
-                      key={`touch-${index}`}
+                      key={`label-touch-${index}`}
                       style={[
-                        styles.invisibleBar,
+                        styles.labelTouchRegion,
                         {
-                          left: leftOffset,
-                          width: barWidth,
+                          left: labelLeft,
+                          width: chartUsableWidth / displayProjects.length * 0.9, // 90% to cover most of label area
+                          height: labelHeight,
+                          top: 180, // as needed for label position
+                          borderColor: 'red', // <-- Add during debugging
+                          borderWidth: 1,
                         }
                       ]}
-                      onPress={() => {
-                        console.log('🎯 Bar touched:', index, project.name);
-                        setSelectedBar({ ...project, index });
-                      }}
-                      activeOpacity={1}
-                    />
+                      onPress={() => setSelectedBar({ ...project, index })}
+                      activeOpacity={0.7}
+                    >
+                      {/* Optional: Highlight label on touch */}
+                    </TouchableOpacity>
                   );
                 })}
               </View>
             </View>
+
           </ScrollView>
         </View>
       </View>
@@ -423,6 +432,26 @@ export default function ProjectsSnagBarChart({ theme }) {
 }
 
 const styles = StyleSheet.create({
+  labelTouchOverlay: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    // Place overlay at bottom of chart area, adjust 'top' as needed to sit over labels
+    // If your labels are at height 200 in a 220px chart, set top: 180 or similar
+    height: 40, // Only tall enough to cover label area
+    flexDirection: 'row',
+    pointerEvents: 'box-none',
+  },
+  labelTouchRegion: {
+    position: 'absolute',
+    backgroundColor: 'transparent', // Invisible, only touchable
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 4,
+    // left and width set inline
+    // top set inline to match label area
+  },
+
   card: {
     borderRadius: 12,
     padding: 16,
