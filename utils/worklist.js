@@ -1,4 +1,3 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config'; // Make sure this points to your actual backend URL
 
 // Function to create a new worklist
@@ -114,6 +113,33 @@ export const deleteWorklist = async (id, token) => {
     return true; // or you can return response.json() if you need the message
   } catch (error) {
     console.error('Error deleting worklist:', error.message);
+    throw error;
+  }
+};
+
+// Function to fetch project worklists progress
+export const getProjectWorklistsProgress = async (projectId, token) => {
+  try {
+    const url = `${API_URL}api/worklists/project/${projectId}/progress`;
+    
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Get Project Progress Error:', errorText);
+      throw new Error('Failed to fetch project progress');
+    }
+
+    const data = await response.json();
+    return data.worklists;
+  } catch (error) {
+    console.error('Error fetching project progress:', error.message);
     throw error;
   }
 };

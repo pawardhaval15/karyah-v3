@@ -36,66 +36,82 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
         <View style={styles.taskRow}>
           <Feather name="user" size={14} color={theme.secondaryText} />
           <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>
-            Assigned: &nbsp;
+            Assigned:
           </Text>
-          <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', maxWidth: '60%' }}>
+          <View style={{ flex: 1, marginLeft: 4 }}>
             {assignedUsers.length > 0 ? (
-              assignedUsers.slice(0, 2).map((user, idx) => (
-                <View
-                  key={user.id || idx}
-                  style={{ flexDirection: 'row', alignItems: 'center', marginRight: 4 }}
-                >
-                  {user.profileImage ? (
-                    <Image
-                      source={{ uri: user.profileImage }}
-                      style={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: 8,
-                        marginRight: 3,
-                        backgroundColor: '#eee',
-                      }}
-                    />
-                  ) : (
-                    <View
-                      style={{
-                        width: 16,
-                        height: 16,
-                        borderRadius: 8,
-                        backgroundColor: theme.avatarBg,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 3,
-                      }}
-                    >
-                      <Text style={{
-                        color: theme.primary,
-                        fontSize: 8,
-                        fontWeight: 'bold',
-                        textAlign: 'center'
-                      }}>
-                        {user.name?.[0] || '?'}
-                      </Text>
-                    </View>
-                  )}
-                  <Text 
-                    style={[styles.taskInfo, { color: theme.secondaryText, marginLeft: 0, maxWidth: 60 }]} 
-                    numberOfLines={1} 
-                    ellipsizeMode="tail"
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+                {assignedUsers.slice(0, 2).map((user, idx) => (
+                  <View
+                    key={user.id || idx}
+                    style={{ 
+                      flexDirection: 'row', 
+                      alignItems: 'center', 
+                      marginRight: 6,
+                      maxWidth: assignedUsers.length === 1 ? '100%' : '45%'
+                    }}
                   >
-                    {user.name}
+                    {user.profileImage ? (
+                      <Image
+                        source={{ uri: user.profileImage }}
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 8,
+                          marginRight: 4,
+                          backgroundColor: '#eee',
+                        }}
+                      />
+                    ) : (
+                      <View
+                        style={{
+                          width: 16,
+                          height: 16,
+                          borderRadius: 8,
+                          backgroundColor: theme.avatarBg,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 4,
+                        }}
+                      >
+                        <Text style={{
+                          color: theme.primary,
+                          fontSize: 8,
+                          fontWeight: 'bold',
+                        }}>
+                          {user.name?.[0] || '?'}
+                        </Text>
+                      </View>
+                    )}
+                    <Text 
+                      style={[styles.taskInfo, { 
+                        color: theme.secondaryText, 
+                        marginLeft: 0,
+                        flex: 1
+                      }]} 
+                      numberOfLines={1} 
+                      ellipsizeMode="tail"
+                    >
+                      {user.name}
+                    </Text>
+                  </View>
+                ))}
+                {assignedUsers.length > 2 && (
+                  <Text style={[styles.taskInfo, { 
+                    color: theme.secondaryText,
+                    fontStyle: 'italic'
+                  }]}>
+                    +{assignedUsers.length - 2}
                   </Text>
-                  {assignedUsers.length > 1 && idx === 0 && <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>, </Text>}
-                </View>
-              ))
+                )}
+              </View>
             ) : (
-              <Text style={[styles.taskInfo, { color: theme.secondaryText, fontStyle: 'italic' }]}>
+              <Text style={[styles.taskInfo, { 
+                color: theme.secondaryText, 
+                fontStyle: 'italic',
+                marginLeft: 0
+              }]}>
                 Unassigned
-              </Text>
-            )}
-            {assignedUsers.length > 2 && (
-              <Text style={[styles.taskInfo, { color: theme.secondaryText }]}>
-                +{assignedUsers.length - 2} more
               </Text>
             )}
           </View>
@@ -116,14 +132,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginHorizontal: 16,
     marginBottom: 12,
-    padding: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#e6eaf3',
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
-    elevation: 3,
   },
   taskIcon: {
     width: 44,
@@ -149,7 +161,7 @@ const styles = StyleSheet.create({
   taskRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   taskInfo: {
     color: '#666',
