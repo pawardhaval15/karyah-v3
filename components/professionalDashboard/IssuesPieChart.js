@@ -218,9 +218,9 @@ export default function IssuesPieChart({ theme }) {
                     style={styles.modalOverlay}
                     onPress={() => setSelectedSlice(null)}
                 >
-                    <View style={[styles.modal, { 
-                        backgroundColor: theme.card, 
-                        borderColor: theme.border 
+                    <View style={[styles.modal, {
+                        backgroundColor: theme.card,
+                        borderColor: theme.border
                     }]}>
                         <View style={styles.modalHeader}>
                             <View style={[styles.userAvatar, { 
@@ -246,7 +246,7 @@ export default function IssuesPieChart({ theme }) {
                                 <Ionicons name="close" size={18} color={theme.secondaryText} />
                             </TouchableOpacity>
                         </View>
-                        
+
                         <View style={styles.modalContent}>
                             <View style={[styles.metricBox, { 
                                 backgroundColor: `${getIssueColor(
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 16,
         paddingHorizontal: 8,
-        paddingLeft: '50%',
+        paddingLeft: 'auto', //50% => auto
     },
     legend: {
         flexDirection: 'row',
