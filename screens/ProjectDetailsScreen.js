@@ -1,4 +1,5 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
@@ -13,21 +14,21 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
-import GradientButton from '../components/Login/GradientButton';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
 import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
 import ProjectIssuePopup from '../components/popups/ProjectIssuePopup';
 import DateBox from '../components/project details/DateBox';
 import FieldBox from '../components/project details/FieldBox';
-import IssueButton from '../components/project details/IssueButton';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 import { deleteProjectById, getProjectById } from '../utils/project';
+import { deleteWorklist, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
 
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
@@ -52,6 +53,15 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
   const [showMaterialRequestPopup, setShowMaterialRequestPopup] = useState(false);
+
+  // New state variables
+  const [showProjectDetails, setShowProjectDetails] = useState(false);
+  const [worklists, setWorklists] = useState([]);
+  const [loadingWorklists, setLoadingWorklists] = useState(false);
+  const [searchWorklist, setSearchWorklist] = useState('');
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [selectedWorklist, setSelectedWorklist] = useState(null);
+  const [editedWorklistName, setEditedWorklistName] = useState('');
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -92,6 +102,148 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     };
     fetchConnections();
   }, []);
+
+  // Fetch worklists
+  useEffect(() => {
+    const fetchWorklists = async () => {
+      if (!projectDetails?.id) return;
+      setLoadingWorklists(true);
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const data = await getWorklistsByProjectId(projectDetails.id, token);
+        setWorklists(data);
+      } catch (error) {
+        console.error('Failed to fetch worklists:', error.message);
+      } finally {
+        setLoadingWorklists(false);
+      }
+    };
+
+    if (projectDetails?.id) {
+      fetchWorklists();
+    }
+  }, [projectDetails?.id]);
+
+  // Worklist handlers
+  const handleDeleteWorklist = (id) => {
+    Alert.alert(
+      'Delete Worklist',
+      'Deleting this worklist will also delete all its associated tasks. Do you still want to proceed?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const token = await AsyncStorage.getItem('token');
+              await deleteWorklist(id, token);
+              setWorklists((prev) => prev.filter((w) => w.id !== id));
+            } catch (error) {
+              console.error('Failed to delete worklist:', error.message);
+              Alert.alert('Error', 'Failed to delete worklist.');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const openEditModal = (worklist) => {
+    setSelectedWorklist(worklist);
+    setEditedWorklistName(worklist.name);
+    setEditModalVisible(true);
+  };
+
+  const handleUpdateWorklist = async () => {
+    if (!editedWorklistName.trim()) {
+      Alert.alert('Validation', 'Please enter a worklist name.');
+      return;
+    }
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const updated = await updateWorklist(selectedWorklist.id, editedWorklistName.trim(), token);
+      setWorklists((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
+      setEditModalVisible(false);
+      setSelectedWorklist(null);
+      setEditedWorklistName('');
+    } catch (error) {
+      console.error('Failed to update worklist:', error.message);
+      Alert.alert('Error', error.message || 'Failed to update worklist.');
+    }
+  };
+
+  // WorklistCard component - Compact Design
+  const WorklistCard = ({ worklist }) => (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('TaskListScreen', { worklist, project: projectDetails })}
+      activeOpacity={0.7}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: theme.card,
+        borderColor: theme.border,
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 14,
+        marginHorizontal: 20,
+        marginBottom: 10,
+      }}>
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          backgroundColor: `${theme.primary}12`,
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginRight: 12,
+        }}>
+        <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 16 }}>
+          {worklist.name?.[0]?.toUpperCase() || '?'}
+        </Text>
+      </View>
+
+      <View style={{ flex: 1 }}>
+        <Text style={{ color: theme.text, fontSize: 15, fontWeight: '500' }} numberOfLines={1}>
+          {worklist.name}
+        </Text>
+        <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
+          Tap to view tasks
+        </Text>
+      </View>
+
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            openEditModal(worklist);
+          }}
+          style={{
+            padding: 6,
+            marginRight: 4,
+            borderRadius: 6,
+            backgroundColor: `${theme.primary}08`,
+          }}>
+          <MaterialIcons name="edit" size={16} color={theme.primary} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={(e) => {
+            e.stopPropagation();
+            handleDeleteWorklist(worklist.id);
+          }}
+          style={{
+            padding: 6,
+            borderRadius: 6,
+            backgroundColor: `${theme.error || '#EF4444'}08`,
+          }}>
+          <MaterialIcons name="delete-outline" size={16} color={theme.error || '#EF4444'} />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  );
 
   const handleIssueChange = (field, value) => {
     setIssueForm((prev) => ({ ...prev, [field]: value }));
@@ -140,7 +292,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 90 }}
         showsVerticalScrollIndicator={false}
         bounces={true}>
         {/* Header */}
@@ -241,14 +393,13 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               onPress={() => {
                 setShowMaterialRequestPopup(true);
               }}
-              style={[ 
+              style={[
                 styles.tabButton,
-                { 
+                {
                   backgroundColor: theme.background,
                   borderColor: theme.border,
-                }
-              ]}
-            >
+                },
+              ]}>
               <Feather name="package" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
                 Materials
@@ -268,14 +419,13 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                     });
                   }
                 }}
-                style={[ 
-                styles.tabButton,
-                { 
-                  backgroundColor: theme.background,
-                  borderColor: theme.border,
-                }
-              ]}
-            >
+                style={[
+                  styles.tabButton,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.border,
+                  },
+                ]}>
                 <Feather name="settings" size={16} color={theme.primary} />
                 <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
                   Settings
@@ -303,198 +453,461 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             ]}
           />
         </View>
-        <View style={styles.dateRow}>
-          <DateBox
-            label="START DATE"
-            value={projectDetails.startDate?.split('T')[0] || '-'}
-            theme={theme}
-          />
-          <DateBox
-            label="END DATE"
-            value={projectDetails.endDate?.split('T')[0] || '-'}
-            theme={theme}
-          />
-        </View>
-        <FieldBox
-          label="PROJECT CATEGORY"
-          value={projectDetails.projectCategory}
-          placeholder="Project Category"
-          theme={theme}
-        />
-        <FieldBox
-          label="LOCATION"
-          value={projectDetails.location}
-          placeholder="Location"
-          theme={theme}
-        />
-        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          {/* Row with label and avatars spaced */}
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
-              CO-ADMINS
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setShowCoAdminPopup(true)}
-              style={{ flexDirection: 'row', alignItems: 'center' }}>
-              {projectDetails.coAdmins?.slice(0, 12).map((admin, index) => (
-                <View
-                  key={index}
-                  style={{
-                    marginLeft: index === 0 ? 0 : -16,
-                    zIndex: projectDetails.coAdmins.length - index,
-                  }}>
-                  <Image
-                    source={{
-                      uri:
-                        admin.profilePhoto ||
-                        'https://ui-avatars.com/api/?name=' + encodeURIComponent(admin.name),
-                    }}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      borderWidth: 2,
-                      borderColor: theme.primary,
-                      backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
-                    }}
-                  />
-                </View>
-              ))}
-              {projectDetails.coAdmins?.length > 12 && (
-                <View
-                  style={{
-                    marginLeft: -16,
-                    zIndex: 0,
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    backgroundColor: theme.buttonBg,
-                    borderWidth: 2,
-                    borderColor: theme.primary,
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}>
-                  <Text style={{ color: theme.buttonText, fontWeight: '600' }}>
-                    +{projectDetails.coAdmins.length - 12}
-                  </Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          </View>
-        </View>
-        <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
-          <View
-            style={[
-              styles.fieldBox,
-              {
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                maxHeight: 140,
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-              },
-            ]}>
-            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
-              DESCRIPTION
-            </Text>
-            <Text
-              numberOfLines={5} // Limit lines in main screen for preview
-              ellipsizeMode="tail"
-              style={[styles.inputValue, { color: theme.text, width: '100%' }]}>
-              {projectDetails.description && projectDetails.description.trim() !== ''
-                ? projectDetails.description
-                : 'No description available'}
-            </Text>
-            <Text style={{ color: theme.primary, marginTop: 4 }}>Read More</Text>
-          </View>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
-          <Modal
-            visible={showDescriptionModal}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={() => setShowDescriptionModal(false)}>
+
+        {/* Project Details Toggle Button */}
+        <TouchableOpacity
+          onPress={() => setShowProjectDetails((prev) => !prev)}
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginHorizontal: 20,
+            backgroundColor: theme.card,
+            borderRadius: 16,
+            paddingHorizontal: 20,
+            paddingVertical: 12,
+            borderWidth: 1,
+            borderColor: theme.border,
+          }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View
               style={{
-                flex: 1,
-                backgroundColor: 'rgba(0,0,0,0.5)',
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: `${theme.primary}15`,
+                alignItems: 'center',
                 justifyContent: 'center',
-                padding: 20,
+                marginRight: 12,
               }}>
-              <View
-                style={{
-                  backgroundColor: theme.card,
-                  borderRadius: 12,
-                  padding: 20,
-                  maxHeight: '80%',
-                }}>
-                <ScrollView>
-                  <Text
-                    style={[
-                      styles.inputLabel,
-                      { color: theme.text, marginBottom: 12, fontSize: 18 },
-                    ]}>
-                    Description
-                  </Text>
-                  <Text style={[styles.inputValue, { color: theme.text, fontSize: 16 }]}>
-                    {projectDetails.description && projectDetails.description.trim() !== ''
-                      ? projectDetails.description
-                      : 'No description available'}
-                  </Text>
-                </ScrollView>
-                <Pressable
-                  onPress={() => setShowDescriptionModal(false)}
-                  style={{
-                    marginTop: 20,
-                    alignSelf: 'center',
-                    paddingVertical: 10,
-                    paddingHorizontal: 30,
-                    backgroundColor: theme.primary,
-                    borderRadius: 25,
-                  }}>
-                  <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
-                </Pressable>
-              </View>
+              <MaterialIcons name="description" size={20} color={theme.primary} />
             </View>
-          </Modal>
+            <View>
+              <Text style={{ color: theme.text, fontWeight: '600', fontSize: 14 }}>
+                Project Details
+              </Text>
+              <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
+                {showProjectDetails ? 'Tap to hide details' : 'View project information'}
+              </Text>
+            </View>
+          </View>
+          <View
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: `${theme.primary}10`,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+            <MaterialIcons
+              name={showProjectDetails ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+              size={20}
+              color={theme.primary}
+            />
+          </View>
         </TouchableOpacity>
 
-        <View style={styles.issueBtnRow}>
-          <IssueButton
-            icon="alert-circle"
-            text="Raise an Issue"
-            onPress={() => {
-              setIssueForm((prev) => ({
-                ...prev,
-                projectId: projectDetails?.id || '',
-              }));
-              setShowProjectIssuePopup(true);
-            }}
-            theme={theme}
-          />
-          <IssueButton
-            icon="alert-circle"
-            text="View Issue List"
-            onPress={() => {
-              // console.log('Navigating with projectId:', projectDetails?.id);
-              if (projectDetails?.id) {
-                navigation.navigate('ProjectIssuesScreen', { projectId: projectDetails.id });
-              } else {
-                console.warn('No projectId found in projectDetails', projectDetails);
-              }
-            }}
-            theme={theme}
-          />
+        {/* Collapsible Project Details */}
+        {showProjectDetails && (
+          <View>
+            <View style={styles.dateRow}>
+              <DateBox
+                label="START DATE"
+                value={projectDetails.startDate?.split('T')[0] || '-'}
+                theme={theme}
+              />
+              <DateBox
+                label="END DATE"
+                value={projectDetails.endDate?.split('T')[0] || '-'}
+                theme={theme}
+              />
+            </View>
+            <FieldBox
+              label="PROJECT CATEGORY"
+              value={projectDetails.projectCategory}
+              placeholder="Project Category"
+              theme={theme}
+            />
+            <FieldBox
+              label="LOCATION"
+              value={projectDetails.location}
+              placeholder="Location"
+              theme={theme}
+            />
+            <View
+              style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              {/* Row with label and avatars spaced */}
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
+                  CO-ADMINS
+                </Text>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setShowCoAdminPopup(true)}
+                  style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  {projectDetails.coAdmins?.slice(0, 12).map((admin, index) => (
+                    <View
+                      key={index}
+                      style={{
+                        marginLeft: index === 0 ? 0 : -16,
+                        zIndex: projectDetails.coAdmins.length - index,
+                      }}>
+                      <Image
+                        source={{
+                          uri:
+                            admin.profilePhoto ||
+                            'https://ui-avatars.com/api/?name=' + encodeURIComponent(admin.name),
+                        }}
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          borderWidth: 2,
+                          borderColor: theme.primary,
+                          backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
+                        }}
+                      />
+                    </View>
+                  ))}
+                  {projectDetails.coAdmins?.length > 12 && (
+                    <View
+                      style={{
+                        marginLeft: -16,
+                        zIndex: 0,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: theme.buttonBg,
+                        borderWidth: 2,
+                        borderColor: theme.primary,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}>
+                      <Text style={{ color: theme.buttonText, fontWeight: '600' }}>
+                        +{projectDetails.coAdmins.length - 12}
+                      </Text>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+            <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
+              <View
+                style={[
+                  styles.fieldBox,
+                  {
+                    backgroundColor: theme.card,
+                    borderColor: theme.border,
+                    maxHeight: 140,
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                  },
+                ]}>
+                <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
+                  DESCRIPTION
+                </Text>
+                <Text
+                  numberOfLines={5} // Limit lines in main screen for preview
+                  ellipsizeMode="tail"
+                  style={[styles.inputValue, { color: theme.text, width: '100%' }]}>
+                  {projectDetails.description && projectDetails.description.trim() !== ''
+                    ? projectDetails.description
+                    : 'No description available'}
+                </Text>
+                <Text style={{ color: theme.primary, marginTop: 4 }}>Read More</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
+              <Modal
+                visible={showDescriptionModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowDescriptionModal(false)}>
+                <View
+                  style={{
+                    flex: 1,
+                    backgroundColor: 'rgba(0,0,0,0.5)',
+                    justifyContent: 'center',
+                    padding: 20,
+                  }}>
+                  <View
+                    style={{
+                      backgroundColor: theme.card,
+                      borderRadius: 12,
+                      padding: 20,
+                      maxHeight: '80%',
+                    }}>
+                    <ScrollView>
+                      <Text
+                        style={[
+                          styles.inputLabel,
+                          { color: theme.text, marginBottom: 12, fontSize: 18 },
+                        ]}>
+                        Description
+                      </Text>
+                      <Text style={[styles.inputValue, { color: theme.text, fontSize: 16 }]}>
+                        {projectDetails.description && projectDetails.description.trim() !== ''
+                          ? projectDetails.description
+                          : 'No description available'}
+                      </Text>
+                    </ScrollView>
+                    <Pressable
+                      onPress={() => setShowDescriptionModal(false)}
+                      style={{
+                        marginTop: 20,
+                        alignSelf: 'center',
+                        paddingVertical: 10,
+                        paddingHorizontal: 30,
+                        backgroundColor: theme.primary,
+                        borderRadius: 25,
+                      }}>
+                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </Modal>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Compact Worklist Section */}
+        <View style={{ marginTop: 12 }}>
+          {/* Compact Worklist Header */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginHorizontal: 20,
+              marginBottom: 8,
+            }}>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>Worklists</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
+              style={{
+                backgroundColor: `${theme.primary}12`,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                borderRadius: 6,
+              }}>
+              <Text style={{ color: theme.primary, fontSize: 11, fontWeight: '500' }}>
+                View All
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Compact Search Bar */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#f7f7f7',
+              borderRadius: 12,
+              marginHorizontal: 20,
+              marginBottom: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+            }}>
+            <MaterialIcons
+              name="search"
+              size={18}
+              color={theme.secondaryText}
+              style={{ marginRight: 8 }}
+            />
+            <TextInput
+              style={{
+                flex: 1,
+                fontSize: 16,
+                color: '#363942',
+                paddingVertical: 0,
+              }}
+              placeholder="Search worklist..."
+              placeholderTextColor={theme.secondaryText}
+              value={searchWorklist}
+              onChangeText={setSearchWorklist}
+            />
+          </View>
+
+          {/* Worklist List */}
+          {loadingWorklists ? (
+            <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 16 }} />
+          ) : worklists.length === 0 ? (
+            <View
+              style={{
+                padding: 24,
+                alignItems: 'center',
+                backgroundColor: theme.card,
+                marginHorizontal: 20,
+                borderRadius: 10,
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}>
+              <MaterialIcons name="work-outline" size={36} color={theme.secondaryText} />
+              <Text
+                style={{
+                  color: theme.text,
+                  textAlign: 'center',
+                  marginTop: 8,
+                  fontSize: 14,
+                  fontWeight: '500',
+                }}>
+                No worklists found
+              </Text>
+              <Text
+                style={{
+                  color: theme.secondaryText,
+                  textAlign: 'center',
+                  marginTop: 2,
+                  fontSize: 12,
+                }}>
+                Create your first worklist to get started
+              </Text>
+            </View>
+          ) : (
+            <View style={{ maxHeight: 250 }}>
+              {worklists
+                .filter((w) => w.name?.toLowerCase().includes(searchWorklist.toLowerCase()))
+                .slice(0, 4)
+                .map((item) => (
+                  <WorklistCard key={item.id} worklist={item} />
+                ))}
+              {worklists.filter((w) => w.name?.toLowerCase().includes(searchWorklist.toLowerCase()))
+                .length > 4 && (
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
+                  style={{
+                    alignItems: 'center',
+                    padding: 12,
+                    marginHorizontal: 20,
+                    marginTop: 8,
+                    backgroundColor: `${theme.primary}08`,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    borderColor: `${theme.primary}20`,
+                  }}>
+                  <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '500' }}>
+                    View{' '}
+                    {worklists.filter((w) =>
+                      w.name?.toLowerCase().includes(searchWorklist.toLowerCase())
+                    ).length - 4}{' '}
+                    more worklists
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
         </View>
       </ScrollView>
-      <View style={styles.fixedButtonContainer}>
-        <GradientButton
-          title="View All Worklists"
-          onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
-          theme={theme}
-        />
+
+      {/* Compact Sticky Issue Buttons */}
+      <View
+        style={{
+          position: 'absolute',
+          bottom: Platform.OS === 'ios' ? 30 : 16,
+          left: 16,
+          right: 16,
+          flexDirection: 'row',
+          gap: 8,
+          zIndex: 10,
+          elevation: 5,
+        }}>
+        <TouchableOpacity
+          onPress={() => {
+            setIssueForm((prev) => ({
+              ...prev,
+              projectId: projectDetails?.id || '',
+            }));
+            setShowProjectIssuePopup(true);
+          }}
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.primary,
+            paddingVertical: 12,
+            borderRadius: 12,
+          }}>
+          <MaterialIcons name="report-problem" size={18} color="#fff" style={{ marginRight: 6 }} />
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Raise Issue</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            if (projectDetails?.id) {
+              navigation.navigate('ProjectIssuesScreen', { projectId: projectDetails.id });
+            }
+          }}
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: theme.card,
+            borderWidth: 1,
+            borderColor: theme.primary,
+            paddingVertical: 12,
+            borderRadius: 12,
+          }}>
+          <MaterialIcons
+            name="list-alt"
+            size={18}
+            color={theme.primary}
+            style={{ marginRight: 6 }}
+          />
+          <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>View Issues</Text>
+        </TouchableOpacity>
       </View>
+
+      {/* Edit Worklist Modal */}
+      <Modal
+        visible={editModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setEditModalVisible(false)}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#00000088',
+          }}>
+          <View
+            style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
+              Edit Worklist
+            </Text>
+
+            <TextInput
+              placeholder="Worklist Name"
+              placeholderTextColor={theme.secondaryText}
+              value={editedWorklistName}
+              onChangeText={setEditedWorklistName}
+              style={{
+                borderWidth: 1,
+                borderColor: theme.border,
+                borderRadius: 10,
+                padding: 12,
+                fontSize: 16,
+                marginBottom: 16,
+                color: theme.text,
+              }}
+            />
+
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleUpdateWorklist}>
+                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Save</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <ProjectIssuePopup
         visible={showProjectIssuePopup}
         onClose={() => setShowProjectIssuePopup(false)}
@@ -737,6 +1150,7 @@ const styles = StyleSheet.create({
     marginHorizontal: isTablet ? 42 : 24,
     marginBottom: isTablet ? 16 : 12,
     gap: isTablet ? 12 : 8,
+    marginTop: 12,
   },
   dateBox: {
     flex: 1,
@@ -810,15 +1224,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 15,
     marginLeft: 10,
-  },
-  fixedButtonContainer: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 40 : 20,
-    left: 20,
-    right: 20,
-    zIndex: 10,
-    elevation: 5,
-    backgroundColor: 'transparent',
   },
   coAdminPopupOverlay: {
     position: 'absolute',
