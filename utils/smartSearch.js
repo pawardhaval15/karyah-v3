@@ -104,7 +104,7 @@ export const performSmartSearch = async (query) => {
         metadata: user.phone || 'NA',
         icon: user.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
         data: user,
-        navigationTarget: 'UserProfileScreen',
+        navigationTarget: 'ConnectionsScreen',
         navigationParams: { userId: user.id, user }
       }));
 
