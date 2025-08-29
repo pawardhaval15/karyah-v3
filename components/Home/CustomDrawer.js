@@ -224,7 +224,22 @@ export default function CustomDrawer({ onClose, theme }) {
               />
             )}
           </View>
+          <View style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('language')}</Text>
 
+            <DrawerItem
+              icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
+              label={t('select_language')}
+              onPress={() => {
+                setShowLanguageModal(true);
+                // do NOT call changeLanguage or use 'code' here since no language selected yet
+                // do NOT close drawer here to let modal render
+              }}
+
+              theme={theme}
+              showBorder={true}
+            />
+          </View>
           <View style={styles.menuSection}>
             <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('account')}</Text>
             <DrawerItem
@@ -283,22 +298,7 @@ export default function CustomDrawer({ onClose, theme }) {
               theme={theme}
             />
           </View>
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('language')}</Text>
 
-            <DrawerItem
-              icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
-              label={t('select_language')}
-              onPress={() => {
-                setShowLanguageModal(true);
-                // do NOT call changeLanguage or use 'code' here since no language selected yet
-                // do NOT close drawer here to let modal render
-              }}
-
-              theme={theme}
-              showBorder={true}
-            />
-          </View>
 
         </ScrollView>
         {showLanguageModal && (
