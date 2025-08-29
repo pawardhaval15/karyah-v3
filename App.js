@@ -9,6 +9,7 @@ import AppNavigator from './navigation/AppNavigator';
 import { ThemeProvider, useThemeContext } from './theme/ThemeContext';
 import { CustomNotificationProvider } from './utils/CustomNotificationManager';
 import usePushNotifications from './utils/usePushNotifications';
+import { initI18n } from './utils/i18n';
 
 // Import background message handler
 import './configure/backgroundMessageHandler';
@@ -21,7 +22,16 @@ function AppContent() {
   });
   const [biometricChecked, setBiometricChecked] = useState(false);
   const [biometricPassed, setBiometricPassed] = useState(false);
+  const [i18nInitialized, setI18nInitialized] = useState(false);
   usePushNotifications();
+  // Initialize i18n on mount
+  useEffect(() => {
+    async function initialize() {
+      await initI18n();
+      setI18nInitialized(true);
+    }
+    initialize();
+  }, []);
   useEffect(() => {
     (async () => {
       const bio = await AsyncStorage.getItem('biometricEnabled');

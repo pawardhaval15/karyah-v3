@@ -12,6 +12,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { fetchNotifications } from '../utils/notifications';
 import { getProjectsByUserId } from '../utils/project';
 import usePushNotifications from '../utils/usePushNotifications';
+import { useTranslation } from 'react-i18next';
 const DRAWER_WIDTH = 300;
 
 const projectProgressData = [
@@ -71,6 +72,7 @@ export default function HomeScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSmartSearch, setShowSmartSearch] = useState(false);
+  const { t } = useTranslation();
   usePushNotifications();
 
   useEffect(() => {
@@ -196,7 +198,7 @@ export default function HomeScreen({ navigation }) {
             >
               {/* <Feather name="search" size={18} color={theme.secondaryText} style={styles.searchIcon} /> */}
               <Text style={[styles.searchPlaceholder, { color: theme.secondaryText }]}>
-                Search projects, tasks, users...
+                {t('search_placeholder')}
               </Text>
             </TouchableOpacity>
 
@@ -217,7 +219,7 @@ export default function HomeScreen({ navigation }) {
                 <>
                   <View style={styles.sectionRow}>
                     <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      Ongoing Projects <Text style={{ color: theme.text, fontWeight: '600', fontSize: 20, marginLeft: 12 }}>{projects.length}</Text>
+                      {t('ongoing_projects')} <Text style={{ color: theme.text, fontWeight: '600', fontSize: 20, marginLeft: 12 }}>{projects.length}</Text>
                     </Text>
                   </View>
                   <ScrollView
@@ -230,7 +232,7 @@ export default function HomeScreen({ navigation }) {
                         key={project.id || idx}
                         title={project.projectName}
                         timeline={formatMinimalDateRange(project.startDate, project.endDate)}
-                        assignedBy={"You"}
+                        assignedBy={t('you')}
                         avatars={[
                           ...(project.mainUserProfilePhoto ? [project.mainUserProfilePhoto] : []),
                           ...(Array.isArray(project.coAdminProfilePhotos)
@@ -242,7 +244,7 @@ export default function HomeScreen({ navigation }) {
                         progress={project.progress}
                         theme={theme}
                         project={project}
-                        creatorName={project.mainUserName || "Unknown"}
+                        creatorName={project.mainUserName || t('unknown')}
                         location={project.location}
                       />
                     ))}

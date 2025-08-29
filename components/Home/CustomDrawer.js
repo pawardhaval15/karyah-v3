@@ -16,14 +16,17 @@ import {
 import Animated from 'react-native-reanimated';
 import { useThemeContext } from '../../theme/ThemeContext'; // <-- import your theme context/provider
 import { fetchUserDetails } from '../../utils/auth';
-
+import { useTranslation } from 'react-i18next';
 export default function CustomDrawer({ onClose, theme }) {
   const navigation = useNavigation();
   const route = useRoute();
   const { colorMode, setColorMode } = useThemeContext(); // <-- get color mode and setter
-
+  const { i18n } = useTranslation();
   const isProfessionalDashboard = route.name === 'ProfessionalDashboard';
-
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+  };
+  const { t } = useTranslation();
   // Helper to get icon color based on theme
   const iconColor = theme.text;
   const secondaryColor = theme.primary;
@@ -41,6 +44,12 @@ export default function CustomDrawer({ onClose, theme }) {
       })
       .catch(() => setUserName('User'));
   }, []);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const languages = [
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'French' },
+    // add more languages you support
+  ];
 
   // const handleLogout = async () => {
   //   try {
@@ -129,7 +138,7 @@ export default function CustomDrawer({ onClose, theme }) {
               style={[styles.title, { color: theme.text }]}>
               {userName?.toString().trim() || 'User'}
             </Text>
-            <Text style={[styles.subtitle, { color: theme.secondaryText }]}>Welcome to Karyah</Text>
+            <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{t('welcome_to_karyah')}</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -143,20 +152,20 @@ export default function CustomDrawer({ onClose, theme }) {
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}>
           <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>MAIN MENU</Text>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('main_menu')}</Text>
             <DrawerItem
               onPress={() => {
                 navigation.navigate('ProjectScreen');
                 onClose && onClose();
               }}
               icon={<Octicons name="project" size={20} color={theme.primary} />}
-              label="Projects"
+              label={t('projects')}
               theme={theme}
               showBorder={true}
             />
             <DrawerItem
               icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
-              label="Issues"
+              label={t('issues')}
               onPress={() => {
                 navigation.navigate('IssuesScreen');
                 onClose && onClose();
@@ -166,7 +175,7 @@ export default function CustomDrawer({ onClose, theme }) {
             />
             <DrawerItem
               icon={<Feather name="list" size={20} color="#4CAF50" />}
-              label="Tasks"
+              label={t('tasks')}
               onPress={() => {
                 navigation.navigate('MyTasksScreen');
                 onClose && onClose();
@@ -182,7 +191,7 @@ export default function CustomDrawer({ onClose, theme }) {
                   color="#FF9800"
                 />
               }
-              label="Connections"
+              label={t('connections')}
               onPress={() => {
                 navigation.navigate('ConnectionsScreen');
                 onClose && onClose();
@@ -192,11 +201,11 @@ export default function CustomDrawer({ onClose, theme }) {
           </View>
 
           <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>DASHBOARD</Text>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('dashboard')}</Text>
             {isProfessionalDashboard ? (
               <DrawerItem
                 icon={<MaterialIcons name="dashboard" size={20} color="#009688" />}
-                label="Overview"
+                label={t('overview')}
                 onPress={() => {
                   navigation.navigate('Home');
                   onClose && onClose();
@@ -206,7 +215,7 @@ export default function CustomDrawer({ onClose, theme }) {
             ) : (
               <DrawerItem
                 icon={<MaterialIcons name="analytics" size={20} color="#009688" />}
-                label="Analytics"
+                label={t('analytics')}
                 onPress={() => {
                   navigation.navigate('ProfessionalDashboard');
                   onClose && onClose();
@@ -217,10 +226,10 @@ export default function CustomDrawer({ onClose, theme }) {
           </View>
 
           <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>ACCOUNT</Text>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('account')}</Text>
             <DrawerItem
               icon={<Feather name="user" size={20} color="#9C27B0" />}
-              label="Profile"
+              label={t('profile')}
               onPress={() => {
                 navigation.navigate('UserProfileScreen');
                 onClose && onClose();
@@ -230,7 +239,7 @@ export default function CustomDrawer({ onClose, theme }) {
             />
             <DrawerItem
               icon={<Feather name="settings" size={20} color="#607D8B" />}
-              label="Settings"
+              label={t('settings')}
               onPress={() => {
                 navigation.navigate('SettingsScreen');
                 onClose && onClose();
@@ -251,9 +260,10 @@ export default function CustomDrawer({ onClose, theme }) {
                 </View>
               }
             />
+
             <DrawerItem
               icon={<MaterialIcons name="help-outline" size={20} color={theme.primary} />}
-              label="Help & Support"
+              label={t('help_support')}
               showBorder={true}
               onPress={() => {
                 Linking.openURL(helpUrl).catch((err) => {
@@ -265,7 +275,7 @@ export default function CustomDrawer({ onClose, theme }) {
             />
             <DrawerItem
               icon={<Feather name="log-out" size={20} color="#FF5722" />}
-              label="Logout"
+              label={t('logout')}
               onPress={() => {
                 handleLogout();
                 onClose && onClose();
@@ -273,7 +283,59 @@ export default function CustomDrawer({ onClose, theme }) {
               theme={theme}
             />
           </View>
+          <View style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('language')}</Text>
+
+            <DrawerItem
+              icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
+              label={t('select_language')}
+              onPress={() => {
+                setShowLanguageModal(true);
+                // do NOT call changeLanguage or use 'code' here since no language selected yet
+                // do NOT close drawer here to let modal render
+              }}
+
+              theme={theme}
+              showBorder={true}
+            />
+          </View>
+
         </ScrollView>
+        {showLanguageModal && (
+          <View style={styles.languageModalOverlay}>
+            <View style={[styles.languageModal, { backgroundColor: theme.card }]}>
+              <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>
+                Select Language
+              </Text>
+              {languages.map(({ code, label }) => (
+                <TouchableOpacity
+                  key={code}
+                  onPress={() => {
+                    changeLanguage(code);
+                    setShowLanguageModal(false);
+                    onClose && onClose(); // close drawer too optionally
+                  }}
+                  style={[
+                    styles.languageOption,
+                    {
+                      backgroundColor:
+                        i18n.language === code ? theme.primary + '20' : 'transparent',
+                    },
+                  ]}>
+                  <Text style={{ color: theme.text, fontWeight: i18n.language === code ? '700' : '400' }}>
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity
+                onPress={() => setShowLanguageModal(false)}
+                style={[styles.closeBtn, { marginTop: 12 }]}>
+                <Text style={{ color: theme.primary, fontWeight: '600' }}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
       </View>
       <View style={[styles.themeToggleContainerModern, { borderTopColor: theme.border }]}>
         <Text style={[styles.themeLabel, { color: theme.secondaryText }]}>Mode</Text>
@@ -352,6 +414,34 @@ function ThemeToggle({ colorMode, setColorMode }) {
 }
 
 const styles = StyleSheet.create({
+  languageModalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1001,
+  },
+  languageModal: {
+    width: '80%',
+    borderRadius: 12,
+    padding: 20,
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  languageOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 8,
+  },
+
   themeToggleContainerModern: {
     paddingVertical: 14,
     paddingHorizontal: 24,

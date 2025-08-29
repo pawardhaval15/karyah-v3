@@ -1,0 +1,31 @@
+{
+  "main_menu": "MAIN MENU",
+  "projects": "Projects",
+  "issues": "Issues",
+  "tasks": "Tasks",
+  "connections": "Connections",
+  "dashboard": "DASHBOARD",
+  "overview": "Overview",
+  "analytics": "Analytics",
+  "account": "ACCOUNT",
+  "profile": "Profile",
+  "settings": "Settings",
+  "help_support": "Help & Support",
+  "logout": "Logout",
+  "language": "LANGUAGE",
+  "select_language": "Select Language",
+  "cancel": "Cancel",
+  "welcome_to_karyah": "Welcome to Karyah",
+  "mode": "Mode",
+
+  "search_placeholder": "Search projects, tasks, users...",
+  "ongoing_projects": "Ongoing Projects",
+  "unknown": "Unknown",
+  "you": "You",
+
+  "my_issues_and_task": "My Issues & Task",
+  "view_all": "View All",
+  "search_placeholder_issues": "Search your issues",
+  "search_placeholder_tasks": "Search your tasks",
+  "untitled": "Untitled"
+}

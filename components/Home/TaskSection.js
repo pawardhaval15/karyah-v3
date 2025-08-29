@@ -5,7 +5,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { fetchAssignedIssues } from '../../utils/issues';
 import { fetchMyTasks } from '../../utils/task'; // <-- im
 import TaskCard from './TaskCard';
-
+import { useTranslation } from 'react-i18next';
 export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
   const theme = useTheme();
 
@@ -14,7 +14,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   const [tasks, setTasks] = useState([]);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
-
+  const { t } = useTranslation();
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -58,39 +58,39 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
 
   // Sort issues: critical first, then by creation date (newest first)
   const getDaysDiff = (item) => {
-  const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
-  if (!dateVal.getTime()) return null; // no valid date
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  return Math.ceil((dateVal - today) / (1000 * 60 * 60 * 24));
-};
+    const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
+    if (!dateVal.getTime()) return null; // no valid date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return Math.ceil((dateVal - today) / (1000 * 60 * 60 * 24));
+  };
 
-const sortByDueLogic = (a, b) => {
-  const diffA = getDaysDiff(a);
-  const diffB = getDaysDiff(b);
+  const sortByDueLogic = (a, b) => {
+    const diffA = getDaysDiff(a);
+    const diffB = getDaysDiff(b);
 
-  // Overdue first
-  const isOverdueA = diffA !== null && diffA < 0;
-  const isOverdueB = diffB !== null && diffB < 0;
-  if (isOverdueA && !isOverdueB) return -1;
-  if (!isOverdueA && isOverdueB) return 1;
+    // Overdue first
+    const isOverdueA = diffA !== null && diffA < 0;
+    const isOverdueB = diffB !== null && diffB < 0;
+    if (isOverdueA && !isOverdueB) return -1;
+    if (!isOverdueA && isOverdueB) return 1;
 
-  // Both overdue → most overdue first (smaller diff comes first)
-  if (isOverdueA && isOverdueB) return diffA - diffB;
+    // Both overdue → most overdue first (smaller diff comes first)
+    if (isOverdueA && isOverdueB) return diffA - diffB;
 
-  // Upcoming (diff >= 0) → soonest first
-  if (diffA !== null && diffB !== null) return diffA - diffB;
+    // Upcoming (diff >= 0) → soonest first
+    if (diffA !== null && diffB !== null) return diffA - diffB;
 
-  // Items without due date go last
-  if (diffA === null && diffB !== null) return 1;
-  if (diffA !== null && diffB === null) return -1;
+    // Items without due date go last
+    if (diffA === null && diffB !== null) return 1;
+    if (diffA !== null && diffB === null) return -1;
 
-  // Otherwise no change
-  return 0;
-};
+    // Otherwise no change
+    return 0;
+  };
 
-const sortedData = activeTab === 'issues'
-  ? filtered.sort((a, b) => {
+  const sortedData = activeTab === 'issues'
+    ? filtered.sort((a, b) => {
       // Critical issues first
       if (a.isCritical && !b.isCritical) return -1;
       if (!a.isCritical && b.isCritical) return 1;
@@ -98,7 +98,7 @@ const sortedData = activeTab === 'issues'
       // Then by due logic
       return sortByDueLogic(a, b);
     })
-  : filtered.sort(sortByDueLogic);
+    : filtered.sort(sortByDueLogic);
 
   if (parentLoading || loading) {
     return (
@@ -117,7 +117,7 @@ const sortedData = activeTab === 'issues'
           <Text style={[styles.count, { color: theme.text }]}> {sortedData.length}</Text>
         </Text> */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          <Text >My Issues & Task</Text>
+          <Text >{t('my_issues_and_task')}</Text>
         </Text>
         <TouchableOpacity
           onPress={() =>
@@ -126,7 +126,7 @@ const sortedData = activeTab === 'issues'
               : navigation.navigate('IssuesScreen')
           }
         >
-          <Text style={[styles.viewAll, { color: theme.primary }]}>View All</Text>
+          <Text style={[styles.viewAll, { color: theme.primary }]}>{t('view_all')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -151,7 +151,7 @@ const sortedData = activeTab === 'issues'
                 { color: theme.text },
                 activeTab === 'issues' && styles.activeTabText,
               ]}>
-              Issues
+              {t('issues')}
             </Text>
             {issues.length > 0 && (
               <View
@@ -199,7 +199,7 @@ const sortedData = activeTab === 'issues'
                 { color: theme.text },
                 activeTab === 'tasks' && styles.activeTabText,
               ]}>
-              Tasks
+              {t('tasks')}
             </Text>
             {tasks.length > 0 && (
               <View
@@ -233,7 +233,7 @@ const sortedData = activeTab === 'issues'
       <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
-          placeholder={`Search your ${activeTab}`}
+          placeholder={activeTab === 'issues' ? t('search_placeholder_issues') : t('search_placeholder_tasks')}
           placeholderTextColor={theme.secondaryText}
           value={search}
           onChangeText={setSearch}
@@ -265,7 +265,7 @@ const sortedData = activeTab === 'issues'
               }
             >
               <TaskCard
-                title={item.title || item.issueTitle || item.name || 'Untitled'}
+                title={item.title || item.issueTitle || item.name || t('untitled')}
                 project={item.project?.projectName || item.project || item.projectName}
                 percent={item.percent || item.progress || 0}
                 desc={item.desc || item.description}
