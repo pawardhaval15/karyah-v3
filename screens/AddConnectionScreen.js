@@ -14,14 +14,14 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { getConnectionSuggestions, searchUsers, sendConnectionRequest } from '../utils/connections';
-
+import { useTranslation } from 'react-i18next';
 export default function AddConnectionScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
     const [people, setPeople] = useState([]);
     const [loading, setLoading] = useState(false);
     const [sendingId, setSendingId] = useState(null);
-
+const { t } = useTranslation();
 
 
     useEffect(() => {
@@ -116,8 +116,8 @@ export default function AddConnectionScreen({ navigation }) {
                 style={styles.banner}
             >
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.bannerTitle}>Connections</Text>
-                    <Text style={styles.bannerDesc}>All your professional connections in one place.</Text>
+                    <Text style={styles.bannerTitle}>{t('connections')}</Text>
+                    <Text style={styles.bannerDesc}>{t('all_your_professional_connections')}</Text>
                 </View>
             </LinearGradient>
 
@@ -125,7 +125,7 @@ export default function AddConnectionScreen({ navigation }) {
                 <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} />
                 <TextInput
                     style={[styles.searchInput, { color: theme.text }]}
-                    placeholder="Search Connection"
+                    placeholder={t('search_connection')}
                     placeholderTextColor={theme.secondaryText}
                     value={search}
                     onChangeText={handleSearch}
@@ -155,9 +155,9 @@ export default function AddConnectionScreen({ navigation }) {
                                 </Text>
                             </View>
                             {item.connectionStatus === 'accepted' ? (
-                                <Text style={{ color: theme.secondaryText, fontSize: 12, marginRight: 10 }}>Connected</Text>
+                                <Text style={{ color: theme.secondaryText, fontSize: 12, marginRight: 10 }}>{t('connected')}</Text>
                             ) : item.connectionStatus === 'pending' || item.added ? (
-                                <Text style={{ color: theme.secondaryText, fontSize: 12, marginRight: 10 }}>Requested</Text>
+                                <Text style={{ color: theme.secondaryText, fontSize: 12, marginRight: 10 }}>{t('requested')}</Text>
                             ) : (
                                 <TouchableOpacity
                                     style={styles.addBtn}
@@ -173,7 +173,7 @@ export default function AddConnectionScreen({ navigation }) {
                                         {sendingId === item.userId ? (
                                             <ActivityIndicator size="small" color="#fff" />
                                         ) : (
-                                            <Text style={styles.addBtnText}>Add</Text>
+                                            <Text style={styles.addBtnText}>{t('add')}</Text>
                                         )}
                                     </LinearGradient>
                                 </TouchableOpacity>

@@ -86,6 +86,13 @@
   "all_matching_users_selected": "सभी मिलते-जुलते उपयोगकर्ता चुन लिए गए हैं",
   "no_users_found_search": "आपकी खोज से कोई उपयोगकर्ता नहीं मिला",
   "no_users_available": "कोई उपयोगकर्ता उपलब्ध नहीं है",
-  "assign_count": "आसाइन करें ({{count}})"
+  "assign_count": "आसाइन करें ({{count}})",
+  "all_your_professional_connections": "सभी आपके व्यावसायिक संपर्क एक जगह पर।",
+  "add": "जोड़ें",
+  "search_connection": "संपर्क खोजें",
+  "phone": "फ़ोन",
+  "no_connections_found": "कोई संपर्क नहीं मिला।",
+  "connected": "संपर्कित",
+  "requested": "अनुरोधित"
 
 }

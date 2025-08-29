@@ -87,5 +87,12 @@
   "all_matching_users_selected": "All matching users have been selected",
   "no_users_found_search": "No users found matching your search",
   "no_users_available": "No users available",
-  "assign_count": "Assign ({{count}})"
+  "assign_count": "Assign ({{count}})",
+  "all_your_professional_connections": "All your professional connections in one place.",
+  "add": "Add",
+  "search_connection": "Search Connection",
+  "phone": "Phone",
+  "no_connections_found": "No connections found.",
+  "connected": "Connected",
+  "requested": "Requested"
 }

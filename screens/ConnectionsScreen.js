@@ -15,12 +15,12 @@ import {
 import { useTheme } from '../theme/ThemeContext';
 import { getUserConnections } from '../utils/connections';
 import ConnectionDetailsModal from './ConnectionDetailsModal';
-
+import { useTranslation } from 'react-i18next';
 export default function ConnectionsScreen({ navigation }) {
   const theme = useTheme();
   const screenWidth = Dimensions.get('window').width;
   const isTablet = screenWidth >= 768;
-
+const { t } = useTranslation();
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [search, setSearch] = useState('');
@@ -67,7 +67,7 @@ export default function ConnectionsScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
       </TouchableOpacity>
 
       <LinearGradient
@@ -91,7 +91,7 @@ export default function ConnectionsScreen({ navigation }) {
               marginBottom: isTablet ? 4 : 2,
             }
           ]}>
-            Connections
+           {t('connections')}
           </Text>
           <Text style={[
             styles.bannerDesc,
@@ -100,7 +100,7 @@ export default function ConnectionsScreen({ navigation }) {
               maxWidth: isTablet ? '85%' : '80%',
             }
           ]}>
-            All your professional connections in one place.
+            {t('all_your_professional_connections')}
           </Text>
         </View>
         <TouchableOpacity
@@ -117,7 +117,7 @@ export default function ConnectionsScreen({ navigation }) {
             styles.bannerActionText,
             { fontSize: isTablet ? 16 : 15 }
           ]}>
-            Add
+            {t('add')}
           </Text>
           <Feather 
             name="user-plus" 
@@ -146,7 +146,7 @@ export default function ConnectionsScreen({ navigation }) {
               fontSize: isTablet ? 18 : 16,
             }
           ]}
-          placeholder="Search Connection"
+          placeholder={t('search_connection')}
           placeholderTextColor={theme.secondaryText}
           value={search}
           onChangeText={setSearch}
@@ -230,7 +230,7 @@ export default function ConnectionsScreen({ navigation }) {
         )}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', color: theme.secondaryText, marginTop: 40 }}>
-            No connections found.
+            {t('no_connections_found')}
           </Text>
         }
       />
