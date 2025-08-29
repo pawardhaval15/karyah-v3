@@ -22,6 +22,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { bulkAssignTasks, getTasksByProjectId } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
+import { useTranslation } from 'react-i18next';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
   const [search, setSearch] = useState('');
@@ -34,6 +35,8 @@ export default function MyTasksScreen({ navigation }) {
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [worklists, setWorklists] = useState([]);
+
+  const { t } = useTranslation();
   const [projectTasks, setProjectTasks] = useState([]);
   const [addTaskForm, setAddTaskForm] = useState({
     taskName: '',
@@ -544,7 +547,7 @@ export default function MyTasksScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home')}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
       </TouchableOpacity>
 
       <LinearGradient
@@ -554,12 +557,12 @@ export default function MyTasksScreen({ navigation }) {
         style={styles.banner}>
         <View style={{ flex: 1 }}>
           <Text style={styles.bannerTitle}>
-            {isSelectionMode ? `${selectedTasks.length} Selected` : 'My Tasks'}
+            {isSelectionMode ? `${selectedTasks.length} Selected` : t('my_tasks')}
           </Text>
           <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerDesc}>
             {isSelectionMode
-              ? 'Select tasks to assign to users'
-              : 'All tasks assigned to you or created by you are listed here.'}
+              ? t('select_tasks_to_assign')
+              : t('all_tasks_assigned_to_you_or_created_by_you_are_listed_here')}
           </Text>
         </View>
 
@@ -604,7 +607,7 @@ export default function MyTasksScreen({ navigation }) {
       <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
-          placeholder="Search tasks..."
+          placeholder={t('search_tasks')}
           placeholderTextColor={theme.secondaryText}
           value={search}
           onChangeText={setSearch}
@@ -635,7 +638,7 @@ export default function MyTasksScreen({ navigation }) {
         {[
           {
             key: 'mytasks',
-            label: 'My Task',
+            label: t('my_tasks'),
             count: taskCounts.mytasks,
             icon: (
               <Feather
@@ -648,7 +651,7 @@ export default function MyTasksScreen({ navigation }) {
           },
           {
             key: 'createdby',
-            label: 'Created by Me',
+            label: t('created_by_me'),
             count: taskCounts.createdby,
             icon: (
               <Feather
@@ -711,10 +714,10 @@ export default function MyTasksScreen({ navigation }) {
         <View
           style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.filterHeader}>
-            <Text style={[styles.filterHeaderText, { color: theme.text }]}>Filters</Text>
+            <Text style={[styles.filterHeaderText, { color: theme.text }]}>{t('filters')}</Text>
             <View style={styles.filterHeaderActions}>
               <TouchableOpacity onPress={clearAllFilters} style={styles.clearFiltersBtn}>
-                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>Clear</Text>
+                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>{t('clear')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.closeBtn}>
                 <MaterialIcons name="close" size={16} color={theme.secondaryText} />
@@ -729,7 +732,7 @@ export default function MyTasksScreen({ navigation }) {
             {/* Status Filter */}
             {statuses.length > 0 && (
               <View style={styles.compactFilterSection}>
-                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Status</Text>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('status')}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -809,7 +812,7 @@ export default function MyTasksScreen({ navigation }) {
             {/* Projects Filter */}
             {projectOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
-                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Projects</Text>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('projects')}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -847,7 +850,7 @@ export default function MyTasksScreen({ navigation }) {
             {/* Location Filter */}
             {locations.length > 0 && (
               <View style={styles.compactFilterSection}>
-                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Location</Text>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('location')}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}

@@ -69,6 +69,23 @@
   "pending": "लंबित",
   "unresolved": "असमाधानित",
   "no_location": "कोई स्थान नहीं",
-  "pending_approval": "स्वीकृति का इंतजार"
+  "pending_approval": "स्वीकृति का इंतजार",
+  "selected": "चयनित",
+  "select_tasks_to_assign": "उपयोगकर्ताओं को असाइन करने के लिए कार्य चुनें",
+  "all_tasks_assigned_to_you_or_created_by_you_are_listed_here": "आपके द्वारा सौंपे गए या बनाए गए सभी कार्य यहां सूचीबद्ध हैं।",
+  "my_tasks": "मेरे कार्य",
+  "assign": "आसाइन करें",
+  "task": "कार्य",
+  "search_tasks": "कार्य खोजें...",
+  "assigned_by": "द्वारा सौंपा गया",
+  "assigned_to": "को सौंपा गया",
+  "user": "उपयोगकर्ता",
+  "unknown_user": "अज्ञात उपयोगकर्ता",
+  "assign_plural": "आसाइन करता है",
+  "assign_with_count": "आसाइन करें",
+  "all_matching_users_selected": "सभी मिलते-जुलते उपयोगकर्ता चुन लिए गए हैं",
+  "no_users_found_search": "आपकी खोज से कोई उपयोगकर्ता नहीं मिला",
+  "no_users_available": "कोई उपयोगकर्ता उपलब्ध नहीं है",
+  "assign_count": "आसाइन करें ({{count}})"
 
 }
