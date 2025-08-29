@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Dimensions, Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchUserDetails, updateUserDetails } from '../utils/auth';
-
+import { useTranslation } from 'react-i18next';
 const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -26,6 +26,7 @@ export default function UserProfileScreen({ navigation, route }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [pin, setPin] = useState('');
   const [pinVisible, setPinVisible] = useState(false);
+  const { t } = useTranslation();
   const handlePickImage = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -134,7 +135,7 @@ export default function UserProfileScreen({ navigation, route }) {
       <View style={styles.headerRow}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+          <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
           <Feather name="more-vertical" size={24} color={theme.text} />
@@ -151,7 +152,7 @@ export default function UserProfileScreen({ navigation, route }) {
               }}
             >
               <Feather name="edit" size={18} color={theme.primary} style={{ marginRight: 8 }} />
-              <Text style={[styles.menuItemText, { color: theme.primary }]}>Edit Profile</Text>
+              <Text style={[styles.menuItemText, { color: theme.primary }]}>{t('edit_profile')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -182,10 +183,10 @@ export default function UserProfileScreen({ navigation, route }) {
         {isEditing ? (
           <>
             <View style={styles.fieldWrapper}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>FULL NAME</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('full_name')}</Text>
               <TextInput
                 style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                placeholder="Enter your full name"
+                placeholder={t('enter_your_full_name')}
                 placeholderTextColor={theme.secondaryText}
                 value={name}
                 onChangeText={setName}
@@ -193,10 +194,10 @@ export default function UserProfileScreen({ navigation, route }) {
             </View>
 
             <View style={styles.fieldWrapper}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>BIO</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('bio')}</Text>
               <TextInput
                 style={[styles.bioInput, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                placeholder="Tell us about yourself"
+                placeholder={t('tell_us_about_yourself')}
                 placeholderTextColor={theme.secondaryText}
                 value={bio}
                 onChangeText={setBio}
@@ -205,10 +206,10 @@ export default function UserProfileScreen({ navigation, route }) {
             </View>
 
             <View style={styles.fieldWrapper}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>EMAIL ADDRESS</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('email_address')}</Text>
               <TextInput
                 style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                placeholder="Enter your email address"
+                placeholder={t('enter_your_email_address')}
                 placeholderTextColor={theme.secondaryText}
                 value={email}
                 onChangeText={setEmail}
@@ -218,10 +219,10 @@ export default function UserProfileScreen({ navigation, route }) {
 
             <View style={styles.row}>
               <View style={[styles.fieldWrapper, { flex: 1, marginRight: 8 }]}>
-                <Text style={[styles.fieldLabel, { color: theme.text }]}>PHONE NUMBER</Text>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('phone_number')}</Text>
                 <TextInput
                   style={[styles.input, { color: theme.text, backgroundColor: theme.card, borderColor: theme.border }]}
-                  placeholder="Enter phone number"
+                  placeholder={t('enter_phone_number')}
                   placeholderTextColor={theme.secondaryText}
                   value={phone}
                   onChangeText={setPhone}
@@ -230,7 +231,7 @@ export default function UserProfileScreen({ navigation, route }) {
               </View>
 
               <View style={[styles.fieldWrapper, { flex: 1 }]}>
-                <Text style={[styles.fieldLabel, { color: theme.text }]}>DATE OF BIRTH</Text>
+                <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('date_of_birth')}</Text>
                 <TouchableOpacity
                   onPress={() => setShowDatePicker(true)}
                   activeOpacity={0.8}
@@ -266,7 +267,7 @@ export default function UserProfileScreen({ navigation, route }) {
             )}
 
             <View style={styles.fieldWrapper}>
-              <Text style={[styles.fieldLabel, { color: theme.text }]}>ADDRESS</Text>
+              <Text style={[styles.fieldLabel, { color: theme.text }]}>{t('address')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', borderColor: theme.border, borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, backgroundColor: theme.card, minHeight: 54 }}>
                 <TextInput
                   style={[
@@ -329,7 +330,7 @@ export default function UserProfileScreen({ navigation, route }) {
                   maxWidth: 280,
                 }}
               >
-                This Support PIN is used to contact our support team for assistance.
+                {t('support_pin_info')}
               </Text>
               <View
                 style={{
@@ -351,7 +352,7 @@ export default function UserProfileScreen({ navigation, route }) {
                     fontSize: 16,
                   }}
                 >
-                  Support PIN: {supportPin ? (pinVisible ? supportPin : '*****') : 'No Support PIN'}
+                  {t('support_pin')}: {supportPin ? (pinVisible ? supportPin : '*****') : t('no_support_pin')}
                 </Text>
                 {supportPin ? (
                   <TouchableOpacity
@@ -359,7 +360,7 @@ export default function UserProfileScreen({ navigation, route }) {
                     style={{ paddingHorizontal: 8, paddingVertical: 2 }}
                   >
                     <Text style={{ color: theme.primary, fontWeight: '600' }}>
-                      {pinVisible ? 'Hide' : 'Show'}
+                      {pinVisible ? t('hide') : t('show')}
                     </Text>
                   </TouchableOpacity>
                 ) : null}
