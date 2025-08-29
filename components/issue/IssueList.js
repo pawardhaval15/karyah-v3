@@ -1,6 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
-
+import { useTranslation } from 'react-i18next';
 export default function IssueList({
   issues,
   onPressIssue,
@@ -41,7 +41,7 @@ export default function IssueList({
     if (priorityA > priorityB) return 1;
     return 0; // same priority, keep original order
   });
-
+  const { t } = useTranslation();
   return (
     <>
       {/* Status filter tabs row (pill design) */}
@@ -59,7 +59,7 @@ export default function IssueList({
         {[
           {
             key: 'all',
-            label: 'All',
+            label: t('all'),
             icon: (
               <Feather
                 name="list"
@@ -73,7 +73,7 @@ export default function IssueList({
           },
           {
             key: 'critical',
-            label: 'Critical',
+            label: t('critical'),
             icon: (
               <Feather
                 name="alert-triangle"
@@ -87,7 +87,7 @@ export default function IssueList({
           },
           {
             key: 'resolved',
-            label: 'Resolved',
+            label: t('resolved'),
             icon: (
               <Feather
                 name="check-circle"
@@ -101,7 +101,7 @@ export default function IssueList({
           },
           {
             key: 'pending_approval',
-            label: 'Pending',
+            label: t('pending'),
             icon: (
               <Feather
                 name="clock"
@@ -115,7 +115,7 @@ export default function IssueList({
           },
           {
             key: 'unresolved',
-            label: 'Unresolved',
+            label: t('unresolved'),
             icon: (
               <MaterialIcons
                 name="error-outline"
@@ -243,7 +243,7 @@ export default function IssueList({
                                 letterSpacing: 0.2,
                               },
                             ]}>
-                            Critical
+                            {t('critical')}
                           </Text>
                         </View>
                       )}
@@ -309,7 +309,7 @@ export default function IssueList({
               <View style={styles.issueRow}>
                 <Feather name="map-pin" size={14} color={theme.secondaryText} />
                 <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                  {item.projectLocation || item.project?.location || 'No location'}
+                  {item.projectLocation || item.project?.location || t('no_location')}
                 </Text>
               </View>
               <View style={styles.chevronBox}>

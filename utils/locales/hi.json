@@ -55,5 +55,20 @@
   "all_projects": "सभी परियोजनाएँ",
   "banner_description": "आपके द्वारा अब तक लिए गए परियोजनाओं की सूची",
   "project": "परियोजना",
-  "search_project": "परियोजना खोजें"
+  "search_project": "परियोजना खोजें",
+  "filters": "फ़िल्टर",
+  "clear": "साफ़ करें",
+  "status": "स्थिति",
+  "created_by_me": "मेरे द्वारा बनाए गए",
+  "assigned_to_me": "मुझे असाइन किया गया",
+  "location": "स्थान",
+  "loading": "लोड हो रहा है...",
+  "all_issues_assigned_or_created_by_you_are_listed_here": "आपके द्वारा सौंपे गए या बनाए गए सभी मुद्दे यहां सूचीबद्ध हैं।",
+  "critical": "गंभीर",
+  "resolved": "समाधान हो गया",
+  "pending": "लंबित",
+  "unresolved": "असमाधानित",
+  "no_location": "कोई स्थान नहीं",
+  "pending_approval": "स्वीकृति का इंतजार"
+
 }

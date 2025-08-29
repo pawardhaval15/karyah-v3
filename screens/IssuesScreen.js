@@ -17,7 +17,7 @@ import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchAssignedIssues, fetchCreatedByMeIssues, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-
+import { useTranslation } from 'react-i18next';
 export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
@@ -28,7 +28,7 @@ export default function IssuesScreen({ navigation }) {
     const [showIssuePopup, setShowIssuePopup] = useState(false);
     const [viewMode, setViewMode] = useState('assigned'); // 'assigned' or 'created'
     const [refreshing, setRefreshing] = useState(false);
-
+    const { t } = useTranslation();
     const [issueForm, setIssueForm] = useState({
         title: '',
         description: '',
@@ -243,7 +243,7 @@ export default function IssuesScreen({ navigation }) {
         <View style={{ flex: 1, backgroundColor: theme.background }}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                 <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
-                <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+                <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
             </TouchableOpacity>
 
             <LinearGradient
@@ -253,19 +253,19 @@ export default function IssuesScreen({ navigation }) {
                 style={styles.banner}
             >
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.bannerTitle}>Issues</Text>
-                    <Text style={styles.bannerDesc}>All issues assigned or created by you are listed here.</Text>
+                    <Text style={styles.bannerTitle}>{t('issues')}</Text>
+                    <Text style={styles.bannerDesc}>{t('all_issues_assigned_or_created_by_you_are_listed_here')}</Text>
                 </View>
                 <TouchableOpacity style={styles.bannerAction} onPress={() => setShowIssuePopup(true)}>
-                    <Text style={styles.bannerActionText}>Issue</Text>
+                    <Text style={styles.bannerActionText}>{t('issue')}</Text>
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
             </LinearGradient>
             {/* Dynamic Section Tabs */}
             <View style={[styles.tabRow, { borderColor: theme.border }]}>
                 {[
-                    { key: 'assigned', label: 'Assigned to Me' },
-                    { key: 'created', label: 'Created by Me' },
+                    { key: 'assigned', label: t('assigned_to_me') },
+                    { key: 'created', label: t('created_by_me') },
                 ].map(tab => (
                     <TouchableOpacity
                         key={tab.key}
@@ -323,10 +323,10 @@ export default function IssuesScreen({ navigation }) {
             {showFilters && (
                 <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <View style={styles.filterHeader}>
-                        <Text style={[styles.filterHeaderText, { color: theme.text }]}>Filters</Text>
+                        <Text style={[styles.filterHeaderText, { color: theme.text }]}>{t('filters')}</Text>
                         <View style={styles.filterHeaderActions}>
                             <TouchableOpacity onPress={clearAllFilters} style={styles.clearFiltersBtn}>
-                                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>Clear</Text>
+                                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>{t('clear')}</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.closeBtn}>
                                 <MaterialIcons name="close" size={16} color={theme.secondaryText} />
@@ -337,7 +337,7 @@ export default function IssuesScreen({ navigation }) {
                         {/* Status Filter */}
                         {statuses.length > 0 && (
                             <View style={styles.compactFilterSection}>
-                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Status</Text>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('status')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                                     <View style={styles.compactChipsRow}>
                                         {statuses.map(status => (
@@ -363,7 +363,7 @@ export default function IssuesScreen({ navigation }) {
                         {/* Projects Filter */}
                         {projectOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
-                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Projects</Text>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('projects')}</Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                                     <View style={styles.compactChipsRow}>
                                         {projectOptions.map(project => (
@@ -420,7 +420,7 @@ export default function IssuesScreen({ navigation }) {
                         {/* Location Filter */}
                         {locationOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
-                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Location</Text>
+                                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('location')}</Text>
                                 <ScrollView
                                     horizontal
                                     showsHorizontalScrollIndicator={false}

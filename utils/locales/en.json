@@ -56,5 +56,19 @@
   "all_projects": "All Projects",
   "banner_description": "The list of projects you have taken so far",
   "project": "Project",
-  "search_project": "Search project"
+  "search_project": "Search project",
+  "filters": "Filters",
+  "clear": "Clear",
+  "status": "Status",
+  "created_by_me": "Created By Me",
+  "assigned_to_me": "Assigned To Me",
+  "location": "Location",
+  "loading": "Loading...",
+  "all_issues_assigned_or_created_by_you_are_listed_here": "All issues assigned or created by you are listed here.",
+  "critical": "Critical",
+  "resolved": "Resolved",
+  "pending": "Pending",
+  "unresolved": "Unresolved",
+  "no_location": "No location",
+  "pending_approval": "Pending Approval"
 }
