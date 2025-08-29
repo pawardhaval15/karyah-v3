@@ -30,7 +30,7 @@ import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 import { deleteProjectById, getProjectById } from '../utils/project';
 import { deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist, createWorklist } from '../utils/worklist';
-
+import { useTranslation } from 'react-i18next';
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -54,7 +54,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [showProjectNameModal, setShowProjectNameModal] = useState(false);
   const [showMaterialRequestPopup, setShowMaterialRequestPopup] = useState(false);
-
+  const { t } = useTranslation();
   // New state variables
   const [showProjectDetails, setShowProjectDetails] = useState(false);
   const [worklists, setWorklists] = useState([]);
@@ -247,7 +247,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             {worklist.name}
           </Text>
           <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
-            {progress?.totalTasks || 0} tasks
+            {progress?.totalTasks || 0} {t('tasks')}
           </Text>
         </View>
 
@@ -302,7 +302,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           alignItems: 'center',
           backgroundColor: theme.background,
         }}>
-        <Text style={{ color: theme.text }}>Project not found</Text>
+        <Text style={{ color: theme.text }}>{t('project_not_found')}</Text>
       </View>
     );
   }
@@ -329,7 +329,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             style={{ flexDirection: 'row', alignItems: 'center', padding: 4 }}
             onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
-            <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+            <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
           </TouchableOpacity>
           {/* More Options Button */}
           <TouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 8 }}>
@@ -348,14 +348,13 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   {projectDetails.projectName}
                 </Text>
               </TouchableOpacity>
-              <Text
-                style={
-                  styles.dueDate
-                }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
-              <Text
-                style={
-                  styles.creator
-                }>{`Project Creator: ${projectDetails.creatorName || '-'}`}</Text>
+              <Text style={styles.dueDate}>
+                {t('due_date')} : {projectDetails.endDate?.split('T')[0] || '-'}
+              </Text>
+              <Text style={styles.creator}>
+                {t('project_creator')}: {projectDetails.creatorName || '-'}
+              </Text>
+
             </View>
             {/* Compact Project Details Toggle Button */}
             <TouchableOpacity
@@ -372,7 +371,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               }}>
               <MaterialIcons name="description" size={16} color="#fff" style={{ marginRight: 6 }} />
               <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-                Details
+                {t('details')}
               </Text>
               <MaterialIcons
                 name={showProjectDetails ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
@@ -407,7 +406,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               ]}>
               <MaterialIcons name="device-hub" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
-                Task Dep.
+                {t('task_dependency')}
               </Text>
             </TouchableOpacity>
 
@@ -432,7 +431,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               ]}>
               <Feather name="message-circle" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
-                Discussion
+                {t('discussion')}
               </Text>
             </TouchableOpacity>
 
@@ -452,7 +451,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               ]}>
               <Feather name="package" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
-                Materials
+                {t('materials')}
               </Text>
             </TouchableOpacity>
 
@@ -478,7 +477,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 ]}>
                 <Feather name="settings" size={16} color={theme.primary} />
                 <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
-                  Settings
+                  {t('settings')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -486,7 +485,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         </View>
         <View style={styles.progressSection}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
-            Progress <Text style={{ color: theme.success }}>{projectDetails.progress || 0}%</Text>
+            {t('progress')} <Text style={{ color: theme.success }}>{projectDetails.progress || 0}%</Text>
           </Text>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: theme.primary }]} />
@@ -509,26 +508,26 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           <View>
             <View style={styles.dateRow}>
               <DateBox
-                label="START DATE"
+                label={t('start_date')}
                 value={projectDetails.startDate?.split('T')[0] || '-'}
                 theme={theme}
               />
               <DateBox
-                label="END DATE"
+                label={t('end_date')}
                 value={projectDetails.endDate?.split('T')[0] || '-'}
                 theme={theme}
               />
             </View>
             <FieldBox
-              label="PROJECT CATEGORY"
+              label={t('project_category')}
               value={projectDetails.projectCategory}
-              placeholder="Project Category"
+              placeholder={t('project_category')}
               theme={theme}
             />
             <FieldBox
-              label="LOCATION"
+              label={t('location')}
               value={projectDetails.location}
-              placeholder="Location"
+              placeholder={t('location')}
               theme={theme}
             />
             <View
@@ -536,7 +535,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               {/* Row with label and avatars spaced */}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
-                  CO-ADMINS
+                  {t('co_admins')}
                 </Text>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -601,7 +600,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   },
                 ]}>
                 <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>
-                  DESCRIPTION
+                  {t('description')}
                 </Text>
                 <Text
                   numberOfLines={5} // Limit lines in main screen for preview
@@ -611,7 +610,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                     ? projectDetails.description
                     : 'No description available'}
                 </Text>
-                <Text style={{ color: theme.primary, marginTop: 4 }}>Read More</Text>
+                <Text style={{ color: theme.primary, marginTop: 4 }}>{t('read_more')}</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
@@ -640,7 +639,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                           styles.inputLabel,
                           { color: theme.text, marginBottom: 12, fontSize: 18 },
                         ]}>
-                        Description
+                        {t('description')}
                       </Text>
                       <Text style={[styles.inputValue, { color: theme.text, fontSize: 16 }]}>
                         {projectDetails.description && projectDetails.description.trim() !== ''
@@ -658,7 +657,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                         backgroundColor: theme.primary,
                         borderRadius: 25,
                       }}>
-                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
+                      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>{t('close')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -678,7 +677,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               marginHorizontal: 20,
               marginBottom: 8,
             }}>
-            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>Worklists</Text>
+            <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>{t('worklists')}</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
               style={{
@@ -688,7 +687,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 borderRadius: 6,
               }}>
               <Text style={{ color: theme.primary, fontSize: 11, fontWeight: '500' }}>
-                View All
+                {t('view_all')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -717,7 +716,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 color: '#363942',
                 paddingVertical: 0,
               }}
-              placeholder="Search worklist..."
+              placeholder={t('search_worklist')}
               placeholderTextColor={theme.secondaryText}
               value={searchWorklist}
               onChangeText={setSearchWorklist}
@@ -747,7 +746,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   fontSize: 14,
                   fontWeight: '500',
                 }}>
-                No worklists found
+                {t('no_worklists')}
               </Text>
               <Text
                 style={{
@@ -756,7 +755,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   marginTop: 2,
                   fontSize: 12,
                 }}>
-                Create your first worklist to get started
+                {t('create_first_worklist')}
               </Text>
               {/* Create Worklist Button */}
               <TouchableOpacity
@@ -769,7 +768,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   borderRadius: 8,
                 }}
               >
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Create Worklist</Text>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>{t('create_worklist')}</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -799,7 +798,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                       {worklists.filter((w) =>
                         w.name?.toLowerCase().includes(searchWorklist.toLowerCase())
                       ).length - 4}{' '}
-                      more worklists
+                      {t('more_worklists')}
                     </Text>
                   </TouchableOpacity>
                 )}
@@ -838,7 +837,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             borderRadius: 12,
           }}>
           <MaterialIcons name="report-problem" size={18} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Raise Issue</Text>
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{t('raise_issue')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -864,7 +863,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             color={theme.primary}
             style={{ marginRight: 6 }}
           />
-          <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>View Issues</Text>
+          <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>{t('view_issues')}</Text>
         </TouchableOpacity>
       </View>
       {/* Create Worklist Modal */}
@@ -901,10 +900,10 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <TouchableOpacity onPress={() => setCreateWorklistModal(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleCreateWorklist}>
-                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Create</Text>
+                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('create')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -927,11 +926,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           <View
             style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              Edit Worklist
+              {t('edit_worklist')}
             </Text>
 
             <TextInput
-              placeholder="Worklist Name"
+              placeholder={t('worklist_name')}
               placeholderTextColor={theme.secondaryText}
               value={editedWorklistName}
               onChangeText={setEditedWorklistName}
@@ -947,11 +946,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             />
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleUpdateWorklist}>
-                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Save</Text>
+                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1020,7 +1019,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 navigation.navigate('UpdateProjectScreen', { projectId: projectDetails.id });
               }}>
               <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>Edit</Text>
+              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>{t('edit')}</Text>
             </TouchableOpacity>
             {/* Delete Option */}
             <TouchableOpacity
@@ -1056,7 +1055,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 ]);
               }}>
               <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>Delete</Text>
+              <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>{t('delete')}</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -1076,7 +1075,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   styles.coAdminPopup,
                   { backgroundColor: theme.card, borderColor: theme.border },
                 ]}>
-                <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>Project Name</Text>
+                <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>{t('project_name')}</Text>
                 <Text
                   style={[
                     {
@@ -1092,7 +1091,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.coAdminPopupCloseBtn}
                   onPress={() => setShowProjectNameModal(false)}>
-                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                  <Text style={{ color: theme.primary, fontWeight: '500' }}>{t('close')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

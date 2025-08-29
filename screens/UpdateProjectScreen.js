@@ -21,7 +21,7 @@ import { getUserConnections, searchConnections } from '../utils/connections';
 import { getProjectById, updateProject } from '../utils/project';
 import { Keyboard } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-
+import { useTranslation } from 'react-i18next';
 export default function UpdateProjectScreen({ route, navigation }) {
     const { projectId } = route.params;
     const theme = useTheme();
@@ -41,7 +41,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
     const [filteredConnections, setFilteredConnections] = useState([]);
     const [showCoAdminPicker, setShowCoAdminPicker] = useState(false);
     const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-
+const { t } = useTranslation();
     useFocusEffect(
         useCallback(() => {
             const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
@@ -135,25 +135,25 @@ export default function UpdateProjectScreen({ route, navigation }) {
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                     <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-                    <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+                    <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
                 </TouchableOpacity>
                 {/* Header Card */}
                 <LinearGradient colors={[theme.secondary, theme.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerCard}>
                     <View>
                         <Text style={styles.projectName}>{project.projectName}</Text>
-                        <Text style={styles.dueDate}>Due Date : {values.endDate?.split('T')[0] || '-'}</Text>
+                        <Text style={styles.dueDate}>{t('due_date')} : {values.endDate?.split('T')[0] || '-'}</Text>
                     </View>
                 </LinearGradient>
                 {/* Date Row */}
                 <View style={styles.dateRow}>
                     <DateBox
-                        label="Start Date"
+                        label={t('start_date')}
                         value={values.startDate}
                         onChange={date => handleChange('startDate', date.toISOString())}
                         theme={theme}
                     />
                     <DateBox
-                        label="End Date"
+                        label={t('end_date')}
                         value={values.endDate}
                         onChange={date => handleChange('endDate', date.toISOString())}
                         theme={theme}
@@ -161,40 +161,40 @@ export default function UpdateProjectScreen({ route, navigation }) {
                 </View>
                 {/* Editable Fields */}
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <Text style={[styles.inputLabel, { color: theme.text }]}>Project Name</Text>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>{t('project_name')}</Text>
                     <TextInput
                         value={values.projectName}
-                        placeholder="Project Name"
+                        placeholder={t('project_name')}
                         placeholderTextColor={theme.secondaryText}
                         onChangeText={text => handleChange('projectName', text)}
                         style={[styles.inputValue, { color: theme.text }]}
                     />
                 </View>
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <Text style={[styles.inputLabel, { color: theme.text }]}>Category</Text>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>{t('category')}</Text>
                     <TextInput
                         value={values.projectCategory}
-                        placeholder="Category"
+                        placeholder={t('category')}
                         placeholderTextColor={theme.secondaryText}
                         onChangeText={text => handleChange('projectCategory', text)}
                         style={[styles.inputValue, { color: theme.text }]}
                     />
                 </View>
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <Text style={[styles.inputLabel, { color: theme.text }]}>Location</Text>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>{t('location')}</Text>
                     <TextInput
                         value={values.location}
-                        placeholder="Location"
+                        placeholder={t('location')}
                         placeholderTextColor={theme.secondaryText}
                         onChangeText={text => handleChange('location', text)}
                         style={[styles.inputValue, { color: theme.text }]}
                     />
                 </View>
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <Text style={[styles.inputLabel, { color: theme.text }]}>Description</Text>
+                    <Text style={[styles.inputLabel, { color: theme.text }]}>{t('description')}</Text>
                     <TextInput
                         value={values.projectDesc}
-                        placeholder="Description"
+                        placeholder={t('description')}
                         placeholderTextColor={theme.secondaryText}
                         onChangeText={text => handleChange('projectDesc', text)}
                         multiline
@@ -212,13 +212,13 @@ export default function UpdateProjectScreen({ route, navigation }) {
                 </View>
                 {/* Co-Admins */}
                 <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                    <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>Co-Admins</Text>
+                    <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>{t('co_admins')}</Text>
                     <TouchableOpacity
                         activeOpacity={0.8}
                         onPress={() => setShowCoAdminPicker(true)}
                         style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', minHeight: 40, paddingRight: 15 }}>
                         {selectedCoAdmins.length === 0 && (
-                            <Text style={{ color: theme.secondaryText }}>Select Co-Admins</Text>
+                            <Text style={{ color: theme.secondaryText }}>{t('select_co_admins')}</Text>
                         )}
                         {selectedCoAdmins.map((id, idx) => {
                             const user = (project.coAdmins || []).find(u => u.userId === id) ||
@@ -257,7 +257,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
                                     maxHeight: '70%',
                                 }}
                             >
-                                <Text style={{ color: theme.text, fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>Select Co-Admins</Text>
+                                <Text style={{ color: theme.text, fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>{t('select_co_admins')}</Text>
                                 {selectedCoAdmins.length > 0 && (
                                     <ScrollView
                                         horizontal
@@ -295,7 +295,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
                                     </ScrollView>
                                 )}
                                 <TextInput
-                                    placeholder="Search Connections"
+                                    placeholder={t('search_connections')}
                                     placeholderTextColor={theme.secondaryText}
                                     value={searchText}
                                     onChangeText={handleSearch}
@@ -344,7 +344,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
                                             />
                                             <View style={{ flex: 1 }}>
                                                 <Text style={{ color: theme.text, fontWeight: '500' }}>{item.name}</Text>
-                                                {item.phone && <Text style={{ fontSize: 12, color: theme.secondaryText }}>Phone: {item.phone}</Text>}
+                                                {item.phone && <Text style={{ fontSize: 12, color: theme.secondaryText }}>{t('phone')}: {item.phone}</Text>}
                                             </View>
                                             {selectedCoAdmins.includes(item.userId) && (
                                                 <Feather name="check-circle" size={20} color={theme.primary} />
@@ -363,7 +363,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
                                     }}
                                     onPress={() => setShowCoAdminPicker(false)}
                                 >
-                                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Done</Text>
+                                    <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t('done')}</Text>
                                 </TouchableOpacity>
                             </View>
                         </KeyboardAvoidingView>
@@ -372,7 +372,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
             </ScrollView>
             {!isKeyboardVisible && (
                 <View style={styles.fixedButtonContainer}>
-                    <GradientButton title="Save Changes" onPress={handleUpdate} theme={theme} />
+                    <GradientButton title={t('save_changes')} onPress={handleUpdate} theme={theme} />
                 </View>
             )}
         </KeyboardAvoidingView>
