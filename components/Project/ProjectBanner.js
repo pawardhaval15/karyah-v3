@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-
+import { useTranslation } from 'react-i18next';
 export default function ProjectBanner({ onAdd, theme }) {
+  const { t } = useTranslation();
+
   return (
     <LinearGradient
       colors={[theme.secondary, theme.primary]}
@@ -12,16 +14,16 @@ export default function ProjectBanner({ onAdd, theme }) {
       style={styles.banner}
     >
       <View style={{ flex: 1 }}>
-        <Text style={styles.bannerTitle}>{'All Projects'}</Text>
+        <Text style={styles.bannerTitle}>{t('all_projects')}</Text>
         <Text style={[styles.bannerDesc]}>
-          The list of projects you have taken so far
+          {t('banner_description')}
         </Text>
       </View>
       <TouchableOpacity
         style={[styles.bannerAction]}
         onPress={onAdd}
       >
-        <Text style={[styles.bannerActionText]}>{'Project'}</Text>
+        <Text style={[styles.bannerActionText]}>{t('project')}</Text>
         <Feather name="plus" size={18} color="#fff" />
       </TouchableOpacity>
     </LinearGradient>

@@ -1,13 +1,14 @@
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
+import { useTranslation } from 'react-i18next';
 export default function ProjectSearchBar({ value, onChange, theme }) {
+  const { t } = useTranslation();
   return (
     <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
       <TextInput
         style={[styles.searchInput, { color: theme.text }]}
-        placeholder="Search project"
+        placeholder={t('search_project')}
         placeholderTextColor={theme.secondaryText}
         value={value}
         onChangeText={onChange}

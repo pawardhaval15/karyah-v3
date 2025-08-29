@@ -18,7 +18,7 @@ import ProjectBanner from '../components/Project/ProjectBanner';
 import ProjectCard from '../components/Project/ProjectCard';
 import ProjectSearchBar from '../components/Project/ProjectSearchBar';
 import { getProjectsByUserId } from '../utils/project';
-
+import { useTranslation } from 'react-i18next';
 export default function ProjectScreen({ navigation }) {
   const theme = useTheme();
   const [projects, setProjects] = useState([]);
@@ -27,7 +27,7 @@ export default function ProjectScreen({ navigation }) {
   const [showProjectPopup, setShowProjectPopup] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'working', 'delayed', 'completed'
   const [refreshing, setRefreshing] = useState(false);
-
+  const { t } = useTranslation();
   // Get screen dimensions for responsive layout
   const { width: screenWidth } = Dimensions.get('window');
   const isTablet = screenWidth >= 768;
@@ -119,7 +119,7 @@ export default function ProjectScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: theme.background, paddingBottom: 70 }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
       </TouchableOpacity>
       <ProjectBanner onAdd={() => setShowProjectPopup(true)} theme={theme} />
       <ProjectSearchBar value={search} onChange={setSearch} theme={theme} />
@@ -128,25 +128,25 @@ export default function ProjectScreen({ navigation }) {
         {[
           {
             key: 'all',
-            label: 'All',
+            label: t('all'),
             count: working.length + delayed.length + completed.length,
             icon: <Feather name="grid" size={13} color={activeTab === 'all' ? "#fff" : theme.primary} style={{ marginRight: 4 }} />
           },
           {
             key: 'working',
-            label: 'Working',
+            label: t('working'),
             count: working.length,
             icon: <Feather name="play-circle" size={13} color={activeTab === 'working' ? "#fff" : "#039855"} style={{ marginRight: 4 }} />
           },
           {
             key: 'delayed',
-            label: 'Delayed',
+            label: t('delayed'),
             count: delayed.length,
             icon: <Feather name="clock" size={13} color={activeTab === 'delayed' ? "#fff" : "#E67514"} style={{ marginRight: 4 }} />
           },
           {
             key: 'completed',
-            label: 'Completed',
+            label: t('completed'),
             count: completed.length,
             icon: <Feather name="check-circle" size={13} color={activeTab === 'completed' ? "#fff" : "#366CD9"} style={{ marginRight: 4 }} />
           },
@@ -214,7 +214,7 @@ export default function ProjectScreen({ navigation }) {
           }}
           ListEmptyComponent={
             <Text style={{ marginLeft: 18, marginTop: 20, color: theme.secondaryText }}>
-              No projects found.
+              {t('no_projects_found')}
             </Text>
           }
           refreshControl={
