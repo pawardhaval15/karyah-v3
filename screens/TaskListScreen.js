@@ -25,7 +25,7 @@ import { fetchUserConnections } from '../utils/issues';
 import { getProjectById } from '../utils/project';
 import { getTasksByProjectId, getTasksByWorklistId } from '../utils/task';
 import { deleteWorklist, getProjectWorklistsProgress, updateWorklist } from '../utils/worklist';
-
+import { useTranslation } from 'react-i18next';
 export default function TaskListScreen({ navigation, route }) {
   const theme = useTheme();
   const [search, setSearch] = useState('');
@@ -47,7 +47,7 @@ export default function TaskListScreen({ navigation, route }) {
   const worklistName = worklist?.name || 'Worklist';
   const [refreshing, setRefreshing] = useState(false);
   const [projectTasks, setProjectTasks] = useState([]); // ALL tasks in the project
-
+  const { t } = useTranslation();
   // New state variables for worklist menu
   const [showWorklistMenu, setShowWorklistMenu] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -311,7 +311,7 @@ export default function TaskListScreen({ navigation, route }) {
           onPress={() => navigation.goBack()}
         >
           <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+          <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
         </TouchableOpacity>
         
         <TouchableOpacity 
@@ -330,11 +330,11 @@ export default function TaskListScreen({ navigation, route }) {
         <View style={{ flex: 1 }}>
           <Text style={styles.bannerTitle}>{worklistName}</Text>
           <Text style={styles.bannerDesc}>
-            {worklistProgress?.totalTasks || totalTasks} task{(worklistProgress?.totalTasks || totalTasks) !== 1 ? 's' : ''} • {worklistProgress?.completedTasks || completedTasks} completed • {currentProgress}% done
+            {worklistProgress?.totalTasks || totalTasks} {t('tasks', { count: worklistProgress?.totalTasks || totalTasks })} • {worklistProgress?.completedTasks || completedTasks} {t('completed')} • {currentProgress}% {t('done')}
           </Text>
         </View>
         <TouchableOpacity style={styles.bannerAction} onPress={() => setShowTaskPopup(true)}>
-          <Text style={styles.bannerActionText}>Task</Text>
+          <Text style={styles.bannerActionText}>{t('task')}</Text>
           <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </LinearGradient>
@@ -343,7 +343,7 @@ export default function TaskListScreen({ navigation, route }) {
       <View style={styles.progressSection}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
-            Progress ({worklistProgress?.completedTasks || completedTasks}/{worklistProgress?.totalTasks || totalTasks})
+            {t('progress')} ({worklistProgress?.completedTasks || completedTasks}/{worklistProgress?.totalTasks || totalTasks})
           </Text>
           <View style={styles.statusRow}>
             <View style={[styles.statusDot, { backgroundColor: getProgressColor() }]} />
@@ -366,7 +366,7 @@ export default function TaskListScreen({ navigation, route }) {
         <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
-          placeholder="Search Task"
+          placeholder={t('search_task')}
           placeholderTextColor={theme.secondaryText}
           value={search}
           onChangeText={setSearch}
@@ -380,7 +380,7 @@ export default function TaskListScreen({ navigation, route }) {
       ) : sortedTasks.length === 0 ? (
         <View style={styles.emptyContainer}>
           <MaterialIcons name="error-outline" size={42} color="#AAA" />
-          <Text style={styles.emptyText}>No Tasks Found for {worklistName}</Text>
+          <Text style={styles.emptyText}>{t('no_tasks_found', { worklistName })}</Text>
         </View>
       ) : (
         <FlatList
@@ -456,7 +456,7 @@ export default function TaskListScreen({ navigation, route }) {
                   style={{ marginRight: 8 }}
                 />
                 <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 15 }}>
-                  Edit Worklist
+                  {t('edit_worklist')}
                 </Text>
               </TouchableOpacity>
 
@@ -475,7 +475,7 @@ export default function TaskListScreen({ navigation, route }) {
                   style={{ marginRight: 8 }}
                 />
                 <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>
-                  Delete Worklist
+                  {t('delete_worklist')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -499,11 +499,11 @@ export default function TaskListScreen({ navigation, route }) {
           <View
             style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              Edit Worklist
+              {t('edit_worklist')}
             </Text>
 
             <TextInput
-              placeholder="Worklist Name"
+              placeholder={t('worklist_name')}
               placeholderTextColor={theme.secondaryText}
               value={editedWorklistName}
               onChangeText={setEditedWorklistName}
@@ -520,11 +520,11 @@ export default function TaskListScreen({ navigation, route }) {
 
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleUpdateWorklist}>
-                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Save</Text>
+                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>

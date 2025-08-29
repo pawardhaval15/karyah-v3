@@ -41,6 +41,7 @@ import {
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
+import { useTranslation } from 'react-i18next';
 export default function TaskDetailsScreen({ route, navigation }) {
   // Store decoded token globally for this component
   const decodedRef = useRef(null);
@@ -93,7 +94,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const isInitialProgressSet = useRef(false);
   const isSlidingRef = useRef(false);
   const [menuVisible, setMenuVisible] = useState(false);
-
+  const { t } = useTranslation();
   // When task loads, set initial progress only once
   useEffect(() => {
     if (task && !isInitialProgressSet.current) {
@@ -480,7 +481,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           }}>
           <TouchableOpacity style={styles.backBtn} onPress={safeGoBack}>
             <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-            <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+            <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 8 }}>
             <Feather name="more-vertical" size={22} color={theme.text} />
@@ -499,7 +500,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               </Text>
             </TouchableOpacity>
             <Text style={styles.dueDate}>
-              Due Date: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
+              {t('due_date')}: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
             </Text>
           </View>
           {/* {isCreator && (
@@ -546,7 +547,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               borderColor: theme.border,
             }}>
             <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 7 }} />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Task Chat</Text>
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('chat')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -563,7 +564,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               borderColor: theme.border,
             }}>
             <MaterialIcons name="inventory" size={18} color="#FF9800" style={{ marginRight: 7 }} />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Requirements</Text>
+            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('requirements')}</Text>
           </TouchableOpacity>
         </View>
         <TaskChatPopup
@@ -594,7 +595,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 fontSize: 16,
                 marginBottom: 8,
               }}>
-              Progress: {editableProgress}%
+              {t('progress')}: {editableProgress}%
             </Text>
             <Slider
               style={{ width: '100%', height: 18 }}
@@ -643,7 +644,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         )}
         <FieldBox
-          label="SELECTED PROJECT"
+          label={t("selected_project")}
           value={
             typeof task.projectName === 'object'
               ? typeof task.projectName.name === 'string'
@@ -656,7 +657,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           theme={theme}
         />
         <FieldBox
-          label="SELECTED WORKLIST"
+          label={t("selected_worklist")}
           value={
             Array.isArray(worklists)
               ? worklists.find((wl) => wl.id === task.worklistId)?.name || '-'
@@ -666,14 +667,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
         />
         {/* Dates and status */}
         <View style={styles.dateRow}>
-          <DateBox label="START DATE" value={new Date(task.startDate)} theme={theme} />
-          <DateBox label="END DATE" value={new Date(task.endDate)} theme={theme} />
+          <DateBox label={t("start_date")} value={new Date(task.startDate)} theme={theme} />
+          <DateBox label={t("end_date")} value={new Date(task.endDate)} theme={theme} />
         </View>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={{ flex: 1 }}>
             <Text
               style={[styles.inputLabel, { color: theme.text, marginBottom: 6, paddingTop: 6 }]}>
-              ASSIGNED USERS
+              {t("assigned_users")}
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
@@ -692,12 +693,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
                   {task.assignedUserDetails?.length > 0
                     ? task.assignedUserDetails
-                        .slice(0, 2)
-                        .map((user) => user.name)
-                        .join(', ') +
-                      (task.assignedUserDetails.length > 2
-                        ? ` +${task.assignedUserDetails.length - 2} more`
-                        : '')
+                      .slice(0, 2)
+                      .map((user) => user.name)
+                      .join(', ') +
+                    (task.assignedUserDetails.length > 2
+                      ? ` +${task.assignedUserDetails.length - 2} more`
+                      : '')
                     : 'No users assigned'}
                 </Text>
               </View>
@@ -757,7 +758,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           <View style={{ flex: 1 }}>
             <Text
               style={[styles.inputLabel, { color: theme.text, marginBottom: 8, paddingTop: 6 }]}>
-              TASK CREATOR
+              {t("task_creator")}
             </Text>
             <TouchableOpacity
               activeOpacity={0.8}
@@ -811,10 +812,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
           title={coAdminListPopupTitle}
         />
         <FieldBox
-          label="ADDED ATTACHMENTS"
+          label={t("added_attachments")}
           value=""
           placeholder={
-            allAttachments.length === 0 ? 'No attachments added' : 'Tap on View to see attachments'
+            allAttachments.length === 0 ? t('no_attachments') : t('tap_on_view_to_see_attachments')
           }
           rightComponent={
             allAttachments.length > 0 && (
@@ -834,7 +835,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 }}>
                 <MaterialIcons name="folder" size={16} color="#fff" />
                 <Text style={{ color: '#fff', fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                  View ({allAttachments.length})
+                  {t("view")} ({allAttachments.length})
                 </Text>
               </TouchableOpacity>
             )
@@ -842,9 +843,9 @@ export default function TaskDetailsScreen({ route, navigation }) {
           theme={theme}
         />
         <FieldBox
-          label="ADD NEW ATTACHMENTS"
+          label={t("add_new_attachments")}
           value=""
-          placeholder="Tap to add attachments"
+          placeholder={t("tap_to_add_attachments")}
           rightComponent={
             <TouchableOpacity
               style={{
@@ -858,14 +859,14 @@ export default function TaskDetailsScreen({ route, navigation }) {
               }}
               onPress={() => setShowAttachmentSheet(true)}>
               <Feather name="paperclip" size={16} color={theme.primary} />
-              <Text
-                style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                {uploadingAttachment || attaching
-                  ? uploadingAttachment
-                    ? 'Uploading...'
-                    : 'Attaching...'
-                  : 'Add Files'}
+              <Text style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
+                {uploadingAttachment
+                  ? t('uploading')
+                  : attaching
+                    ? t('attaching')
+                    : t('add_files')}
               </Text>
+
             </TouchableOpacity>
           }
           theme={theme}
@@ -995,7 +996,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           }}
         />
         <FieldBox
-          label="DESCRIPTION"
+          label={t("description")}
           value={task.description || ''}
           editable={false}
           multiline={true}
@@ -1005,7 +1006,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
         {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
           <TouchableOpacity activeOpacity={0.7} onPress={() => setShowDependentPopup(true)}>
             <FieldBox
-              label="Dependent Task(s)"
+              label={t("dependent_tasks")}
               value={
                 (() => {
                   // Prepare first 2 tasks for preview
@@ -1071,7 +1072,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   color: theme.text,
                   letterSpacing: 0.2,
                 }}>
-                Task Dependencies
+                {t("task_dependencies")}
               </Text>
               <ScrollView
                 style={{ width: '100%', maxHeight: 380 }}
@@ -1192,7 +1193,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   shadowOffset: { width: 0, height: 2 },
                   shadowRadius: 6,
                 }}>
-                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>{t("close")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1230,10 +1231,15 @@ export default function TaskDetailsScreen({ route, navigation }) {
               style={[
                 styles.viewSubtaskBtnText,
                 { color: theme.text, fontWeight: '500', fontSize: 14, marginLeft: 8 },
-              ]}>
-              {showSubtasks ? 'Hide Subtasks' : `View Subtasks (${task.subTasks?.length || 0})`}
-              {subtaskSearch && showSubtasks && ` • Found: ${filteredSubtasks.length}`}
+              ]}
+            >
+              {showSubtasks
+                ? t('hide_subtasks')
+                : t('view_subtasks', { count: task.subTasks?.length || 0 })}
+
+              {subtaskSearch && showSubtasks && ` • ${t('found_subtasks', { count: filteredSubtasks.length })}`}
             </Text>
+
           </TouchableOpacity>
           <TouchableOpacity
             style={{
@@ -1254,7 +1260,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             activeOpacity={0.85}>
             <Feather name="plus" size={18} color="#fff" />
             <Text style={{ color: '#fff', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>
-              Add Subtask
+              {t("add_subtask")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -1265,7 +1271,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               { backgroundColor: theme.card, borderColor: theme.border, marginTop: 0 },
             ]}>
             <Text style={[styles.subtasksTitle, { color: theme.text, marginBottom: 16 }]}>
-              Subtasks ({task.subTasks?.length || 0})
+              {t("subtasks")} ({task.subTasks?.length || 0})
             </Text>
 
             {/* Search Bar */}
@@ -1283,7 +1289,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 />
                 <TextInput
                   style={[styles.searchInput, { color: theme.text }]}
-                  placeholder="Search subtasks..."
+                  placeholder={t("search_subtasks")}
                   placeholderTextColor={theme.secondaryText}
                   value={subtaskSearch}
                   onChangeText={setSubtaskSearch}
@@ -1298,11 +1304,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
             {!task.subTasks || task.subTasks.length === 0 ? (
               <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
-                No subtasks available
+                {t("no_subtasks_available")}
               </Text>
             ) : filteredSubtasks.length === 0 ? (
               <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
-                No subtasks found matching "{subtaskSearch}"
+                {t("no_subtasks_found", { query: subtaskSearch })}
               </Text>
             ) : (
               filteredSubtasks.map((sub, idx) => (
@@ -1395,7 +1401,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 });
               }}>
               <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>Edit</Text>
+              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>{t("edit")}</Text>
             </TouchableOpacity>
             {/* Divider shown only if Delete option visible */}
             {isCreator && (
@@ -1502,11 +1508,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
               padding: 20,
             }}>
             <Text style={{ color: theme.text, fontWeight: 'bold', fontSize: 18, marginBottom: 18 }}>
-              Edit Task
+              {t("edit_task")}
             </Text>
             <TextInput
               value={editValues.taskName}
-              placeholder="Task Name"
+              placeholder={t("task_name")}
               placeholderTextColor={theme.secondaryText}
               onChangeText={(text) => setEditValues((v) => ({ ...v, taskName: text }))}
               style={{
@@ -1519,7 +1525,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             />
             <TextInput
               value={editValues.description}
-              placeholder="Description"
+              placeholder={t("description")}
               placeholderTextColor={theme.secondaryText}
               onChangeText={(text) => setEditValues((v) => ({ ...v, description: text }))}
               style={{
@@ -1536,7 +1542,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 18 }}>
               <TextInput
                 value={editValues.startDate ? editValues.startDate.split('T')[0] : ''}
-                placeholder="Start Date"
+                placeholder={t("start_date")}
                 placeholderTextColor={theme.secondaryText}
                 onChangeText={(text) => setEditValues((v) => ({ ...v, startDate: text }))}
                 style={{
@@ -1549,7 +1555,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               />
               <TextInput
                 value={editValues.endDate ? editValues.endDate.split('T')[0] : ''}
-                placeholder="End Date"
+                placeholder={t("end_date")}
                 placeholderTextColor={theme.secondaryText}
                 onChangeText={(text) => setEditValues((v) => ({ ...v, endDate: text }))}
                 style={{
@@ -1562,7 +1568,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
               <TouchableOpacity style={{ marginRight: 16 }} onPress={() => setShowEditModal(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t("cancel")}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={{
@@ -1586,7 +1592,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     Alert.alert('Error', err.message || 'Failed to update task.');
                   }
                 }}>
-                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Save</Text>
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t("save")}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1601,16 +1607,16 @@ export default function TaskDetailsScreen({ route, navigation }) {
         onRequestClose={() => setShowTaskNameModal(false)}>
         <TouchableWithoutFeedback onPress={() => setShowTaskNameModal(false)}>
           <View style={styles.coAdminPopupOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={() => { }}>
               <View style={[styles.coAdminPopup, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>Task Name</Text>
+                <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>{t("task_name")}</Text>
                 <Text style={[{ color: theme.text, fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 12 }]}>
                   {task?.taskName}
                 </Text>
                 <TouchableOpacity
                   style={styles.coAdminPopupCloseBtn}
                   onPress={() => setShowTaskNameModal(false)}>
-                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                  <Text style={{ color: theme.primary, fontWeight: '500' }}>{t('Close')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>

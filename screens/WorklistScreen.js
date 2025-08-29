@@ -3,35 +3,35 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    Platform,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 import { useTheme } from '../theme/ThemeContext';
 import {
-    createWorklist,
-    deleteWorklist,
-    getProjectWorklistsProgress,
-    getWorklistsByProjectId,
-    updateWorklist,
+  createWorklist,
+  deleteWorklist,
+  getProjectWorklistsProgress,
+  getWorklistsByProjectId,
+  updateWorklist,
 } from '../utils/worklist'; // make sure updateWorklist and deleteWorklist are exported
-
+import { useTranslation } from 'react-i18next';
 // WorklistCard component with Progress Display
 function WorklistCard({ worklist, navigation, theme, project, onDelete, onEdit, progress }) {
   const handleCardPress = () => {
     navigation.navigate('TaskListScreen', { worklist, project });
   };
-
+  const { t } = useTranslation();
   return (
     <TouchableOpacity
       style={[styles.worklistCard, { backgroundColor: theme.card, borderColor: theme.border }]}
@@ -44,14 +44,14 @@ function WorklistCard({ worklist, navigation, theme, project, onDelete, onEdit, 
       <View style={{ flex: 1 }}>
         <Text style={[styles.worklistName, { color: theme.text }]}>{worklist.name}</Text>
         <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
-          {progress?.totalTasks || 0} tasks
+          {progress?.totalTasks || 0} {t('tasks')}
         </Text>
       </View>
       {/* Circular Progress Component */}
       <View style={{ marginLeft: 10 }}>
-        <CustomCircularProgress 
-          size={48} 
-          strokeWidth={4} 
+        <CustomCircularProgress
+          size={48}
+          strokeWidth={4}
           percentage={progress?.progress || 0}
         />
       </View>
@@ -69,7 +69,7 @@ export default function WorklistScreen({ navigation, route }) {
   // Add states for modals and editing
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [newWorklistName, setNewWorklistName] = useState('');
-
+  const { t } = useTranslation();
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedWorklist, setSelectedWorklist] = useState(null);
   const [editedWorklistName, setEditedWorklistName] = useState('');
@@ -162,10 +162,10 @@ export default function WorklistScreen({ navigation, route }) {
               {projectName}
             </Text>
           </TouchableOpacity>
-          <Text style={styles.bannerDesc}>The list of worklists for this project</Text>
+          <Text style={styles.bannerDesc}>{t('worklist_desc')}</Text>
         </View>
         <TouchableOpacity style={styles.bannerAction} onPress={onAdd}>
-          <Text style={styles.bannerActionText}>Worklist</Text>
+          <Text style={styles.bannerActionText}>{t('worklist')}</Text>
           <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </LinearGradient>
@@ -237,7 +237,7 @@ export default function WorklistScreen({ navigation, route }) {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
       </TouchableOpacity>
 
       <WorklistBanner
@@ -263,11 +263,11 @@ export default function WorklistScreen({ navigation, route }) {
           <View
             style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              Create New Worklist
+              {t('create_new_worklist')}
             </Text>
 
             <TextInput
-              placeholder="Worklist Name"
+              placeholder={t('worklist_name')}
               placeholderTextColor={theme.secondaryText}
               value={newWorklistName}
               onChangeText={setNewWorklistName}
@@ -284,12 +284,12 @@ export default function WorklistScreen({ navigation, route }) {
 
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleCreateWorklist}>
                 <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>
-                  Create
+                  {t('create')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -313,11 +313,11 @@ export default function WorklistScreen({ navigation, route }) {
           <View
             style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              Edit Worklist
+              {t('edit_worklist')}
             </Text>
 
             <TextInput
-              placeholder="Worklist Name"
+              placeholder={t('worklist_name')}
               placeholderTextColor={theme.secondaryText}
               value={editedWorklistName}
               onChangeText={setEditedWorklistName}
@@ -334,11 +334,11 @@ export default function WorklistScreen({ navigation, route }) {
 
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={handleUpdateWorklist}>
-                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Save</Text>
+                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save_changes')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -350,7 +350,7 @@ export default function WorklistScreen({ navigation, route }) {
         <MaterialIcons name="search" size={22} color={theme.text} style={styles.searchIcon} />
         <TextInput
           style={[styles.searchInput, { color: theme.text }]}
-          placeholder="Search Worklist"
+          placeholder={t('search_worklist')}
           placeholderTextColor={theme.secondaryText}
           value={search}
           onChangeText={setSearch}
@@ -397,7 +397,7 @@ export default function WorklistScreen({ navigation, route }) {
               justifyContent: 'center',
               alignItems: 'center',
             }}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={() => { }}>
               <View
                 style={{
                   width: 280,
@@ -416,7 +416,7 @@ export default function WorklistScreen({ navigation, route }) {
                     marginBottom: 12,
                     color: theme.text,
                   }}>
-                  Project Name
+                  {t('project_name')}
                 </Text>
                 <Text
                   style={{
@@ -438,7 +438,7 @@ export default function WorklistScreen({ navigation, route }) {
                     backgroundColor: 'rgba(52, 120, 246, 0.08)',
                   }}
                   onPress={() => setShowProjectNameModal(false)}>
-                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+                  <Text style={{ color: theme.primary, fontWeight: '500' }}>{t('close')}</Text>
                 </TouchableOpacity>
               </View>
             </TouchableWithoutFeedback>
