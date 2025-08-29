@@ -29,7 +29,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 import { deleteProjectById, getProjectById } from '../utils/project';
-import { deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
+import { deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist, createWorklist } from '../utils/worklist';
 
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
@@ -64,6 +64,8 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedWorklist, setSelectedWorklist] = useState(null);
   const [editedWorklistName, setEditedWorklistName] = useState('');
+  const [createWorklistModal, setCreateWorklistModal] = useState(false);
+  const [newWorklistName, setNewWorklistName] = useState('');
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -129,6 +131,27 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       fetchWorklists();
     }
   }, [projectDetails?.id]);
+  const handleCreateWorklist = async () => {
+    if (!newWorklistName.trim()) {
+      Alert.alert('Validation', 'Please enter a worklist name.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const created = await createWorklist(projectDetails.id, newWorklistName.trim(), token);
+      setWorklists(prev => [...prev, created]);
+      // Optionally refresh progress data
+      const progressData = await getProjectWorklistsProgress(projectDetails.id, token);
+      setWorklistsProgress(progressData);
+
+      setCreateWorklistModal(false);
+      setNewWorklistName('');
+    } catch (error) {
+      console.error('Failed to create worklist:', error.message);
+      Alert.alert('Error', error.message);
+    }
+  };
 
   // Get progress for a specific worklist
   const getWorklistProgress = (worklistId) => {
@@ -187,7 +210,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   // WorklistCard component - Compact Design
   const WorklistCard = ({ worklist }) => {
     const progress = getWorklistProgress(worklist.id);
-    
+
     return (
       <TouchableOpacity
         onPress={() => navigation.navigate('TaskListScreen', { worklist, project: projectDetails })}
@@ -230,9 +253,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
 
         {/* Circular Progress Component */}
         <View style={{ marginLeft: 10 }}>
-          <CustomCircularProgress 
-            size={48} 
-            strokeWidth={4} 
+          <CustomCircularProgress
+            size={48}
+            strokeWidth={4}
             percentage={progress?.progress || 0}
           />
         </View>
@@ -329,7 +352,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 style={
                   styles.dueDate
                 }>{`Due Date : ${projectDetails.endDate?.split('T')[0] || '-'}`}</Text>
-                <Text
+              <Text
                 style={
                   styles.creator
                 }>{`Project Creator: ${projectDetails.creatorName || '-'}`}</Text>
@@ -357,9 +380,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 color="#fff"
                 style={{ marginLeft: 4 }}
               />
-              
+
             </TouchableOpacity>
-            
+
           </View>
         </LinearGradient>
         {/* Modern Pill-Style Tab Buttons */}
@@ -669,7 +692,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               </Text>
             </TouchableOpacity>
           </View>
-
           {/* Compact Search Bar */}
           <View
             style={{
@@ -736,6 +758,19 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 }}>
                 Create your first worklist to get started
               </Text>
+              {/* Create Worklist Button */}
+              <TouchableOpacity
+                onPress={() => setCreateWorklistModal(true)}
+                style={{
+                  marginTop: 14,
+                  backgroundColor: theme.primary,
+                  paddingHorizontal: 20,
+                  paddingVertical: 10,
+                  borderRadius: 8,
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>Create Worklist</Text>
+              </TouchableOpacity>
             </View>
           ) : (
             <View style={{ maxHeight: 250 }}>
@@ -747,27 +782,27 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 ))}
               {worklists.filter((w) => w.name?.toLowerCase().includes(searchWorklist.toLowerCase()))
                 .length > 4 && (
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
-                  style={{
-                    alignItems: 'center',
-                    padding: 12,
-                    marginHorizontal: 20,
-                    marginTop: 8,
-                    backgroundColor: `${theme.primary}08`,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    borderColor: `${theme.primary}20`,
-                  }}>
-                  <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '500' }}>
-                    View{' '}
-                    {worklists.filter((w) =>
-                      w.name?.toLowerCase().includes(searchWorklist.toLowerCase())
-                    ).length - 4}{' '}
-                    more worklists
-                  </Text>
-                </TouchableOpacity>
-              )}
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
+                    style={{
+                      alignItems: 'center',
+                      padding: 12,
+                      marginHorizontal: 20,
+                      marginTop: 8,
+                      backgroundColor: `${theme.primary}08`,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: `${theme.primary}20`,
+                    }}>
+                    <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '500' }}>
+                      View{' '}
+                      {worklists.filter((w) =>
+                        w.name?.toLowerCase().includes(searchWorklist.toLowerCase())
+                      ).length - 4}{' '}
+                      more worklists
+                    </Text>
+                  </TouchableOpacity>
+                )}
             </View>
           )}
         </View>
@@ -832,6 +867,49 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>View Issues</Text>
         </TouchableOpacity>
       </View>
+      {/* Create Worklist Modal */}
+      <Modal
+        visible={createWorklistModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setCreateWorklistModal(false)}>
+        <View
+          style={{
+            flex: 1,
+            justifyContent: 'center',
+            alignItems: 'center',
+            backgroundColor: '#00000088',
+          }}>
+          <View style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
+            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
+              Create New Worklist
+            </Text>
+            <TextInput
+              placeholder="Worklist Name"
+              placeholderTextColor={theme.secondaryText}
+              value={newWorklistName}
+              onChangeText={setNewWorklistName}
+              style={{
+                borderWidth: 1,
+                borderColor: theme.border,
+                borderRadius: 10,
+                padding: 12,
+                fontSize: 16,
+                marginBottom: 16,
+                color: theme.text,
+              }}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+              <TouchableOpacity onPress={() => setCreateWorklistModal(false)}>
+                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleCreateWorklist}>
+                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>Create</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Worklist Modal */}
       <Modal
@@ -867,7 +945,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 color: theme.text,
               }}
             />
-
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Text style={{ color: theme.secondaryText, fontSize: 16 }}>Cancel</Text>
@@ -993,7 +1070,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         onRequestClose={() => setShowProjectNameModal(false)}>
         <TouchableWithoutFeedback onPress={() => setShowProjectNameModal(false)}>
           <View style={styles.coAdminPopupOverlay}>
-            <TouchableWithoutFeedback onPress={() => {}}>
+            <TouchableWithoutFeedback onPress={() => { }}>
               <View
                 style={[
                   styles.coAdminPopup,
@@ -1022,7 +1099,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </TouchableWithoutFeedback>
       </Modal>
-
       {/* Material Request Popup */}
       <MaterialRequestPopup
         visible={showMaterialRequestPopup}
