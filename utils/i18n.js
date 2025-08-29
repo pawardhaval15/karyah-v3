@@ -3,16 +3,16 @@ import { initReactI18next } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import en from './locales/en.json';
-import fr from './locales/fr.json';
-// import hi from './locales/hi.json';
+// import fr from './locales/fr.json';
+import hi from './locales/hi.json';
 
 i18n
   .use(initReactI18next)
   .init({
     resources: {
       en: { translation: en },
-      fr: { translation: fr },
-    //   hi: { translation: hi }
+    //   fr: { translation: fr },
+      hi: { translation: hi }
     },
     lng: 'en', // default language
     fallbackLng: 'en',

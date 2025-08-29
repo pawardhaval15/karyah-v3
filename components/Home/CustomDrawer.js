@@ -47,7 +47,7 @@ export default function CustomDrawer({ onClose, theme }) {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const languages = [
     { code: 'en', label: 'English' },
-    { code: 'fr', label: 'French' },
+    { code: 'hi', label: 'Hindi' },
     // add more languages you support
   ];
 
