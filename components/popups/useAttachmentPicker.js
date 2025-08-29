@@ -2,7 +2,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import { Alert } from 'react-native';
-
+import * as MediaLibrary from 'expo-media-library';
 export default function useAttachmentPicker() {
   const [attachments, setAttachments] = useState([]);
   const [attaching, setAttaching] = useState(false);
@@ -49,7 +49,16 @@ export default function useAttachmentPicker() {
           fileType = 'application/octet-stream';
       }
     }
-    
+    async function requestPermissions() {
+  if (Platform.OS === 'android') {
+    const { status } = await MediaLibrary.requestPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'Storage permission is required to select files.');
+      return false;
+    }
+  }
+  return true;
+}
     const normalized = {
       uri: file.uri,
       name: file.name || file.fileName || file.uri?.split('/').pop() || 'Unknown file',

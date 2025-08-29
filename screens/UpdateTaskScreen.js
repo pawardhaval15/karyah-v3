@@ -14,6 +14,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system';
 import GradientButton from '../components/Login/GradientButton';
 import AttachmentSheet from '../components/popups/AttachmentSheet';
 import CustomPickerDrawer from '../components/popups/CustomPickerDrawer';
@@ -74,6 +75,22 @@ export default function UpdateTaskScreen({ route, navigation }) {
     });
   };
 
+// Helper to convert content URI to file URI on Android
+async function getFileSystemUri(uri) {
+  if (Platform.OS === 'android' && uri.startsWith('content://')) {
+    try {
+      // Copy file to app cache directory
+      const fileName = uri.split('/').pop();
+      const destPath = `${FileSystem.cacheDirectory}${fileName}`;
+      await FileSystem.copyAsync({ from: uri, to: destPath });
+      return destPath;
+    } catch (e) {
+      console.warn('Failed to copy content uri to file uri:', e);
+      return uri; // fallback
+    }
+  }
+  return uri;
+}
   useEffect(() => {
     const selected = selectedDepIds
       .map((id) => projectTasks.find((t) => String(t[taskValueKey]) === id))
@@ -171,39 +188,55 @@ export default function UpdateTaskScreen({ route, navigation }) {
     setValues((prev) => ({ ...prev, [field]: value }));
   };
   const handleUpdate = async () => {
-    try {
-      const newImages = attachments
-        .filter((att) => att && !att.isExisting && att.uri)
-        .map((att) => ({
-          uri: att.uri.startsWith('file://') ? att.uri : `file://${att.uri}`,
-          name: att.name || att.uri?.split('/').pop() || 'file',
-          type: att.type || 'application/octet-stream',
+  try {
+    const newImages = [];
+    for (const att of attachments) {
+      if (att && !att.isExisting && att.uri) {
+        let fileUri = att.uri;
+        // Convert content:// URI to file:// on Android
+        fileUri = await getFileSystemUri(fileUri);
+        if (!fileUri.startsWith('file://')) {
+          fileUri = `file://${fileUri}`;
+        }
+
+        // Fix MIME type: ensure it contains a slash '/'
+        let mimeType = att.type;
+        if (mimeType && !mimeType.includes('/')) {
+          if (mimeType === 'image') mimeType = 'image/jpeg';
+          else if (mimeType === 'video') mimeType = 'video/mp4';
+          else mimeType = 'application/octet-stream';
+        }
+
+        newImages.push({
+          uri: fileUri,
+          name: att.name || fileUri.split('/').pop() || 'file',
+          type: mimeType || 'application/octet-stream',
           isExisting: false,
-        }));
-      console.log('[handleUpdate] newImages to upload:', newImages);
-      const updatePayload = {
-        taskName: values.taskName,
-        description: values.description,
-        startDate: values.startDate || new Date().toISOString(),
-        endDate: values.endDate || new Date().toISOString(),
-        assignedUserIds: selectedUsers,
-        imagesToRemove: task?.imagesToRemove || [],
-        attachments: newImages, // ✅ this must be 'attachments', not 'images'
-        dependentTaskIds: selectedDepIds.map(String),
-      };
-      console.log('[handleUpdate] Final updatePayload:', updatePayload);
-      await updateTaskDetails(taskId, updatePayload);
-      Alert.alert('Success', 'Task updated successfully.');
-      // Navigate back to task details with updated data, replacing the edit screen
-      navigation.replace('TaskDetails', {
-        taskId,
-        refreshedAt: Date.now(),
-      });
-    } catch (err) {
-      console.error('[UpdateTaskScreen] Update error:', err);
-      Alert.alert('Error', 'Failed to update task.');
+        });
+      }
     }
-  };
+    console.log('[handleUpdate] newImages to upload:', newImages);
+
+    const updatePayload = {
+      taskName: values.taskName,
+      description: values.description,
+      startDate: values.startDate || new Date().toISOString(),
+      endDate: values.endDate || new Date().toISOString(),
+      assignedUserIds: selectedUsers,
+      imagesToRemove: task?.imagesToRemove || [],
+      attachments: newImages,
+      dependentTaskIds: selectedDepIds.map(String),
+    };
+    console.log('[handleUpdate] Final updatePayload:', updatePayload);
+    await updateTaskDetails(taskId, updatePayload);
+    Alert.alert('Success', 'Task updated successfully.');
+    navigation.replace('TaskDetails', { taskId, refreshedAt: Date.now() });
+  } catch (err) {
+    console.error('[UpdateTaskScreen] Update error:', err);
+    Alert.alert('Error', 'Failed to update task.');
+  }
+};
+
   // Remove this duplicate handleSearch function since we already have handleUserSearch
   const openUserPicker = async () => {
     setShowUserPicker(true);

@@ -294,17 +294,26 @@ export const updateTaskDetails = async (taskId, data) => {
 
     // ✅ Append new files
     if (Array.isArray(data.attachments)) {
-      data.attachments.forEach(att => {
-        if (att && att.uri) {
-          const uri = att.uri.startsWith('file://') ? att.uri : `file://${att.uri}`;
-          formData.append('images', {
-            uri,
-            name: att.name || 'file',
-            type: att.type || 'application/octet-stream',
-          });
-        }
+  data.attachments.forEach(att => {
+    if (att && att.uri) {
+      const uri = att.uri.startsWith('file://') ? att.uri : `file://${att.uri}`;
+
+      // Fix MIME type here - ensure it contains '/' character
+      let mimeType = att.type;
+      if (mimeType && !mimeType.includes('/')) {
+        if (mimeType === 'image') mimeType = 'image/jpeg';
+        else if (mimeType === 'video') mimeType = 'video/mp4';
+        else mimeType = 'application/octet-stream';
+      }
+
+      formData.append('images', {
+        uri,
+        name: att.name || 'file',
+        type: mimeType || 'application/octet-stream',
       });
     }
+  });
+}
 
     // ✅ Dependent task IDs
     if (Array.isArray(data.dependentTaskIds)) {
