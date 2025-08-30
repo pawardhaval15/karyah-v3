@@ -237,7 +237,6 @@ export default function CustomDrawer({ onClose, theme }) {
               }}
 
               theme={theme}
-              showBorder={true}
             />
           </View>
           <View style={styles.menuSection}>
