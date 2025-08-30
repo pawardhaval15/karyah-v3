@@ -313,6 +313,10 @@ export default function CustomDrawer({ onClose, theme }) {
                     changeLanguage(code);
                     setShowLanguageModal(false);
                     onClose && onClose(); // close drawer too optionally
+                    navigation.reset({
+                      index: 0,
+                      routes: [{ name: 'Home' }],
+                    });
                   }}
                   style={[
                     styles.languageOption,
