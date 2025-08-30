@@ -3,11 +3,11 @@ import { useEffect, useState, useRef } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { fetchDashboardStats } from '../../utils/dashboard';
 import { fetchAssignedCriticalIssues } from '../../utils/issues';
-
+import { useTranslation } from 'react-i18next';
 export default function StatCardList({ navigation, theme, loading, refreshKey = 0 }) {
   const [statData, setStatData] = useState([]);
   const scrollViewRef = useRef(null);
-
+  const { t } = useTranslation();
   useEffect(() => {
     async function fetchStats() {
       const [apiData, criticalIssues] = await Promise.all([
@@ -16,7 +16,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
       ]);
       const newStatData = [
         {
-          title: 'Critical Issues',
+          title: t('critical_issues'),
           value: criticalIssues.length,
           total: apiData.issues?.total ?? 0,
           percent: apiData.issues?.total
@@ -28,7 +28,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
         },
 
         {
-          title: 'Issues',
+          title: t('issues'),
           value: apiData.issues?.unresolved ?? 0,
           total: apiData.issues?.total ?? 0,
           percent: apiData.issues?.total
@@ -39,7 +39,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
           screen: 'IssuesScreen',
         },
         {
-          title: 'Tasks',
+          title: t('tasks'),
           value: apiData.tasks?.inProgress ?? 0,
           total: apiData.tasks?.total ?? 0,
           percent: apiData.tasks?.total
@@ -51,7 +51,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
           screen: 'MyTasksScreen',
         },
         {
-          title: 'Projects',
+          title: t('projects'),
           value: apiData.projects?.inProgress ?? 0,
           total: apiData.projects?.total ?? 0,
           percent: apiData.projects?.total
@@ -63,7 +63,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
           screen: 'ProjectScreen',
         },
         {
-          title: 'Connections',
+          title: t('connections'),
           value: apiData.connections?.active ?? 0,
           total: apiData.connections?.total ?? 0,
           percent: apiData.connections?.total

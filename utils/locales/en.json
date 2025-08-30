@@ -235,5 +235,6 @@
   "assign_to": "Assign To",
   "select_worklist": "Select Worklist",
   "search_user": "Search Users...",
-  "no_tasks_available_for_dependencies": "No tasks available for dependencies"
+  "no_tasks_available_for_dependencies": "No tasks available for dependencies",
+  "critical_issues": "Critical Issues"
 }

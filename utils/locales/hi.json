@@ -235,5 +235,6 @@
   "assign_to": "कार्य: सौंपें",
   "select_worklist": "कार्यसूची चुनें",
   "search_user": "उपयोगकर्ता खोजें",
-  "no_tasks_available_for_dependencies": "निर्भरता के लिए कोई कार्य उपलब्ध नहीं है"
+  "no_tasks_available_for_dependencies": "निर्भरता के लिए कोई कार्य उपलब्ध नहीं है",
+  "critical_issues": "महत्वपूर्ण मुद्दे"
 }
