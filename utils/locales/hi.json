@@ -227,5 +227,13 @@
   "resolved_attachments": "समाधान संलग्नक",
   "view_files": "फ़ाइलें देखें",
   "critical_issue_requires_attention": "इस समस्या को तुरंत ध्यान देने की आवश्यकता है।",
-  "normal_priority_description": "इस समस्या की सामान्य प्राथमिकता है।"
+  "normal_priority_description": "इस समस्या की सामान्य प्राथमिकता है।",
+  "select_tasks": "कार्य: चुनें",
+  "preview_all": "सभी का पूर्वावलोकन",
+  "select_dependencies": "निर्भरताएँ चुनें",
+  "add_task": "कार्य: जोड़ें",
+  "assign_to": "कार्य: सौंपें",
+  "select_worklist": "कार्यसूची चुनें",
+  "search_user": "उपयोगकर्ता खोजें",
+  "no_tasks_available_for_dependencies": "निर्भरता के लिए कोई कार्य उपलब्ध नहीं है"
 }

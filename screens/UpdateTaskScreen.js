@@ -2,17 +2,17 @@ import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-ico
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    Alert,
-    Image,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import GradientButton from '../components/Login/GradientButton';
@@ -25,7 +25,7 @@ import DateBox from '../components/task details/DateBox';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserConnections, searchConnections } from '../utils/connections';
-
+import { useTranslation } from 'react-i18next';
 import { getTaskDetailsById, updateTaskDetails } from '../utils/task';
 export default function UpdateTaskScreen({ route, navigation }) {
   const { taskId, projects, users, worklists, projectTasks } = route.params;
@@ -39,7 +39,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
       navigation.navigate('TaskDetails', { taskId });
     }
   };
-
+  const { t } = useTranslation();
   const theme = useTheme();
   const [task, setTask] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -75,22 +75,22 @@ export default function UpdateTaskScreen({ route, navigation }) {
     });
   };
 
-// Helper to convert content URI to file URI on Android
-async function getFileSystemUri(uri) {
-  if (Platform.OS === 'android' && uri.startsWith('content://')) {
-    try {
-      // Copy file to app cache directory
-      const fileName = uri.split('/').pop();
-      const destPath = `${FileSystem.cacheDirectory}${fileName}`;
-      await FileSystem.copyAsync({ from: uri, to: destPath });
-      return destPath;
-    } catch (e) {
-      console.warn('Failed to copy content uri to file uri:', e);
-      return uri; // fallback
+  // Helper to convert content URI to file URI on Android
+  async function getFileSystemUri(uri) {
+    if (Platform.OS === 'android' && uri.startsWith('content://')) {
+      try {
+        // Copy file to app cache directory
+        const fileName = uri.split('/').pop();
+        const destPath = `${FileSystem.cacheDirectory}${fileName}`;
+        await FileSystem.copyAsync({ from: uri, to: destPath });
+        return destPath;
+      } catch (e) {
+        console.warn('Failed to copy content uri to file uri:', e);
+        return uri; // fallback
+      }
     }
+    return uri;
   }
-  return uri;
-}
   useEffect(() => {
     const selected = selectedDepIds
       .map((id) => projectTasks.find((t) => String(t[taskValueKey]) === id))
@@ -127,14 +127,14 @@ async function getFileSystemUri(uri) {
 
         console.log('res.assignedUserDetails', res.assignedUserDetails);
         setSelectedUsers(res.assignedUserDetails?.map((u) => u.userId) || []);
-        
+
         // Load existing attachments into the hook
         if (Array.isArray(res.images) && res.images.length > 0) {
           const existingFiles = res.images.map((imageUrl, index) => {
             // Extract filename from URL
             const urlParts = imageUrl.split('/');
             const filename = urlParts[urlParts.length - 1] || `image-${index + 1}`;
-            
+
             // Determine file type from URL or filename
             let fileType = 'application/octet-stream';
             const extension = filename.toLowerCase().split('.').pop();
@@ -163,7 +163,7 @@ async function getFileSystemUri(uri) {
               default:
                 fileType = 'application/octet-stream';
             }
-            
+
             return {
               uri: imageUrl,
               name: filename,
@@ -188,54 +188,54 @@ async function getFileSystemUri(uri) {
     setValues((prev) => ({ ...prev, [field]: value }));
   };
   const handleUpdate = async () => {
-  try {
-    const newImages = [];
-    for (const att of attachments) {
-      if (att && !att.isExisting && att.uri) {
-        let fileUri = att.uri;
-        // Convert content:// URI to file:// on Android
-        fileUri = await getFileSystemUri(fileUri);
-        if (!fileUri.startsWith('file://')) {
-          fileUri = `file://${fileUri}`;
-        }
+    try {
+      const newImages = [];
+      for (const att of attachments) {
+        if (att && !att.isExisting && att.uri) {
+          let fileUri = att.uri;
+          // Convert content:// URI to file:// on Android
+          fileUri = await getFileSystemUri(fileUri);
+          if (!fileUri.startsWith('file://')) {
+            fileUri = `file://${fileUri}`;
+          }
 
-        // Fix MIME type: ensure it contains a slash '/'
-        let mimeType = att.type;
-        if (mimeType && !mimeType.includes('/')) {
-          if (mimeType === 'image') mimeType = 'image/jpeg';
-          else if (mimeType === 'video') mimeType = 'video/mp4';
-          else mimeType = 'application/octet-stream';
-        }
+          // Fix MIME type: ensure it contains a slash '/'
+          let mimeType = att.type;
+          if (mimeType && !mimeType.includes('/')) {
+            if (mimeType === 'image') mimeType = 'image/jpeg';
+            else if (mimeType === 'video') mimeType = 'video/mp4';
+            else mimeType = 'application/octet-stream';
+          }
 
-        newImages.push({
-          uri: fileUri,
-          name: att.name || fileUri.split('/').pop() || 'file',
-          type: mimeType || 'application/octet-stream',
-          isExisting: false,
-        });
+          newImages.push({
+            uri: fileUri,
+            name: att.name || fileUri.split('/').pop() || 'file',
+            type: mimeType || 'application/octet-stream',
+            isExisting: false,
+          });
+        }
       }
-    }
-    console.log('[handleUpdate] newImages to upload:', newImages);
+      console.log('[handleUpdate] newImages to upload:', newImages);
 
-    const updatePayload = {
-      taskName: values.taskName,
-      description: values.description,
-      startDate: values.startDate || new Date().toISOString(),
-      endDate: values.endDate || new Date().toISOString(),
-      assignedUserIds: selectedUsers,
-      imagesToRemove: task?.imagesToRemove || [],
-      attachments: newImages,
-      dependentTaskIds: selectedDepIds.map(String),
-    };
-    console.log('[handleUpdate] Final updatePayload:', updatePayload);
-    await updateTaskDetails(taskId, updatePayload);
-    Alert.alert('Success', 'Task updated successfully.');
-    navigation.replace('TaskDetails', { taskId, refreshedAt: Date.now() });
-  } catch (err) {
-    console.error('[UpdateTaskScreen] Update error:', err);
-    Alert.alert('Error', 'Failed to update task.');
-  }
-};
+      const updatePayload = {
+        taskName: values.taskName,
+        description: values.description,
+        startDate: values.startDate || new Date().toISOString(),
+        endDate: values.endDate || new Date().toISOString(),
+        assignedUserIds: selectedUsers,
+        imagesToRemove: task?.imagesToRemove || [],
+        attachments: newImages,
+        dependentTaskIds: selectedDepIds.map(String),
+      };
+      console.log('[handleUpdate] Final updatePayload:', updatePayload);
+      await updateTaskDetails(taskId, updatePayload);
+      Alert.alert('Success', 'Task updated successfully.');
+      navigation.replace('TaskDetails', { taskId, refreshedAt: Date.now() });
+    } catch (err) {
+      console.error('[UpdateTaskScreen] Update error:', err);
+      Alert.alert('Error', 'Failed to update task.');
+    }
+  };
 
   // Remove this duplicate handleSearch function since we already have handleUserSearch
   const openUserPicker = async () => {
@@ -292,7 +292,7 @@ async function getFileSystemUri(uri) {
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <TouchableOpacity style={styles.backBtn} onPress={safeGoBack}>
           <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+          <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
         </TouchableOpacity>
         {/* Header Card */}
         <LinearGradient
@@ -302,19 +302,19 @@ async function getFileSystemUri(uri) {
           style={styles.headerCard}>
           <View>
             <Text style={styles.taskName}>{task.taskName}</Text>
-            <Text style={styles.dueDate}>Due Date : {values.endDate?.split('T')[0] || '-'}</Text>
+            <Text style={styles.dueDate}>{t('due_date')}: {values.endDate?.split('T')[0] || '-'}</Text>
           </View>
         </LinearGradient>
         {/* Date Row */}
         <View style={styles.dateRow}>
           <DateBox
-            label="Start Date"
+            label={t('start_date')}
             value={values.startDate}
             onChange={(date) => handleChange('startDate', date.toISOString())}
             theme={theme}
           />
           <DateBox
-            label="End Date"
+            label={t('end_date')}
             value={values.endDate}
             onChange={(date) => handleChange('endDate', date.toISOString())}
             theme={theme}
@@ -322,20 +322,20 @@ async function getFileSystemUri(uri) {
         </View>
         {/* Editable Fields */}
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.inputLabel, { color: theme.text }]}>Task Name</Text>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>{t('task_name')}</Text>
           <TextInput
             value={values.taskName}
-            placeholder="Task Name"
+            placeholder={t('task_name')}
             placeholderTextColor={theme.secondaryText}
             onChangeText={(text) => handleChange('taskName', text)}
             style={[styles.inputValue, { color: theme.text }]}
           />
         </View>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.inputLabel, { color: theme.text }]}>Description</Text>
+          <Text style={[styles.inputLabel, { color: theme.text }]}>{t('description')}</Text>
           <TextInput
             value={values.description}
-            placeholder="Description"
+            placeholder={t('description')}
             placeholderTextColor={theme.secondaryText}
             onChangeText={(text) => handleChange('description', text)}
             multiline
@@ -344,7 +344,7 @@ async function getFileSystemUri(uri) {
         </View>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
-            Assigned Users
+            {t('assigned_users')}
           </Text>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -457,7 +457,7 @@ async function getFileSystemUri(uri) {
                   </ScrollView>
                 )}
                 <TextInput
-                  placeholder="Search Connections"
+                  placeholder={t("search_connections")}
                   placeholderTextColor={theme.secondaryText}
                   value={searchText}
                   onChangeText={handleUserSearch}
@@ -485,7 +485,7 @@ async function getFileSystemUri(uri) {
                           paddingVertical: 10,
                           borderBottomWidth: 0.5,
                           borderColor: theme.border,
-                          backgroundColor: selectedUsers.includes(item.userId) ? 
+                          backgroundColor: selectedUsers.includes(item.userId) ?
                             `${theme.primary}20` : 'transparent',
                           borderRadius: selectedUsers.includes(item.userId) ? 8 : 0,
                           paddingHorizontal: selectedUsers.includes(item.userId) ? 8 : 0,
@@ -506,13 +506,13 @@ async function getFileSystemUri(uri) {
                           }}
                         />
                         <View style={{ flex: 1 }}>
-                          <Text style={{ 
-                            color: theme.text, 
-                            fontWeight: selectedUsers.includes(item.userId) ? '600' : '500' 
+                          <Text style={{
+                            color: theme.text,
+                            fontWeight: selectedUsers.includes(item.userId) ? '600' : '500'
                           }}>{item.name}</Text>
                           {item.phone && (
                             <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                              Phone: {item.phone}
+                              {t('phone')}: {item.phone}
                             </Text>
                           )}
                         </View>
@@ -532,7 +532,7 @@ async function getFileSystemUri(uri) {
                     paddingVertical: 12,
                   }}
                   onPress={() => setShowUserPicker(false)}>
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Done</Text>
+                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t('done')}</Text>
                 </TouchableOpacity>
               </View>
             </KeyboardAvoidingView>
@@ -540,7 +540,7 @@ async function getFileSystemUri(uri) {
         </Modal>
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
-            Dependent Tasks
+            {t('dependent_tasks')}
           </Text>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -553,7 +553,7 @@ async function getFileSystemUri(uri) {
               paddingRight: 15,
             }}>
             {selectedDeps.length === 0 ? (
-              <Text style={{ color: theme.secondaryText }}>Select Tasks</Text>
+              <Text style={{ color: theme.secondaryText }}>{t('select_tasks')}</Text>
             ) : (
               selectedDeps.map((dep) => (
                 <View
@@ -598,13 +598,13 @@ async function getFileSystemUri(uri) {
           onSelect={handleDepToggle}
           multiSelect={true}
           theme={theme}
-          placeholder="Search task..."
+          placeholder={t("search_task")}
           showImage={false}
         />
         <FieldBox
-          label="Attachments"
+          label={t("addAttachments")}
           value=""
-          placeholder="Add Attachments"
+          placeholder={t("addAttachments")}
           theme={theme}
           editable={false}
           rightComponent={
@@ -612,9 +612,9 @@ async function getFileSystemUri(uri) {
               {attachments.length > 0 && (
                 <TouchableOpacity
                   onPress={() => setShowPreviewModal(true)}
-                  style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     backgroundColor: theme.primary + '20',
                     paddingHorizontal: 8,
                     paddingVertical: 4,
@@ -622,13 +622,13 @@ async function getFileSystemUri(uri) {
                     marginRight: 8
                   }}>
                   <Feather name="eye" size={16} color={theme.primary} />
-                  <Text style={{ 
-                    color: theme.primary, 
-                    fontSize: 12, 
+                  <Text style={{
+                    color: theme.primary,
+                    fontSize: 12,
                     fontWeight: '500',
-                    marginLeft: 4 
+                    marginLeft: 4
                   }}>
-                    Preview ({attachments.length})
+                    {t("previewAttachments")} ({attachments.length})
                   </Text>
                 </TouchableOpacity>
               )}
@@ -653,19 +653,19 @@ async function getFileSystemUri(uri) {
         {/* Simplified Attachment Preview List */}
         {attachments.length > 0 && (
           <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
-            <View style={{ 
-              flexDirection: 'row', 
-              justifyContent: 'space-between', 
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
               alignItems: 'center',
-              marginBottom: 8 
+              marginBottom: 8
             }}>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                Attached Files ({attachments.length})
+                {t("added_attachments")} ({attachments.length})
               </Text>
               <TouchableOpacity
                 onPress={() => setShowPreviewModal(true)}
-                style={{ 
-                  flexDirection: 'row', 
+                style={{
+                  flexDirection: 'row',
                   alignItems: 'center',
                   backgroundColor: theme.primary,
                   paddingHorizontal: 12,
@@ -674,11 +674,11 @@ async function getFileSystemUri(uri) {
                 }}>
                 <Feather name="eye" size={16} color="white" />
                 <Text style={{ color: 'white', fontSize: 12, fontWeight: '500', marginLeft: 4 }}>
-                  Preview All
+                  {t("preview_all")}
                 </Text>
               </TouchableOpacity>
             </View>
-            
+
             {/* Quick preview grid */}
             {Array.from({ length: Math.ceil(attachments.length / 2) }).map((_, rowIdx) => (
               <View
@@ -705,10 +705,10 @@ async function getFileSystemUri(uri) {
                         marginRight: colIdx === 0 ? 12 : 0,
                       }}>
                       {/* File type icon */}
-                      <MaterialCommunityIcons 
-                        name={getFileIcon(att)} 
-                        size={24} 
-                        color={theme.primary} 
+                      <MaterialCommunityIcons
+                        name={getFileIcon(att)}
+                        size={24}
+                        color={theme.primary}
                         style={{ marginRight: 8 }}
                       />
 
@@ -733,8 +733,8 @@ async function getFileSystemUri(uri) {
                             `Remove "${att.name || 'this file'}"?`,
                             [
                               { text: 'Cancel', style: 'cancel' },
-                              { 
-                                text: 'Remove', 
+                              {
+                                text: 'Remove',
                                 style: 'destructive',
                                 onPress: () => {
                                   setAttachments((prev) => prev.filter((_, i) => i !== idx));
@@ -776,7 +776,7 @@ async function getFileSystemUri(uri) {
         />
       </ScrollView>
       <View style={styles.fixedButtonContainer}>
-        <GradientButton title="Save Changes" onPress={handleUpdate} theme={theme} />
+        <GradientButton title={t("save_changes")} onPress={handleUpdate} theme={theme} />
       </View>
     </KeyboardAvoidingView>
   );

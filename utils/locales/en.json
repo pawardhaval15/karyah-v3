@@ -227,5 +227,13 @@
   "resolved_attachments": "Resolved Attachments",
   "view_files": "View Files",
   "critical_issue_requires_attention": "This issue requires immediate attention.",
-  "normal_priority_description": "This issue has normal priority."
+  "normal_priority_description": "This issue has normal priority.",
+  "select_tasks": "Select Tasks",
+  "preview_all": "Preview All",
+  "select_dependencies": "Select Dependencies",
+  "add_task": "Add Task",
+  "assign_to": "Assign To",
+  "select_worklist": "Select Worklist",
+  "search_user": "Search Users...",
+  "no_tasks_available_for_dependencies": "No tasks available for dependencies"
 }

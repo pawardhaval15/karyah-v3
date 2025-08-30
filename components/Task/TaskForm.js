@@ -10,7 +10,7 @@ import CustomPickerDrawer from '../popups/CustomPickerDrawer';
 import FilePreviewModal from '../popups/FilePreviewModal';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
-
+import { useTranslation } from 'react-i18next';
 export default function TaskForm({
   values,
   onChange,
@@ -29,7 +29,7 @@ export default function TaskForm({
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [loading, setLoading] = useState(false);
-
+  const { t } = useTranslation();
   const { attachments, pickAttachment, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
   const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
     onRecordingFinished: (audioFile) => {
@@ -164,7 +164,7 @@ export default function TaskForm({
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TextInput
           style={[styles.input, { color: theme.text }]}
-          placeholder="Task Name"
+          placeholder={t("task_name")}
           placeholderTextColor="#bbb"
           value={values.taskName}
           onChangeText={(t) => onChange('taskName', t)}
@@ -203,7 +203,7 @@ export default function TaskForm({
           }}>
             {selectedDeps.length
               ? selectedDeps.map(t => t.name || t.taskName || `Task ${t[taskValueKey]}`).join(', ')
-              : 'Select Dependencies'}
+              : t("select_dependencies")}
           </Text>
         </TouchableOpacity>
         <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
@@ -218,7 +218,7 @@ export default function TaskForm({
         onSelect={handleDepToggle}
         multiSelect={true}
         theme={theme}
-        placeholder="Search task..."
+        placeholder={t("search_task")}
         showImage={false}
       />
 
@@ -226,13 +226,13 @@ export default function TaskForm({
       <View style={styles.dateRow}>
         <DateBox
           theme={theme}
-          label="Start Date"
+          label={t("start_date")}
           value={values.startDate}
           onChange={(date) => onChange('startDate', date)} // ✅ crucial
         />
         <DateBox
           theme={theme}
-          label="End Date"
+          label={t("end_date")}
           value={values.endDate}
           onChange={(date) => onChange('endDate', date)} // ✅ crucial
         />
@@ -254,7 +254,7 @@ export default function TaskForm({
               ? values.assignTo.map(uid =>
                 users.find(u => u.userId === uid)?.name || 'Unknown'
               ).join(', ')
-              : 'Assign To'}
+              : t("assign_to")}
           </Text>
         </TouchableOpacity>
       </View>
@@ -277,18 +277,18 @@ export default function TaskForm({
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TextInput
           style={[styles.input, { color: theme.text }]}
-          placeholder="Add Attachments"
+          placeholder={t("addAttachments")}
           placeholderTextColor={theme.secondaryText}
           editable={false}
         />
-        
+
         {/* Preview Button - inline like TaskDrawerForm */}
         {attachments.length > 0 && (
           <TouchableOpacity
             onPress={() => setShowPreviewModal(true)}
-            style={{ 
-              flexDirection: 'row', 
-              alignItems: 'center', 
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
               backgroundColor: theme.primary + '20',
               paddingHorizontal: 8,
               paddingVertical: 4,
@@ -296,13 +296,13 @@ export default function TaskForm({
               marginRight: 8
             }}>
             <Feather name="eye" size={16} color={theme.primary} />
-            <Text style={{ 
-              color: theme.primary, 
-              fontSize: 12, 
+            <Text style={{
+              color: theme.primary,
+              fontSize: 12,
               fontWeight: '500',
-              marginLeft: 4 
+              marginLeft: 4
             }}>
-              Preview ({attachments.length})
+              {t("previewAttachments")} ({attachments.length})
             </Text>
           </TouchableOpacity>
         )}
@@ -430,7 +430,7 @@ export default function TaskForm({
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TextInput
           style={[styles.input, { color: theme.text, height: 70 }]}
-          placeholder="Description"
+          placeholder={t("description")}
           placeholderTextColor="#bbb"
           value={values.taskDesc}
           onChangeText={(t) => onChange('taskDesc', t)}
@@ -446,7 +446,7 @@ export default function TaskForm({
           end={{ x: 1, y: 0 }}
           style={styles.drawerBtnGradient}
         >
-          <Text style={styles.drawerBtnText}>Add Task</Text>
+          <Text style={styles.drawerBtnText}>{t("add_task")}</Text>
         </LinearGradient>
       </TouchableOpacity>
 

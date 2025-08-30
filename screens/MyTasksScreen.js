@@ -206,10 +206,10 @@ export default function MyTasksScreen({ navigation }) {
       filters.projects.length === 0 ||
       filters.projects.includes(
         task.projectName ||
-          (task.project && task.project.projectName) ||
-          (task.project && task.project.name) ||
-          task.projectTitle ||
-          (typeof task.project === 'string' ? task.project : null)
+        (task.project && task.project.projectName) ||
+        (task.project && task.project.name) ||
+        task.projectTitle ||
+        (typeof task.project === 'string' ? task.project : null)
       );
 
     // Assigned to filter
@@ -418,7 +418,7 @@ export default function MyTasksScreen({ navigation }) {
       activeTab === 'mytasks'
         ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
         : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
-          'Unassigned';
+        'Unassigned';
 
     return (
       <>
@@ -597,7 +597,7 @@ export default function MyTasksScreen({ navigation }) {
               </TouchableOpacity>
             )}
             <TouchableOpacity style={styles.bannerAction} onPress={() => setShowAddTaskPopup(true)}>
-              <Text style={styles.bannerActionText}>Task</Text>
+              <Text style={styles.bannerActionText}>{t('tasks')}</Text>
               <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
             </TouchableOpacity>
           </View>
@@ -889,7 +889,7 @@ export default function MyTasksScreen({ navigation }) {
             {assignedOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
-                  {activeTab === 'mytasks' ? 'Assigned By' : 'Assigned To'}
+                  {activeTab === 'mytasks' ? t('assigned_by') : t('assigned_to')}
                 </Text>
                 <ScrollView
                   horizontal
