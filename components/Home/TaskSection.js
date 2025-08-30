@@ -32,6 +32,15 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     };
     fetchData();
   }, [refreshKey]);
+  // Filter issues to unresolved only (exclude resolved)
+  const unresolvedIssues = issues.filter(issue => issue.issueStatus !== 'resolved');
+
+  // Filter tasks to incomplete only
+  const incompleteTasks = tasks.filter(task => {
+    const isCompletedByPercent = (task.percent || task.progress || 0) === 100;
+    const isCompletedByStatus = String(task.status || '').toLowerCase() === 'completed';
+    return !isCompletedByPercent && !isCompletedByStatus;
+  });
 
   const data = activeTab === 'tasks' ? tasks : issues;
   const filtered = data.filter((item) => {
@@ -153,15 +162,13 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
               ]}>
               {t('issues')}
             </Text>
-            {issues.length > 0 && (
+            {unresolvedIssues.length > 0 && (
               <View
                 style={{
                   minWidth: 18,
                   height: 18,
                   borderRadius: 9,
-                  backgroundColor: activeTab === 'issues'
-                    ? 'rgba(255,255,255,0.3)'
-                    : '#FF525230', // #FF5252 with alpha for light badge
+                  backgroundColor: activeTab === 'issues' ? 'rgba(255,255,255,0.3)' : '#FF525230',
                   justifyContent: 'center',
                   alignItems: 'center',
                   marginLeft: 6,
@@ -173,7 +180,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                     fontSize: 11,
                     fontWeight: 'bold',
                   }}>
-                  {issues.length}
+                  {unresolvedIssues.length}
                 </Text>
               </View>
             )}
@@ -201,15 +208,13 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
               ]}>
               {t('tasks')}
             </Text>
-            {tasks.length > 0 && (
+            {incompleteTasks.length > 0 && (
               <View
                 style={{
                   minWidth: 18,
                   height: 18,
                   borderRadius: 9,
-                  backgroundColor: activeTab === 'tasks'
-                    ? 'rgba(255,255,255,0.3)'
-                    : '#4CAF5030', // #4CAF50 with alpha for badge
+                  backgroundColor: activeTab === 'tasks' ? 'rgba(255,255,255,0.3)' : '#4CAF5030',
                   justifyContent: 'center',
                   alignItems: 'center',
                   marginLeft: 6,
@@ -221,7 +226,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                     fontSize: 11,
                     fontWeight: 'bold',
                   }}>
-                  {tasks.length}
+                  {incompleteTasks.length}
                 </Text>
               </View>
             )}
