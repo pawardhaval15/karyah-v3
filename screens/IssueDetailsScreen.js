@@ -27,6 +27,7 @@ import useAudioRecorder from '../components/popups/useAudioRecorder';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth'; // import this
+import { useTranslation } from 'react-i18next';
 import {
   approveIssue,
   deleteIssue,
@@ -54,6 +55,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
     dueDate: '',
     isCritical: false,
   });
+  const { t } = useTranslation();
   // Add menuVisible state for three-dots menu
   const [menuVisible, setMenuVisible] = useState(false);
   // Attachment state
@@ -170,7 +172,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             onPress={() => navigation.goBack()}>
             <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
             <Text style={{ fontSize: 18, color: theme.text, fontWeight: '400', marginLeft: 2 }}>
-              Back
+              {t('back')}
             </Text>
           </TouchableOpacity>
           {userName && issue?.creatorName === userName ? (
@@ -276,7 +278,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   borderRadius: 8,
                   marginRight: 20,
                 }}>
-                <Text style={{ color: '#fff', fontWeight: '500', fontSize: 16 }}>Save</Text>
+                <Text style={{ color: '#fff', fontWeight: '500', fontSize: 16 }}>{t('save')}</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
@@ -333,7 +335,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         style={{ marginRight: 8 }}
                       />
                       <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 15 }}>
-                        Edit
+                        {t('edit')}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
@@ -373,7 +375,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         style={{ marginRight: 8 }}
                       />
                       <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>
-                        Delete
+                        {t('delete')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -413,27 +415,27 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 </Text>
               </TouchableOpacity>
             )}
-            <Text style={styles.bannerDesc}>All issues details are listed here.</Text>
+            <Text style={styles.bannerDesc}>{t('all_issues_details')}</Text>
           </View>
         </LinearGradient>
         <FieldBox
-          label="PROJECT NAME"
+          label={t('project_name')}
           value={issue.projectName || ''}
-          placeholder="Project Name"
+          placeholder={t('project_name')}
           theme={theme}
           editable={false}
         />
         <FieldBox
-          label="LOCATION"
+          label={t('location')}
           value={issue.projectLocation || ''}
-          placeholder="Location"
+          placeholder={t('location')}
           theme={theme}
           editable={false}
         />
         <FieldBox
-          label="DESCRIPTION"
+          label={t('description')}
           value={isEditing ? editFields.description : issue.description}
-          placeholder="Description"
+          placeholder={t('description')}
           multiline
           theme={theme}
           editable={isEditing}
@@ -443,13 +445,13 @@ export default function IssueDetailsScreen({ navigation, route }) {
         {/* Added Attachments Section */}
         <View style={styles.attachmentSection}>
           <View style={styles.attachmentHeader}>
-            <Text style={[styles.attachmentLabel, { color: theme.text }]}>ADDED ATTACHMENTS</Text>
+            <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('added_attachments')}</Text>
             {isEditing && (
               <TouchableOpacity
                 style={[styles.addButton, { backgroundColor: theme.primary + '15' }]}
                 onPress={() => setShowAttachmentSheet(true)}>
                 <MaterialIcons name="add" size={16} color={theme.primary} />
-                <Text style={[styles.addButtonText, { color: theme.primary }]}>Add Files</Text>
+                <Text style={[styles.addButtonText, { color: theme.primary }]}>{t('add_files')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -477,16 +479,16 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     setDrawerAttachments(isEditing ? attachments : allAttachments);
                   }}>
                   <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                  <Text style={[styles.viewFilesText, { color: theme.primary }]}>View Files</Text>
+                  <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <View style={styles.noAttachmentContainer}>
                 <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                <Text style={styles.noAttachmentText}>No attachments added</Text>
+                <Text style={styles.noAttachmentText}>{t('no_attachments_added')}</Text>
                 {isEditing && (
                   <Text style={styles.tapToAddText}>
-                    Tap "Add Files" to attach documents, images, or audio
+                    {t('tap_to_add_files')}
                   </Text>
                 )}
               </View>
@@ -555,9 +557,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
         </View>
 
         <FieldBox
-          label="ASSIGNED TO"
+          label={t('assigned_to')}
           value={issue.assignTo?.userName || ''}
-          placeholder="Assigned To"
+          placeholder={t('assigned_to')}
           rightComponent={
             issue.assignTo?.profilePhoto ? (
               <Image
@@ -589,7 +591,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         />
 
         <FieldBox
-          label="DUE DATE"
+          label={t('due_date')}
           value={
             isEditing
               ? editFields.dueDate
@@ -597,7 +599,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 : ''
               : formatDate(issue.dueDate)
           }
-          placeholder="Due Date"
+          placeholder={t("due_date")}
           theme={theme}
           editable={false}
           onPress={isEditing ? () => setShowDueDatePicker(true) : undefined}
@@ -649,14 +651,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 ? theme.criticalText
                 : (issue.isCritical ? theme.criticalText : theme.normalText),
             }]}>
-              {isEditing ? 'Critical Issue?' : (issue.isCritical ? 'Critical Issue' : 'Normal Priority')}
+              {isEditing ? t('critical_issue') : (issue.isCritical ? t('critical_issue') : t('normal'))}
             </Text>
             <Text style={[styles.criticalDesc, { color: theme.text }]}>
               {isEditing
-                ? 'Turn on the toggle only if the Issue needs immediate attention.'
+                ? t('turn_on_toggle')
                 : (issue.isCritical
-                  ? 'This issue requires immediate attention.'
-                  : 'This issue has normal priority.'
+                  ? t('critical_issue_requires_attention')
+                  : t('normal_priority_description')
                 )
               }
             </Text>
@@ -675,7 +677,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               <Text style={[styles.criticalStatusText, {
                 color: issue.isCritical ? theme.criticalBadgeText : theme.normalBadgeText,
               }]}>
-                {issue.isCritical ? 'CRITICAL' : 'NORMAL'}
+                {issue.isCritical ? `${t('critical')}` : `${t('normal')}`}
               </Text>
             </View>
           )}
@@ -689,7 +691,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             {/* Resolved Attachments Section */}
             <View style={styles.attachmentSection}>
               <View style={styles.attachmentHeader}>
-                <Text style={[styles.attachmentLabel, { color: theme.text }]}>RESOLVED ATTACHMENTS</Text>
+                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('resolved_attachments')}</Text>
               </View>
 
               <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -708,7 +710,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         setDrawerAttachments(issue.resolvedImages || []);
                       }}>
                       <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>View Files</Text>
+                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
@@ -721,9 +723,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
             </View>
 
             <FieldBox
-              label="RESOLUTION REMARK"
+              label={t("resolution_remark")}
               value={issue.remarks || ''}
-              placeholder="No resolution remark"
+              placeholder={t("no_resolution_remark")}
               multiline
               theme={theme}
               editable={false}
@@ -735,7 +737,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             {/* Resolved Attachments Section */}
             <View style={styles.attachmentSection}>
               <View style={styles.attachmentHeader}>
-                <Text style={[styles.attachmentLabel, { color: theme.text }]}>RESOLVED ATTACHMENTS</Text>
+                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('resolved_attachments')}</Text>
               </View>
 
               <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -754,13 +756,13 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         setDrawerAttachments(issue.resolvedImages || []);
                       }}>
                       <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>View Files</Text>
+                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
                     </TouchableOpacity>
                   </>
                 ) : (
                   <View style={styles.noAttachmentContainer}>
                     <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                    <Text style={styles.noAttachmentText}>No resolution attachments</Text>
+                    <Text style={styles.noAttachmentText}>{t('no_resolution_attachments')}</Text>
                   </View>
                 )}
               </View>
@@ -768,9 +770,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
 
             {/* Show previous resolution remark */}
             <FieldBox
-              label="RESOLUTION REMARK"
+              label={t("resolution_remark")}
               value={issue.remarks || ''}
-              placeholder="No resolution remark"
+              placeholder={t("no_resolution_remark")}
               multiline
               theme={theme}
               editable={false}
@@ -798,13 +800,13 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     fontSize: 16,
                     color: theme.text,
                   }}>
-                  Resolve Issue
+                  {t("resolve_issue")}
                 </Text>
               </View>
               {/* Note for attachments and description */}
               <View style={{ marginHorizontal: 20, marginBottom: 8 }}>
                 <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '500' }}>
-                  Note: You must add at least one attachment and enter a description to submit the resolution.
+                  {t("resolution_note")}
                 </Text>
               </View>
               <View
@@ -814,7 +816,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 ]}>
                 <TextInput
                   style={[styles.input, { color: theme.text }]}
-                  placeholder="Add Attachments"
+                  placeholder={t("addAttachments")}
                   placeholderTextColor={theme.secondaryText}
                   editable={false}
                 />
@@ -922,10 +924,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 }}
               />
               <FieldBox
-                label="RESOLUTION REMARK"
+                label={t("resolution_remark")}
                 value={remark}
                 onChangeText={setRemark}
-                placeholder="Describe how the issue was resolved..."
+                placeholder={t("describe_resolution")}
                 multiline
                 theme={theme}
                 editable={true}
@@ -955,7 +957,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   }}
                   onPress={() => setShowReassignModal(true)}>
                   <Text style={{ color: theme.secondaryButton, fontWeight: '600', fontSize: 16 }}>
-                    No, Re-assign
+                    {t("no_reassign")}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1000,7 +1002,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     fontWeight: '700',
                     fontSize: 16
                   }}>
-                    {issue.issueStatus === 'resolved' ? 'Resolved' : 'Approve & Complete'}
+                    {issue.issueStatus === 'resolved' ? t('resolved') : t('approve_complete')}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -1018,30 +1020,30 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 borderWidth: 1,
                 borderColor: theme.buttonText,
                 opacity:
-                  issue.issueStatus === 'pending_approval' ||
-                    issue.issueStatus === 'resolved' ||
-                    attachments.length === 0 ||
+                  (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
+                    attachments.length === 0 &&
                     !remark
                     ? 0.5
                     : 1,
               }}
               onPress={handleSubmit}
               disabled={
-                issue.issueStatus === 'pending_approval' ||
-                issue.issueStatus === 'resolved' ||
-                attachments.length === 0 ||
+                (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
+                attachments.length === 0 &&
                 !remark
-              }>
+              }
+            >
               <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 16 }}>
                 {issue.issueStatus === 'resolved'
-                  ? 'Resolved'
+                  ? t('resolved')
                   : issue.issueStatus === 'pending_approval'
-                    ? 'Waiting for Approval'
-                    : 'Submit Resolution'}
+                    ? t('waiting_for_approval')
+                    : t('submit_resolution')}
               </Text>
             </TouchableOpacity>
           </View>
         )}
+
       </ScrollView>
       <AttachmentDrawer
         visible={drawerVisible}

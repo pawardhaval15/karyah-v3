@@ -393,7 +393,7 @@ export default function IssuesScreen({ navigation }) {
                         {assignedOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
                                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
-                                    {section === 'assigned' ? 'Assigned By' : 'Assigned To'}
+                                    {section === 'assigned' ? t('assigned_by') : t('assigned_to')}
                                 </Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                                     <View style={styles.compactChipsRow}>
