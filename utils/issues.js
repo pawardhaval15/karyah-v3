@@ -2,6 +2,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config';
+import { Platform } from 'react-native';
 
 export const fetchAssignedIssues = async () => {
     try {
@@ -39,14 +40,27 @@ export const updateIssue = async (payload) => {
         if (payload.remarks !== undefined) formData.append('remarks', payload.remarks);
         if (payload.removeImages !== undefined) formData.append('removeImages', payload.removeImages);
         if (payload.removeResolvedImages !== undefined) formData.append('removeResolvedImages', payload.removeResolvedImages);
-        // Attach files
+
+        // Attach files with normalization
         payload.unresolvedImages.forEach((file, idx) => {
+            if (!file.uri) return;
+            let fileUri = file.uri;
+            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+                fileUri = `file://${fileUri}`;
+            }
+            let mimeType = file.type || 'application/octet-stream';
+            if (mimeType && !mimeType.includes('/')) {
+                if (mimeType === 'image') mimeType = 'image/jpeg';
+                else if (mimeType === 'video') mimeType = 'video/mp4';
+                else mimeType = 'application/octet-stream';
+            }
             formData.append('unresolvedImages', {
-                uri: file.uri,
+                uri: fileUri,
                 name: file.name || `file_${idx}`,
-                type: file.type || 'application/octet-stream',
+                type: mimeType,
             });
         });
+
         const response = await fetch(`${API_URL}api/issues/${payload.issueId}`, {
             method: 'PUT',
             headers: {
@@ -84,9 +98,10 @@ export const updateIssue = async (payload) => {
         return data;
     }
 };
+
+
 export const createIssue = async (issueData) => {
     const token = await AsyncStorage.getItem('token');
-
     const formData = new FormData();
 
     // Append text fields
@@ -96,13 +111,26 @@ export const createIssue = async (issueData) => {
         }
     });
 
-    // Append files
+    // Append files (attachments)
     if (issueData.unresolvedImages && Array.isArray(issueData.unresolvedImages)) {
         issueData.unresolvedImages.forEach((file, idx) => {
+            if (!file.uri) return;
+            let fileUri = file.uri;
+            // Normalize URI for Android
+            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+                fileUri = `file://${fileUri}`;
+            }
+            // Normalize MIME type
+            let mimeType = file.type || 'application/octet-stream';
+            if (mimeType && !mimeType.includes('/')) {
+                if (mimeType === 'image') mimeType = 'image/jpeg';
+                else if (mimeType === 'video') mimeType = 'video/mp4';
+                else mimeType = 'application/octet-stream';
+            }
             formData.append('unresolvedImages', {
-                uri: file.uri,
+                uri: fileUri,
                 name: file.name || `file_${idx}`,
-                type: file.type || 'application/octet-stream',
+                type: mimeType,
             });
         });
     }
@@ -111,7 +139,7 @@ export const createIssue = async (issueData) => {
         method: 'POST',
         headers: {
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            // Do NOT set 'Content-Type' here!
+            // Do NOT set 'Content-Type' manually here!
         },
         body: formData,
     });
@@ -119,6 +147,7 @@ export const createIssue = async (issueData) => {
     if (!res.ok) throw new Error((await res.json()).message || 'Failed to create issue');
     return res.json();
 };
+
 
 export const resolveIssueByAssignedUser = async ({ issueId, issueStatus, resolvedImages = [], remarks = '' }) => {
     try {
@@ -130,12 +159,23 @@ export const resolveIssueByAssignedUser = async ({ issueId, issueStatus, resolve
         formData.append('issueStatus', issueStatus);
         formData.append('remarks', remarks);
 
-        // Append resolved images (files)
+        // Append resolved images with normalization
         resolvedImages.forEach((file, index) => {
+            if (!file.uri) return;
+            let fileUri = file.uri;
+            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+                fileUri = `file://${fileUri}`;
+            }
+            let mimeType = file.type || 'application/octet-stream';
+            if (mimeType && !mimeType.includes('/')) {
+                if (mimeType === 'image') mimeType = 'image/jpeg';
+                else if (mimeType === 'video') mimeType = 'video/mp4';
+                else mimeType = 'application/octet-stream';
+            }
             formData.append('resolvedImages', {
-                uri: file.uri,
+                uri: fileUri,
                 name: file.name || `resolved_${index}`,
-                type: file.type || 'application/octet-stream',
+                type: mimeType,
             });
         });
 
@@ -143,7 +183,7 @@ export const resolveIssueByAssignedUser = async ({ issueId, issueStatus, resolve
             method: 'PUT',
             headers: {
                 ...(token ? { Authorization: `Bearer ${token}` } : {}),
-                // DO NOT manually set 'Content-Type' here; `fetch` sets it correctly for FormData
+                // Do NOT manually set Content-Type for FormData
             },
             body: formData,
         });
@@ -160,6 +200,7 @@ export const resolveIssueByAssignedUser = async ({ issueId, issueStatus, resolve
         throw error;
     }
 };
+
 
 export const updateIssueByAssignedUser = async ({ issueId, issueStatus, resolvedImages, remarks }) => {
     const token = await AsyncStorage.getItem('token');

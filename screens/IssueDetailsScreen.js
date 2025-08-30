@@ -102,11 +102,24 @@ export default function IssueDetailsScreen({ navigation, route }) {
     }
     setLoading(true);
     try {
-      const resolvedImages = attachments.map((att) => ({
-        uri: att.uri,
-        name: att.name || att.uri?.split('/').pop(),
-        type: att.mimeType || att.type || 'application/octet-stream',
-      }));
+      const resolvedImages = attachments.map((att, idx) => {
+        let fileUri = att.uri;
+        if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+          fileUri = `file://${fileUri}`;
+        }
+        let mimeType = att.mimeType || att.type || 'application/octet-stream';
+        if (mimeType && !mimeType.includes('/')) {
+          if (mimeType === 'image') mimeType = 'image/jpeg';
+          else if (mimeType === 'video') mimeType = 'video/mp4';
+          else mimeType = 'application/octet-stream';
+        }
+        return {
+          uri: fileUri,
+          name: att.name || fileUri.split('/').pop() || `file_${idx}`,
+          type: mimeType,
+        };
+      });
+
       await resolveIssueByAssignedUser({
         issueId,
         remarks: remark,
@@ -212,12 +225,24 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     }
                     if (attachments && attachments.length > 0) {
                       newUnresolvedImages = attachments
-                        .filter((att) => att.uri && att.uri.startsWith('file://'))
-                        .map((att, idx) => ({
-                          uri: att.uri,
-                          name: att.name || att.uri?.split('/').pop() || `file_${idx}`,
-                          type: att.mimeType || att.type || 'application/octet-stream',
-                        }));
+                        .filter(att => att.uri)
+                        .map((att, idx) => {
+                          let fileUri = att.uri;
+                          if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+                            fileUri = `file://${fileUri}`;
+                          }
+                          let mimeType = att.mimeType || att.type || 'application/octet-stream';
+                          if (mimeType && !mimeType.includes('/')) {
+                            if (mimeType === 'image') mimeType = 'image/jpeg';
+                            else if (mimeType === 'video') mimeType = 'video/mp4';
+                            else mimeType = 'application/octet-stream';
+                          }
+                          return {
+                            uri: fileUri,
+                            name: att.name || (fileUri.split('/').pop() || `file_${idx}`),
+                            type: mimeType,
+                          };
+                        });
                     }
                     // Only send new files as unresolvedImages (for FormData)
                     if (newUnresolvedImages.length > 0) {
@@ -604,18 +629,18 @@ export default function IssueDetailsScreen({ navigation, route }) {
           borderColor: isEditing
             ? theme.criticalBorder
             : (issue.isCritical ? theme.criticalBorder : theme.normalBorder),
-        }]}> 
+        }]}>
           <View style={[styles.criticalIconBox, {
             backgroundColor: isEditing
               ? theme.criticalIconBg
               : (issue.isCritical ? theme.criticalIconBg : theme.normalIconBg),
-          }]}> 
-            <MaterialIcons 
-              name="priority-high" 
-              size={24} 
+          }]}>
+            <MaterialIcons
+              name="priority-high"
+              size={24}
               color={isEditing
                 ? theme.criticalText
-                : (issue.isCritical ? theme.criticalText : theme.normalText)} 
+                : (issue.isCritical ? theme.criticalText : theme.normalText)}
             />
           </View>
           <View style={{ flex: 1 }}>
@@ -623,16 +648,16 @@ export default function IssueDetailsScreen({ navigation, route }) {
               color: isEditing
                 ? theme.criticalText
                 : (issue.isCritical ? theme.criticalText : theme.normalText),
-            }]}> 
+            }]}>
               {isEditing ? 'Critical Issue?' : (issue.isCritical ? 'Critical Issue' : 'Normal Priority')}
             </Text>
-            <Text style={[styles.criticalDesc, {color: theme.text}]}>
-              {isEditing 
+            <Text style={[styles.criticalDesc, { color: theme.text }]}>
+              {isEditing
                 ? 'Turn on the toggle only if the Issue needs immediate attention.'
-                : (issue.isCritical 
-                    ? 'This issue requires immediate attention.' 
-                    : 'This issue has normal priority.'
-                  )
+                : (issue.isCritical
+                  ? 'This issue requires immediate attention.'
+                  : 'This issue has normal priority.'
+                )
               }
             </Text>
           </View>
@@ -646,10 +671,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
           ) : (
             <View style={[styles.criticalStatusBadge, {
               backgroundColor: issue.isCritical ? theme.criticalBadgeBg : theme.normalBadgeBg,
-            }]}> 
+            }]}>
               <Text style={[styles.criticalStatusText, {
                 color: issue.isCritical ? theme.criticalBadgeText : theme.normalBadgeText,
-              }]}> 
+              }]}>
                 {issue.isCritical ? 'CRITICAL' : 'NORMAL'}
               </Text>
             </View>
@@ -1072,35 +1097,35 @@ export default function IssueDetailsScreen({ navigation, route }) {
         animationType="fade"
         onRequestClose={() => setShowIssueTitleModal(false)}>
         <TouchableWithoutFeedback onPress={() => setShowIssueTitleModal(false)}>
-          <View style={{ 
-            flex: 1, 
-            backgroundColor: 'rgba(0,0,0,0.35)', 
-            justifyContent: 'center', 
-            alignItems: 'center' 
+          <View style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.35)',
+            justifyContent: 'center',
+            alignItems: 'center'
           }}>
-            <TouchableWithoutFeedback onPress={() => {}}>
-              <View style={{ 
-                width: 280, 
-                borderRadius: 14, 
-                borderWidth: 1, 
-                padding: 18, 
-                alignItems: 'center', 
+            <TouchableWithoutFeedback onPress={() => { }}>
+              <View style={{
+                width: 280,
+                borderRadius: 14,
+                borderWidth: 1,
+                padding: 18,
+                alignItems: 'center',
                 elevation: 8,
-                backgroundColor: theme.card, 
-                borderColor: theme.border 
+                backgroundColor: theme.card,
+                borderColor: theme.border
               }}>
-                <Text style={{ 
-                  fontSize: 18, 
-                  fontWeight: '700', 
-                  marginBottom: 12, 
-                  color: theme.text 
+                <Text style={{
+                  fontSize: 18,
+                  fontWeight: '700',
+                  marginBottom: 12,
+                  color: theme.text
                 }}>Issue Title</Text>
-                <Text style={{ 
-                  color: theme.text, 
-                  fontSize: 16, 
-                  textAlign: 'center', 
-                  lineHeight: 22, 
-                  marginBottom: 12 
+                <Text style={{
+                  color: theme.text,
+                  fontSize: 16,
+                  textAlign: 'center',
+                  lineHeight: 22,
+                  marginBottom: 12
                 }}>
                   {issue?.issueTitle}
                 </Text>
