@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from './config';
-
+import {Platform} from 'react-native';
 // Get all tasks by worklist ID
 export const getTasksByWorklistId = async (worklistId) => {
   try {
@@ -103,15 +103,25 @@ export const createTask = async (taskData) => {
         }
 
       } else if (key === 'images' && Array.isArray(value)) {
-        // Accept multiple file types and append each
-        value.forEach((file, index) => {
-          const fileType = file.type || 'application/octet-stream'; // fallback
+        for (const file of value) {
+          if (!file.uri) continue;
+          // Convert content:// to file:// on Android
+          let fileUri = file.uri;
+          if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+            fileUri = `file://${fileUri}`;
+          }
+          let mimeType = file.type || 'application/octet-stream';
+          if (mimeType && !mimeType.includes('/')) {
+            if (mimeType === 'image') mimeType = 'image/jpeg';
+            else if (mimeType === 'video') mimeType = 'video/mp4';
+            else mimeType = 'application/octet-stream';
+          }
           formData.append('images', {
-            uri: file.uri,
-            type: fileType,
-            name: file.name || `file_${index}`,
+            uri: fileUri,
+            type: mimeType,
+            name: file.name || fileUri.split('/').pop() || 'file',
           });
-        });
+        }
 
       } else if (Array.isArray(value)) {
         // Convert array fields like assignedUserIds or dependentTaskIds to JSON string
@@ -144,6 +154,77 @@ export const createTask = async (taskData) => {
     throw error;
   }
 };
+
+// old task create function
+// export const createTask = async (taskData) => {
+//   try {
+//     const token = await AsyncStorage.getItem('token');
+//     const url = `${API_URL}api/tasks/create`;
+
+//     const formData = new FormData();
+
+//     for (const key in taskData) {
+//       const value = taskData[key];
+
+//       // Date normalization
+//       if (key === 'startDate' || key === 'endDate') {
+//         if (value && !isNaN(Date.parse(value))) {
+//           const isoDate = new Date(value).toISOString();
+//           formData.append(key, isoDate);
+//         } else {
+//           formData.append(key, '');
+//         }
+//       // Attachment logic
+//       } else if (key === 'images' && Array.isArray(value)) {
+//         for (const file of value) {
+//           if (!file.uri) continue;
+//           // Convert content:// to file:// on Android
+//           let fileUri = file.uri;
+//           if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+//             fileUri = `file://${fileUri}`;
+//           }
+//           let mimeType = file.type || 'application/octet-stream';
+//           if (mimeType && !mimeType.includes('/')) {
+//             if (mimeType === 'image') mimeType = 'image/jpeg';
+//             else if (mimeType === 'video') mimeType = 'video/mp4';
+//             else mimeType = 'application/octet-stream';
+//           }
+//           formData.append('images', {
+//             uri: fileUri,
+//             type: mimeType,
+//             name: file.name || fileUri.split('/').pop() || 'file',
+//           });
+//         }
+//       // Array fields as JSON
+//       } else if (Array.isArray(value)) {
+//         formData.append(key, JSON.stringify(value));
+//       } else if (value !== undefined && value !== null) {
+//         formData.append(key, String(value));
+//       }
+//     }
+
+//     const response = await fetch(url, {
+//       method: 'POST',
+//       headers: {
+//         ...(token && { Authorization: `Bearer ${token}` }),
+//         // Don't manually set Content-Type for FormData!
+//       },
+//       body: formData,
+//     });
+
+//     if (!response.ok) {
+//       const errorText = await response.text();
+//       console.error('Create Task Error:', errorText);
+//       throw new Error('Failed to create task');
+//     }
+
+//     const data = await response.json();
+//     return data.task;
+//   } catch (error) {
+//     console.error('Error creating task:', error.message);
+//     throw error;
+//   }
+// };
 
 
 export const fetchMyTasks = async () => {
