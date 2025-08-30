@@ -696,12 +696,12 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             style={{
               flexDirection: 'row',
               alignItems: 'center',
-              backgroundColor: '#f7f7f7',
               borderRadius: 12,
               marginHorizontal: 20,
               marginBottom: 12,
               paddingHorizontal: 16,
               paddingVertical: 12,
+              backgroundColor: theme.SearchBar, // <-- use theme for background
             }}>
             <MaterialIcons
               name="search"

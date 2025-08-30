@@ -1,7 +1,9 @@
-import React from 'react';
-import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import TaskForm from '../Task/TaskForm';
+import FilePreviewModal from './FilePreviewModal';
+import useAttachmentPicker from './useAttachmentPicker';
 
 export default function TaskPopup({
   visible,
@@ -17,41 +19,86 @@ export default function TaskPopup({
   projectTasks,
   users,
 }) {
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  
+  // Get attachment utilities for preview modal
+  const { getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
+
+  // Handle preview trigger from TaskForm
+  const handleChange = (key, value) => {
+    if (key === 'showPreview' && value === true) {
+      setShowPreviewModal(true);
+    } else if (key === 'attachments') {
+      setAttachments(value || []);
+      onChange(key, value);
+    } else {
+      onChange(key, value);
+    }
+  };
+
+  // Initialize attachments from values
+  useEffect(() => {
+    if (values.attachments && Array.isArray(values.attachments)) {
+      setAttachments(values.attachments);
+    }
+  }, [values.attachments]);
+
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      transparent
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <View style={[styles.popup, { backgroundColor: theme.card }]}>
-          <View style={styles.header}>
-            <Text style={[styles.headerTitle, { color: theme.text }]}>Create New Task</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close" size={24} color={theme.text} />
-            </TouchableOpacity>
+    <>
+      <Modal
+        visible={visible}
+        animationType="slide"
+        transparent
+        onRequestClose={onClose}
+      >
+        <View style={styles.overlay}>
+          <View style={[styles.popup, { backgroundColor: theme.card }]}>
+            <View style={styles.header}>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>Add Task Details</Text>
+              <View style={styles.headerActions}>
+                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                  <Ionicons name="close" size={24} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <TaskForm
+                values={values}
+                onChange={handleChange}
+                onSubmit={() => {
+                  onSubmit();
+                  onClose();
+                }}
+                theme={theme}
+                projectId={projectId}
+                projectName={projectName}
+                worklistId={worklistId}
+                worklistName={worklistName}
+                projectTasks={projectTasks}
+                users={users}
+              />
+            </ScrollView>
           </View>
-          <ScrollView>
-            <TaskForm
-              values={values}
-              onChange={onChange}
-              onSubmit={() => {
-                onSubmit();
-                onClose();
-              }}
-              theme={theme}
-              projectId={projectId}
-              projectName={projectName}
-              worklistId={worklistId}
-              worklistName={worklistName}
-              projectTasks={projectTasks}
-              users={users}
-            />
-          </ScrollView>
         </View>
-      </View>
-    </Modal>
+      </Modal>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        visible={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        attachments={attachments}
+        onRemoveFile={(index) => {
+          const updatedAttachments = attachments.filter((_, i) => i !== index);
+          setAttachments(updatedAttachments);
+          onChange('attachments', updatedAttachments);
+        }}
+        theme={theme}
+        getFileType={getFileType}
+        getFileIcon={getFileIcon}
+        getFormattedSize={getFormattedSize}
+      />
+    </>
   );
 }
 
@@ -79,6 +126,21 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  previewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 4,
+    borderRadius: 4,
+    marginRight: 12,
+  },
+  previewBtnText: {
+    marginLeft: 4,
+    fontSize: 14,
   },
   closeBtn: {
     padding: 4,

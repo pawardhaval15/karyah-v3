@@ -7,8 +7,10 @@ import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
 import AttachmentSheet from '../popups/AttachmentSheet';
 import CustomPickerDrawer from '../popups/CustomPickerDrawer';
+import FilePreviewModal from '../popups/FilePreviewModal';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
+
 export default function TaskForm({
   values,
   onChange,
@@ -25,15 +27,31 @@ export default function TaskForm({
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showDepPicker, setShowDepPicker] = useState(false);
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
+  const { attachments, pickAttachment, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
   const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
     onRecordingFinished: (audioFile) => {
-      setAttachments(prev => [...prev, audioFile]);
+      const newAttachments = [...attachments, audioFile];
+      setAttachments(newAttachments);
+      onChange('attachments', newAttachments); // Sync with parent
       Alert.alert('Audio recorded and attached!');
     }
   });
+
+  // Sync attachments with parent component whenever attachments change
+  useEffect(() => {
+    onChange('attachments', attachments);
+  }, [attachments]);
+
+  // Initialize attachments from parent values if provided
+  useEffect(() => {
+    if (values.attachments && Array.isArray(values.attachments) && values.attachments.length > 0) {
+      setAttachments(values.attachments);
+    }
+  }, [values.attachments]);
+
   const taskValueKey = projectTasks.length && projectTasks[0]?.id !== undefined ? 'id' : 'taskId';
 
   const selectedDepIds = Array.isArray(values.taskDeps)
@@ -263,6 +281,32 @@ export default function TaskForm({
           placeholderTextColor={theme.secondaryText}
           editable={false}
         />
+        
+        {/* Preview Button - inline like TaskDrawerForm */}
+        {attachments.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setShowPreviewModal(true)}
+            style={{ 
+              flexDirection: 'row', 
+              alignItems: 'center', 
+              backgroundColor: theme.primary + '20',
+              paddingHorizontal: 8,
+              paddingVertical: 4,
+              borderRadius: 12,
+              marginRight: 8
+            }}>
+            <Feather name="eye" size={16} color={theme.primary} />
+            <Text style={{ 
+              color: theme.primary, 
+              fontSize: 12, 
+              fontWeight: '500',
+              marginLeft: 4 
+            }}>
+              Preview ({attachments.length})
+            </Text>
+          </TouchableOpacity>
+        )}
+
         {/* Attachment Icon */}
         <Feather
           name="paperclip"
@@ -293,13 +337,11 @@ export default function TaskForm({
           {Array.from({ length: Math.ceil(attachments.length / 2) }).map((_, rowIdx) => (
             <View
               key={rowIdx}
-              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}
-            >
-              {[0, 1].map(colIdx => {
+              style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+              {[0, 1].map((colIdx) => {
                 const idx = rowIdx * 2 + colIdx;
                 const att = attachments[idx];
                 if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
-
                 return (
                   <View
                     key={att.uri || att.name || idx}
@@ -310,22 +352,23 @@ export default function TaskForm({
                       justifyContent: 'flex-start',
                       padding: 8,
                       borderWidth: 1,
-                      borderColor: '#ccc',
+                      borderColor: theme.border,
                       borderRadius: 10,
-                      backgroundColor: '#F9FAFB',
+                      backgroundColor: theme.card,
                       marginRight: colIdx === 0 ? 12 : 0,
-                    }}
-                  >
+                    }}>
                     {/* Image Preview */}
                     {att.type?.startsWith('image') && (
-                      <TouchableOpacity onPress={() => {/* optional modal */ }}>
+                      <TouchableOpacity
+                        onPress={() => {
+                          /* optional modal */
+                        }}>
                         <Image
                           source={{ uri: att.uri }}
                           style={{ width: 25, height: 25, borderRadius: 6, marginRight: 8 }}
                         />
                       </TouchableOpacity>
                     )}
-
                     {/* Audio Playback */}
                     {att.type?.startsWith('audio') && (
                       <TouchableOpacity
@@ -334,31 +377,35 @@ export default function TaskForm({
                           const { sound } = await Sound.createAsync({ uri: att.uri });
                           await sound.playAsync();
                         }}
-                        style={{ marginRight: 8 }}
-                      >
-                        <MaterialCommunityIcons name="play-circle-outline" size={28} color="#1D4ED8" />
+                        style={{ marginRight: 8 }}>
+                        <MaterialCommunityIcons
+                          name="play-circle-outline"
+                          size={28}
+                          color="#1D4ED8"
+                        />
                       </TouchableOpacity>
                     )}
-
                     {/* Fallback File Icon */}
                     {!att.type?.startsWith('image') && !att.type?.startsWith('audio') && (
-                      <MaterialCommunityIcons name="file-document-outline" size={28} color="#888" style={{ marginRight: 8 }} />
+                      <MaterialCommunityIcons
+                        name="file-document-outline"
+                        size={28}
+                        color="#888"
+                        style={{ marginRight: 8 }}
+                      />
                     )}
-
                     {/* File Name */}
-                    <Text style={{ color: '#444', fontSize: 13, flex: 1 }}>
+                    <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
                       {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
                         ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
-                        : (att.name || att.uri?.split('/').pop())}
+                        : att.name || att.uri?.split('/').pop()}
                     </Text>
-
                     {/* Delete Button */}
                     <TouchableOpacity
                       onPress={() => {
-                        setAttachments(prev => prev.filter((_, i) => i !== idx));
+                        setAttachments((prev) => prev.filter((_, i) => i !== idx));
                       }}
-                      style={{ marginLeft: 8 }}
-                    >
+                      style={{ marginLeft: 8 }}>
                       <MaterialCommunityIcons name="close-circle" size={22} color="#E53935" />
                     </TouchableOpacity>
                   </View>
@@ -402,6 +449,22 @@ export default function TaskForm({
           <Text style={styles.drawerBtnText}>Add Task</Text>
         </LinearGradient>
       </TouchableOpacity>
+
+      {/* File Preview Modal */}
+      <FilePreviewModal
+        visible={showPreviewModal}
+        onClose={() => setShowPreviewModal(false)}
+        attachments={attachments}
+        onRemoveFile={(index) => {
+          const newAttachments = attachments.filter((_, i) => i !== index);
+          setAttachments(newAttachments);
+          onChange('attachments', newAttachments);
+        }}
+        theme={theme}
+        getFileType={getFileType}
+        getFileIcon={getFileIcon}
+        getFormattedSize={getFormattedSize}
+      />
     </>
   );
 }
