@@ -16,9 +16,10 @@ import { useTheme } from '../theme/ThemeContext';
 import { getIssuesByProjectId, fetchCreatedByMeIssues, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { Platform } from 'react-native';
 import { getUserNameFromToken } from '../utils/auth';
+import { useTranslation } from 'react-i18next';
 export default function ProjectIssuesScreen({ navigation, route }) {
     const { projectId } = route.params || {};
-
+  const { t } = useTranslation();
     const theme = useTheme();
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');  // This covers "all", "critical", "resolved", "unresolved", "pending_approval"
@@ -188,7 +189,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
         <View style={{ flex: 1, backgroundColor: theme.background }}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                 <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
-                <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+                <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
             </TouchableOpacity>
 
             <LinearGradient
@@ -198,9 +199,9 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                 style={styles.banner}
             >
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.bannerTitle}>Issues</Text>
+                    <Text style={styles.bannerTitle}>{t('issues')}</Text>
                     <Text style={styles.bannerDesc}>
-                        View all issues raised under this project or created by you.
+                        {t('view_all_issues')}
                     </Text>
                 </View>
                 <TouchableOpacity
@@ -213,7 +214,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                         setShowProjectIssuePopup(true);
                     }}
                 >
-                    <Text style={styles.bannerActionText}>Issue</Text>
+                    <Text style={styles.bannerActionText}>{t('issue')}</Text>
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
                 </TouchableOpacity>
             </LinearGradient>
@@ -232,7 +233,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                             section === 'assigned' ? { color: '#fff' } : { color: theme.secondaryText },
                         ]}
                     >
-                        Issues by Project
+                        {t('issues_by_project')}
                     </Text>
                 </TouchableOpacity>
                 {/* If you want to re-enable created tab, uncomment below:

@@ -254,5 +254,8 @@
   "Change PIN": "पिन बदलें",
   "Update your login PIN for extra security.": "अतिरिक्त सुरक्षा के लिए अपना लॉगिन पिन अपडेट करें।",
   "Logout": "लॉगआउट",
-  "Sign out of your account and return to login.": "अपने खाते से साइन आउट करें और लॉगिन पर लौटें।"
+  "Sign out of your account and return to login.": "अपने खाते से साइन आउट करें और लॉगिन पर लौटें।",
+  "view_all_issues": "इस परियोजना के तहत उठाए गए सभी मुद्दों या आपके द्वारा बनाए गए मुद्दों को देखें।",
+  "issue": "मुद्दा",
+  "issues_by_project": "परियोजना द्वारा मुद्दे"
 }

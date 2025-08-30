@@ -254,5 +254,8 @@
   "Change PIN": "Change PIN",
   "Update your login PIN for extra security.": "Update your login PIN for extra security.",
   "Logout": "Logout",
-  "Sign out of your account and return to login.": "Sign out of your account and return to login."
+  "Sign out of your account and return to login.": "Sign out of your account and return to login.",
+  "view_all_issues": "View all issues raised under this project or created by you.",
+  "issue": "Issue",
+  "issues_by_project": "Issues by Project"
 }
