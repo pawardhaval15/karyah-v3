@@ -236,5 +236,11 @@
   "select_worklist": "कार्यसूची चुनें",
   "search_user": "उपयोगकर्ता खोजें",
   "no_tasks_available_for_dependencies": "निर्भरता के लिए कोई कार्य उपलब्ध नहीं है",
-  "critical_issues": "महत्वपूर्ण मुद्दे"
+  "critical_issues": "महत्वपूर्ण मुद्दे",
+  "notifications": "सूचनाएँ",
+  "connection_requests": "कनेक्शन अनुरोध",
+  "accept": "स्वीकृत करें",
+  "reject": "अस्वीकृत करें",
+  "no_notifications_yet": "अभी तक कोई सूचना नहीं है।",
+  "notifications_updates": "जब कुछ महत्वपूर्ण होता है तो आप यहां अपडेट देखेंगे।"
 }

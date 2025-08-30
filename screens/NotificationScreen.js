@@ -21,7 +21,7 @@ import {
   markAllNotificationsAsRead,
   markNotificationAsRead,
 } from '../utils/notifications';
-
+import { useTranslation } from 'react-i18next';
 const NotificationScreen = ({ navigation, route }) => {
   const { defaultTab } = route.params || {};
   const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'CRITICAL');
@@ -32,7 +32,7 @@ const NotificationScreen = ({ navigation, route }) => {
   const messageTimeout = useRef(null);
   const messageAnim = useRef(new Animated.Value(0)).current;
   const theme = useTheme();
-
+  const { t } = useTranslation();
   const screenWidth = Dimensions.get('window').width;
   const isTablet = screenWidth >= 768;
 
@@ -206,10 +206,10 @@ const NotificationScreen = ({ navigation, route }) => {
               fontSize: isTablet ? 20 : 18,
             },
           ]}>
-          Back
+          {t('back')}
         </Text>
       </TouchableOpacity>
-      
+
       <View
         style={[
           styles.headerRow,
@@ -226,7 +226,7 @@ const NotificationScreen = ({ navigation, route }) => {
               fontSize: isTablet ? 24 : 20,
             },
           ]}>
-          Notifications
+          {t('notifications')}
         </Text>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity onPress={onRefresh}>
@@ -354,16 +354,16 @@ const NotificationScreen = ({ navigation, route }) => {
                   marginBottom: isTablet ? 12 : 8,
                 },
               ]}>
-              Connection Requests
+              {t('connection_requests')}
             </Text>
             {pendingRequests.map((req) => {
               const initials = req.requester?.name
                 ? req.requester.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2)
+                  .split(' ')
+                  .map((n) => n[0])
+                  .join('')
+                  .toUpperCase()
+                  .slice(0, 2)
                 : 'U';
               return (
                 <View
@@ -465,7 +465,7 @@ const NotificationScreen = ({ navigation, route }) => {
                             fontWeight: '500',
                             fontSize: isTablet ? 16 : 14,
                           }}>
-                          Accept
+                          {t('accept')}
                         </Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -484,7 +484,7 @@ const NotificationScreen = ({ navigation, route }) => {
                             fontWeight: '500',
                             fontSize: isTablet ? 16 : 14,
                           }}>
-                          Reject
+                          {t('reject')}
                         </Text>
                       </TouchableOpacity>
                     </View>
@@ -497,9 +497,9 @@ const NotificationScreen = ({ navigation, route }) => {
         {/* <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Notifications</Text> */}
         {filteredNotifications.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>No notifications yet.</Text>
+            <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_notifications_yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.text }]}>
-              You’ll see updates here when something important happens.
+              {t('notifications_updates')}
             </Text>
           </View>
         ) : (

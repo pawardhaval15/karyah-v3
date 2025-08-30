@@ -236,5 +236,11 @@
   "select_worklist": "Select Worklist",
   "search_user": "Search Users...",
   "no_tasks_available_for_dependencies": "No tasks available for dependencies",
-  "critical_issues": "Critical Issues"
+  "critical_issues": "Critical Issues",
+  "notifications": "Notifications",
+  "connection_requests": "Connection Requests",
+  "accept": "Accept",
+  "reject": "Reject",
+  "no_notifications_yet": "No notifications yet.",
+  "notifications_updates": "You’ll see updates here when something important happens."
 }
