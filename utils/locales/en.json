@@ -242,5 +242,18 @@
   "accept": "Accept",
   "reject": "Reject",
   "no_notifications_yet": "No notifications yet.",
-  "notifications_updates": "You’ll see updates here when something important happens."
+  "notifications_updates": "You’ll see updates here when something important happens.",
+  "Private Account": "Private Account",
+    "Auto-accept connection requests.": "Auto-accept connection requests.",
+    "Hide profile from public search.": "Hide profile from public search.",
+    "Biometric": "Biometric",
+    "Unlock the app using fingerprint/face.": "Unlock the app using fingerprint/face.",
+    "Adds extra layer of security.": "Adds extra layer of security.",
+    "Display Notifications": "Display Notifications",
+    "Show notification popups.": "Show notification popups.",
+    "Enhanced notification experience.": "Enhanced notification experience.",
+    "Change PIN": "Change PIN",
+    "Update your login PIN for extra security.": "Update your login PIN for extra security.",
+    "Logout": "Logout",
+    "Sign out of your account and return to login.": "Sign out of your account and return to login."
 }

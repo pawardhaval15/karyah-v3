@@ -16,7 +16,7 @@ import ChangePinPopup from '../components/popups/ChangePinPopup';
 import { getCustomNotificationsEnabled, toggleCustomNotifications } from '../components/popups/CustomNotificationPopup';
 import { useTheme } from '../theme/ThemeContext';
 import { changePin as changePinApi, getIsPublic, updateIsPublic } from '../utils/auth';
-
+import { useTranslation } from 'react-i18next';
 export default function SettingsScreen({ navigation }) {
   const theme = useTheme();
   const [privateAccount, setPrivateAccount] = useState(true);
@@ -32,7 +32,7 @@ export default function SettingsScreen({ navigation }) {
   const [pinLoading, setPinLoading] = useState(false);
   const [pinError, setPinError] = useState('');
   const [pinSuccess, setPinSuccess] = useState('');
-
+  const { t } = useTranslation();
   // Fetch user public/private status and biometric setting on mount
   useEffect(() => {
     (async () => {
@@ -57,7 +57,7 @@ export default function SettingsScreen({ navigation }) {
       <View style={[styles.headerRow, { backgroundColor: theme.background }]}>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back-ios" size={18} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>Back</Text>
+          <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
         </TouchableOpacity>
         {/* <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
           <Feather name="more-vertical" size={20} color={theme.text} />
@@ -82,15 +82,15 @@ export default function SettingsScreen({ navigation }) {
 
       {/* Title */}
       <View style={[styles.titleRow]}>
-        <Text style={[styles.title, { color: theme.text }]}>Settings</Text>
+        <Text style={[styles.title, { color: theme.text }]}>{t('settings')}</Text>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingVertical: 10 }}>
         {/* Options */}
         {[
           {
-            label: "Private Account",
-            desc: "Auto-accept connection requests.\nHide profile from public search.",
+            label: t("Private Account"),
+            desc: t("Auto-accept connection requests.\nHide profile from non-connections."),
             value: privateAccount,
             icon: <Feather name="lock" size={20} color={theme.text} />,
             onChange: async (val) => {
@@ -113,8 +113,8 @@ export default function SettingsScreen({ navigation }) {
             showToggle: true,
           },
           {
-            label: "Biometric",
-            desc: "Unlock the app using fingerprint/face.\nAdds extra layer of security.",
+            label: t("Biometric"),
+            desc: t("Unlock the app using fingerprint/face.\nAdds extra layer of security."),
             value: biometricEnabled,
             icon: <Feather name="shield" size={20} color={theme.text} />,
             onChange: async (val) => {
@@ -146,8 +146,8 @@ export default function SettingsScreen({ navigation }) {
             showToggle: true,
           },
           {
-            label: "Display Notifications",
-            desc: "Show notification popups.\nEnhanced notification experience.",
+            label: t("Display Notifications"),
+            desc: t("Show notification popups.\n Enhanced notification experience."),
             value: customNotificationsEnabled,
             icon: <Feather name="bell" size={20} color={theme.text} />,
             onChange: async (val) => {
@@ -227,8 +227,10 @@ export default function SettingsScreen({ navigation }) {
           </View>
           {/* Text in middle */}
           <View style={{ flex: 1 }}>
-            <Text style={[styles.optionText, { color: theme.text }]}>Change PIN</Text>
-            <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>Update your login PIN for extra security.</Text>
+            <Text style={[styles.optionText, { color: theme.text }]}>{t("Change PIN")}</Text>
+            <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>
+              {t("Update your login PIN for extra security.")}
+            </Text>
           </View>
           {/* Empty at right for alignment */}
           <View style={{ width: 40 }} />
@@ -236,67 +238,67 @@ export default function SettingsScreen({ navigation }) {
 
         {/* Logout Option - styled like other options */}
         <TouchableOpacity
-  style={[styles.optionRow, { borderBottomColor: theme.border }]}
-  onPress={async () => {
-    try {
-      const userToken = await AsyncStorage.getItem('token');
-      const fcmToken = await AsyncStorage.getItem(`fcm_token_${Platform.OS}`);
+          style={[styles.optionRow, { borderBottomColor: theme.border }]}
+          onPress={async () => {
+            try {
+              const userToken = await AsyncStorage.getItem('token');
+              const fcmToken = await AsyncStorage.getItem(`fcm_token_${Platform.OS}`);
 
-      // 🔁 Unregister FCM token from backend
-      if (userToken && fcmToken) {
-        await fetch('https://api.karyah.in/api/devices/deviceToken', {
-          method: 'DELETE', // or 'POST' depending on your API
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${userToken}`,
-          },
-          body: JSON.stringify({
-            deviceToken: fcmToken,
-            platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
-            tokenType: 'FCM',
-          }),
-        });
-      }
+              // 🔁 Unregister FCM token from backend
+              if (userToken && fcmToken) {
+                await fetch('https://api.karyah.in/api/devices/deviceToken', {
+                  method: 'DELETE', // or 'POST' depending on your API
+                  headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${userToken}`,
+                  },
+                  body: JSON.stringify({
+                    deviceToken: fcmToken,
+                    platform: Platform.OS === 'ios' ? 'iOS' : 'Android',
+                    tokenType: 'FCM',
+                  }),
+                });
+              }
 
-      // 🧹 Remove tokens from storage
-      await AsyncStorage.removeItem(`fcm_token_${Platform.OS}`);
-      await AsyncStorage.removeItem('token');
+              // 🧹 Remove tokens from storage
+              await AsyncStorage.removeItem(`fcm_token_${Platform.OS}`);
+              await AsyncStorage.removeItem('token');
 
-      // 🔄 Navigate to login screen
-      navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
+              // 🔄 Navigate to login screen
+              navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
 
-    } catch (err) {
-      console.error('Logout failed:', err);
-      alert('Logout failed');
-    }
-  }}
->
-  {/* Icon in a box */}
-  <View style={{
-    width: 36,
-    height: 36,
-    backgroundColor: theme.card,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
-    borderWidth: 1,
-    borderColor: theme.border
-  }}>
-    <Feather name="log-out" size={20} color={theme.text} />
-  </View>
+            } catch (err) {
+              console.error('Logout failed:', err);
+              alert('Logout failed');
+            }
+          }}
+        >
+          {/* Icon in a box */}
+          <View style={{
+            width: 36,
+            height: 36,
+            backgroundColor: theme.card,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginRight: 16,
+            borderWidth: 1,
+            borderColor: theme.border
+          }}>
+            <Feather name="log-out" size={20} color={theme.text} />
+          </View>
 
-  {/* Text in middle */}
-  <View style={{ flex: 1 }}>
-    <Text style={[styles.optionText, { color: theme.text }]}>Logout</Text>
-    <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>
-      Sign out of your account and return to login.
-    </Text>
-  </View>
+          {/* Text in middle */}
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.optionText, { color: theme.text }]}>{t("Logout")}</Text>
+            <Text style={[styles.optionDesc, { color: theme.secondaryText }]}>
+              {t("Sign out of your account and return to login.")}
+            </Text>
+          </View>
 
-  {/* Empty at right for alignment */}
-  <View style={{ width: 40 }} />
-</TouchableOpacity>
+          {/* Empty at right for alignment */}
+          <View style={{ width: 40 }} />
+        </TouchableOpacity>
 
       </ScrollView>
       <ChangePinPopup
