@@ -309,7 +309,7 @@ export default function IssueList({
               <View style={styles.issueRow}>
                 <Feather name="map-pin" size={14} color={theme.secondaryText} />
                 <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                  {item.projectLocation || item.project?.location || t('no_location')}
+                  {item.projectLocation || item.project?.location || 'No Location'}
                 </Text>
               </View>
               <View style={styles.chevronBox}>

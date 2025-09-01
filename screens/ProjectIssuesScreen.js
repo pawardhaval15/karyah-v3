@@ -75,6 +75,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
                 setCreatedIssues(created || []);
                 setProjects(projects || []);
                 setUsers(connections || []);
+                console.log("Fetched issues for project:", projectId, projectIssues);
             } catch (e) {
                 console.error("Error fetching issues:", e);
                 setIssuesByProjectId([]);

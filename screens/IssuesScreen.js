@@ -291,7 +291,7 @@ export default function IssuesScreen({ navigation }) {
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
                 <TextInput
                     style={[styles.searchInput, { color: theme.text }]}
-                    placeholder="Search your issues"
+                    placeholder={t("search_placeholder_issues")}
                     placeholderTextColor={theme.secondaryText}
                     value={search}
                     onChangeText={setSearch}
