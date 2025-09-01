@@ -280,5 +280,6 @@
     "task_deleted_successfully": "Task deleted successfully.",
     "delete_failed": "Delete Failed",
     "could_not_delete_task": "Could not delete task.",
-    "ok": "OK"
+    "ok": "OK",
+    "remove_connection": "Remove Connection"
 }

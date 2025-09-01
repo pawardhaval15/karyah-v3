@@ -281,5 +281,6 @@
     "task_deleted_successfully": "कार्य सफलतापूर्वक हटाया गया।",
     "delete_failed": "हटाना विफल",
     "could_not_delete_task": "कार्य को हटाया नहीं जा सका।",
-    "ok": "ठीक है"
+    "ok": "ठीक है",
+    "remove_connection": "कनेक्शन हटाएं"
 }

@@ -14,7 +14,7 @@ import {
   View,
 } from 'react-native';
 import { getUserConnections, removeConnection } from '../utils/connections';
-
+import { useTranslation } from 'react-i18next';
 export default function ConnectionDetailsModal({ connection, onClose, onRemove, theme }) {
   const [bio, setBio] = useState('');
   const [dob, setDob] = useState('');
@@ -22,7 +22,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
   const [location, setLocation] = useState('');
   const [loadingDetails, setLoadingDetails] = useState(true);
   const [menuVisible, setMenuVisible] = useState(false);
-
+  const { t } = useTranslation();
   useEffect(() => {
     const fetchDetails = async () => {
       try {
@@ -84,7 +84,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                 <View style={modalStyles.headerRow}>
                   <TouchableOpacity style={modalStyles.backBtn} onPress={onClose}>
                     <MaterialIcons name="arrow-back-ios" size={18} color={theme.text} />
-                    <Text style={[modalStyles.backText, { color: theme.text }]}>Back</Text>
+                    <Text style={[modalStyles.backText, { color: theme.text }]}>{t('back')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
                     <Feather name="more-vertical" size={24} color={theme.text} />
@@ -101,7 +101,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                         style={{ marginRight: 8 }}
                       />
                       <Text style={[modalStyles.menuItemText, { color: theme.dangerText }]}>
-                        Remove Connection
+                        {t('remove_connection')}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -124,7 +124,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
 
                     <View style={[modalStyles.card, { backgroundColor: theme.card }]}>
                       <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                        Bio
+                        {t('bio')}
                       </Text>
                       <TextInput
                         style={[
@@ -145,7 +145,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                       <View style={modalStyles.row}>
                         <View style={{ flex: 1, marginRight: 8 }}>
                           <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                            Date of Birth
+                            {t('date_of_birth')}
                           </Text>
                           <TextInput
                             style={[
@@ -164,7 +164,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                         </View>
                         <View style={{ flex: 1 }}>
                           <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                            Phone
+                            {t('phone')}
                           </Text>
                           <TextInput
                             style={[
@@ -184,7 +184,7 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                       </View>
 
                       <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                        Location
+                        {t('location')}
                       </Text>
                       <View style={modalStyles.locationRow}>
                         <Feather
