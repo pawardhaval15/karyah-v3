@@ -4,7 +4,7 @@ import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View, Scr
 import { forgotPin, resetPin } from '../../utils/auth';
 import GradientButton from '../Login/GradientButton';
 import FieldBox from '../task details/FieldBox';
-
+import { useTranslation } from 'react-i18next';
 export default function ChangePinPopup({
     visible,
     onClose,
@@ -26,7 +26,7 @@ export default function ChangePinPopup({
     const [forgotLoading, setForgotLoading] = useState(false);
     const [forgotError, setForgotError] = useState('');
     const [forgotSuccess, setForgotSuccess] = useState('');
-
+    const { t } = useTranslation();
     const [changingMsg, setChangingMsg] = useState('');
     const handleSubmit = () => {
         if (!currentPin || !newPin || !confirmNewPin) return;
@@ -140,7 +140,7 @@ export default function ChangePinPopup({
                     >
                         <View style={styles.header}>
                             <Text style={[styles.headerTitle, { color: theme.text }]}>
-                                {forgotMode ? (forgotStep === 1 ? 'Forgot PIN' : 'Reset PIN') : 'Change PIN'}
+                                {forgotMode ? (forgotStep === 1 ? t('forgot_pin') : t('reset_pin')) : t('change_pin')}
                             </Text>
                             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                                 <Feather name="x" size={22} color={theme.text} />
@@ -149,10 +149,10 @@ export default function ChangePinPopup({
                         {!forgotMode ? (
                             <>
                                 <FieldBox
-                                    label="Current PIN"
+                                    label={t("current_pin")}
                                     value={currentPin}
                                     onChangeText={setCurrentPin}
-                                    placeholder="Enter your current PIN"
+                                    placeholder={t("enter_current_pin")}
                                     editable
                                     theme={theme}
                                     inputStyle={{ letterSpacing: 0 }}
@@ -164,10 +164,10 @@ export default function ChangePinPopup({
                                     maxLength={6}
                                 />
                                 <FieldBox
-                                    label="New PIN"
+                                    label={t("new_pin")}
                                     value={newPin}
                                     onChangeText={setNewPin}
-                                    placeholder="Enter new PIN"
+                                    placeholder={t("enter_new_pin")}
                                     editable
                                     theme={theme}
                                     inputStyle={{ letterSpacing: 0 }}
@@ -179,10 +179,10 @@ export default function ChangePinPopup({
                                     maxLength={6}
                                 />
                                 <FieldBox
-                                    label="Confirm New PIN"
+                                    label={t("confirm_new_pin")}
                                     value={confirmNewPin}
                                     onChangeText={setConfirmNewPin}
-                                    placeholder="Re-enter new PIN"
+                                    placeholder={t("re_enter_new_pin")}
                                     editable
                                     theme={theme}
                                     inputStyle={{ letterSpacing: 0 }}
@@ -196,11 +196,11 @@ export default function ChangePinPopup({
                                 {/* PIN Mismatch Warning */}
                                 {newPin && confirmNewPin && newPin !== confirmNewPin && (
                                     <Text style={[styles.errorText, { color: theme.error || '#E53935', marginBottom: 10 }]}>
-                                        PINs do not match
+                                        {t('pins_do_not_match')}
                                     </Text>
                                 )}
                                 <GradientButton
-                                    title={loading ? (changingMsg || '') : 'Change PIN'}
+                                    title={loading ? (changingMsg || '') : t('change_pin')}
                                     onPress={handleSubmit}
                                     disabled={loading || !currentPin || !newPin || !confirmNewPin || (newPin !== confirmNewPin)}
                                     style={{ marginTop: 10 }}
@@ -210,10 +210,10 @@ export default function ChangePinPopup({
                                     ) : null}
                                 </GradientButton>
                                 <TouchableOpacity style={{ alignSelf: 'center', marginTop: 4 }} onPress={() => setForgotMode(true)}>
-                                    <Text style={{ color: theme.primary, fontWeight: '500' }}>Forgot PIN?</Text>
+                                    <Text style={{ color: theme.primary, fontWeight: '500' }}>{t('forgot_pin')}</Text>
                                 </TouchableOpacity>
                                 <TouchableOpacity style={{ alignSelf: 'center', marginTop: 10 }} onPress={onClose}>
-                                    <Text style={{ color: theme.secondaryText, fontWeight: '500' }}>Cancel</Text>
+                                    <Text style={{ color: theme.secondaryText, fontWeight: '500' }}>{t('cancel')}</Text>
                                 </TouchableOpacity>
                             </>
                         ) : (
@@ -223,7 +223,7 @@ export default function ChangePinPopup({
                                         <FieldBox
                                             value={email}
                                             onChangeText={setEmail}
-                                            placeholder="Enter your email"
+                                            placeholder={t("enter_your_email")}
                                             editable
                                             theme={theme}
                                             inputStyle={{ letterSpacing: 0 }}
@@ -232,7 +232,7 @@ export default function ChangePinPopup({
                                             multiline={false}
                                         />
                                         <GradientButton
-                                            title={forgotLoading ? 'Sending...' : 'Send OTP'}
+                                            title={forgotLoading ? t("sending") : t("send_otp")}
                                             onPress={handleForgotPin}
                                             disabled={forgotLoading || !email}
                                             style={{ marginTop: 10 }}
@@ -244,10 +244,10 @@ export default function ChangePinPopup({
                                 {forgotStep === 2 && (
                                     <>
                                         <FieldBox
-                                            label="OTP"
+                                            label={t("otp")}
                                             value={otp}
                                             onChangeText={setOtp}
-                                            placeholder="Enter OTP from email"
+                                            placeholder={t("enter_otp_from_email")}
                                             editable
                                             theme={theme}
                                             inputStyle={{ letterSpacing: 0 }}
@@ -256,10 +256,10 @@ export default function ChangePinPopup({
                                             multiline={false}
                                         />
                                         <FieldBox
-                                            label="New PIN"
+                                            label={t("new_pin")}
                                             value={resetPinVal}
                                             onChangeText={setResetPinVal}
-                                            placeholder="Enter new PIN"
+                                            placeholder={t("enter_new_pin")}
                                             editable
                                             theme={theme}
                                             inputStyle={{ letterSpacing: 0 }}
@@ -271,10 +271,10 @@ export default function ChangePinPopup({
                                             maxLength={6}
                                         />
                                         <FieldBox
-                                            label="Confirm New PIN"
+                                            label={t("confirm_new_pin")}
                                             value={confirmResetPin}
                                             onChangeText={setConfirmResetPin}
-                                            placeholder="Re-enter new PIN"
+                                            placeholder={t("re_enter_new_pin")}
                                             editable
                                             theme={theme}
                                             inputStyle={{ letterSpacing: 0 }}
@@ -288,7 +288,7 @@ export default function ChangePinPopup({
                                         {/* PIN Mismatch Warning for Reset */}
                                         {resetPinVal && confirmResetPin && resetPinVal !== confirmResetPin && (
                                             <Text style={[styles.errorText, { color: theme.error || '#E53935', marginBottom: 10 }]}>
-                                                PINs do not match
+                                                {t("pins_do_not_match")}
                                             </Text>
                                         )}
                                         {/* Error/Success Messages */}
@@ -322,7 +322,7 @@ export default function ChangePinPopup({
                                     setForgotError('');
                                     setForgotSuccess('');
                                 }}>
-                                    <Text style={{ color: theme.secondaryText, fontWeight: '500' }}>Back to Change PIN</Text>
+                                    <Text style={{ color: theme.secondaryText, fontWeight: '500' }}>{t("back_to_change_pin")}</Text>
                                 </TouchableOpacity>
                             </>
                         )}
