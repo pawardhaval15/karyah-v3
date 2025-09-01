@@ -16,7 +16,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getSearchHistory, saveSearchHistory } from '../../utils/searchHistory';
 import { getQuickSearchSuggestions, performSmartSearch } from '../../utils/smartSearch';
-
+import { useTranslation } from 'react-i18next';
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 const SmartSearchBar = ({ navigation, theme, onClose }) => {
@@ -29,7 +29,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
   const [searchHistory, setSearchHistory] = useState([]);
   const searchInputRef = useRef(null);
   const searchTimeoutRef = useRef(null);
-
+  const { t } = useTranslation();
   useEffect(() => {
     // Show quick suggestions when component mounts
     setSuggestions(getQuickSearchSuggestions());
@@ -357,7 +357,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
               <TextInput
                 ref={searchInputRef}
                 style={[styles.searchInput, { color: theme.text }]}
-                placeholder="Search projects, tasks, users..."
+                placeholder={t('placeholder')}
                 placeholderTextColor={theme.secondaryText}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -377,7 +377,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
           {isSearching && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={theme.primary || '#366CD9'} />
-              <Text style={[styles.loadingText, { color: theme.secondaryText }]}>Searching...</Text>
+              <Text style={[styles.loadingText, { color: theme.secondaryText }]}>{i18n.t('searching')}</Text>
             </View>
           )}
 
@@ -402,12 +402,10 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
               const itemTitle = item?.title || item?.name || 'untitled';
               const timestamp = Date.now();
               const randomId = Math.random().toString(36).substr(2, 9);
-              
               // Handle different scenarios to ensure uniqueness
               if (itemId) {
                 return `${itemType}-${itemId}-${index}`;
               }
-              
               // For items without ID, create a unique key
               const sanitizedTitle = itemTitle.toString().replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
               return `${itemType}-${index}-${sanitizedTitle}-${timestamp}-${randomId}`;
@@ -421,8 +419,8 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
                     {showResults
                       ? `${searchResults.length} result${searchResults.length !== 1 ? 's' : ''} for "${searchQuery}"`
                       : combinedSuggestions.length > suggestions.length
-                        ? 'QUICK ACTIONS & RECENT SEARCHES'
-                        : 'QUICK ACTIONS'}
+                        ? t('quick_actions_recent')
+                        : t('quick_actions')}
                   </Text>
                 </View>
               ) : null
@@ -436,9 +434,9 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
                     color={theme.secondaryText}
                     style={styles.emptyIcon}
                   />
-                  <Text style={[styles.emptyTitle, { color: theme.text }]}>No results found</Text>
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>{i18n.t('no_results')}</Text>
                   <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
-                    Try searching for projects, tasks, or users
+                    {i18n.t('try_searching')}
                   </Text>
                 </View>
               ) : null

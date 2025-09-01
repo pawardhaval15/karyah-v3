@@ -25,6 +25,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useTheme } from '../../theme/ThemeContext';
 import useAttachmentPicker from './useAttachmentPicker';
 import useAudioRecorder from './useAudioRecorder';
+import { useTranslation } from 'react-i18next';
 export default function ProjectIssuePopup({
     visible,
     onClose,
@@ -38,7 +39,7 @@ export default function ProjectIssuePopup({
 
 }) {
     const theme = useTheme();
-
+  const { t } = useTranslation();
     const [showProjectPicker, setShowProjectPicker] = useState(false);
     const [showUserPicker, setShowUserPicker] = useState(false);
     const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
@@ -149,7 +150,7 @@ export default function ProjectIssuePopup({
             <View style={styles.overlay}>
                 <View style={[styles.popup, { backgroundColor: theme.card }]}>
                     <View style={styles.header}>
-                        <Text style={[styles.headerTitle, { color: theme.text }]}>Raise An Issue</Text>
+                        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('title')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                             <Ionicons name="close" size={24} color={theme.text} />
                         </TouchableOpacity>
@@ -159,7 +160,7 @@ export default function ProjectIssuePopup({
                         <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TextInput
                                 style={[styles.input, { color: theme.text }]}
-                                placeholder="Issue Title"
+                                placeholder={t('issueTitlePlaceholder')}
                                 placeholderTextColor={theme.secondaryText}
                                 value={values.title}
                                 onChangeText={t => onChange('title', t)}
@@ -180,8 +181,8 @@ export default function ProjectIssuePopup({
                                     fontSize: 16,
                                 }}>
                                     {values.projectId
-                                        ? (projects.find(p => String(p.id) === String(values.projectId))?.projectName || 'Select Project')
-                                        : 'Select Project'}
+                                        ? (projects.find(p => String(p.id) === String(values.projectId))?.projectName || t('selectProject'))
+                                        : t('selectProject')}
                                 </Text>
                             </TouchableOpacity>
 
@@ -203,7 +204,7 @@ export default function ProjectIssuePopup({
                         <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TextInput
                                 style={[styles.input, { color: theme.text, height: 70 }]}
-                                placeholder="Description"
+                                placeholder={t("description")}
                                 placeholderTextColor={theme.secondaryText}
                                 value={values.description}
                                 onChangeText={t => onChange('description', t)}
@@ -215,7 +216,7 @@ export default function ProjectIssuePopup({
                         <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <TextInput
                                 style={[styles.input, { color: theme.text }]}
-                                placeholder="Add Attachments"
+                                placeholder={t("addAttachments")}
                                 placeholderTextColor={theme.secondaryText}
                                 editable={false}
                             />
@@ -329,8 +330,8 @@ export default function ProjectIssuePopup({
                                     fontWeight: '400'
                                 }}>
                                     {values.assignTo
-                                        ? (users.find(u => u.userId === values.assignTo)?.name || 'Assign To')
-                                        : 'Assign To'}
+                                        ? (users.find(u => u.userId === values.assignTo)?.name || t('assignTo'))
+                                        : t('assignTo')}
                                 </Text>
                             </TouchableOpacity>
                         </View>
@@ -344,7 +345,7 @@ export default function ProjectIssuePopup({
                             selectedValue={values.assignTo}
                             onSelect={v => onChange('assignTo', v)}
                             theme={theme}
-                            placeholder="Search user..."
+                            placeholder={t("search_user")}
                             showImage={true}
                         />
 
@@ -355,7 +356,7 @@ export default function ProjectIssuePopup({
                                 activeOpacity={0.8}
                             >
                                 <Text style={[styles.input, { color: values.dueDate ? theme.text : theme.secondaryText }]}>
-                                    {values.dueDate || 'Due Date'}
+                                    {values.dueDate || t('dueDate')}
                                 </Text>
                                 <Feather name="calendar" size={20} color={theme.secondaryText} />
                             </TouchableOpacity>
@@ -421,9 +422,9 @@ export default function ProjectIssuePopup({
                                 <Ionicons name="alert-circle" size={26} color="#B91C1C" />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={styles.criticalLabel}>Critical Issue?</Text>
+                                <Text style={styles.criticalLabel}>{t('criticalIssueLabel')}</Text>
                                 <Text style={styles.criticalDesc}>
-                                    Turn on the toggle only if the Issue needs immediate attention.
+                                    {t('criticalIssueDesc')}
                                 </Text>
                             </View>
                             <Switch
@@ -435,11 +436,11 @@ export default function ProjectIssuePopup({
                         </View>
 
                         <View style={{ marginHorizontal: 16, marginTop: 0 }}>
-                            <GradientButton title="Yes, Raise" onPress={handleSubmit} />
+                            <GradientButton title={t("yesRaise")} onPress={handleSubmit} />
                         </View>
 
                         <TouchableOpacity style={{ alignSelf: 'center', marginTop: 0 }} onPress={onClose}>
-                            <Text style={{ color: theme.secondaryText, fontWeight: '500' }}>No, Cancel?</Text>
+                            <Text style={{ color: theme.secondaryText, fontWeight: '500' }}>{t("noCancel")}</Text>
                         </TouchableOpacity>
                     </ScrollView>
                 </View>

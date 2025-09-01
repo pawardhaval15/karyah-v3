@@ -13,11 +13,11 @@ import {
 import FabButton from './FabButton';
 import FabPopup from './FabPopup';
 import TaskDrawerForm from './TaskDrawerForm';
-
+import { useTranslation } from 'react-i18next';
 export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme }) {
   const [open, setOpen] = useState(false);
   const [drawerType, setDrawerType] = useState(null);
-
+  const { t } = useTranslation();
   // Task form state
   const [taskForm, setTaskForm] = useState({
     taskName: '',
@@ -108,7 +108,7 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
               <View style={[styles.drawerSheet, { backgroundColor: theme.card }]}>
                 <View style={styles.drawerHeader}>
                   <Text style={[styles.drawerTitle, { color: theme.text }]}>
-                    {drawerType === 'task' ? 'Add Task Details' : 'Create New Project'}
+                    {drawerType === 'task' ? t('add_task_details') : t('create_new_project')}
                   </Text>
                   <TouchableOpacity
                     onPress={closeDrawer}

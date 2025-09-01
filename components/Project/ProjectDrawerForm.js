@@ -9,7 +9,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { searchConnections } from '../../utils/connections';
 import { createProject } from '../../utils/project';
 import DateBox from '../task details/DateBox';
-
+import { useTranslation } from 'react-i18next';
 export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimpleForm = false }) {
   const [showFullForm, setShowFullForm] = useState(hideSimpleForm);
   const [connections, setConnections] = useState([]);
@@ -22,7 +22,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   const theme = useTheme();
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
-
+  const { t } = useTranslation();
   const handleCreate = async () => {
     try {
       const payload = {
@@ -91,14 +91,14 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
             <View style={{ flex: 1, justifyContent: 'center' }}>
               <FieldBox
                 value={values?.projectName || ''}
-                placeholder="Project Name"
+                placeholder={t('project_name')}
                 theme={theme}
                 editable={true}
                 onChangeText={(t) => onChange && onChange('projectName', t)}
               />
               <FieldBox
                 value={values?.projectDesc || ''}
-                placeholder="Description"
+                placeholder={t('description')}
                 theme={theme}
                 editable={true}
                 multiline={true}
@@ -110,7 +110,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.drawerBtnGradient}>
-                  <Text style={styles.drawerBtnText}>Create Project</Text>
+                  <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
               <Text style={[styles.drawerHint, { color: theme.secondaryText }]}>
@@ -134,20 +134,20 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
         >
           <FieldBox
             value={values?.projectName || ''}
-            placeholder="Project Name"
+            placeholder={t('project_name')}
             theme={theme}
             editable={true}
             onChangeText={(t) => onChange('projectName', t)}
           />
           <View style={styles.dateRow}>
             <DateBox
-              label="Start Date"
+              label={t('start_date')}
               value={values?.startDate || ''}
               onChange={(date) => onChange('startDate', date?.toISOString?.() || '')}
               theme={theme}
             />
             <DateBox
-              label="End Date"
+              label={t('end_date')}
               value={values?.endDate || ''}
               onChange={(date) => onChange('endDate', date?.toISOString?.() || '')}
               theme={theme}
@@ -155,14 +155,14 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
           </View>
           <FieldBox
             value={values?.projectCategory || ''}
-            placeholder="Project Category"
+            placeholder={t('project_category')}
             theme={theme}
             editable={true}
             onChangeText={(t) => onChange('projectCategory', t)}
           />
           <FieldBox
             value={values?.location || ''}
-            placeholder="Project Location"
+            placeholder={t('location')}
             theme={theme}
             editable={true}
             onChangeText={(t) => onChange('location', t)}
@@ -182,13 +182,13 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
             <Text style={{ color: theme.text, flex: 1 }}>
               {selectedCoAdmins.length > 0
                 ? `${selectedCoAdmins.length} Co-Admin(s) selected`
-                : 'Select Co-Admins'}
+                : t('select_co_admins')}
             </Text>
             <Feather name="chevron-right" size={20} color={theme.secondaryText} />
           </TouchableOpacity>
           <FieldBox
             value={values?.projectDesc || ''}
-            placeholder="Description"
+            placeholder={t('description')}
             theme={theme}
             editable={true}
             multiline={true}
@@ -200,7 +200,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.drawerBtnGradient}>
-              <Text style={styles.drawerBtnText}>Create Project</Text>
+              <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
@@ -217,7 +217,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={[styles.fullSheet, { backgroundColor: theme.card }]}>
               <View style={styles.drawerHeader}>
-                <Text style={[styles.drawerTitle, { color: theme.text }]}>Create New Project</Text>
+                <Text style={[styles.drawerTitle, { color: theme.text }]}>{t('create_new_project')}</Text>
                 <TouchableOpacity
                   onPress={() => setShowFullForm(false)}
                   style={[styles.closeBtn, { backgroundColor: theme.secCard }]}>
@@ -232,20 +232,20 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                   <>
                     <FieldBox
                       value={values?.projectName || ''}
-                      placeholder="Project Name"
+                      placeholder={t('project_name')}
                       theme={theme}
                       editable={true}
                       onChangeText={(t) => onChange('projectName', t)}
                     />
                     <View style={styles.dateRow}>
                       <DateBox
-                        label="Start Date"
+                        label={t('start_date')}
                         value={values?.startDate || ''}
                         onChange={(date) => onChange('startDate', date?.toISOString?.() || '')}
                         theme={theme}
                       />
                       <DateBox
-                        label="End Date"
+                        label={t('end_date')}
                         value={values?.endDate || ''}
                         onChange={(date) => onChange('endDate', date?.toISOString?.() || '')}
                         theme={theme}
@@ -253,14 +253,14 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                     </View>
                     <FieldBox
                       value={values?.projectCategory || ''}
-                      placeholder="Project Category"
+                      placeholder={t('project_category')}
                       theme={theme}
                       editable={true}
                       onChangeText={(t) => onChange('projectCategory', t)}
                     />
                     <FieldBox
                       value={values?.location || ''}
-                      placeholder="Project Location"
+                      placeholder={t('location')}
                       theme={theme}
                       editable={true}
                       onChangeText={(t) => onChange('location', t)}
@@ -292,10 +292,10 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               fontSize: 16,
                               marginBottom: 12,
                             }}>
-                            Select Co-Admins
+                            {t('select_co_admins')}
                           </Text>
                           <TextInput
-                            placeholder="Search Connections"
+                            placeholder={t('search_connections')}
                             placeholderTextColor={theme.secondaryText}
                             value={searchText}
                             onChangeText={async (text) => {
@@ -364,7 +364,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                                   </Text>
                                   {item.phone && (
                                     <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                                      Phone: {item.phone}
+                                      {t('phone')}: {item.phone}
                                     </Text>
                                   )}
                                 </View>
@@ -397,7 +397,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                             }}
                             onPress={() => setShowCoAdminPicker(false)}>
                             <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                              Done
+                              {t('done')}
                             </Text>
                           </TouchableOpacity>
                         </View>
@@ -418,13 +418,13 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                       <Text style={{ color: theme.text, flex: 1 }}>
                         {selectedCoAdmins.length > 0
                           ? `${selectedCoAdmins.length} Co-Admin(s) selected`
-                          : 'Select Co-Admins'}
+                          : t('select_co_admins')}
                       </Text>
                       <Feather name="chevron-right" size={20} color={theme.secondaryText} />
                     </TouchableOpacity>
                     <FieldBox
                       value={values?.projectDesc || ''}
-                      placeholder="Description"
+                      placeholder={t('description')}
                       theme={theme}
                       editable={true}
                       multiline={true}
@@ -436,7 +436,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.drawerBtnGradient}>
-                        <Text style={styles.drawerBtnText}>Create Project</Text>
+                        <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
                   </>
@@ -474,10 +474,10 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 fontSize: 16,
                 marginBottom: 12,
               }}>
-              Select Co-Admins
+              {t('select_co_admins')}
             </Text>
             <TextInput
-              placeholder="Search Connections"
+              placeholder={t('search_connections')}
               placeholderTextColor={theme.secondaryText}
               value={searchText}
               onChangeText={async (text) => {
@@ -546,7 +546,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                     </Text>
                     {item.phone && (
                       <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                        Phone: {item.phone}
+                        {t('phone')}: {item.phone}
                       </Text>
                     )}
                   </View>
@@ -579,7 +579,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               }}
               onPress={() => setShowCoAdminPicker(false)}>
               <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                Done
+                {t('done')}
               </Text>
             </TouchableOpacity>
           </View>

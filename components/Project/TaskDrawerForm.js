@@ -17,7 +17,7 @@ import FilePreviewModal from '../popups/FilePreviewModal';
 import ProjectPopup from '../popups/ProjectPopup';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
-
+import { useTranslation } from 'react-i18next';
 export default function TaskDrawerForm({
   values,
   onChange,
@@ -55,7 +55,7 @@ export default function TaskDrawerForm({
     startDate: '',
     endDate: '',
   });
-
+  const { t } = useTranslation();
   const handleAddProjectChange = (key, value) => {
     setAddProjectValues((prev) => ({ ...prev, [key]: value }));
   };
@@ -217,7 +217,7 @@ export default function TaskDrawerForm({
       {/* Task Name */}
       <FieldBox
         value={values.taskName}
-        placeholder="Task Name"
+        placeholder={t("task_name")}
         theme={theme}
         editable={true}
         onChangeText={(t) => onChange('taskName', t)}
@@ -229,11 +229,11 @@ export default function TaskDrawerForm({
                 const proj = projectsWithAddNew.find(
                   (p) => String(p.id) === String(values.projectId)
                 );
-                return proj && proj.projectName ? proj.projectName : 'Select Project';
+                return proj && proj.projectName ? proj.projectName : t('selectProject');
               })()
-            : 'Select Project'
+            : t('selectProject')
         }
-        placeholder="Select Project"
+        placeholder={t('selectProject')}
         theme={theme}
         editable={false}
         onPress={() => setShowProjectPicker(true)}
@@ -258,7 +258,7 @@ export default function TaskDrawerForm({
           }
         }}
         theme={theme}
-        placeholder="Search project..."
+        placeholder={t("search_project")}
         showImage={false}
       />
       <FieldBox
@@ -266,11 +266,11 @@ export default function TaskDrawerForm({
           values.taskWorklist
             ? (() => {
                 const wl = worklists.find((w) => String(w.id) === String(values.taskWorklist));
-                return wl && wl.name ? wl.name : 'Select Worklist';
+                return wl && wl.name ? wl.name : t('select_Worklist');
               })()
             : ''
         }
-        placeholder="Select Worklist"
+        placeholder={t('select_worklist')}
         theme={theme}
         editable={false}
         onPress={() => setShowWorklistPicker(true)}
@@ -295,7 +295,7 @@ export default function TaskDrawerForm({
           }
         }}
         theme={theme}
-        placeholder="Search worklist..."
+        placeholder={t("search_worklist")}
         showImage={false}
       />
       {/* Dependencies Multi-select - Now using projectTasks */}
@@ -305,7 +305,7 @@ export default function TaskDrawerForm({
             ? selectedDeps.map((t) => t.name || t.taskName || `Task ${t[taskValueKey]}`).join(', ')
             : ''
         }
-        placeholder="Select Dependencies"
+        placeholder={t("select_dependencies")}
         theme={theme}
         editable={false}
         onPress={() => setShowDepPicker(true)}
@@ -323,20 +323,20 @@ export default function TaskDrawerForm({
         onSelect={handleDepToggle}
         multiSelect={true}
         theme={theme}
-        placeholder="Search task..."
+        placeholder={t("search_task")}
         showImage={false}
       />
       {/* Dates */}
       <View style={styles.dateRow}>
         <DateBox
           theme={theme}
-          label="Start Date"
+          label={t("start_date")}
           value={values.startDate}
           onChange={(date) => onChange('startDate', date)}
         />
         <DateBox
           theme={theme}
-          label="End Date"
+          label={t("end_date")}
           value={values.endDate}
           onChange={(date) => onChange('endDate', date)}
         />
@@ -350,7 +350,7 @@ export default function TaskDrawerForm({
                 .join(', ')
             : ''
         }
-        placeholder="Assign To"
+        placeholder={t("assign_to")}
         theme={theme}
         editable={false}
         onPress={() => setShowUserPicker(true)}
@@ -376,13 +376,13 @@ export default function TaskDrawerForm({
         }}
         multiSelect={true}
         theme={theme}
-        placeholder="Search user..."
+        placeholder={t("search_user")}
         showImage={true}
       />
       {/* Attachment & Audio Recorder Input */}
       <FieldBox
         value=""
-        placeholder="Add Attachments"
+        placeholder={t("addAttachments")}
         theme={theme}
         editable={false}
         rightComponent={
@@ -407,7 +407,7 @@ export default function TaskDrawerForm({
                   fontWeight: '500',
                   marginLeft: 4 
                 }}>
-                  Preview ({attachments.length})
+                  {t('previewAttachments')} ({attachments.length})
                 </Text>
               </TouchableOpacity>
             )}
@@ -526,7 +526,7 @@ export default function TaskDrawerForm({
       {/* Description */}
       <FieldBox
         value={values.taskDesc}
-        placeholder="Description"
+        placeholder={t("description")}
         theme={theme}
         editable={true}
         multiline={true}
@@ -539,7 +539,7 @@ export default function TaskDrawerForm({
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.drawerBtnGradient}>
-          <Text style={styles.drawerBtnText}>Add Task</Text>
+          <Text style={styles.drawerBtnText}>{t('add_task')}</Text>
         </LinearGradient>
       </TouchableOpacity>
       <AddWorklistPopup

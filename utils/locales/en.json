@@ -257,5 +257,19 @@
   "Sign out of your account and return to login.": "Sign out of your account and return to login.",
   "view_all_issues": "View all issues raised under this project or created by you.",
   "issue": "Issue",
-  "issues_by_project": "Issues by Project"
+  "issues_by_project": "Issues by Project",
+  "create_new_project": "Create New Project",
+  "add_task_details": "Add Task Details",
+  "recent_search": "Recent Search",
+  "placeholder": "Search projects, tasks, users...",
+    "searching": "Searching...",
+    "no_results": "No results found",
+    "try_searching": "Try searching for projects, tasks, or users",
+    "quick_actions": "QUICK ACTIONS",
+    "quick_actions_recent": "QUICK ACTIONS & RECENT SEARCHES",
+    "recent_searches": "Recent Searches",
+    "search_history": "Search history",
+    "results_for": "{{count}} result{{count !== 1 ? 's' : ''}} for \"{{query}}\"",
+    "no_description": "No description",
+    "unknown_search": "Unknown search"
 }

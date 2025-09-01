@@ -257,5 +257,19 @@
   "Sign out of your account and return to login.": "अपने खाते से साइन आउट करें और लॉगिन पर लौटें।",
   "view_all_issues": "इस परियोजना के तहत उठाए गए सभी मुद्दों या आपके द्वारा बनाए गए मुद्दों को देखें।",
   "issue": "मुद्दा",
-  "issues_by_project": "परियोजना द्वारा मुद्दे"
+  "issues_by_project": "परियोजना द्वारा मुद्दे",
+  "create_new_project": "नई परियोजना बनाएं",
+  "add_task_details": "कार्य विवरण जोड़ें",
+  "recent_search": "हाल की खोज",
+  "placeholder": "प्रोजेक्ट, कार्य, उपयोगकर्ता खोजें...",
+    "searching": "खोज जारी है...",
+    "no_results": "कोई परिणाम नहीं मिला",
+    "try_searching": "प्रोजेक्ट, कार्य या उपयोगकर्ता खोजने का प्रयास करें",
+    "quick_actions": "त्वरित कार्य",
+    "quick_actions_recent": "त्वरित कार्य और हाल की खोजें",
+    "recent_searches": "हाल की खोजें",
+    "search_history": "खोज इतिहास",
+    "results_for": "{{count}} परिणाम \"{{query}}\" के लिए",
+    "no_description": "कोई विवरण नहीं",
+    "unknown_search": "अज्ञात खोज"
 }

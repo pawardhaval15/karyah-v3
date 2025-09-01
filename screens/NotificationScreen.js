@@ -36,7 +36,13 @@ const NotificationScreen = ({ navigation, route }) => {
   const screenWidth = Dimensions.get('window').width;
   const isTablet = screenWidth >= 768;
 
-  const tabs = ['Critical', 'Task', 'Connections', 'All'];
+  const tabs = [
+    t('critical'),
+    t('task'),
+    t('connections'),
+    t('all')
+  ];
+
 
   const loadNotifications = useCallback(async () => {
     try {
