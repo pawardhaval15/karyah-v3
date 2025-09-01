@@ -271,5 +271,15 @@
     "search_history": "खोज इतिहास",
     "results_for": "{{count}} परिणाम \"{{query}}\" के लिए",
     "no_description": "कोई विवरण नहीं",
-    "unknown_search": "अज्ञात खोज"
+    "unknown_search": "अज्ञात खोज",
+    "create_new_task": "नया कार्य: बनाएं",
+    "task_creator": "कार्य: निर्माता",
+    "assigned_users_details": "सोपे गए उपयोगकर्ताओं का विवरण",
+    "delete_task": "कार्य: हटाएं",
+    "delete_task_confirmation": "क्या आप वाकई इस कार्य को हटाना चाहते हैं?",
+    "deleted": "हटाया गया",
+    "task_deleted_successfully": "कार्य सफलतापूर्वक हटाया गया।",
+    "delete_failed": "हटाना विफल",
+    "could_not_delete_task": "कार्य को हटाया नहीं जा सका।",
+    "ok": "ठीक है"
 }

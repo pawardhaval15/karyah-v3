@@ -2,7 +2,7 @@ import React from 'react';
 import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AddSubTask from '../Task/AddSubTask';
-
+import { useTranslation } from 'react-i18next';
 export default function SubTaskPopup({
     visible,
     onClose,
@@ -18,7 +18,7 @@ export default function SubTaskPopup({
     users,
     worklists = [],
     parentTaskId,
-}) {
+}) {const { t } = useTranslation();
     return (
         <Modal
             visible={visible}
@@ -29,7 +29,7 @@ export default function SubTaskPopup({
             <View style={styles.overlay}>
                 <View style={[styles.popup, { backgroundColor: theme.card }]}>
                     <View style={styles.header}>
-                        <Text style={[styles.headerTitle, { color: theme.text }]}>Create New Task</Text>
+                        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('create_new_task')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                             <Ionicons name="close" size={24} color={theme.text} />
                         </TouchableOpacity>

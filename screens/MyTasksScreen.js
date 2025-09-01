@@ -576,7 +576,7 @@ export default function MyTasksScreen({ navigation }) {
               onPress={handleBulkAssign}
               disabled={selectedTasks.length === 0}>
               <MaterialIcons name="group-add" size={18} color="#fff" />
-              <Text style={[styles.bannerActionText, { marginLeft: 4 }]}>Assign</Text>
+              <Text style={[styles.bannerActionText, { marginLeft: 4 }]}>{t('assign')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bannerAction, { backgroundColor: 'rgba(255,255,255,0.1)' }]}

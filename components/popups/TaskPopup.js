@@ -4,7 +4,7 @@ import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import TaskForm from '../Task/TaskForm';
 import FilePreviewModal from './FilePreviewModal';
 import useAttachmentPicker from './useAttachmentPicker';
-
+import { useTranslation } from 'react-i18next';
 export default function TaskPopup({
   visible,
   onClose,
@@ -21,7 +21,7 @@ export default function TaskPopup({
 }) {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [attachments, setAttachments] = useState([]);
-  
+  const { t } = useTranslation();
   // Get attachment utilities for preview modal
   const { getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
 
@@ -55,7 +55,7 @@ export default function TaskPopup({
         <View style={styles.overlay}>
           <View style={[styles.popup, { backgroundColor: theme.card }]}>
             <View style={styles.header}>
-              <Text style={[styles.headerTitle, { color: theme.text }]}>Add Task Details</Text>
+              <Text style={[styles.headerTitle, { color: theme.text }]}>{t('create_new_task')}</Text>
               <View style={styles.headerActions}>
                 <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                   <Ionicons name="close" size={24} color={theme.text} />

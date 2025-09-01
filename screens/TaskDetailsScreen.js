@@ -679,7 +679,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
-                setCoAdminListPopupTitle('Assigned Users');
+                setCoAdminListPopupTitle(t("assigned_users"));
                 setCoAdminListPopupData(task.assignedUserDetails || []);
                 setShowCoAdminListPopup(true);
               }}
@@ -763,7 +763,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => {
-                setCoAdminListPopupTitle('Task Creator');
+                setCoAdminListPopupTitle(t('task_creator'));
                 setCoAdminListPopupData(
                   task.creatorName
                     ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }]
@@ -1418,29 +1418,29 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 }}
                 onPress={() => {
                   setMenuVisible(false);
-                  Alert.alert('Delete Task', 'Are you sure you want to delete this task?', [
-                    { text: 'Cancel', style: 'cancel' },
+                  Alert.alert(t('delete_task'), t('delete_task_confirmation'), [
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: 'Delete',
+                      text: t('delete'),
                       style: 'destructive',
                       onPress: async () => {
                         try {
                           await deleteTask(task.id || task._id || task.taskId);
-                          Alert.alert('Deleted', 'Task deleted successfully.', [
+                          Alert.alert(t('deleted'), t('task_deleted_successfully'), [
                             {
-                              text: 'OK',
+                              text: t('ok'),
                               onPress: safeGoBack,
                             },
                           ]);
                         } catch (err) {
-                          Alert.alert('Delete Failed', err.message || 'Could not delete task.');
+                          Alert.alert(t('delete_failed'), err.message || t('could_not_delete_task'));
                         }
                       },
                     },
                   ]);
                 }}>
                 <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
-                <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>Delete</Text>
+                <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>{t("delete")}</Text>
               </TouchableOpacity>
             )}
           </View>
