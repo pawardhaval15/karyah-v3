@@ -5,6 +5,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import en from './locales/en.json';
 // import fr from './locales/fr.json';
 import hi from './locales/hi.json';
+import mr from './locales/mr.json';
+import bh from './locales/bh.json';
 
 i18n
   .use(initReactI18next)
@@ -12,7 +14,9 @@ i18n
     resources: {
       en: { translation: en },
     //   fr: { translation: fr },
-      hi: { translation: hi }
+      hi: { translation: hi },
+      mr: { translation: mr },
+      bh: { translation: bh },
     },
     lng: 'en', // default language
     fallbackLng: 'en',

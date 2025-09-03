@@ -297,5 +297,6 @@
   "send_otp": "ओटीपी भेजें",
   "otp": "ओटीपी",
   "back_to_change_pin": "पिन बदलने पर वापस जाएं",
-  "enter_otp_from_email": "ईमेल से ओटीपी दर्ज करें"
+  "enter_otp_from_email": "ईमेल से ओटीपी दर्ज करें",
+  "accounts": "खाता"
 }

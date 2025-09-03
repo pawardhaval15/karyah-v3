@@ -48,6 +48,8 @@ export default function CustomDrawer({ onClose, theme }) {
   const languages = [
     { code: 'en', label: 'English' },
     { code: 'hi', label: 'Hindi' },
+    { code: 'mr', label: 'Marathi' },
+    { code: 'bh', label: 'Bhojpuri' },
     // add more languages you support
   ];
 

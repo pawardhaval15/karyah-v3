@@ -296,5 +296,6 @@
   "send_otp": "Send OTP",
   "otp": "OTP",
   "back_to_change_pin": "Back to Change PIN",
-  "enter_otp_from_email": "Enter OTP from email"
+  "enter_otp_from_email": "Enter OTP from email",
+  "accounts": "Accounts"
 }
