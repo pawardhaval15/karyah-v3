@@ -108,36 +108,36 @@ export default function TaskDrawerForm({
     }
   }, []); // Remove propProjects dependency to prevent re-rendering
 
- useEffect(() => {
-  // Only run if projectId actually changed
-  if (prevProjectIdRef.current === values.projectId) {
-    return;
-  }
-  
-  if (!values.projectId) {
-    setWorklists([]);
-    prevProjectIdRef.current = values.projectId;
-    return;
-  }
-  
-  const fetchProjectAndWorklists = async () => {
-    try {
-      const res = await getProjectById(values.projectId);
-      const name = res.name || res.projectName || 'Project';
-      setProjectName(name);
-      const token = await AsyncStorage.getItem('token');
-      const worklistsRes = await getWorklistsByProjectId(values.projectId, token);
-      setWorklists(worklistsRes || []);
-    } catch (err) {
-      console.error('Error fetching project/worklists:', err.message);
-      setProjectName('Project Not Found');
-      setWorklists([]);
+  useEffect(() => {
+    // Only run if projectId actually changed
+    if (prevProjectIdRef.current === values.projectId) {
+      return;
     }
-  };
-  
-  fetchProjectAndWorklists();
-  prevProjectIdRef.current = values.projectId;
-}, [values.projectId]);
+
+    if (!values.projectId) {
+      setWorklists([]);
+      prevProjectIdRef.current = values.projectId;
+      return;
+    }
+
+    const fetchProjectAndWorklists = async () => {
+      try {
+        const res = await getProjectById(values.projectId);
+        const name = res.name || res.projectName || 'Project';
+        setProjectName(name);
+        const token = await AsyncStorage.getItem('token');
+        const worklistsRes = await getWorklistsByProjectId(values.projectId, token);
+        setWorklists(worklistsRes || []);
+      } catch (err) {
+        console.error('Error fetching project/worklists:', err.message);
+        setProjectName('Project Not Found');
+        setWorklists([]);
+      }
+    };
+
+    fetchProjectAndWorklists();
+    prevProjectIdRef.current = values.projectId;
+  }, [values.projectId]);
 
   const isValidDate = (date) => date && !isNaN(new Date(date).getTime());
 
@@ -154,9 +154,16 @@ export default function TaskDrawerForm({
     try {
       setLoading(true);
       const startDate = isValidDate(values.startDate)
-        ? new Date(values.startDate).toISOString()
-        : null;
-      const endDate = isValidDate(values.endDate) ? new Date(values.endDate).toISOString() : null;
+        ? new Date(values.startDate).toISOString().slice(0, 19).replace('T', ' ')
+        : (values.startDate === undefined || values.startDate === null || values.startDate === '')
+          ? new Date().toISOString().slice(0, 19).replace('T', ' ')
+          : null;
+
+      const endDate = isValidDate(values.endDate)
+        ? new Date(values.endDate).toISOString().slice(0, 19).replace('T', ' ')
+        : (values.endDate === undefined || values.endDate === null || values.endDate === '')
+          ? new Date().toISOString().slice(0, 19).replace('T', ' ')
+          : null;
       const assignedUserIds = Array.isArray(values.assignTo)
         ? values.assignTo.map((id) => Number(id)).filter(Boolean)
         : [];
@@ -226,11 +233,11 @@ export default function TaskDrawerForm({
         value={
           values.projectId && values.projectId !== '__add_new__'
             ? (() => {
-                const proj = projectsWithAddNew.find(
-                  (p) => String(p.id) === String(values.projectId)
-                );
-                return proj && proj.projectName ? proj.projectName : t('selectProject');
-              })()
+              const proj = projectsWithAddNew.find(
+                (p) => String(p.id) === String(values.projectId)
+              );
+              return proj && proj.projectName ? proj.projectName : t('selectProject');
+            })()
             : t('selectProject')
         }
         placeholder={t('selectProject')}
@@ -265,9 +272,9 @@ export default function TaskDrawerForm({
         value={
           values.taskWorklist
             ? (() => {
-                const wl = worklists.find((w) => String(w.id) === String(values.taskWorklist));
-                return wl && wl.name ? wl.name : t('select_Worklist');
-              })()
+              const wl = worklists.find((w) => String(w.id) === String(values.taskWorklist));
+              return wl && wl.name ? wl.name : t('select_Worklist');
+            })()
             : ''
         }
         placeholder={t('select_worklist')}
@@ -346,8 +353,8 @@ export default function TaskDrawerForm({
         value={
           values.assignTo?.length
             ? values.assignTo
-                .map((uid) => users.find((u) => u.userId === uid)?.name || 'Unknown')
-                .join(', ')
+              .map((uid) => users.find((u) => u.userId === uid)?.name || 'Unknown')
+              .join(', ')
             : ''
         }
         placeholder={t("assign_to")}
@@ -391,9 +398,9 @@ export default function TaskDrawerForm({
             {attachments.length > 0 && (
               <TouchableOpacity
                 onPress={() => setShowPreviewModal(true)}
-                style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   backgroundColor: theme.primary + '20',
                   paddingHorizontal: 8,
                   paddingVertical: 4,
@@ -401,17 +408,17 @@ export default function TaskDrawerForm({
                   marginRight: 8
                 }}>
                 <Feather name="eye" size={16} color={theme.primary} />
-                <Text style={{ 
-                  color: theme.primary, 
-                  fontSize: 12, 
+                <Text style={{
+                  color: theme.primary,
+                  fontSize: 12,
                   fontWeight: '500',
-                  marginLeft: 4 
+                  marginLeft: 4
                 }}>
                   {t('previewAttachments')} ({attachments.length})
                 </Text>
               </TouchableOpacity>
             )}
-            
+
             <Feather
               name="paperclip"
               size={20}

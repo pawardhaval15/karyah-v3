@@ -83,10 +83,15 @@ export default function AddSubTask({
     try {
       const startDate = isValidDate(values.startDate)
         ? new Date(values.startDate).toISOString().slice(0, 19).replace('T', ' ')
-        : null;
+        : (values.startDate === undefined || values.startDate === null || values.startDate === '')
+          ? new Date().toISOString().slice(0, 19).replace('T', ' ')
+          : null;
+
       const endDate = isValidDate(values.endDate)
         ? new Date(values.endDate).toISOString().slice(0, 19).replace('T', ' ')
-        : null;
+        : (values.endDate === undefined || values.endDate === null || values.endDate === '')
+          ? new Date().toISOString().slice(0, 19).replace('T', ' ')
+          : null;
 
       const assignedUserIds = Array.isArray(values.assignTo)
         ? values.assignTo.map((id) => Number(id)).filter(Boolean)
