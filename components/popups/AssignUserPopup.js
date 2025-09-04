@@ -68,7 +68,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
       Alert.alert(
         "Success",
         `The issue has been successfully reassigned to ${selectedUser.userName || selectedUser.name}.`,
-        [{ text: "OK", onPress: handleClose }]
+        [{ text: "OK", onPress: () => handleClose(true) }]
       );
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to reassign issue");
@@ -81,19 +81,19 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
       Alert.alert(
         "Success",
         `The issue has been successfully reassigned to ${userName}.`,
-        [{ text: "OK", onPress: handleClose }]
+        [{ text: "OK", onPress: () => handleClose(true) }]
       );
     } catch (err) {
       Alert.alert("Error", err.message || "Failed to reassign issue");
     }
   };
 
-  const handleClose = () => {
+  const handleClose = (wasReassigned = false) => {
     setQuery('');
     setSearchResults([]);
     setSelectedUser(null);
     setShowConfirmation(false);
-    onClose();
+    onClose(wasReassigned);
   };
 
   const renderUserItem = ({ item }) => (

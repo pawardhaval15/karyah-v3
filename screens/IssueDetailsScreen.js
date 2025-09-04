@@ -4,6 +4,7 @@ import ReassignPopup from 'components/popups/AssignUserPopup';
 import AttachmentSheet from 'components/popups/AttachmentSheet';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -27,7 +28,6 @@ import useAudioRecorder from '../components/popups/useAudioRecorder';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth'; // import this
-import { useTranslation } from 'react-i18next';
 import {
   approveIssue,
   deleteIssue,
@@ -1011,36 +1011,60 @@ export default function IssueDetailsScreen({ navigation, route }) {
         )}
         {section === 'assigned' && (
           <View style={{ marginHorizontal: 20, marginTop: 20 }}>
-            <TouchableOpacity
+            <View
               style={{
-                backgroundColor: theme.card,
-                borderRadius: 16,
-                paddingVertical: 16,
-                alignItems: 'center',
-                borderWidth: 1,
-                borderColor: theme.buttonText,
-                opacity:
+                flexDirection: 'row',
+                justifyContent: 'space-between',
+                gap: 12,
+                marginBottom: 16,
+              }}>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.secondaryButton + '11',
+                  borderRadius: 16,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.secondaryButton,
+                }}
+                onPress={() => setShowReassignModal(true)}>
+                <Text style={{ color: theme.secondaryButton, fontWeight: '600', fontSize: 16 }}>
+                  {t("Reassign")}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{
+                  flex: 1,
+                  backgroundColor: theme.card,
+                  borderRadius: 16,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.buttonText,
+                  opacity:
+                    (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
+                      attachments.length === 0 &&
+                      !remark
+                      ? 0.5
+                      : 1,
+                }}
+                onPress={handleSubmit}
+                disabled={
                   (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
-                    attachments.length === 0 &&
-                    !remark
-                    ? 0.5
-                    : 1,
-              }}
-              onPress={handleSubmit}
-              disabled={
-                (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
-                attachments.length === 0 &&
-                !remark
-              }
-            >
-              <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 16 }}>
-                {issue.issueStatus === 'resolved'
-                  ? t('resolved')
-                  : issue.issueStatus === 'pending_approval'
-                    ? t('waiting_for_approval')
-                    : t('submit_resolution')}
-              </Text>
-            </TouchableOpacity>
+                  attachments.length === 0 &&
+                  !remark
+                }
+              >
+                <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 16 }}>
+                  {issue.issueStatus === 'resolved'
+                    ? t('resolved')
+                    : issue.issueStatus === 'pending_approval'
+                      ? t('waiting_for_approval')
+                      : t('submit_resolution')}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -1078,14 +1102,20 @@ export default function IssueDetailsScreen({ navigation, route }) {
       />
       <ReassignPopup
         visible={showReassignModal}
-        onClose={async () => {
+        onClose={async (wasReassigned = false) => {
           setShowReassignModal(false);
-          setLoading(true);
-          try {
-            const updated = await fetchIssueById(issueId);
-            setIssue(updated);
-          } catch { }
-          setLoading(false);
+          if (wasReassigned) {
+            // Navigate back to IssuesScreen after successful reassignment
+            navigation.navigate('IssuesScreen', { refresh: true });
+          } else {
+            // Just refresh the current issue if reassign was cancelled
+            setLoading(true);
+            try {
+              const updated = await fetchIssueById(issueId);
+              setIssue(updated);
+            } catch { }
+            setLoading(false);
+          }
         }}
         issueId={issue?.issueId || issueId}
         currentAssignee={issue?.assignTo}
