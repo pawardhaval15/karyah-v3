@@ -70,6 +70,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
   const { attachments, pickAttachment, setAttachments } = useAttachmentPicker();
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [showIssueTitleModal, setShowIssueTitleModal] = useState(false);
+  const [showAttachmentPreviewModal, setShowAttachmentPreviewModal] = useState(false);
   useEffect(() => {
     getUserNameFromToken().then(setUserName);
   }, []);
@@ -469,18 +470,33 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     ? `${attachments.length} attachment${attachments.length !== 1 ? 's' : ''} selected`
                     : `${allAttachments.length} file${allAttachments.length !== 1 ? 's' : ''} attached`}
                 </Text>
-                <TouchableOpacity
-                  style={[
-                    styles.viewFilesButton,
-                    { backgroundColor: theme.primary + '10', borderColor: theme.primary },
-                  ]}
-                  onPress={() => {
-                    setDrawerVisible(true);
-                    setDrawerAttachments(isEditing ? attachments : allAttachments);
-                  }}>
-                  <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                  <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[
+                      styles.viewFilesButton,
+                      { backgroundColor: theme.primary + '10', borderColor: theme.primary },
+                    ]}
+                    onPress={() => {
+                      setDrawerVisible(true);
+                      setDrawerAttachments(isEditing ? attachments : allAttachments);
+                    }}>
+                    <MaterialIcons name="folder-open" size={16} color={theme.primary} />
+                    <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
+                  </TouchableOpacity>
+                  
+                  {/* Preview Button for newly added attachments in editing mode */}
+                  {isEditing && attachments.length > 0 && (
+                    <TouchableOpacity
+                      style={[
+                        styles.viewFilesButton,
+                        { backgroundColor: theme.secondary + '10', borderColor: theme.secondary || theme.primary },
+                      ]}
+                      onPress={() => setShowAttachmentPreviewModal(true)}>
+                      <MaterialIcons name="preview" size={16} color={theme.secondary || theme.primary} />
+                      <Text style={[styles.viewFilesText, { color: theme.secondary || theme.primary }]}>Preview</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </>
             ) : (
               <View style={styles.noAttachmentContainer}>
@@ -732,6 +748,53 @@ export default function IssueDetailsScreen({ navigation, route }) {
             />
           </View>
         )}
+        {section === 'assigned' && issue.issueStatus === 'pending_approval' && (
+          <View style={{ marginHorizontal: 0, marginTop: 16 }}>
+            {/* Resolved Attachments Section */}
+            <View style={styles.attachmentSection}>
+              <View style={styles.attachmentHeader}>
+                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('resolved_attachments')}</Text>
+              </View>
+
+              <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                {Array.isArray(issue.resolvedImages) && issue.resolvedImages.length > 0 ? (
+                  <>
+                    <Text style={[styles.attachmentCount, { color: theme.text }]}>
+                      {`${issue.resolvedImages.length} file${issue.resolvedImages.length !== 1 ? 's' : ''} attached`}
+                    </Text>
+                    <TouchableOpacity
+                      style={[
+                        styles.viewFilesButton,
+                        { backgroundColor: theme.primary + '10', borderColor: theme.primary },
+                      ]}
+                      onPress={() => {
+                        setDrawerVisible(true);
+                        setDrawerAttachments(issue.resolvedImages || []);
+                      }}>
+                      <MaterialIcons name="folder-open" size={16} color={theme.primary} />
+                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <View style={styles.noAttachmentContainer}>
+                    <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
+                    <Text style={styles.noAttachmentText}>{t('no_resolution_attachments')}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+
+            {/* Show resolution remark */}
+            <FieldBox
+              label={t("resolution_remark")}
+              value={issue.remarks || ''}
+              placeholder={t("no_resolution_remark")}
+              multiline
+              theme={theme}
+              editable={false}
+            />
+          </View>
+        )}
         {section === 'assigned' && issue.issueStatus === 'resolved' && (
           <View style={{ marginHorizontal: 0, marginTop: 16 }}>
             {/* Resolved Attachments Section */}
@@ -820,6 +883,30 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   placeholderTextColor={theme.secondaryText}
                   editable={false}
                 />
+                {/* Preview Button */}
+                {attachments.length > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setShowAttachmentPreviewModal(true)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: theme.primary + '20',
+                      paddingHorizontal: 8,
+                      paddingVertical: 4,
+                      borderRadius: 12,
+                      marginRight: 8
+                    }}>
+                    <MaterialIcons name="preview" size={16} color={theme.primary} />
+                    <Text style={{
+                      color: theme.primary,
+                      fontSize: 12,
+                      fontWeight: '500',
+                      marginLeft: 4
+                    }}>
+                      Preview ({attachments.length})
+                    </Text>
+                  </TouchableOpacity>
+                )}
                 <Feather
                   name="paperclip"
                   size={20}
@@ -1177,6 +1264,192 @@ export default function IssueDetailsScreen({ navigation, route }) {
             </TouchableWithoutFeedback>
           </View>
         </TouchableWithoutFeedback>
+      </Modal>
+
+      {/* Attachment Preview Modal */}
+      <Modal
+        visible={showAttachmentPreviewModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowAttachmentPreviewModal(false)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <View style={{
+            flex: 1,
+            marginTop: Platform.OS === 'ios' ? 50 : 25,
+            backgroundColor: theme.background,
+            borderTopLeftRadius: 20,
+            borderTopRightRadius: 20,
+          }}>
+            {/* Header */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 20,
+              paddingVertical: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.border,
+            }}>
+              <Text style={{
+                fontSize: 18,
+                fontWeight: '600',
+                color: theme.text
+              }}>
+                Attachment Preview ({attachments.length})
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowAttachmentPreviewModal(false)}
+                style={{
+                  padding: 8,
+                  borderRadius: 20,
+                  backgroundColor: theme.card,
+                }}>
+                <MaterialIcons name="close" size={20} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Attachment List */}
+            <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+              {attachments.map((att, index) => (
+                <View
+                  key={att.uri || att.name || index}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 16,
+                    marginBottom: 12,
+                    backgroundColor: theme.card,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: theme.border,
+                  }}>
+                  
+                  {/* File Icon/Preview */}
+                  <View style={{
+                    width: 50,
+                    height: 50,
+                    borderRadius: 8,
+                    backgroundColor: theme.primary + '10',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginRight: 12,
+                  }}>
+                    {att.type?.startsWith('image') ? (
+                      <Image
+                        source={{ uri: att.uri }}
+                        style={{
+                          width: 50,
+                          height: 50,
+                          borderRadius: 8,
+                        }}
+                        resizeMode="cover"
+                      />
+                    ) : att.type?.startsWith('audio') ? (
+                      <MaterialCommunityIcons name="music-note" size={24} color={theme.primary} />
+                    ) : att.type?.startsWith('video') ? (
+                      <MaterialCommunityIcons name="video" size={24} color={theme.primary} />
+                    ) : (
+                      <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.primary} />
+                    )}
+                  </View>
+
+                  {/* File Info */}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{
+                      fontSize: 16,
+                      fontWeight: '500',
+                      color: theme.text,
+                      marginBottom: 4,
+                    }} numberOfLines={1}>
+                      {att.name || att.uri?.split('/').pop() || 'Unknown File'}
+                    </Text>
+                    <Text style={{
+                      fontSize: 14,
+                      color: theme.secondaryText,
+                      marginBottom: 4,
+                    }}>
+                      {att.type || 'Unknown Type'}
+                    </Text>
+                    {att.size && (
+                      <Text style={{
+                        fontSize: 12,
+                        color: theme.secondaryText,
+                      }}>
+                        {(att.size / 1024 / 1024).toFixed(2)} MB
+                      </Text>
+                    )}
+                  </View>
+
+                  {/* Action Buttons */}
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {/* Play button for audio/video */}
+                    {(att.type?.startsWith('audio') || att.type?.startsWith('video')) && (
+                      <TouchableOpacity
+                        onPress={async () => {
+                          try {
+                            const { Sound } = await import('expo-av');
+                            const { sound } = await Sound.createAsync({ uri: att.uri });
+                            await sound.playAsync();
+                          } catch (error) {
+                            Alert.alert('Error', 'Could not play file');
+                          }
+                        }}
+                        style={{
+                          padding: 8,
+                          borderRadius: 20,
+                          backgroundColor: theme.primary + '20',
+                        }}>
+                        <MaterialCommunityIcons name="play" size={16} color={theme.primary} />
+                      </TouchableOpacity>
+                    )}
+
+                    {/* Remove button */}
+                    <TouchableOpacity
+                      onPress={() => {
+                        Alert.alert(
+                          'Remove Attachment',
+                          'Are you sure you want to remove this attachment?',
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Remove',
+                              style: 'destructive',
+                              onPress: () => {
+                                setAttachments(prev => prev.filter((_, i) => i !== index));
+                              }
+                            }
+                          ]
+                        );
+                      }}
+                      style={{
+                        padding: 8,
+                        borderRadius: 20,
+                        backgroundColor: '#FF453A20',
+                      }}>
+                      <MaterialCommunityIcons name="delete" size={16} color="#FF453A" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+
+              {attachments.length === 0 && (
+                <View style={{
+                  alignItems: 'center',
+                  paddingVertical: 40,
+                }}>
+                  <MaterialCommunityIcons name="file-outline" size={60} color={theme.secondaryText} />
+                  <Text style={{
+                    fontSize: 16,
+                    color: theme.secondaryText,
+                    marginTop: 16,
+                  }}>
+                    No attachments to preview
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
     </View>
   );
