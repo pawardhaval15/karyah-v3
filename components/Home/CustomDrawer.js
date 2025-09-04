@@ -49,7 +49,7 @@ export default function CustomDrawer({ onClose, theme }) {
     { code: 'en', label: 'English' },
     { code: 'hi', label: 'Hindi' },
     { code: 'mr', label: 'Marathi' },
-    { code: 'bh', label: 'Bhojpuri' },
+    // { code: 'bh', label: 'Bhojpuri' },
     // add more languages you support
   ];
 
