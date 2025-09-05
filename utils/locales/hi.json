@@ -298,5 +298,6 @@
   "otp": "ओटीपी",
   "back_to_change_pin": "पिन बदलने पर वापस जाएं",
   "enter_otp_from_email": "ईमेल से ओटीपी दर्ज करें",
-  "accounts": "खाता"
+  "accounts": "खाता",
+  "create_new_Subtask": "नया उपकार्य बनाएं"
 }

@@ -297,5 +297,6 @@
   "otp": "OTP",
   "back_to_change_pin": "Back to Change PIN",
   "enter_otp_from_email": "Enter OTP from email",
-  "accounts": "Accounts"
+  "accounts": "Accounts",
+  "create_new_Subtask": "Create New Subtask"
 }

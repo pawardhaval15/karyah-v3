@@ -29,7 +29,7 @@ export default function SubTaskPopup({
             <View style={styles.overlay}>
                 <View style={[styles.popup, { backgroundColor: theme.card }]}>
                     <View style={styles.header}>
-                        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('create_new_task')}</Text>
+                        <Text style={[styles.headerTitle, { color: theme.text }]}>{t('create_new_Subtask')}</Text>
                         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
                             <Ionicons name="close" size={24} color={theme.text} />
                         </TouchableOpacity>
