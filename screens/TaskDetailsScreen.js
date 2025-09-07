@@ -140,7 +140,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [showDependentPopup, setShowDependentPopup] = useState(false);
   const [subtaskSearch, setSubtaskSearch] = useState('');
   const [showTaskNameModal, setShowTaskNameModal] = useState(false);
-
+  const [showTaskDetails, setShowTaskDetails] = useState(false);
   const {
     attachments: newAttachments,
     pickAttachment,
@@ -492,37 +492,63 @@ export default function TaskDetailsScreen({ route, navigation }) {
           colors={[theme.secondary, theme.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
-          style={styles.headerCard}>
-          <View>
-            <TouchableOpacity onPress={() => setShowTaskNameModal(true)}>
-              <Text style={styles.taskName} numberOfLines={2} ellipsizeMode="tail">
-                {task.taskName}
+          style={styles.headerCard}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+            {/* Task Info: flex 1, wraps properly */}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <TouchableOpacity onPress={() => setShowTaskNameModal(true)}>
+                <Text
+                  style={[
+                    styles.taskName,
+                    {
+                      flexShrink: 1,
+                      flexWrap: 'wrap',
+                      fontWeight: '600',
+                      color: '#fff',
+                      fontSize: 20,
+                      minWidth: 0, // Adds proper text ellipsis handling
+                    }
+                  ]}
+                  numberOfLines={2}
+                  ellipsizeMode="tail"
+                >
+                  {task.taskName}
+                </Text>
+              </TouchableOpacity>
+              <Text style={styles.dueDate}>
+                {t('due_date')}: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
               </Text>
-            </TouchableOpacity>
-            <Text style={styles.dueDate}>
-              {t('due_date')}: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
-            </Text>
-          </View>
-          {/* {isCreator && (
+            </View>
+            {/* Details Button: stays at right, never hidden */}
             <TouchableOpacity
-              onPress={() =>
-                navigation.navigate('UpdateTaskScreen', {
-                  taskId: task.id || task._id || task.taskId,
-                  projects,
-                  users,
-                  worklists,
-                  projectTasks,
-                })
-              }
+              onPress={() => setShowTaskDetails((prev) => !prev)}
               style={{
-                padding: 8,
-                backgroundColor: 'rgba(255,255,255,0.15)',
-                borderRadius: 8,
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                borderRadius: 12,
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                flexDirection: 'row',
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: 'rgba(255,255,255,0.3)',
+                marginLeft: 12, // Spacing from task name
+                alignSelf: 'flex-start',
               }}>
-              <MaterialIcons name="edit" size={22} color="#fff" />
+              <MaterialIcons name="description" size={16} color="#fff" style={{ marginRight: 6 }} />
+              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
+                {t('details')}
+              </Text>
+              <MaterialIcons
+                name={showTaskDetails ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                size={16}
+                color="#fff"
+                style={{ marginLeft: 4 }}
+              />
             </TouchableOpacity>
-          )} */}
+          </View>
         </LinearGradient>
+
         {/* Task Action Buttons */}
         <View
           style={{
@@ -643,174 +669,176 @@ export default function TaskDetailsScreen({ route, navigation }) {
             />
           </View>
         )}
-        <FieldBox
-          label={t("selected_project")}
-          value={
-            typeof task.projectName === 'object'
-              ? typeof task.projectName.name === 'string'
-                ? task.projectName.name
-                : JSON.stringify(task.projectName)
-              : typeof task.projectName === 'string'
-                ? task.projectName
-                : '-'
-          }
-          theme={theme}
-        />
-        <FieldBox
-          label={t("selected_worklist")}
-          value={
-            Array.isArray(worklists)
-              ? worklists.find((wl) => wl.id === task.worklistId)?.name || '-'
-              : '-'
-          }
-          theme={theme}
-        />
-        {/* Dates and status */}
-        <View style={styles.dateRow}>
-          <DateBox label={t("start_date")} value={new Date(task.startDate)} theme={theme} />
-          <DateBox label={t("end_date")} value={new Date(task.endDate)} theme={theme} />
-        </View>
-        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[styles.inputLabel, { color: theme.text, marginBottom: 6, paddingTop: 6 }]}>
-              {t("assigned_users")}
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                setCoAdminListPopupTitle(t("assigned_users"));
-                setCoAdminListPopupData(task.assignedUserDetails || []);
-                setShowCoAdminListPopup(true);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-              {/* User names */}
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
-                  {task.assignedUserDetails?.length > 0
-                    ? task.assignedUserDetails
-                      .slice(0, 2)
-                      .map((user) => user.name)
-                      .join(', ') +
-                    (task.assignedUserDetails.length > 2
-                      ? ` +${task.assignedUserDetails.length - 2} more`
-                      : '')
-                    : 'No users assigned'}
+        {showTaskDetails && (
+          <>
+            <FieldBox
+              label={t("selected_project")}
+              value={
+                typeof task.projectName === 'object'
+                  ? typeof task.projectName.name === 'string'
+                    ? task.projectName.name
+                    : JSON.stringify(task.projectName)
+                  : typeof task.projectName === 'string'
+                    ? task.projectName
+                    : '-'
+              }
+              theme={theme}
+            />
+            <FieldBox
+              label={t("selected_worklist")}
+              value={
+                Array.isArray(worklists)
+                  ? worklists.find((wl) => wl.id === task.worklistId)?.name || '-'
+                  : '-'
+              }
+              theme={theme}
+            />
+            {/* Dates and status */}
+            <View style={styles.dateRow}>
+              <DateBox label={t("start_date")} value={new Date(task.startDate)} theme={theme} />
+              <DateBox label={t("end_date")} value={new Date(task.endDate)} theme={theme} />
+            </View>
+            <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[styles.inputLabel, { color: theme.text, marginBottom: 6, paddingTop: 6 }]}>
+                  {t("assigned_users")}
                 </Text>
-              </View>
-              {/* Stacked avatars */}
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                {task.assignedUserDetails?.slice(0, 4).map((user, index) => {
-                  const hasPhoto = user.profilePhoto && user.profilePhoto !== '';
-                  return (
-                    <View
-                      key={user.userId || index}
-                      style={{
-                        marginLeft: index === 0 ? 0 : -16,
-                        zIndex: task.assignedUserDetails.length - index,
-                      }}>
-                      <Image
-                        source={{
-                          uri: hasPhoto
-                            ? user.profilePhoto
-                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`,
-                        }}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setCoAdminListPopupTitle(t("assigned_users"));
+                    setCoAdminListPopupData(task.assignedUserDetails || []);
+                    setShowCoAdminListPopup(true);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                  {/* User names */}
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
+                      {task.assignedUserDetails?.length > 0
+                        ? task.assignedUserDetails
+                          .slice(0, 2)
+                          .map((user) => user.name)
+                          .join(', ') +
+                        (task.assignedUserDetails.length > 2
+                          ? ` +${task.assignedUserDetails.length - 2} more`
+                          : '')
+                        : 'No users assigned'}
+                    </Text>
+                  </View>
+                  {/* Stacked avatars */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    {task.assignedUserDetails?.slice(0, 4).map((user, index) => {
+                      const hasPhoto = user.profilePhoto && user.profilePhoto !== '';
+                      return (
+                        <View
+                          key={user.userId || index}
+                          style={{
+                            marginLeft: index === 0 ? 0 : -16,
+                            zIndex: task.assignedUserDetails.length - index,
+                          }}>
+                          <Image
+                            source={{
+                              uri: hasPhoto
+                                ? user.profilePhoto
+                                : `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name || 'User')}&background=random`,
+                            }}
+                            style={{
+                              width: 40,
+                              height: 40,
+                              borderRadius: 20,
+                              borderWidth: 2,
+                              borderColor: theme.primary,
+                              backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
+                            }}
+                          />
+                        </View>
+                      );
+                    })}
+                    {task.assignedUserDetails?.length > 4 && (
+                      <View
                         style={{
+                          marginLeft: -16,
+                          zIndex: 0,
                           width: 40,
                           height: 40,
                           borderRadius: 20,
+                          backgroundColor: theme.buttonBg,
                           borderWidth: 2,
                           borderColor: theme.primary,
-                          backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
-                        }}
-                      />
-                    </View>
-                  );
-                })}
-                {task.assignedUserDetails?.length > 4 && (
-                  <View
-                    style={{
-                      marginLeft: -16,
-                      zIndex: 0,
-                      width: 40,
-                      height: 40,
-                      borderRadius: 20,
-                      backgroundColor: theme.buttonBg,
-                      borderWidth: 2,
-                      borderColor: theme.primary,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                    <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 12 }}>
-                      +{task.assignedUserDetails.length - 4}
-                    </Text>
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                        <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 12 }}>
+                          +{task.assignedUserDetails.length - 4}
+                        </Text>
+                      </View>
+                    )}
                   </View>
-                )}
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={{ flex: 1 }}>
-            <Text
-              style={[styles.inputLabel, { color: theme.text, marginBottom: 8, paddingTop: 6 }]}>
-              {t("task_creator")}
-            </Text>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => {
-                setCoAdminListPopupTitle(t('task_creator'));
-                setCoAdminListPopupData(
-                  task.creatorName
-                    ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }]
-                    : []
-                );
-                setShowCoAdminListPopup(true);
-              }}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-              {/* Creator name */}
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
-                  {task.creatorName || 'Unknown Creator'}
+            </View>
+            <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={[styles.inputLabel, { color: theme.text, marginBottom: 8, paddingTop: 6 }]}>
+                  {t("task_creator")}
                 </Text>
-              </View>
-              {/* Creator avatar */}
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Image
-                  source={{
-                    uri:
-                      task.creatorPhoto && task.creatorPhoto !== ''
-                        ? task.creatorPhoto
-                        : `https://ui-avatars.com/api/?name=${encodeURIComponent(task.creatorName || 'Creator')}&background=random`,
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setCoAdminListPopupTitle(t('task_creator'));
+                    setCoAdminListPopupData(
+                      task.creatorName
+                        ? [{ name: task.creatorName, profilePhoto: task.creatorPhoto }]
+                        : []
+                    );
+                    setShowCoAdminListPopup(true);
                   }}
                   style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    borderWidth: 2,
-                    borderColor: theme.primary,
-                    backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
-                  }}
-                />
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}>
+                  {/* Creator name */}
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={{ color: theme.text, fontSize: 16, fontWeight: '400' }}>
+                      {task.creatorName || 'Unknown Creator'}
+                    </Text>
+                  </View>
+                  {/* Creator avatar */}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <Image
+                      source={{
+                        uri:
+                          task.creatorPhoto && task.creatorPhoto !== ''
+                            ? task.creatorPhoto
+                            : `https://ui-avatars.com/api/?name=${encodeURIComponent(task.creatorName || 'Creator')}&background=random`,
+                      }}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        borderWidth: 2,
+                        borderColor: theme.primary,
+                        backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
+                      }}
+                    />
+                  </View>
+                </TouchableOpacity>
               </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-        <CoAdminListPopup
-          visible={showCoAdminListPopup}
-          onClose={() => setShowCoAdminListPopup(false)}
-          data={coAdminListPopupData}
-          theme={theme}
-          title={coAdminListPopupTitle}
-        />
+            </View>
+            <CoAdminListPopup
+              visible={showCoAdminListPopup}
+              onClose={() => setShowCoAdminListPopup(false)}
+              data={coAdminListPopupData}
+              theme={theme}
+              title={coAdminListPopupTitle}
+            /></>)}
         <FieldBox
           label={t("added_attachments")}
           value=""
