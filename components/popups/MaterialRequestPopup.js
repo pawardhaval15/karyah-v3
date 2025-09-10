@@ -705,7 +705,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                               { text: '5 items', onPress: () => addMultipleItems(5) },
                               { text: '10 items', onPress: () => addMultipleItems(10) },
                               { text: 'Cancel', style: 'cancel' }
-                            ]
+                            ],
+                            { cancelable: true }
                           );
                         }}
                         style={[styles.quickAddBtn, { backgroundColor: theme.primary + '20', borderColor: theme.primary }]}>
@@ -809,7 +810,8 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                                     text: unit,
                                     onPress: () => updateItem(index, 'unit', unit),
                                   }))
-                                  .concat([{ text: 'Cancel', style: 'cancel' }])
+                                  .concat([{ text: 'Cancel', style: 'cancel' }]),
+                                  { cancelable: true }
                               );
                             }}>
                             <Text style={[styles.dropdownText, { color: theme.text }]}>
