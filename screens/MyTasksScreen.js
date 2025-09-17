@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   FlatList,
@@ -17,12 +18,11 @@ import {
 } from 'react-native';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
-import CustomCircularProgress from '../components/task details/CustomCircularProgress';
+import TagsManagementModal from '../components/popups/TagsManagementModal';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { bulkAssignTasks, getTasksByProjectId } from '../utils/task';
+import { bulkAssignTasks, getTasksByProjectId, updateTask, updateTaskTags } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
-import { useTranslation } from 'react-i18next';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
   const [search, setSearch] = useState('');
@@ -48,6 +48,7 @@ export default function MyTasksScreen({ navigation }) {
     taskAssign: '',
     taskDesc: '',
     projectId: '',
+    tags: [], // Add tags field as array
   });
   const [refreshing, setRefreshing] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -55,6 +56,8 @@ export default function MyTasksScreen({ navigation }) {
   const [showBulkAssignPopup, setShowBulkAssignPopup] = useState(false);
   const [bulkAssignUsers, setBulkAssignUsers] = useState([]);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [showTagsModal, setShowTagsModal] = useState(false);
+  const [selectedTaskForTags, setSelectedTaskForTags] = useState(null);
 
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
@@ -64,6 +67,7 @@ export default function MyTasksScreen({ navigation }) {
     projects: [],
     assignedTo: [],
     locations: [],
+    tags: [], // Add tags filter
   });
   const [taskCounts, setTaskCounts] = useState({
     mytasks: 0,
@@ -231,12 +235,19 @@ export default function MyTasksScreen({ navigation }) {
         }
       }
     }
+    
     const locationMatch =
       filters.locations.length === 0 ||
       filters.locations.includes((task.project && task.project.location) || '');
 
+    // Tags filter
+    const tagsMatch = 
+      filters.tags.length === 0 ||
+      (task.tags && Array.isArray(task.tags) && 
+       filters.tags.some(filterTag => task.tags.includes(filterTag)));
+
     return (
-      searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch
+      searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch && tagsMatch
     );
   });
 
@@ -265,6 +276,7 @@ export default function MyTasksScreen({ navigation }) {
       taskEnd: '',
       taskAssign: '',
       taskDesc: '',
+      tags: [], // Reset tags
     });
     if (newTask) {
       setTasks((prev) => [newTask, ...prev]);
@@ -334,6 +346,42 @@ export default function MyTasksScreen({ navigation }) {
     }
   };
 
+  const handleTagsManagement = (task) => {
+    setSelectedTaskForTags(task);
+    setShowTagsModal(true);
+  };
+
+  const handleSaveTags = async (taskId, newTags) => {
+    try {
+      console.log('🏷️ Saving tags:', { taskId, newTags });
+      
+      // Try the primary updateTask method first
+      let updatedTask;
+      try {
+        updatedTask = await updateTask(taskId, { tags: newTags });
+      } catch (error) {
+        console.log('⚠️ Primary method failed, trying alternative method...');
+        // If that fails, try the alternative updateTaskTags method
+        updatedTask = await updateTaskTags(taskId, newTags);
+      }
+      
+      // Update the local tasks state
+      setTasks(prevTasks => 
+        prevTasks.map(task => 
+          (task.id === taskId || task.taskId === taskId) 
+            ? { ...task, tags: newTags }
+            : task
+        )
+      );
+      
+      console.log('✅ Tags saved successfully');
+      return Promise.resolve();
+    } catch (error) {
+      console.error('❌ Failed to save tags:', error);
+      throw error;
+    }
+  };
+
   const toggleFilter = (filterType, value) => {
     setFilters((prev) => ({
       ...prev,
@@ -350,6 +398,7 @@ export default function MyTasksScreen({ navigation }) {
       projects: [],
       assignedTo: [],
       locations: [],
+      tags: [], // Add tags to clear function
     });
   };
 
@@ -400,10 +449,19 @@ export default function MyTasksScreen({ navigation }) {
       assignedOptions = [...new Set(allAssignedUsers)];
     }
 
-    return { statuses, projectOptions, assignedOptions, locations };
+    // Get unique tags from all tasks
+    const tagOptions = [
+      ...new Set(
+        tasks
+          .flatMap((task) => task.tags || [])
+          .filter(Boolean)
+      ),
+    ];
+
+    return { statuses, projectOptions, assignedOptions, locations, tagOptions };
   };
 
-  const { statuses, projectOptions, assignedOptions, locations } = getFilterOptions();
+  const { statuses, projectOptions, assignedOptions, locations, tagOptions } = getFilterOptions();
   const closeModal = () => setModalTaskId(null);
 
   const renderItem = ({ item, index }) => {
@@ -451,81 +509,162 @@ export default function MyTasksScreen({ navigation }) {
                   borderColor: theme.primary,
                 },
               ]}>
-              {isSelected && <MaterialIcons name="check" size={16} color="#fff" />}
+              {isSelected && <MaterialIcons name="check" size={12} color="#fff" />}
             </View>
           )}
 
-          <View
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 10,
-              backgroundColor: theme.avatarBg || '#F2F6FF',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginRight: 14,
-            }}>
-            <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 18 }}>
-              {(taskName.charAt(0) || '?').toUpperCase()}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={[styles.taskTitle, { color: theme.text }]}>
-              {taskName}
-            </Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Feather
-                name="folder"
-                size={14}
-                color={theme.secondaryText}
-                style={{ marginRight: 4 }}
-              />
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={[styles.taskProject, { color: theme.secondaryText, flexShrink: 1 }]}>
-                {item.projectName ||
-                  (item.project && item.project.projectName) ||
-                  (item.project && item.project.name) ||
-                  item.projectTitle ||
-                  item.project ||
-                  'No Project'}
+          {/* Compact Row Layout */}
+          <View style={styles.compactCardRow}>
+            {/* Avatar */}
+            <View
+              style={[
+                styles.compactAvatar,
+                {
+                  backgroundColor: theme.primary + '15',
+                  borderColor: theme.primary + '20',
+                }
+              ]}>
+              <Text style={[styles.compactAvatarText, { color: theme.primary }]}>
+                {(taskName.charAt(0) || '?').toUpperCase()}
               </Text>
-              {((item.project && item.project.location) || '').length > 0 && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
-                  <Text style={[styles.taskLocation, { color: theme.secondaryText }]}>
-                    | <Feather name="map-pin" size={14} color={theme.secondaryText} />
+            </View>
+            
+            {/* Main Content */}
+            <View style={styles.compactContent}>
+              {/* Title and Progress Row */}
+              <View style={styles.titleProgressRow}>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[styles.compactTitle, { color: theme.text }]}>
+                  {taskName}
+                </Text>
+                <View style={styles.compactProgressContainer}>
+                  <Text style={[styles.compactProgressText, { color: theme.secondaryText }]}>
+                    {item.progress || 0}%
                   </Text>
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={[
-                      styles.taskLocationName,
-                      { color: theme.secondaryText, marginLeft: 2 },
-                    ]}>
-                    {item.project.location}
-                  </Text>
+                </View>
+              </View>
+              
+              {/* Project and Location Info */}
+              <View style={styles.compactInfoRow}>
+                <MaterialIcons 
+                  name="folder" 
+                  size={13} 
+                  color={theme.primary} 
+                  style={{ marginRight: 4 }}
+                />
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[styles.compactProject, { color: theme.secondaryText }]}>
+                  {item.projectName ||
+                    (item.project && item.project.projectName) ||
+                    (item.project && item.project.name) ||
+                    item.projectTitle ||
+                    item.project ||
+                    'No Project'}
+                </Text>
+                
+                {((item.project && item.project.location) || '').length > 0 && (
+                  <>
+                    <Text style={[styles.compactSeparator, { color: theme.secondaryText }]}> • </Text>
+                    <MaterialIcons 
+                      name="location-on" 
+                      size={13} 
+                      color={theme.secondaryText} 
+                      style={{ marginRight: 3 }}
+                    />
+                    <Text
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                      style={[styles.compactLocation, { color: theme.secondaryText }]}>
+                      {item.project.location}
+                    </Text>
+                  </>
+                )}
+              </View>
+
+              {/* Assignment Info */}
+              <View style={styles.compactAssignmentRow}>
+                <MaterialIcons 
+                  name={activeTab === 'mytasks' ? 'person' : 'group'} 
+                  size={13} 
+                  color={theme.primary} 
+                  style={{ marginRight: 4 }}
+                />
+                <Text style={[styles.compactAssignLabel, { color: theme.secondaryText }]}>
+                  {assignedInfoLabel}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                  style={[styles.compactAssignValue, { color: theme.text }]}>
+                  {assignedInfoValue}
+                </Text>
+              </View>
+
+              {/* Compact Tags */}
+              {item.tags && Array.isArray(item.tags) && item.tags.length > 0 && (
+                <View style={styles.compactTagsContainer}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    style={styles.compactTagsScroll}>
+                    {item.tags.slice(0, 3).map((tag, tagIndex) => (
+                      <View
+                        key={tagIndex}
+                        style={[
+                          styles.compactTagChip,
+                          {
+                            backgroundColor: theme.avatarBg,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.compactTagText,
+                            { color: theme.secondaryText },
+                          ]}>
+                          {tag}
+                        </Text>
+                      </View>
+                    ))}
+                    {item.tags.length > 3 && (
+                      <View
+                        style={[
+                          styles.compactTagChip,
+                          {
+                            backgroundColor: theme.background,
+                          },
+                        ]}>
+                        <Text
+                          style={[
+                            styles.compactTagText,
+                            { color: theme.secondaryText },
+                          ]}>
+                          +{item.tags.length - 3}
+                        </Text>
+                      </View>
+                    )}
+                  </ScrollView>
                 </View>
               )}
             </View>
 
-            <View style={styles.assignedInfoRow}>
-              <Text style={[styles.assignedInfoLabel, { color: theme.secondaryText }]}>
-                {assignedInfoLabel}{' '}
-              </Text>
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={[styles.assignedInfoValue, { color: theme.text }]}>
-                {assignedInfoValue}
-              </Text>
-            </View>
-          </View>
-          <View>
-            <CustomCircularProgress percentage={item.progress || 0} />
+            {/* Action Button */}
+            {activeTab === 'createdby' && (
+              <TouchableOpacity
+                style={[
+                  styles.compactActionButton, 
+                  { 
+                    backgroundColor: theme.primary + '10', 
+                    borderColor: theme.primary + '20'
+                  }
+                ]}
+                onPress={() => handleTagsManagement(item)}>
+                <MaterialIcons name="local-offer" size={16} color={theme.primary} />
+              </TouchableOpacity>
+            )}
           </View>
         </TouchableOpacity>
 
@@ -931,6 +1070,48 @@ export default function MyTasksScreen({ navigation }) {
                 </ScrollView>
               </View>
             )}
+            {/* Tags Filter */}
+            {tagOptions.length > 0 && (
+              <View style={styles.compactFilterSection}>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Tags</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.horizontalScroll}>
+                  <View style={styles.compactChipsRow}>
+                    {tagOptions.map((tag) => (
+                      <TouchableOpacity
+                        key={tag}
+                        style={[
+                          styles.compactChip,
+                          {
+                            backgroundColor: filters.tags.includes(tag)
+                              ? theme.primary
+                              : theme.card,
+                            borderColor: filters.tags.includes(tag)
+                              ? theme.primary
+                              : theme.border,
+                          },
+                        ]}
+                        onPress={() => toggleFilter('tags', tag)}>
+                        <Text
+                          style={[
+                            styles.compactChipText,
+                            { 
+                              color: filters.tags.includes(tag) 
+                                ? '#ffffff' 
+                                : theme.text 
+                            },
+                          ]}
+                          numberOfLines={1}>
+                          #{tag.length > 8 ? tag.substring(0, 8) + '...' : tag}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </ScrollView>
+              </View>
+            )}
           </ScrollView>
         </View>
       )}
@@ -1180,6 +1361,18 @@ export default function MyTasksScreen({ navigation }) {
           </View>
         </View>
       )}
+      
+      {/* Tags Management Modal */}
+      <TagsManagementModal
+        visible={showTagsModal}
+        onClose={() => {
+          setShowTagsModal(false);
+          setSelectedTaskForTags(null);
+        }}
+        task={selectedTaskForTags}
+        onSave={handleSaveTags}
+        theme={theme}
+      />
     </View>
   );
 }
@@ -1287,11 +1480,6 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     fontWeight: '400',
   },
-  taskLocationName: {
-    fontSize: 13,
-    minWidth: 50,
-    maxWidth: '70%',
-  },
   filterButton: {
     position: 'relative',
     marginLeft: 8,
@@ -1393,41 +1581,120 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     fontStyle: 'italic',
   },
-  // Task Card styles
+  // Compact Task Card styles
   taskCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
+    borderRadius: 12,
     marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 12,
+    marginBottom: 8,
+    padding: 14,
+    position: 'relative',
+  },
+  compactCardRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  compactAvatar: {
+    width: 42,
+    height: 42,
+    borderRadius: 11,
     borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
   },
-  taskTitle: {
-    fontWeight: '500',
-    fontSize: 16,
-    marginBottom: 4,
-    maxWidth: '80%',
+  compactAvatarText: {
+    fontWeight: '700',
+    fontSize: 18,
   },
-  taskProject: {
-    fontSize: 13,
-    fontWeight: '400',
-    marginBottom: 0,
-    minWidth: 50,
-    maxWidth: '70%',
+  compactContent: {
+    flex: 1,
+    paddingRight: 8,
   },
-  assignedInfoRow: {
+  titleProgressRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  assignedInfoLabel: {
-    fontSize: 13,
-    fontWeight: '400',
+  compactTitle: {
+    fontWeight: '600',
+    fontSize: 16,
+    flex: 1,
+    marginRight: 8,
+    lineHeight: 20,
   },
-  assignedInfoValue: {
+  compactProgressContainer: {
+    alignItems: 'center',
+  },
+  compactProgressText: {
     fontSize: 13,
     fontWeight: '600',
-    maxWidth: '55%',
+  },
+  compactInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+    flexWrap: 'wrap',
+  },
+  compactProject: {
+    fontSize: 13,
+    fontWeight: '500',
+    maxWidth: 140,
+  },
+  compactSeparator: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  compactLocation: {
+    fontSize: 13,
+    fontWeight: '400',
+    maxWidth: 90,
+  },
+  compactAssignmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  compactAssignLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginRight: 4,
+  },
+  compactAssignValue: {
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  compactActionButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
+  },
+  // Compact Tags styles
+  compactTagsContainer: {
+    marginTop: 6,
+  },
+  compactTagsScroll: {
+    flexGrow: 0,
+  },
+  compactTagChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 0,
+    marginRight: 4,
+    minHeight: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  compactTagText: {
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   progressCircle: {
     width: 48,
@@ -1443,13 +1710,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   selectionCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    zIndex: 2,
   },
   selectionActions: {
     flexDirection: 'row',

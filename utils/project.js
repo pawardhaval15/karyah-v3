@@ -175,3 +175,35 @@ export const deleteProjectById = async (id) => {
     throw error;
   }
 };
+
+export const updateProjectTags = async (projectId, tags) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    console.log('🏷️ Updating project tags:', { projectId, tags });
+
+    const response = await fetch(`${API_URL}api/projects/${projectId}/tags`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ tags }),
+    });
+
+    const data = await response.json();
+    console.log('🔄 Project tags update response:', data);
+
+    if (!response.ok) {
+      console.error('❌ Project tags update failed:', data);
+      throw new Error(data.message || 'Failed to update project tags');
+    }
+
+    console.log('✅ Project tags updated successfully');
+    return data.project;
+  } catch (error) {
+    console.error('❌ Error updating project tags:', error);
+    throw error;
+  }
+};

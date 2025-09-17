@@ -1,12 +1,12 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import CustomCircularProgress from 'components/task details/CustomCircularProgress';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
 
-export default function ProjectCard({ project = {}, theme }) {
+export default function ProjectCard({ project = {}, theme, onTagsManagement, currentUserId }) {
   const navigation = useNavigation();
 
   const {
@@ -14,9 +14,18 @@ export default function ProjectCard({ project = {}, theme }) {
     location = 'Not specified',
     progress = 0,
     endDate,
+    tags = [],
   } = project;
 
   const firstLetter = projectName?.charAt(0)?.toUpperCase() || '?';
+
+  // Check if current user is the creator of the project
+  const isCreator = currentUserId && (
+    project.createdBy === currentUserId || 
+    project.creatorId === currentUserId ||
+    project.userId === currentUserId ||
+    project.creator === currentUserId
+  );
 
   // Calculate remaining/delayed/completed time
   let remainingText = 'N/A';
@@ -71,6 +80,52 @@ export default function ProjectCard({ project = {}, theme }) {
           <Feather name="map-pin" size={14} color={theme.secondaryText || '#666'} />
           <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.projectInfo, { color: theme.secondaryText || '#666' }]}>{location || 'N/A'}</Text>
         </View>
+
+        {/* Tags Display */}
+        {tags && Array.isArray(tags) && tags.length > 0 && (
+          <View style={styles.tagsContainer}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.tagsScrollView}>
+              {tags.slice(0, 3).map((tag, tagIndex) => (
+                <View
+                  key={tagIndex}
+                  style={[
+                    styles.tagChip,
+                    {
+                      backgroundColor: theme.avatarBg,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.tagText,
+                      { color: theme.secondaryText },
+                    ]}>
+                    {tag}
+                  </Text>
+                </View>
+              ))}
+              {tags.length > 3 && (
+                <View
+                  style={[
+                    styles.tagChip,
+                    {
+                      backgroundColor: theme.avatarBg,
+                    },
+                  ]}>
+                  <Text
+                    style={[
+                      styles.tagText,
+                      { color: theme.secondaryText },
+                    ]}>
+                    +{tags.length - 3}
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
       </View>
 
       {/* Container for End Date above progress */}
@@ -78,7 +133,26 @@ export default function ProjectCard({ project = {}, theme }) {
         <View style={styles.projectRow}>
           <Text style={[styles.projectInfo, { color: statusColor }]}>{remainingText}</Text>
         </View>
-        <CustomCircularProgress percentage={progress || 0} />
+        
+        {/* Tags Management Button and Progress */}
+        <View style={styles.rightActions}>
+          {onTagsManagement && isCreator && (
+            <TouchableOpacity
+              style={[
+                styles.tagsButton,
+                {
+                  backgroundColor: theme.primary + '10',
+                  borderColor: theme.primary + '20'
+                }
+              ]}
+              onPress={() => onTagsManagement(project)}>
+              <MaterialIcons name="local-offer" size={16} color={theme.primary} />
+            </TouchableOpacity>
+          )}
+          <View style={styles.progressContainer}>
+            <CustomCircularProgress percentage={progress || 0} />
+          </View>
+        </View>
       </View>
     </TouchableOpacity>
   );
@@ -139,10 +213,49 @@ const styles = StyleSheet.create({
     height: isTablet ? 56 : 50,
   },
   endDateProgressContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-end',
     marginLeft: isTablet ? 12 : 10,
-    justifyContent: 'flex-start',
-    gap: 2,
+    justifyContent: 'center',
+    gap: 8,
+  },
+  rightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  tagsButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagsContainer: {
+    marginTop: 6,
+  },
+  tagsScrollView: {
+    flexGrow: 0,
+  },
+  tagChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 0,
+    marginRight: 4,
+    minHeight: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tagText: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   endDateText: {
     fontSize: isTablet ? 14 : 12,

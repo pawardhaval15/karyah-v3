@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { API_URL } from './config';
-import {Platform} from 'react-native';
 // Get all tasks by worklist ID
 export const getTasksByWorklistId = async (worklistId) => {
   try {
@@ -331,6 +331,9 @@ export const updateTask = async (taskId, updateData) => {
   try {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/update/${taskId}`;
+    
+    console.log('🔄 Updating task:', { taskId, updateData, url });
+    
     const response = await fetch(url, {
       method: 'PATCH',
       headers: {
@@ -339,11 +342,80 @@ export const updateTask = async (taskId, updateData) => {
       },
       body: JSON.stringify(updateData),
     });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.message || 'Failed to update task');
+    
+    console.log('📡 Response status:', response.status);
+    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+    
+    // Get the raw response text first
+    const responseText = await response.text();
+    console.log('📄 Raw response:', responseText);
+    
+    // Try to parse as JSON
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error:', parseError);
+      console.error('❌ Response was not JSON:', responseText);
+      throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
+    }
+    
+    if (!response.ok) {
+      console.error('❌ API Error Response:', data);
+      throw new Error(data.message || 'Failed to update task');
+    }
+    
+    console.log('✅ Task update success:', data);
     return data.task;
   } catch (error) {
-    console.error('Error updating task:', error.message);
+    console.error('❌ Error updating task:', error.message);
+    throw error;
+  }
+};
+
+// Alternative function to update task tags using the other endpoint
+export const updateTaskTags = async (taskId, tags) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}`;
+    
+    console.log('🔄 Updating task tags:', { taskId, tags, url });
+    
+    const formData = new FormData();
+    formData.append('tags', JSON.stringify(tags));
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Don't set Content-Type for FormData
+      },
+      body: formData,
+    });
+    
+    console.log('📡 Response status:', response.status);
+    
+    const responseText = await response.text();
+    console.log('📄 Raw response:', responseText);
+    
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error:', parseError);
+      console.error('❌ Response was not JSON:', responseText);
+      throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
+    }
+    
+    if (!response.ok) {
+      console.error('❌ API Error Response:', data);
+      throw new Error(data.message || 'Failed to update task tags');
+    }
+    
+    console.log('✅ Task tags update success:', data);
+    return data.task || data;
+  } catch (error) {
+    console.error('❌ Error updating task tags:', error.message);
     throw error;
   }
 };
