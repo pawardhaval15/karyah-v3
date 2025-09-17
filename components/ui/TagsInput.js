@@ -117,7 +117,7 @@ export default function TagsInput({
           placeholderTextColor={theme.secondaryText}
           returnKeyType="done"
           onSubmitEditing={addTag}
-          maxLength={50}
+          maxLength={10}
         />
         <TouchableOpacity
           onPress={addTag}
