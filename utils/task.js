@@ -373,24 +373,21 @@ export const updateTask = async (taskId, updateData) => {
   }
 };
 
-// Alternative function to update task tags using the other endpoint
+// Alternative function to update task tags using the PATCH endpoint
 export const updateTaskTags = async (taskId, tags) => {
   try {
     const token = await AsyncStorage.getItem('token');
-    const url = `${API_URL}api/tasks/${taskId}`;
+    const url = `${API_URL}api/tasks/${taskId}/tags`;
     
-    console.log('🔄 Updating task tags:', { taskId, tags, url });
-    
-    const formData = new FormData();
-    formData.append('tags', JSON.stringify(tags));
+    console.log('🔄 Updating task tags with PATCH:', { taskId, tags, url });
     
     const response = await fetch(url, {
-      method: 'PUT',
+      method: 'PATCH',
       headers: {
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
-        // Don't set Content-Type for FormData
       },
-      body: formData,
+      body: JSON.stringify({ tags }),
     });
     
     console.log('📡 Response status:', response.status);
@@ -398,24 +395,22 @@ export const updateTaskTags = async (taskId, tags) => {
     const responseText = await response.text();
     console.log('📄 Raw response:', responseText);
     
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${responseText}`);
+    }
+    
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ JSON Parse Error:', parseError);
-      console.error('❌ Response was not JSON:', responseText);
-      throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
+      console.error('❌ Failed to parse response JSON:', parseError);
+      throw new Error('Invalid JSON response from server');
     }
     
-    if (!response.ok) {
-      console.error('❌ API Error Response:', data);
-      throw new Error(data.message || 'Failed to update task tags');
-    }
-    
-    console.log('✅ Task tags update success:', data);
-    return data.task || data;
+    console.log('✅ Task tags updated successfully:', data);
+    return { ...data, tags: data.tags }; // Return the merged tags
   } catch (error) {
-    console.error('❌ Error updating task tags:', error.message);
+    console.error('❌ Failed to update task tags:', error);
     throw error;
   }
 };

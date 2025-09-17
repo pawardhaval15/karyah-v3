@@ -180,9 +180,37 @@ export default function MyTasksScreen({ navigation }) {
   }, [addTaskForm.projectId]);
 
   const filteredTasks = tasks.filter((task) => {
-    const searchMatch = (task.name || task.taskName || '')
+    // Search in task name
+    const nameMatch = (task.name || task.taskName || '')
       .toLowerCase()
       .includes(search.toLowerCase());
+    
+    // Search in task description
+    const descMatch = (task.description || '')
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    
+    // Search in project name
+    const projectMatch = (
+      task.projectName ||
+      (task.project && task.project.projectName) ||
+      (task.project && task.project.name) ||
+      task.projectTitle ||
+      (typeof task.project === 'string' ? task.project : '') ||
+      ''
+    ).toLowerCase().includes(search.toLowerCase());
+    
+    // Search in tags
+    const tagsMatch = task.tags && Array.isArray(task.tags) && 
+      task.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
+    
+    // Search in location
+    const locationMatch = ((task.project && task.project.location) || '')
+      .toLowerCase()
+      .includes(search.toLowerCase());
+    
+    // Combine all search matches
+    const searchMatch = nameMatch || descMatch || projectMatch || tagsMatch || locationMatch;
 
     // Status filter
     const statusMatch = filters.status.length === 0 || filters.status.includes(task.status);
@@ -206,7 +234,7 @@ export default function MyTasksScreen({ navigation }) {
     }
 
     // Project filter
-    const projectMatch =
+    const projectFilterMatch =
       filters.projects.length === 0 ||
       filters.projects.includes(
         task.projectName ||
@@ -236,18 +264,18 @@ export default function MyTasksScreen({ navigation }) {
       }
     }
     
-    const locationMatch =
+    const locationFilterMatch =
       filters.locations.length === 0 ||
       filters.locations.includes((task.project && task.project.location) || '');
 
     // Tags filter
-    const tagsMatch = 
+    const tagsFilterMatch = 
       filters.tags.length === 0 ||
       (task.tags && Array.isArray(task.tags) && 
        filters.tags.some(filterTag => task.tags.includes(filterTag)));
 
     return (
-      searchMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch && tagsMatch
+      searchMatch && statusMatch && progressMatch && projectFilterMatch && assignedMatch && locationFilterMatch && tagsFilterMatch
     );
   });
 
@@ -355,21 +383,14 @@ export default function MyTasksScreen({ navigation }) {
     try {
       console.log('🏷️ Saving tags:', { taskId, newTags });
       
-      // Try the primary updateTask method first
-      let updatedTask;
-      try {
-        updatedTask = await updateTask(taskId, { tags: newTags });
-      } catch (error) {
-        console.log('⚠️ Primary method failed, trying alternative method...');
-        // If that fails, try the alternative updateTaskTags method
-        updatedTask = await updateTaskTags(taskId, newTags);
-      }
+      // Use the PATCH API which merges tags instead of replacing
+      const result = await updateTaskTags(taskId, newTags);
       
-      // Update the local tasks state
+      // Update the local tasks state with the merged tags returned by the API
       setTasks(prevTasks => 
         prevTasks.map(task => 
           (task.id === taskId || task.taskId === taskId) 
-            ? { ...task, tags: newTags }
+            ? { ...task, tags: result.tags || newTags }
             : task
         )
       );

@@ -278,9 +278,26 @@ export default function ProjectScreen({ navigation }) {
 
   // Categorize projects
   const now = new Date();
-  let filtered = projects.filter(p =>
-    p?.projectName?.toLowerCase().includes(search.toLowerCase())
-  );
+  let filtered = projects.filter(p => {
+    // Search in project name
+    const nameMatch = p?.projectName?.toLowerCase().includes(search.toLowerCase());
+    
+    // Search in project description
+    const descMatch = p?.description?.toLowerCase().includes(search.toLowerCase());
+    
+    // Search in tags
+    const tagsMatch = p?.tags && Array.isArray(p.tags) && 
+      p.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
+    
+    // Search in location  
+    const locationMatch = p?.location?.toLowerCase().includes(search.toLowerCase());
+    
+    // Search in project category
+    const categoryMatch = p?.projectCategory?.toLowerCase().includes(search.toLowerCase());
+    
+    // Return true if any search criteria matches
+    return nameMatch || descMatch || tagsMatch || locationMatch || categoryMatch;
+  });
 
   // Apply tags filter
   if (filters.tags.length > 0) {
