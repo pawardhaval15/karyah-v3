@@ -37,7 +37,6 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
     }
   }, [visible, activeTab, taskId, projectId]);
   useEffect(() => {
-    console.log('MaterialRequestPopup received props:', { projectId, taskId });
   }, [projectId, taskId]);
 
   // Update activeTab when taskId changes

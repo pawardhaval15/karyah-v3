@@ -13,7 +13,6 @@ export const getProjectsByUserId = async () => {
         },
     });
     const data = await response.json();
-    console.log('Projects API Response data:', data);
 
     if (!response.ok) throw new Error(data.message || 'Failed to fetch projects');
     
@@ -40,7 +39,6 @@ export const getProjectById = async (id) => {
   });
 
   const data = await response.json();
-  console.log(`[getProjectById] Response for ID ${id}:`, data);
   
   if (!response.ok) {
     throw new Error(data.message || 'Failed to fetch project details');

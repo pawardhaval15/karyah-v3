@@ -74,7 +74,6 @@ export default function ProjectScreen({ navigation }) {
   const fetchProjects = async () => {
     try {
       const result = await getProjectsByUserId();
-      console.log('✅ Raw Projects fetched:', result);
       
       // Ensure each project has a tags field (empty array if not present)
       const projectsWithTags = (result || []).map(project => ({
@@ -82,7 +81,6 @@ export default function ProjectScreen({ navigation }) {
         tags: project.tags || [] // Default to empty array if tags is missing
       }));
       
-      console.log('✅ Projects with tags initialized:', projectsWithTags);
       setProjects(projectsWithTags);
     } catch (err) {
       console.error('❌ Error fetching projects:', err.message);
@@ -118,21 +116,6 @@ export default function ProjectScreen({ navigation }) {
         }
       }
       
-      console.log('🔍 Complete User Debug:', {
-        fromStorage: {
-          fullUser: user,
-          extractedUserId: userIdFromStorage,
-        },
-        fromToken: {
-          decodedToken,
-          extractedUserId: userIdFromToken,
-        },
-        comparison: {
-          storageId: userIdFromStorage,
-          tokenId: userIdFromToken,
-          match: String(userIdFromStorage) === String(userIdFromToken)
-        }
-      });
       
       // Use token ID if available, otherwise fall back to storage ID
       const finalUserId = userIdFromToken || userIdFromStorage;
@@ -416,16 +399,7 @@ export default function ProjectScreen({ navigation }) {
               const diffTime = now - end;
               delayedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             }
-            
-            // Debug project tags
-            console.log('🔍 Rendering project:', {
-              id: item.id,
-              name: item.projectName,
-              tags: item.tags,
-              tagsType: typeof item.tags,
-              tagsIsArray: Array.isArray(item.tags)
-            });
-            
+          
             return (
               <View style={isTablet ? styles.cardContainer : null}>
                 <ProjectCard

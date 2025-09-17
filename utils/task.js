@@ -7,9 +7,6 @@ export const getTasksByWorklistId = async (worklistId) => {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/worklist/${worklistId}`;
 
-    console.log('Fetching tasks from:', url);
-    console.log('Using token:', token);
-
     const response = await fetch(url, {
       method: 'GET',
       headers: {
@@ -19,20 +16,15 @@ export const getTasksByWorklistId = async (worklistId) => {
     });
 
     const contentType = response.headers.get('content-type');
-    console.log('Response Content-Type:', contentType);
-    console.log('Response Status:', response.status);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Response Error Text:', errorText);
       throw new Error('Failed to fetch tasks');
     }
 
     const data = await response.json();
-    console.log('Fetched tasks:', data.tasks);
     return data.tasks;
   } catch (error) {
-    console.error('Error fetching tasks:', error.message);
     throw error;
   }
 };
@@ -143,14 +135,12 @@ export const createTask = async (taskData) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Create Task Error:', errorText);
       throw new Error('Failed to create task');
     }
 
     const data = await response.json();
     return data.task;
   } catch (error) {
-    console.error('Error creating task:', error.message);
     throw error;
   }
 };
@@ -239,10 +229,8 @@ export const fetchMyTasks = async () => {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Failed to fetch tasks');
-    // console.log('Fetched my tasks:', data.tasks);
     return data.tasks;
   } catch (error) {
-    console.error('❌ Error fetching my tasks:', error.message);
     throw error;
   }
 };
@@ -251,8 +239,6 @@ export const getTaskDetailsById = async (taskId) => {
   try {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/details/${taskId}`;
-
-    // console.log('Fetching task details from:', url);
 
     const response = await fetch(url, {
       method: 'GET',
@@ -264,12 +250,10 @@ export const getTaskDetailsById = async (taskId) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Task Detail Error Text:', errorText);
       throw new Error('Failed to fetch task details');
     }
 
     const data = await response.json();
-    console.log('Fetched task details:', data.task);
     return data.task;
   } catch (error) {
     console.error('❌ Error fetching task details:', error.message);

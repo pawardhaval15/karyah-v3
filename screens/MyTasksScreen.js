@@ -21,7 +21,7 @@ import AddTaskPopup from '../components/popups/AddTaskPopup';
 import TagsManagementModal from '../components/popups/TagsManagementModal';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { bulkAssignTasks, getTasksByProjectId, updateTask, updateTaskTags } from '../utils/task';
+import { bulkAssignTasks, getTasksByProjectId, updateTaskTags } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
@@ -118,7 +118,6 @@ export default function MyTasksScreen({ navigation }) {
       let data = [];
       if (activeTab === 'mytasks') {
         data = await fetchMyTasks();
-        console.log('Fetched my tasks:', data);
         setTaskCounts((prev) => ({ ...prev, mytasks: data.length }));
       } else {
         data = await fetchTasksCreatedByMe();

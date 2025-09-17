@@ -14,7 +14,6 @@ async function getToken() {
 
 export async function fetchMyTasks() {
   const url = `${API_URL}api/tasks/my-tasks`;
-  console.log('[fetchMyTasks] URL:', url);
 
   try {
     const token = await getToken();

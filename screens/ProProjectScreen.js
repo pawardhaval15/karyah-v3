@@ -68,7 +68,6 @@ const [editedWorklistName, setEditedWorklistName] = useState('');
   useEffect(() => {
     const fetchUserId = async () => {
       const id = await getUserIdFromToken();
-      console.log('Current User ID:', id);
       setUserId(id);
     };
     fetchUserId();
@@ -188,7 +187,6 @@ const WorklistCard = ({ worklist }) => (
         const id = projectId || (project && project.id);
         if (!id) throw new Error('No projectId provided');
         const res = await getProjectById(id);
-        console.log('Project Details - userId:', res.userId, 'Current User ID:', userId);
         setProjectDetails(res);
       } catch (err) {
         console.error('Failed to fetch project details:', err.message);
