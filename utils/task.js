@@ -314,9 +314,21 @@ export const updateTaskProgress = async (taskId, progress) => {
 export const updateTask = async (taskId, updateData) => {
   try {
     const token = await AsyncStorage.getItem('token');
-    const url = `${API_URL}api/tasks/update/${taskId}`;
+    const url = `${API_URL}api/tasks/${taskId}`;
     
     console.log('🔄 Updating task:', { taskId, updateData, url });
+    
+    // Map frontend field names to backend field names
+    const mappedData = {
+      ...updateData,
+      // Map taskName to name for backend compatibility
+      name: updateData.taskName || updateData.name,
+    };
+    
+    // Remove taskName if it exists since backend uses 'name'
+    if (mappedData.taskName) {
+      delete mappedData.taskName;
+    }
     
     const response = await fetch(url, {
       method: 'PATCH',
@@ -324,7 +336,7 @@ export const updateTask = async (taskId, updateData) => {
         'Content-Type': 'application/json',
         ...(token && { Authorization: `Bearer ${token}` }),
       },
-      body: JSON.stringify(updateData),
+      body: JSON.stringify(mappedData),
     });
     
     console.log('📡 Response status:', response.status);
@@ -404,12 +416,35 @@ export const updateTaskDetails = async (taskId, data) => {
     const token = await AsyncStorage.getItem('token');
     const formData = new FormData();
 
-    // ✅ Append basic fields
-    formData.append('name', data.taskName || '');
+    // ✅ Append basic fields (matching backend schema)
+    formData.append('name', data.taskName || data.name || '');
     formData.append('description', data.description || '');
     formData.append('startDate', data.startDate || '');
     formData.append('endDate', data.endDate || '');
     formData.append('isIssue', String(data.isIssue || false));
+    formData.append('isCritical', String(data.isCritical || false));
+    
+    // ✅ Progress field
+    if (typeof data.progress === 'number') {
+      formData.append('progress', String(data.progress));
+    }
+    
+    // ✅ Status field
+    if (data.status) {
+      formData.append('status', data.status);
+    }
+    
+    // ✅ Approval fields
+    if (typeof data.isApproved === 'boolean') {
+      formData.append('isApproved', String(data.isApproved));
+    }
+    
+    // ✅ Tags field
+    if (Array.isArray(data.tags)) {
+      data.tags.forEach(tag => {
+        formData.append('tags', String(tag));
+      });
+    }
 
     // ✅ Assigned user IDs
     if (Array.isArray(data.assignedUserIds)) {
@@ -452,6 +487,29 @@ export const updateTaskDetails = async (taskId, data) => {
     if (Array.isArray(data.dependentTaskIds)) {
       data.dependentTaskIds.forEach(id => {
         formData.append('dependentTaskIds', String(id));
+      });
+    }
+    
+    // ✅ Resolved images for issue resolution (when task is marked as issue)
+    if (Array.isArray(data.resolvedImages)) {
+      data.resolvedImages.forEach(resolvedImg => {
+        if (resolvedImg && resolvedImg.uri) {
+          const uri = resolvedImg.uri.startsWith('file://') ? resolvedImg.uri : `file://${resolvedImg.uri}`;
+          
+          // Fix MIME type
+          let mimeType = resolvedImg.type;
+          if (mimeType && !mimeType.includes('/')) {
+            if (mimeType === 'image') mimeType = 'image/jpeg';
+            else if (mimeType === 'video') mimeType = 'video/mp4';
+            else mimeType = 'application/octet-stream';
+          }
+          
+          formData.append('resolvedImages', {
+            uri,
+            name: resolvedImg.name || 'resolved-file',
+            type: mimeType || 'application/octet-stream',
+          });
+        }
       });
     }
 
