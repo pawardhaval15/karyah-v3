@@ -1,6 +1,8 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Image,
@@ -9,12 +11,12 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
-import * as FileSystem from 'expo-file-system';
 import GradientButton from '../components/Login/GradientButton';
 import AttachmentSheet from '../components/popups/AttachmentSheet';
 import CustomPickerDrawer from '../components/popups/CustomPickerDrawer';
@@ -25,7 +27,6 @@ import DateBox from '../components/task details/DateBox';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserConnections, searchConnections } from '../utils/connections';
-import { useTranslation } from 'react-i18next';
 import { getTaskDetailsById, updateTaskDetails } from '../utils/task';
 export default function UpdateTaskScreen({ route, navigation }) {
   const { taskId, projects, users, worklists, projectTasks } = route.params;
@@ -52,6 +53,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
     startDate: '',
     endDate: '',
     images: [],
+    isIssue: false,
   });
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [searchText, setSearchText] = useState('');
@@ -115,12 +117,15 @@ export default function UpdateTaskScreen({ route, navigation }) {
     const fetchTask = async () => {
       try {
         const res = await getTaskDetailsById(taskId);
+        console.log('Loaded task data:', res);
+        
         setTask(res);
         setValues({
-          taskName: res.taskName,
+          taskName: res.taskName || res.name,
           description: res.description,
           startDate: res.startDate,
           endDate: res.endDate,
+          isIssue: res.isIssue || false,
         });
         // Preload dependencies
         setSelectedDepIds((res.dependentTaskIds || []).map(String));
@@ -226,6 +231,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
         imagesToRemove: task?.imagesToRemove || [],
         attachments: newImages,
         dependentTaskIds: selectedDepIds.map(String),
+        isIssue: values.isIssue,
       };
       console.log('[handleUpdate] Final updatePayload:', updatePayload);
       await updateTaskDetails(taskId, updatePayload);
@@ -301,7 +307,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
           end={{ x: 1, y: 0 }}
           style={styles.headerCard}>
           <View>
-            <Text style={styles.taskName}>{task.taskName}</Text>
+            <Text style={styles.taskName}>{task.taskName || task.name}</Text>
             <Text style={styles.dueDate}>{t('due_date')}: {values.endDate?.split('T')[0] || '-'}</Text>
           </View>
         </LinearGradient>
@@ -753,6 +759,29 @@ export default function UpdateTaskScreen({ route, navigation }) {
             ))}
           </View>
         )}
+
+        {/* Issue Toggle */}
+        <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <View style={styles.toggleIconBox}>
+            <Feather name="alert-triangle" size={24} color="#FF6B35" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text>
+            <Text style={[styles.toggleDesc, { color: theme.secondaryText }]}>
+              {values.isIssue 
+                ? t('thisTaskWillAppearInIssuesSection')
+                : t('convertThisTaskToAnIssue')
+              }
+            </Text>
+          </View>
+          <Switch
+            value={values.isIssue || false}
+            onValueChange={v => handleChange('isIssue', v)}
+            trackColor={{ false: '#ddd', true: '#FF6B35' }}
+            thumbColor="#fff"
+          />
+        </View>
+
         <AttachmentSheet
           visible={showAttachmentSheet}
           onClose={() => setShowAttachmentSheet(false)}
@@ -862,5 +891,35 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    marginHorizontal: 20,
+    marginBottom: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  toggleIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  toggleDesc: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

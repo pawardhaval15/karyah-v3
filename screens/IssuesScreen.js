@@ -1,23 +1,24 @@
-import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     Platform,
-    StyleSheet,
     RefreshControl,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    View, ScrollView,
+    View,
 } from 'react-native';
 import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useTheme } from '../theme/ThemeContext';
-import { fetchAssignedIssues, fetchCreatedByMeIssues, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { useTranslation } from 'react-i18next';
+import { fetchAssignedIssues, fetchCreatedByMeIssues, fetchIssuesByUser, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
@@ -89,14 +90,26 @@ export default function IssuesScreen({ navigation }) {
         try {
             // You can use your fetchData logic from useFocusEffect for full reload:
             const token = await AsyncStorage.getItem('token');
-            const [assigned, created, projects, connections] = await Promise.all([
+            
+            // Fetch both original issues and task-based issues
+            const [assigned, taskBasedIssues, created, projects, connections] = await Promise.all([
                 fetchAssignedIssues(),
+                fetchIssuesByUser(), // New API for task-based issues
                 fetchCreatedByMeIssues(),
                 fetchProjectsByUser(),
                 fetchUserConnections()
             ]);
+            
             console.log(`Fetched assignedIssues: ${assigned ? assigned.length : 0}`);
-            setAssignedIssues(assigned || []);
+            console.log(`Fetched taskBasedIssues: ${taskBasedIssues ? taskBasedIssues.length : 0}`);
+            
+            // Combine original issues with task-based issues
+            const combinedAssignedIssues = [
+                ...(assigned || []),
+                ...(taskBasedIssues || [])
+            ];
+            
+            setAssignedIssues(combinedAssignedIssues);
             setCreatedIssues(created || []);
             setProjects(projects || []);
             setUsers(connections || []);
@@ -117,13 +130,23 @@ export default function IssuesScreen({ navigation }) {
                 setLoading(true);
                 try {
                     const token = await AsyncStorage.getItem('token');
-                    const [assigned, created, projects, connections] = await Promise.all([
+                    
+                    // Fetch both original issues and task-based issues
+                    const [assigned, taskBasedIssues, created, projects, connections] = await Promise.all([
                         fetchAssignedIssues(),
+                        fetchIssuesByUser(), // New API for task-based issues
                         fetchCreatedByMeIssues(),
                         fetchProjectsByUser(),
                         fetchUserConnections()
                     ]);
-                    setAssignedIssues(assigned || []);
+                    
+                    // Combine original issues with task-based issues
+                    const combinedAssignedIssues = [
+                        ...(assigned || []),
+                        ...(taskBasedIssues || [])
+                    ];
+                    
+                    setAssignedIssues(combinedAssignedIssues);
                     setCreatedIssues(created || []);
                     setProjects(projects || []);
                     setUsers(connections || []);
@@ -181,9 +204,9 @@ export default function IssuesScreen({ navigation }) {
                 return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch;
             })
             .sort((a, b) => {
-                // Unresolved first, then resolved
-                const aResolved = a.issueStatus === 'resolved';
-                const bResolved = b.issueStatus === 'resolved';
+                // Unresolved first, then resolved - handle both issue types
+                const aResolved = (a.issueStatus === 'resolved') || (a.status === 'Completed');
+                const bResolved = (b.issueStatus === 'resolved') || (b.status === 'Completed');
                 if (aResolved === bResolved) return 0;
                 return aResolved ? 1 : -1;
             });
@@ -204,11 +227,20 @@ export default function IssuesScreen({ navigation }) {
         // After creating a new issue, refresh the issues from the API for up-to-date data
         setLoading(true);
         try {
-            const [assigned, created] = await Promise.all([
+            // Fetch both original issues and task-based issues
+            const [assigned, taskBasedIssues, created] = await Promise.all([
                 fetchAssignedIssues(),
+                fetchIssuesByUser(), // New API for task-based issues
                 fetchCreatedByMeIssues()
             ]);
-            setAssignedIssues(assigned || []);
+            
+            // Combine original issues with task-based issues
+            const combinedAssignedIssues = [
+                ...(assigned || []),
+                ...(taskBasedIssues || [])
+            ];
+            
+            setAssignedIssues(combinedAssignedIssues);
             setCreatedIssues(created || []);
         } catch (e) {
             setAssignedIssues([]);
@@ -256,10 +288,10 @@ export default function IssuesScreen({ navigation }) {
                     <Text style={styles.bannerTitle}>{t('issues')}</Text>
                     <Text style={styles.bannerDesc}>{t('all_issues_assigned_or_created_by_you_are_listed_here')}</Text>
                 </View>
-                <TouchableOpacity style={styles.bannerAction} onPress={() => setShowIssuePopup(true)}>
+                {/* <TouchableOpacity style={styles.bannerAction} onPress={() => setShowIssuePopup(true)}>
                     <Text style={styles.bannerActionText}>{t('issue')}</Text>
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
-                </TouchableOpacity>
+                </TouchableOpacity> */}
             </LinearGradient>
             {/* Dynamic Section Tabs */}
             <View style={[styles.tabRow, { borderColor: theme.border }]}>
@@ -472,7 +504,7 @@ export default function IssuesScreen({ navigation }) {
             ) : (
                 <IssueList
                     issues={section === 'assigned' ? filteredAssigned : filteredCreated}
-                    onPressIssue={issue => navigation.navigate('IssueDetails', { issueId: issue.issueId, section })}
+                    onPressIssue={issue => navigation.navigate('IssueDetails', { issueId: issue.id || issue.issueId, section })}
                     styles={styles}
                     theme={theme}
                     section={section}

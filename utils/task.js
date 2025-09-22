@@ -409,6 +409,7 @@ export const updateTaskDetails = async (taskId, data) => {
     formData.append('description', data.description || '');
     formData.append('startDate', data.startDate || '');
     formData.append('endDate', data.endDate || '');
+    formData.append('isIssue', String(data.isIssue || false));
 
     // ✅ Assigned user IDs
     if (Array.isArray(data.assignedUserIds)) {

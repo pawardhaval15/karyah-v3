@@ -1,6 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
     FlatList,
@@ -14,7 +15,6 @@ import {
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { getConnectionSuggestions, searchUsers, sendConnectionRequest } from '../utils/connections';
-import { useTranslation } from 'react-i18next';
 export default function AddConnectionScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
@@ -142,16 +142,13 @@ const { t } = useTranslation();
                     renderItem={({ item }) => (
                         <View style={[styles.personCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
                             <Image source={{ uri: item.avatar }} style={styles.avatar} />
-                            <View style={{ flex: 1 }}>
+                            <View style={{ flex: 1, justifyContent: 'center' }}>
                                 <Text
                                     style={[styles.personName, { color: theme.text }]}
                                     numberOfLines={1}
                                     ellipsizeMode="tail"
                                 >
                                     {item.name}
-                                </Text>
-                                <Text style={{ color: theme.secondaryText, fontSize: 13 }}>
-                                    {item.phone ? item.phone : (item.email ? item.email : 'N/A')}
                                 </Text>
                             </View>
                             {item.connectionStatus === 'accepted' ? (

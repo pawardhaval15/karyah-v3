@@ -152,7 +152,7 @@ export default function CustomPickerDrawer({
                                                     { color: theme.text, marginLeft: showImage ? 10 : 0 },
                                                 ]}
                                             >
-                                                <Text style={{ color: theme.secondaryText }}>{index + 1}. </Text>
+                                                <Text style={{ color: theme.secondaryText }}></Text>
                                                 {item[labelKey]}
                                             </Text>
 

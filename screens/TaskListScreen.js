@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -25,7 +26,6 @@ import { fetchUserConnections } from '../utils/issues';
 import { getProjectById } from '../utils/project';
 import { getTasksByProjectId, getTasksByWorklistId } from '../utils/task';
 import { deleteWorklist, getProjectWorklistsProgress, updateWorklist } from '../utils/worklist';
-import { useTranslation } from 'react-i18next';
 export default function TaskListScreen({ navigation, route }) {
   const theme = useTheme();
   const [search, setSearch] = useState('');
@@ -39,6 +39,7 @@ export default function TaskListScreen({ navigation, route }) {
     assignedTo: '',
     dueDate: '',
     progress: 0,
+    isIssue: false,
   });
   const [projectName, setProjectName] = useState('');
   const { project, worklist } = route.params || {};
@@ -210,6 +211,7 @@ export default function TaskListScreen({ navigation, route }) {
       description: '',
       assignedTo: '',
       dueDate: '',
+      isIssue: false,
     });
   };
 

@@ -5,16 +5,16 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  FlatList,
-  Platform,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    FlatList,
+    Platform,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
@@ -49,6 +49,7 @@ export default function MyTasksScreen({ navigation }) {
     taskDesc: '',
     projectId: '',
     tags: [], // Add tags field as array
+    isIssue: false, // Add isIssue field
   });
   const [refreshing, setRefreshing] = useState(false);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -304,6 +305,7 @@ export default function MyTasksScreen({ navigation }) {
       taskAssign: '',
       taskDesc: '',
       tags: [], // Reset tags
+      isIssue: false, // Reset isIssue
     });
     if (newTask) {
       setTasks((prev) => [newTask, ...prev]);

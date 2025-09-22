@@ -2,7 +2,8 @@ import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateBox from 'components/task details/DateBox';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
-import { Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View, } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { Alert, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, } from 'react-native';
 import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
 import AttachmentSheet from '../popups/AttachmentSheet';
@@ -10,7 +11,6 @@ import CustomPickerDrawer from '../popups/CustomPickerDrawer';
 import FilePreviewModal from '../popups/FilePreviewModal';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
-import { useTranslation } from 'react-i18next';
 export default function TaskForm({
   values,
   onChange,
@@ -131,6 +131,7 @@ export default function TaskForm({
         status: 'Pending',
         progress: 0,
         images,
+        isIssue: values.isIssue || false,
         ...(parentId && { parentId }),
       };
 
@@ -430,6 +431,25 @@ export default function TaskForm({
         }}
       />
 
+      {/* Issue Toggle */}
+      <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={styles.toggleIconBox}>
+          <Feather name="alert-triangle" size={24} color="#FF6B35" />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text>
+          {/* <Text style={[styles.toggleDesc, { color: theme.secondaryText }]}>
+            {t('markAsIssueDesc')}
+          </Text> */}
+        </View>
+        <Switch
+          value={values.isIssue || false}
+          onValueChange={v => onChange('isIssue', v)}
+          trackColor={{ false: '#ddd', true: '#FF6B35' }}
+          thumbColor="#fff"
+        />
+      </View>
+
       {/* Description */}
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TextInput
@@ -542,5 +562,35 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: '700',
     fontSize: 17,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 10,
+    marginHorizontal: 22,
+    marginBottom: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+  },
+  toggleIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  toggleDesc: {
+    fontSize: 13,
+    lineHeight: 18,
   },
 });

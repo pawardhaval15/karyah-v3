@@ -200,6 +200,8 @@
   "dueDate": "Due Date",
   "criticalIssueLabel": "Critical Issue?",
   "criticalIssueDesc": "Turn on the toggle only if the Issue needs immediate attention.",
+  "markAsIssue": "Mark as Issue",
+  "markAsIssueDesc": "Turn on if this task should be treated as an issue that needs resolution.",
   "yesRaise": "Yes, Raise",
   "noCancel": "No, Cancel?",
   "delete_issue_confirm_title": "Delete Issue",

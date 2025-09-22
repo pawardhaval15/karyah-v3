@@ -1,6 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 export default function IssueList({
   issues,
   onPressIssue,
@@ -12,22 +12,29 @@ export default function IssueList({
   statusTab,
   refreshControl,
 }) {
-  // Filtering logic
+  // Filtering logic for task-based issues
   let filteredIssues = issues;
   if (statusTab === 'critical') {
     filteredIssues = issues.filter((i) => i.isCritical);
   } else if (statusTab === 'resolved') {
-    filteredIssues = issues.filter((i) => i.issueStatus === 'resolved');
+    filteredIssues = issues.filter((i) => 
+      i.status === 'Completed' && i.isApproved === true
+    );
   } else if (statusTab === 'unresolved') {
-    filteredIssues = issues.filter((i) => i.issueStatus === 'unresolved');
+    filteredIssues = issues.filter((i) => 
+      i.status === 'Pending' || i.status === 'In Progress' || !i.isApproved
+    );
   } else if (statusTab === 'pending_approval') {
-    filteredIssues = issues.filter((i) => i.issueStatus === 'pending_approval');
+    filteredIssues = issues.filter((i) => 
+      i.status === 'Completed' && i.isApprovalNeeded === true && i.isApproved === false
+    );
   }
   // console.log(issues);
   filteredIssues = filteredIssues.slice().sort((a, b) => {
-    // Helper to classify priority
+    // Helper to classify priority for task-based issues
     const getPriority = (issue) => {
-      if (issue.issueStatus !== 'resolved') {
+      const isResolved = (issue.status === 'Completed' && issue.isApproved === true);
+      if (!isResolved) {
         // Unresolved
         return issue.isCritical ? 0 : 1; // critical first, then other unresolved
       }
@@ -96,7 +103,9 @@ export default function IssueList({
                 style={{ marginRight: 2 }}
               />
             ),
-            count: issues.filter((i) => i.issueStatus === 'resolved').length,
+            count: issues.filter((i) => 
+              i.status === 'Completed' && i.isApproved === true
+            ).length,
             color: '#039855',
           },
           {
@@ -110,7 +119,9 @@ export default function IssueList({
                 style={{ marginRight: 2 }}
               />
             ),
-            count: issues.filter((i) => i.issueStatus === 'pending_approval').length,
+            count: issues.filter((i) => 
+              i.status === 'Completed' && i.isApprovalNeeded === true && i.isApproved === false
+            ).length,
             color: '#FFC107',
           },
           {
@@ -124,7 +135,9 @@ export default function IssueList({
                 style={{ marginRight: 2 }}
               />
             ),
-            count: issues.filter((i) => i.issueStatus === 'unresolved').length,
+            count: issues.filter((i) => 
+              i.status === 'Pending' || i.status === 'In Progress' || !i.isApproved
+            ).length,
             color: '#E67514',
           },
         ].map((tab) => (
@@ -185,24 +198,24 @@ export default function IssueList({
         refreshControl={refreshControl}>
         {filteredIssues.map((item, idx) => (
           <TouchableOpacity
-            key={item.issueId || (item.title || item.issueTitle || 'issue') + idx}
+            key={item.id || (item.name || 'issue') + idx}
             activeOpacity={0.8}
             onPress={() => onPressIssue(item)}>
             <View
               style={[
                 styles.issueCard,
-                { backgroundColor: theme.card, borderColor: theme.border },
+                { backgroundColor: theme.card, borderColor: theme.border, padding: 10 },
               ]}>
               <View style={[styles.issueIcon, { backgroundColor: theme.avatarBg }]}>
                 <Text style={[styles.issueIconText, { color: theme.primary }]}>
-                  {item.title && item.title.trim().length > 0
-                    ? item.title.trim()[0].toUpperCase()
-                    : item.issueTitle && item.issueTitle.trim().length > 0
-                      ? item.issueTitle.trim()[0].toUpperCase()
-                      : '?'}
+                  {/* Display first letter of task name */}
+                  {item.name && item.name.trim().length > 0
+                    ? item.name.trim()[0].toUpperCase()
+                    : '?'}
                 </Text>
               </View>
               <View style={{ flex: 1 }}>
+                {/* Title Row with Tags */}
                 <View style={styles.issueRow}>
                   <View style={styles.issueTitleRow}>
                     <View
@@ -219,7 +232,8 @@ export default function IssueList({
                         ]}
                         numberOfLines={1}
                         ellipsizeMode="tail">
-                        {item.title || item.issueTitle || 'Untitled'}
+                        {/* Display task name */}
+                        {item.name || 'Untitled Task'}
                       </Text>
                       {item.isCritical && (
                         <View
@@ -248,13 +262,13 @@ export default function IssueList({
                         </View>
                       )}
                       {/* Issue Status Tag */}
-                      {item.issueStatus && (
+                      {item.status && (
                         <View
                           style={{
                             backgroundColor:
-                              item.issueStatus === 'resolved'
+                              (item.status === 'Completed' && item.isApproved === true)
                                 ? 'rgba(57, 201, 133, 0.13)'
-                                : item.issueStatus === 'pending_approval'
+                                : (item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false)
                                   ? 'rgba(255, 193, 7, 0.18)'
                                   : 'rgba(230, 117, 20, 0.08)',
                             borderRadius: 5,
@@ -264,9 +278,9 @@ export default function IssueList({
                             alignSelf: 'center',
                             borderWidth: 0.5,
                             borderColor:
-                              item.issueStatus === 'resolved'
+                              (item.status === 'Completed' && item.isApproved === true)
                                 ? '#039855'
-                                : item.issueStatus === 'pending_approval'
+                                : (item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false)
                                   ? '#FFC107'
                                   : '#E67514',
                             maxWidth: 90,
@@ -274,9 +288,9 @@ export default function IssueList({
                           <Text
                             style={{
                               color:
-                                item.issueStatus === 'resolved'
+                                (item.status === 'Completed' && item.isApproved === true)
                                   ? '#039855'
-                                  : item.issueStatus === 'pending_approval'
+                                  : (item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false)
                                     ? '#FFC107'
                                     : '#E67514',
                               fontWeight: '500',
@@ -287,13 +301,23 @@ export default function IssueList({
                             }}
                             numberOfLines={1}
                             ellipsizeMode="tail">
-                            {item.issueStatus.replace(/_/g, ' ')}
+                            {/* Display appropriate status text */}
+                            {item.status === 'Completed' && item.isApproved === true
+                              ? 'resolved'
+                              : item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false
+                                ? 'pending approval'
+                                : item.status === 'In Progress'
+                                  ? 'in progress'
+                                  : item.status?.toLowerCase() || 'pending'
+                            }
                           </Text>
                         </View>
                       )}
                     </View>
                   </View>
                 </View>
+                
+                {/* User Info Row */}
                 <View style={styles.issueRow}>
                   <Feather name="user" size={14} color={theme.secondaryText} />
                   <Text
@@ -301,16 +325,22 @@ export default function IssueList({
                     ellipsizeMode="tail"
                     style={[styles.issueInfo, { color: theme.secondaryText }]}>
                     {section === 'assigned'
-                      ? `Created by ${item.creatorName || item.assignedUserName || 'N/A'}`
-                      : `Assigned to ${item.assignToUserName || 'N/A'}`}
+                      ? `Created by ${item.creator?.name || 'N/A'}`
+                      : `Assigned to ${
+                          Array.isArray(item.assignedUserIds) && item.assignedUserIds.length > 0 
+                            ? `${item.assignedUserIds.length} user(s)`
+                            : 'N/A'
+                        }`}
                   </Text>
                 </View>
-              </View>
-              <View style={styles.issueRow}>
-                <Feather name="map-pin" size={14} color={theme.secondaryText} />
-                <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                  {item.projectLocation || item.project?.location || 'No Location'}
-                </Text>
+
+                {/* Location Row */}
+                <View style={styles.issueRow}>
+                  <Feather name="file" size={14} color={theme.secondaryText} />
+                  <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
+                    {item.project?.projectName || 'No Project'}
+                  </Text>
+                </View>
               </View>
               <View style={styles.chevronBox}>
                 <Feather name="chevron-right" size={24} color={theme.text} />

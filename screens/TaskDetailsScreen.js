@@ -6,19 +6,21 @@ import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import { LinearGradient } from 'expo-linear-gradient';
 import { jwtDecode } from 'jwt-decode';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -33,15 +35,15 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import {
-  deleteTask,
-  getTaskDetailsById,
-  getTasksByProjectId,
-  updateTaskDetails,
-  updateTaskProgress,
+    deleteTask,
+    getTaskDetailsById,
+    getTasksByProjectId,
+    updateTask,
+    updateTaskDetails,
+    updateTaskProgress,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
-import { useTranslation } from 'react-i18next';
 export default function TaskDetailsScreen({ route, navigation }) {
   // Store decoded token globally for this component
   const decodedRef = useRef(null);
@@ -75,6 +77,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
     projectId: '',
     taskWorklist: '',
     parentTaskId: '',
+    isIssue: false,
   });
   const [UpdateTaskScreen, setUpdateTaskScreen] = useState({
     taskName: '',
@@ -153,6 +156,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
     description: '',
     startDate: '',
     endDate: '',
+    isIssue: false,
   });
   // Fix for ReferenceError: showAttachmentSheet
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
@@ -164,6 +168,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
         description: task.description || '',
         startDate: task.startDate || '',
         endDate: task.endDate || '',
+        isIssue: task.isIssue || false,
       });
     }
   }, [task]);
@@ -342,6 +347,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
       dueDate: '',
       projectId: task.projectId,
       taskWorklist: task.worklistId,
+      isIssue: false,
     });
     setShowAddSubTaskPopup(false);
 
@@ -1594,6 +1600,46 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 }}
               />
             </View>
+            
+            {/* Issue Toggle */}
+            <View style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingVertical: 16,
+              borderBottomWidth: 1,
+              borderBottomColor: theme.border,
+              marginBottom: 18,
+            }}>
+              <View style={{ flex: 1 }}>
+                <Text style={{
+                  color: theme.text,
+                  fontSize: 16,
+                  fontWeight: '500',
+                  marginBottom: 4,
+                }}>
+                  Convert to Issue
+                </Text>
+                <Text style={{
+                  color: theme.secondaryText,
+                  fontSize: 14,
+                  lineHeight: 18,
+                }}>
+                  {editValues.isIssue 
+                    ? 'This task will appear in the issues section'
+                    : 'Convert this task to an issue'
+                  }
+                </Text>
+              </View>
+              <Switch
+                value={editValues.isIssue}
+                onValueChange={(value) => setEditValues((v) => ({ ...v, isIssue: value }))}
+                trackColor={{ false: '#ddd', true: theme.primary }}
+                thumbColor="#fff"
+                ios_backgroundColor="#ddd"
+              />
+            </View>
+
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
               <TouchableOpacity style={{ marginRight: 16 }} onPress={() => setShowEditModal(false)}>
                 <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t("cancel")}</Text>
@@ -1608,14 +1654,18 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 onPress={async () => {
                   try {
                     const updated = await updateTask(task.id || task._id || task.taskId, {
-                      name: editValues.taskName,
+                      taskName: editValues.taskName,
                       description: editValues.description,
                       startDate: editValues.startDate,
                       endDate: editValues.endDate,
+                      isIssue: editValues.isIssue,
                     });
                     setTask(updated);
                     setShowEditModal(false);
-                    Alert.alert('Success', 'Task updated!');
+                    const message = editValues.isIssue 
+                      ? (task.isIssue ? 'Task updated!' : 'Task converted to issue successfully!')
+                      : (task.isIssue ? 'Issue converted back to task successfully!' : 'Task updated!');
+                    Alert.alert('Success', message);
                   } catch (err) {
                     Alert.alert('Error', err.message || 'Failed to update task.');
                   }

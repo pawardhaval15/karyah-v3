@@ -1,8 +1,8 @@
 
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from './config';
 import { Platform } from 'react-native';
+import { API_URL } from './config';
 
 export const fetchAssignedIssues = async () => {
     try {
@@ -21,6 +21,27 @@ export const fetchAssignedIssues = async () => {
         return data.issues;
     } catch (error) {
         console.error('❌ Error fetching assigned issues:', error.message);
+        throw error;
+    }
+};
+
+// Fetch issues by user (tasks marked as issues assigned to the current user)
+export const fetchIssuesByUser = async () => {
+    try {
+        const token = await AsyncStorage.getItem('token');
+        const response = await fetch(`${API_URL}api/tasks/issues-by-user`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+        });
+        const data = await response.json();
+        console.log('Issues by User Data:', data.issues);
+        if (!response.ok) throw new Error(data.message || 'Failed to fetch issues by user');
+        return data.issues;
+    } catch (error) {
+        console.error('❌ Error fetching issues by user:', error.message);
         throw error;
     }
 };

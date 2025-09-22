@@ -35,6 +35,7 @@ import {
   resolveIssueByAssignedUser,
   updateIssue,
 } from '../utils/issues';
+import { deleteTask, getTaskDetailsById, updateTask } from '../utils/task';
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -80,22 +81,98 @@ export default function IssueDetailsScreen({ navigation, route }) {
     },
   });
   const userImg = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
+  
+  // Helper function to refresh issue data
+  const refreshIssueData = async () => {
+    try {
+      if (issue?.isIssue) {
+        const updated = await getTaskDetailsById(issue.taskId);
+        setIssue(updated);
+      } else {
+        const updated = await fetchIssueById(issue?.issueId || issueId);
+        setIssue(updated);
+      }
+    } catch (error) {
+      console.error('Failed to refresh issue data:', error.message);
+    }
+  };
+  
   useEffect(() => {
-    if (!issueId) return;
+    if (!issueId) {
+      console.log('No issueId provided');
+      return;
+    }
+    
+    console.log('Starting to fetch issue with ID:', issueId);
     setLoading(true);
-    fetchIssueById(issueId)
-      .then((data) => {
-        setIssue(data);
-        console.log('Fetched Issue:', data);
-        setEditFields({
-          issueTitle: data.issueTitle || '',
-          description: data.description || '',
-          dueDate: data.dueDate || '',
-          isCritical: data.isCritical || false,
-        });
-      })
-      .catch(() => setIssue(null))
-      .finally(() => setLoading(false));
+    
+    // Try to fetch as task-based issue first, then fall back to traditional issue
+    const fetchIssueData = async () => {
+      try {
+        console.log('Attempting to fetch task with ID:', issueId);
+        // First try to fetch as a task (for task-based issues)
+        const taskData = await getTaskDetailsById(issueId);
+        console.log('Task fetch result:', taskData);
+        
+        if (taskData) {
+          // We found a task, now check if it's marked as an issue
+          if (taskData.isIssue) {
+            // This is a task marked as an issue
+            setIssue(taskData);
+            console.log('✅ Successfully fetched Task-based Issue:', taskData);
+            setEditFields({
+              issueTitle: taskData.taskName || '',
+              description: taskData.description || '',
+              dueDate: taskData.endDate || '',
+              isCritical: taskData.isCritical || false,
+            });
+            return;
+          } else {
+            // Task exists but it's not marked as an issue, this shouldn't happen
+            console.log('⚠️ Task found but not marked as issue:', taskData);
+            throw new Error('Task is not marked as an issue');
+          }
+        } else {
+          console.log('⚠️ No task data returned');
+          throw new Error('No task data found');
+        }
+      } catch (taskError) {
+        console.log('❌ Task fetch failed, trying traditional issue:', taskError.message);
+        
+        try {
+          console.log('Attempting to fetch traditional issue with ID:', issueId);
+          // Fall back to traditional issue fetching
+          const issueData = await fetchIssueById(issueId);
+          console.log('Traditional issue fetch result:', issueData);
+          
+          if (issueData) {
+            setIssue(issueData);
+            console.log('✅ Successfully fetched Traditional Issue:', issueData);
+            setEditFields({
+              issueTitle: issueData.issueTitle || '',
+              description: issueData.description || '',
+              dueDate: issueData.dueDate || '',
+              isCritical: issueData.isCritical || false,
+            });
+            return;
+          } else {
+            console.log('⚠️ No traditional issue data returned');
+            throw new Error('No traditional issue data found');
+          }
+        } catch (issueError) {
+          console.error('❌ Traditional issue fetch failed:', issueError.message);
+        }
+      }
+      
+      // If we reach here, both attempts failed
+      console.error('❌ Failed to fetch issue data from both sources');
+      setIssue(null);
+    };
+    
+    fetchIssueData().finally(() => {
+      console.log('Fetch complete, setting loading to false');
+      setLoading(false);
+    });
   }, [issueId]);
 
   const handleSubmit = async () => {
@@ -105,31 +182,62 @@ export default function IssueDetailsScreen({ navigation, route }) {
     }
     setLoading(true);
     try {
-      const resolvedImages = attachments.map((att, idx) => {
-        let fileUri = att.uri;
-        if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
-          fileUri = `file://${fileUri}`;
-        }
-        let mimeType = att.mimeType || att.type || 'application/octet-stream';
-        if (mimeType && !mimeType.includes('/')) {
-          if (mimeType === 'image') mimeType = 'image/jpeg';
-          else if (mimeType === 'video') mimeType = 'video/mp4';
-          else mimeType = 'application/octet-stream';
-        }
-        return {
-          uri: fileUri,
-          name: att.name || fileUri.split('/').pop() || `file_${idx}`,
-          type: mimeType,
+      if (issue?.isIssue) {
+        // Handle task-based issue resolution
+        const updateData = {
+          status: 'Completed',
+          resolvedImages: attachments.map((att, idx) => {
+            let fileUri = att.uri;
+            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+              fileUri = `file://${fileUri}`;
+            }
+            let mimeType = att.mimeType || att.type || 'application/octet-stream';
+            if (mimeType && !mimeType.includes('/')) {
+              if (mimeType === 'image') mimeType = 'image/jpeg';
+              else if (mimeType === 'video') mimeType = 'video/mp4';
+              else mimeType = 'application/octet-stream';
+            }
+            return {
+              uri: fileUri,
+              name: att.name || fileUri.split('/').pop() || `file_${idx}`,
+              type: mimeType,
+            };
+          }),
+          // Add remark to description or create a remarks field
+          remarks: remark,
         };
-      });
+        
+        await updateTask(issue.taskId, updateData);
+        Alert.alert('Success', 'Task issue resolved successfully');
+      } else {
+        // Handle traditional issue resolution
+        const resolvedImages = attachments.map((att, idx) => {
+          let fileUri = att.uri;
+          if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+            fileUri = `file://${fileUri}`;
+          }
+          let mimeType = att.mimeType || att.type || 'application/octet-stream';
+          if (mimeType && !mimeType.includes('/')) {
+            if (mimeType === 'image') mimeType = 'image/jpeg';
+            else if (mimeType === 'video') mimeType = 'video/mp4';
+            else mimeType = 'application/octet-stream';
+          }
+          return {
+            uri: fileUri,
+            name: att.name || fileUri.split('/').pop() || `file_${idx}`,
+            type: mimeType,
+          };
+        });
 
-      await resolveIssueByAssignedUser({
-        issueId,
-        remarks: remark,
-        resolvedImages,
-        issueStatus: 'resolved',
-      });
-      Alert.alert('Submitted successfully');
+        await resolveIssueByAssignedUser({
+          issueId,
+          remarks: remark,
+          resolvedImages,
+          issueStatus: 'resolved',
+        });
+        Alert.alert('Success', 'Issue resolved successfully');
+      }
+      
       navigation.goBack();
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to submit resolution');
@@ -139,10 +247,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
   };
   // Merge all attachments for drawer
   const allAttachments = [
-    ...(issue?.unresolvedImages || []),
+    // For task-based issues, use images and resolvedImages
+    ...(issue?.isIssue ? (issue.images || []) : (issue?.unresolvedImages || [])),
     ...(issue?.resolvedImages || []),
     ...(section === 'assigned' ? attachments : []),
   ];
+
   if (loading) {
     return (
       <View
@@ -156,6 +266,35 @@ export default function IssueDetailsScreen({ navigation, route }) {
       </View>
     );
   }
+
+  if (!issue) {
+    return (
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: theme.background,
+          justifyContent: 'center',
+          alignItems: 'center',
+          paddingHorizontal: 20,
+        }}>
+        <Text style={{ fontSize: 18, color: theme.text, textAlign: 'center' }}>
+          Issue not found or failed to load
+        </Text>
+        <TouchableOpacity
+          style={{
+            marginTop: 20,
+            paddingVertical: 12,
+            paddingHorizontal: 20,
+            backgroundColor: theme.primary,
+            borderRadius: 8,
+          }}
+          onPress={() => navigation.goBack()}>
+          <Text style={{ color: '#fff', fontSize: 16 }}>Go Back</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
@@ -176,7 +315,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               {t('back')}
             </Text>
           </TouchableOpacity>
-          {userName && issue?.creatorName === userName ? (
+          {userName && (issue?.creatorName === userName || issue?.creator?.name === userName) ? (
             isEditing ? (
               <TouchableOpacity
                 onPress={async () => {
@@ -192,73 +331,102 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   }
                   try {
                     setLoading(true);
-                    // Prepare update payload, separating new files and existing URLs
-                    let assignedUserId = '';
-                    if (issue.assignTo) {
-                      // If assignTo is an object, get userId or id property
-                      if (
-                        typeof issue.assignTo === 'object' &&
-                        (issue.assignTo.userId || issue.assignTo.id)
-                      ) {
-                        assignedUserId = String(issue.assignTo.userId || issue.assignTo.id);
-                      } else if (
-                        typeof issue.assignTo === 'number' ||
-                        /^\d+$/.test(issue.assignTo)
-                      ) {
-                        assignedUserId = String(issue.assignTo);
+                    
+                    // Check if this is a task-based issue
+                    if (issue.isIssue) {
+                      // Update task-based issue
+                      const updatePayload = {
+                        taskName: editFields.issueTitle.trim() || undefined,
+                        description: editFields.description.trim() || undefined,
+                        endDate: editFields.dueDate || undefined,
+                        isCritical: editFields.isCritical,
+                      };
+                      
+                      // Remove undefined values
+                      Object.keys(updatePayload).forEach(key => {
+                        if (updatePayload[key] === undefined) {
+                          delete updatePayload[key];
+                        }
+                      });
+                      
+                      await updateTask(issue.taskId, updatePayload);
+                      Alert.alert('Success', 'Issue updated successfully.');
+                      
+                      // Refresh the task data
+                      const updated = await getTaskDetailsById(issue.taskId);
+                      setIssue(updated);
+                    } else {
+                      // Handle traditional issue update
+                      // Prepare update payload, separating new files and existing URLs
+                      let assignedUserId = '';
+                      if (issue.assignTo) {
+                        // If assignTo is an object, get userId or id property
+                        if (
+                          typeof issue.assignTo === 'object' &&
+                          (issue.assignTo.userId || issue.assignTo.id)
+                        ) {
+                          assignedUserId = String(issue.assignTo.userId || issue.assignTo.id);
+                        } else if (
+                          typeof issue.assignTo === 'number' ||
+                          /^\d+$/.test(issue.assignTo)
+                        ) {
+                          assignedUserId = String(issue.assignTo);
+                        }
                       }
+                      // Only send assignTo if it's a valid integer string
+                      let updatePayload = {
+                        issueId: issue.issueId,
+                        issueTitle: editFields.issueTitle.trim() || undefined,
+                        description: editFields.description.trim() || undefined,
+                        dueDate: editFields.dueDate || undefined,
+                        isCritical: editFields.isCritical,
+                        ...(assignedUserId ? { assignTo: assignedUserId } : {}),
+                      };
+                      
+                      // Separate existing URLs and new files
+                      let existingUnresolvedImages = [];
+                      let newUnresolvedImages = [];
+                      if (Array.isArray(issue.unresolvedImages)) {
+                        existingUnresolvedImages = issue.unresolvedImages.filter(
+                          (img) => typeof img === 'string' && !img.startsWith('file://')
+                        );
+                      }
+                      if (attachments && attachments.length > 0) {
+                        newUnresolvedImages = attachments
+                          .filter(att => att.uri)
+                          .map((att, idx) => {
+                            let fileUri = att.uri;
+                            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+                              fileUri = `file://${fileUri}`;
+                            }
+                            let mimeType = att.mimeType || att.type || 'application/octet-stream';
+                            if (mimeType && !mimeType.includes('/')) {
+                              if (mimeType === 'image') mimeType = 'image/jpeg';
+                              else if (mimeType === 'video') mimeType = 'video/mp4';
+                              else mimeType = 'application/octet-stream';
+                            }
+                            return {
+                              uri: fileUri,
+                              name: att.name || (fileUri.split('/').pop() || `file_${idx}`),
+                              type: mimeType,
+                            };
+                          });
+                      }
+                      // Only send new files as unresolvedImages (for FormData)
+                      if (newUnresolvedImages.length > 0) {
+                        updatePayload.unresolvedImages = newUnresolvedImages;
+                      }
+                      // Optionally, send existing URLs in a separate field if backend supports it
+                      if (existingUnresolvedImages.length > 0) {
+                        updatePayload.existingUnresolvedImages = existingUnresolvedImages;
+                      }
+                      
+                      await updateIssue(updatePayload);
+                      Alert.alert('Success', 'Issue updated successfully.');
+                      const updated = await fetchIssueById(issue.issueId);
+                      setIssue(updated);
                     }
-                    // Only send assignTo if it's a valid integer string
-                    let updatePayload = {
-                      issueId: issue.issueId,
-                      issueTitle: editFields.issueTitle.trim() || undefined,
-                      description: editFields.description.trim() || undefined,
-                      dueDate: editFields.dueDate || undefined,
-                      isCritical: editFields.isCritical,
-                      ...(assignedUserId ? { assignTo: assignedUserId } : {}),
-                      // You can add issueStatus, remarks, removeImages, removeResolvedImages if needed
-                    };
-                    // Separate existing URLs and new files
-                    let existingUnresolvedImages = [];
-                    let newUnresolvedImages = [];
-                    if (Array.isArray(issue.unresolvedImages)) {
-                      existingUnresolvedImages = issue.unresolvedImages.filter(
-                        (img) => typeof img === 'string' && !img.startsWith('file://')
-                      );
-                    }
-                    if (attachments && attachments.length > 0) {
-                      newUnresolvedImages = attachments
-                        .filter(att => att.uri)
-                        .map((att, idx) => {
-                          let fileUri = att.uri;
-                          if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
-                            fileUri = `file://${fileUri}`;
-                          }
-                          let mimeType = att.mimeType || att.type || 'application/octet-stream';
-                          if (mimeType && !mimeType.includes('/')) {
-                            if (mimeType === 'image') mimeType = 'image/jpeg';
-                            else if (mimeType === 'video') mimeType = 'video/mp4';
-                            else mimeType = 'application/octet-stream';
-                          }
-                          return {
-                            uri: fileUri,
-                            name: att.name || (fileUri.split('/').pop() || `file_${idx}`),
-                            type: mimeType,
-                          };
-                        });
-                    }
-                    // Only send new files as unresolvedImages (for FormData)
-                    if (newUnresolvedImages.length > 0) {
-                      updatePayload.unresolvedImages = newUnresolvedImages;
-                    }
-                    // Optionally, send existing URLs in a separate field if backend supports it
-                    if (existingUnresolvedImages.length > 0) {
-                      updatePayload.existingUnresolvedImages = existingUnresolvedImages;
-                    }
-                    await updateIssue(updatePayload);
-                    Alert.alert('Success', 'Issue updated successfully.');
-                    const updated = await fetchIssueById(issue.issueId);
-                    setIssue(updated);
+                    
                     setIsEditing(false);
                     // Clear attachments after successful update
                     setAttachments([]);
@@ -293,7 +461,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         {(() => {
           return (
             userName &&
-            issue?.creatorName === userName && (
+            (issue?.creatorName === userName || issue?.creator?.name === userName) && (
               <Modal
                 visible={menuVisible}
                 transparent
@@ -356,7 +524,13 @@ export default function IssueDetailsScreen({ navigation, route }) {
                             style: 'destructive',
                             onPress: async () => {
                               try {
-                                await deleteIssue(issue.issueId);
+                                if (issue.isIssue) {
+                                  // Delete task-based issue
+                                  await deleteTask(issue.taskId);
+                                } else {
+                                  // Delete traditional issue
+                                  await deleteIssue(issue.issueId);
+                                }
                                 // Signal IssuesScreen to refresh
                                 navigation.navigate('IssuesScreen', { refresh: true });
                               } catch (err) {
@@ -412,7 +586,8 @@ export default function IssueDetailsScreen({ navigation, route }) {
             ) : (
               <TouchableOpacity onPress={() => setShowIssueTitleModal(true)}>
                 <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600' }} numberOfLines={2} ellipsizeMode="tail">
-                  {issue.issueTitle}
+                  {/* Display task name for task-based issues, issueTitle for traditional issues */}
+                  {issue.isIssue ? issue.taskName : issue.issueTitle}
                 </Text>
               </TouchableOpacity>
             )}
@@ -421,14 +596,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
         </LinearGradient>
         <FieldBox
           label={t('project_name')}
-          value={issue.projectName || ''}
+          value={issue.isIssue ? (issue.projectName || '') : (issue.projectName || '')}
           placeholder={t('project_name')}
           theme={theme}
           editable={false}
         />
         <FieldBox
           label={t('location')}
-          value={issue.projectLocation || ''}
+          value={issue.isIssue ? (issue.project?.location || '') : (issue.projectLocation || '')}
           placeholder={t('location')}
           theme={theme}
           editable={false}
@@ -463,7 +638,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               { backgroundColor: theme.card, borderColor: theme.border },
             ]}>
             {attachments.length > 0 ||
-              (issue?.unresolvedImages && issue.unresolvedImages.length > 0) ? (
+              ((issue?.isIssue ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
               <>
                 <Text style={[styles.attachmentCount, { color: theme.text }]}>
                   {isEditing
@@ -574,10 +749,28 @@ export default function IssueDetailsScreen({ navigation, route }) {
 
         <FieldBox
           label={t('assigned_to')}
-          value={issue.assignTo?.userName || ''}
+          value={
+            issue.isIssue 
+              ? (Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0 
+                  ? issue.assignedUserDetails.map(user => user.name).join(', ')
+                  : 'Not assigned')
+              : (issue.assignTo?.userName || '')
+          }
           placeholder={t('assigned_to')}
           rightComponent={
-            issue.assignTo?.profilePhoto ? (
+            issue.isIssue && Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0 ? (
+              <Image
+                source={{ uri: issue.assignedUserDetails[0].profilePhoto || userImg }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 20,
+                  marginLeft: 10,
+                  borderWidth: 2,
+                  borderColor: '#e6eaf3',
+                }}
+              />
+            ) : !issue.isIssue && issue.assignTo?.profilePhoto ? (
               <Image
                 source={{ uri: issue.assignTo.profilePhoto }}
                 style={{
@@ -613,7 +806,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               ? editFields.dueDate
                 ? formatDate(editFields.dueDate)
                 : ''
-              : formatDate(issue.dueDate)
+              : formatDate(issue.isIssue ? issue.endDate : issue.dueDate)
           }
           placeholder={t("due_date")}
           theme={theme}
@@ -1050,46 +1243,88 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 <TouchableOpacity
                   style={{
                     flex: 1,
-                    backgroundColor: issue.issueStatus === 'unresolved' || issue.isApproved === true
-                      ? '#222'
-                      : theme.buttonText + '22',
+                    backgroundColor: (() => {
+                      const isApproved = issue.isApproved === true;
+                      const isResolved = issue.isIssue 
+                        ? issue.status === 'Completed'
+                        : issue.issueStatus === 'resolved';
+                      return (isApproved || !isResolved) ? '#222' : theme.buttonText + '22';
+                    })(),
                     borderRadius: 16,
                     paddingVertical: 12,
                     alignItems: 'center',
                     borderWidth: 1,
-                    borderColor: issue.issueStatus === 'unresolved' || issue.isApproved === true
-                      ? '#999'
-                      : theme.buttonText,
-                    opacity: issue.issueStatus === 'unresolved' || issue.isApproved === true
-                      ? 0.5
-                      : 1,
+                    borderColor: (() => {
+                      const isApproved = issue.isApproved === true;
+                      const isResolved = issue.isIssue 
+                        ? issue.status === 'Completed'
+                        : issue.issueStatus === 'resolved';
+                      return (isApproved || !isResolved) ? '#999' : theme.buttonText;
+                    })(),
+                    opacity: (() => {
+                      const isApproved = issue.isApproved === true;
+                      const isResolved = issue.isIssue 
+                        ? issue.status === 'Completed'
+                        : issue.issueStatus === 'resolved';
+                      return (isApproved || !isResolved) ? 0.5 : 1;
+                    })(),
                   }}
                   onPress={async () => {
-                    if (issue.issueStatus === 'unresolved') {
-                      Alert.alert('Cannot Approve', 'Issue must be resolved before it can be approved.');
+                    // Check if issue can be approved (different logic for task vs traditional issue)
+                    const canApprove = issue.isIssue 
+                      ? (issue.status === 'Completed' && issue.isApproved !== true)
+                      : (issue.issueStatus === 'resolved' && issue.isApproved !== true);
+                    
+                    if (!canApprove) {
+                      const message = issue.isIssue 
+                        ? 'Task must be completed before it can be approved.'
+                        : 'Issue must be resolved before it can be approved.';
+                      Alert.alert('Cannot Approve', message);
                       return;
                     }
+                    
                     try {
                       setLoading(true);
-                      await approveIssue(issue.issueId);
-                      Alert.alert('Success', 'Issue approved and marked as resolved.');
-                      const updated = await fetchIssueById(issueId);
-                      setIssue(updated);
+                      if (issue.isIssue) {
+                        // For task-based issues, update isApproved field
+                        await updateTask(issue.taskId, { isApproved: true });
+                        Alert.alert('Success', 'Task issue approved successfully.');
+                      } else {
+                        // For traditional issues, use existing approval API
+                        await approveIssue(issue.issueId);
+                        Alert.alert('Success', 'Issue approved and marked as resolved.');
+                      }
+                      await refreshIssueData();
                     } catch (err) {
                       Alert.alert('Error', err.message || 'Failed to approve issue');
                     } finally {
                       setLoading(false);
                     }
                   }}
-                  disabled={issue.isApproved === true || issue.issueStatus === 'unresolved'}>
+                  disabled={(() => {
+                    const isApproved = issue.isApproved === true;
+                    const isResolved = issue.isIssue 
+                      ? issue.status === 'Completed'
+                      : issue.issueStatus === 'resolved';
+                    return isApproved || !isResolved;
+                  })()}>
                   <Text style={{
-                    color: issue.issueStatus === 'unresolved' || issue.isApproved === true
-                      ? '#FAFAFA'
-                      : theme.buttonText,
+                    color: (() => {
+                      const isApproved = issue.isApproved === true;
+                      const isResolved = issue.isIssue 
+                        ? issue.status === 'Completed'
+                        : issue.issueStatus === 'resolved';
+                      return (isApproved || !isResolved) ? '#FAFAFA' : theme.buttonText;
+                    })(),
                     fontWeight: '700',
                     fontSize: 16
                   }}>
-                    {issue.issueStatus === 'resolved' ? t('resolved') : t('approve_complete')}
+                    {(() => {
+                      const isResolved = issue.isIssue 
+                        ? issue.status === 'Completed'
+                        : issue.issueStatus === 'resolved';
+                      return isResolved ? t('resolved') : t('approve_complete');
+                    })()}
                   </Text>
                 </TouchableOpacity>
               </>
@@ -1198,13 +1433,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
             // Just refresh the current issue if reassign was cancelled
             setLoading(true);
             try {
-              const updated = await fetchIssueById(issueId);
-              setIssue(updated);
+              await refreshIssueData();
             } catch { }
             setLoading(false);
           }
         }}
-        issueId={issue?.issueId || issueId}
+        issueId={issue?.isIssue ? issue.taskId : (issue?.issueId || issueId)}
         currentAssignee={issue?.assignTo}
         theme={theme}
       />
@@ -1246,7 +1480,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   lineHeight: 22,
                   marginBottom: 12
                 }}>
-                  {issue?.issueTitle}
+                  {issue?.isIssue ? issue?.taskName : issue?.issueTitle}
                 </Text>
                 <TouchableOpacity
                   style={{
