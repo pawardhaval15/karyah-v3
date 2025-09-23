@@ -257,10 +257,6 @@ export default function AssignedIssuesBarChart({ theme, refreshKey }) {
         }
     };
 
-    if (loading) {
-        return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
-    }
-
     return (
         <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={styles.header}>
