@@ -77,16 +77,35 @@ export default function IssuesScreen({ navigation }) {
         return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
     };
     const currentIssues = section === 'assigned' ? assignedIssues : createdIssues;
-    const statuses = Array.from(new Set(currentIssues.map(issue => issue.issueStatus).filter(Boolean)));
-    const projectOptions = Array.from(new Set(currentIssues.map(issue => issue.projectName || issue.project?.name).filter(Boolean)));
+    
+    // Generate filter options based on Task model structure
+    const statuses = Array.from(new Set(
+        currentIssues.map(issue => issue.status || issue.issueStatus).filter(Boolean)
+    ));
+    
+    const projectOptions = Array.from(new Set(
+        currentIssues.map(issue => issue.project?.name || issue.projectName).filter(Boolean)
+    ));
+    
     const assignedOptions = Array.from(new Set(
         section === 'assigned'
-            ? currentIssues.map(issue => issue.creatorName || issue.creator?.name).filter(Boolean)
-            : currentIssues.map(issue => issue.assignToUserName || issue.assignTo?.name).filter(Boolean)
+            ? currentIssues.map(issue => issue.creator?.name || issue.creatorName).filter(Boolean)
+            : currentIssues.flatMap(issue => {
+                const names = [];
+                // Handle Task model assignedUsers array
+                if (issue.assignedUsers && Array.isArray(issue.assignedUsers)) {
+                    names.push(...issue.assignedUsers.map(user => user.name).filter(Boolean));
+                }
+                // Handle legacy fields
+                if (issue.assignToUserName) names.push(issue.assignToUserName);
+                if (issue.assignTo?.name) names.push(issue.assignTo.name);
+                return names;
+            }).filter(Boolean)
     ));
-    const locationOptions = Array.from(
-        new Set(currentIssues.map(issue => issue.projectLocation).filter(Boolean))
-    );
+    
+    const locationOptions = Array.from(new Set(
+        currentIssues.map(issue => issue.project?.location || issue.projectLocation).filter(Boolean)
+    ));
 
 
     const handleRefresh = async () => {
@@ -131,19 +150,20 @@ export default function IssuesScreen({ navigation }) {
     // Handle critical toggle for issues created by current user
     const handleToggleCritical = async (issue, isCritical) => {
         try {
-            // Update the task using the task API
+            // Update the task using the task API - use Task model ID
+            const taskId = issue.id || issue.taskId;
             const updatePayload = {
                 isCritical,
                 isIssue: true // Ensure it remains as an issue
             };
             
-            await updateTask(issue.id || issue.taskId, updatePayload);
+            await updateTask(taskId, updatePayload);
             
-            // Update the local state
+            // Update the local state based on Task model structure
             if (section === 'created') {
                 setCreatedIssues(prev => 
                     prev.map(item => 
-                        (item.id || item.taskId) === (issue.id || issue.taskId) 
+                        item.id === taskId 
                             ? { ...item, isCritical }
                             : item
                     )
@@ -213,49 +233,77 @@ export default function IssuesScreen({ navigation }) {
     const filterAndSortIssues = (issues) => {
         return issues
             .filter(item => {
-                const searchMatch = (item.issueTitle || '').toLowerCase().includes(search.toLowerCase());
-                const activeTabMatch = activeTab === 'all' || (activeTab === 'critical' && item.isCritical);
+                // Search match - check both task name and issue-specific title
+                const searchText = (item.name || item.issueTitle || '').toLowerCase();
+                const searchMatch = searchText.includes(search.toLowerCase());
+                
+                // Critical filter - check isCritical boolean flag
+                const activeTabMatch = activeTab === 'all' || (activeTab === 'critical' && item.isCritical === true);
 
-                // Status filter OR all if filters.status empty
-                const statusMatch = filters.status.length === 0 || filters.status.includes(item.issueStatus);
+                // Status filter - handle both Task status enum and legacy issue status
+                const taskStatus = item.status; // "Pending", "In Progress", "Completed"
+                const issueStatus = item.issueStatus; // legacy field
+                const currentStatus = taskStatus || issueStatus;
+                const statusMatch = filters.status.length === 0 || filters.status.includes(currentStatus);
 
-                // Progress filter (adjust if issues have progress)
+                // Progress filter based on Task model progress field
                 const progressMatch = filters.progress.length === 0 || filters.progress.some(range => {
                     const progress = item.progress ?? 0;
                     switch (range) {
-                        case 'not-started': return progress === 0;
-                        case 'in-progress': return progress > 0 && progress < 100;
-                        case 'completed': return progress === 100;
+                        case 'not-started': return progress === 0 || taskStatus === 'Pending';
+                        case 'in-progress': return (progress > 0 && progress < 100) || taskStatus === 'In Progress';
+                        case 'completed': return progress === 100 || taskStatus === 'Completed';
                         default: return false;
                     }
                 });
-                // Projects filter
-                const issueProjectName = item.projectName || item.project?.name || '';
-                const projectMatch = filters.projects.length === 0 || filters.projects.includes(issueProjectName);
-                // AssignedTo filter (depends on section)
+
+                // Projects filter - handle Task model project association
+                const projectName = item.project?.name || item.projectName || '';
+                const projectMatch = filters.projects.length === 0 || filters.projects.includes(projectName);
+
+                // AssignedTo filter based on Task model associations
                 let assignedMatch = true;
                 if (filters.assignedTo.length > 0) {
                     if (section === 'assigned') {
-                        const creatorName = item.creatorName || item.creator?.name || '';
+                        // For assigned issues, check creator
+                        const creatorName = item.creator?.name || item.creatorName || '';
                         assignedMatch = filters.assignedTo.includes(creatorName);
                     } else {
-                        const assignedToName = item.assignToUserName || item.assignTo?.name || '';
-                        assignedMatch = filters.assignedTo.includes(assignedToName);
+                        // For created issues, check assigned users
+                        // Handle assignedUserIds array from Task model
+                        const assignedUserNames = [];
+                        if (item.assignedUsers && Array.isArray(item.assignedUsers)) {
+                            assignedUserNames.push(...item.assignedUsers.map(user => user.name || '').filter(Boolean));
+                        }
+                        // Also check legacy fields for backward compatibility
+                        if (item.assignToUserName) assignedUserNames.push(item.assignToUserName);
+                        if (item.assignTo?.name) assignedUserNames.push(item.assignTo.name);
+                        
+                        assignedMatch = assignedUserNames.length === 0 || 
+                                       filters.assignedTo.some(filterName => assignedUserNames.includes(filterName));
                     }
                 }
-                const location = item.projectLocation || '';  // use projectLocation field
-                const locationMatch =
-                    filters.locations.length === 0 ||
-                    filters.locations.includes(location);
+
+                // Location filter - check project location
+                const location = item.project?.location || item.projectLocation || '';
+                const locationMatch = filters.locations.length === 0 || filters.locations.includes(location);
 
                 return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch;
             })
             .sort((a, b) => {
-                // Unresolved first, then resolved - handle both issue types
-                const aResolved = (a.issueStatus === 'resolved') || (a.status === 'Completed');
-                const bResolved = (b.issueStatus === 'resolved') || (b.status === 'Completed');
-                if (aResolved === bResolved) return 0;
-                return aResolved ? 1 : -1;
+                // Sort by completion status - incomplete tasks first
+                const aCompleted = (a.status === 'Completed') || (a.issueStatus === 'resolved') || (a.progress === 100);
+                const bCompleted = (b.status === 'Completed') || (b.issueStatus === 'resolved') || (b.progress === 100);
+                
+                if (aCompleted === bCompleted) {
+                    // If same completion status, sort critical items first
+                    if (a.isCritical !== b.isCritical) {
+                        return b.isCritical ? 1 : -1;
+                    }
+                    // Then sort by creation date (newest first)
+                    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+                }
+                return aCompleted ? 1 : -1;
             });
     };
 
@@ -551,7 +599,10 @@ export default function IssuesScreen({ navigation }) {
             ) : (
                 <IssueList
                     issues={section === 'assigned' ? filteredAssigned : filteredCreated}
-                    onPressIssue={issue => navigation.navigate('IssueDetails', { issueId: issue.id || issue.issueId, section })}
+                    onPressIssue={issue => navigation.navigate('IssueDetails', { 
+                        issueId: issue.id, // Use Task model ID 
+                        section 
+                    })}
                     styles={styles}
                     theme={theme}
                     section={section}
