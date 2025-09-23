@@ -12,28 +12,12 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
         styles.taskCard,
         { 
           backgroundColor: theme.card, 
-          borderColor: task.isIssue ? '#FF7D66' : task.isCritical ? '#FFB366' : theme.border,
-          borderLeftWidth: task.isIssue || task.isCritical ? 4 : 1,
-          borderLeftColor: task.isIssue ? '#FF2700' : task.isCritical ? '#FF8C00' : theme.border,
+          borderColor: theme.border,
         }
       ]}
       onPress={() => onSubtaskPress(task.taskId || task.id)} // ✅ Send taskId
       activeOpacity={0.85}
     >
-      {/* Issue Tag - positioned at top right */}
-      {task.isIssue && (
-        <View style={styles.issueTag}>
-          <Text style={styles.issueTagText}>ISSUE</Text>
-        </View>
-      )}
-
-      {/* Critical Tag - positioned at top right */}
-      {task.isCritical && !task.isIssue && (
-        <View style={styles.criticalTag}>
-          <Text style={styles.criticalTagText}>CRITICAL</Text>
-        </View>
-      )}
-
       <View style={[styles.taskIcon, { backgroundColor: theme.avatarBg }]}>
         <Text style={[styles.projectIconText, { color: theme.primary }]}>
           {(task.name || task.title || 'T')[0]}

@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { fetchAssignedCriticalIssues } from '../../utils/issues';
+import { fetchMyTasks } from '../../utils/task';
 
 export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) {
   const [criticalIssues, setCriticalIssues] = useState([]);
@@ -10,17 +10,50 @@ export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) 
   const numColumns = 2;
 
   useEffect(() => {
-    fetchAssignedCriticalIssues()
-      .then((issues) => {
-        setCriticalIssues(issues || []);
+    const fetchCriticalIssues = async () => {
+      try {
+        setLoading(true);
+        // Fetch all tasks and filter for issues that are critical or unresolved
+        const allTasks = await fetchMyTasks();
+        
+        // Filter tasks that are issues (isIssue: true)
+        const issueTasks = allTasks?.filter(task => task.isIssue === true) || [];
+        
+        // Filter for critical or unresolved issues
+        const criticalOrUnresolvedIssues = issueTasks.filter(task => {
+          const status = (task.status || '').toLowerCase();
+          const progress = task.progress || 0;
+          const hasResolvedImages = task.resolvedImages && task.resolvedImages.length > 0;
+          
+          // Show critical issues OR unresolved issues
+          return task.isCritical || (
+            status !== 'completed' || 
+            progress < 100 || 
+            !hasResolvedImages
+          );
+        });
+        
+        setCriticalIssues(criticalOrUnresolvedIssues);
         setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      } catch (error) {
+        console.error('Error fetching critical issues:', error);
+        setCriticalIssues([]);
+        setLoading(false);
+      }
+    };
+
+    fetchCriticalIssues();
   }, [refreshKey]);
 
-  const visibleIssues = criticalIssues.filter(
-    issue => (issue.status || issue.issueStatus || '').toLowerCase() !== 'resolved'
-  );
+  // Filter for display (already filtered in useEffect, but keeping for any additional client-side filtering)
+  const visibleIssues = criticalIssues.filter(issue => {
+    const status = (issue.status || '').toLowerCase();
+    const progress = issue.progress || 0;
+    const hasResolvedImages = issue.resolvedImages && issue.resolvedImages.length > 0;
+    
+    // Show if not fully resolved
+    return status !== 'completed' || progress < 100 || !hasResolvedImages || issue.isCritical;
+  });
 
   return (
     <View style={[styles.card, { backgroundColor: theme.background }]}>
@@ -40,7 +73,7 @@ export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) 
         <FlatList
           data={visibleIssues}
           keyExtractor={(item, index) =>
-            (item.id?.toString() || item._id?.toString() || item.issueId?.toString() || index.toString())
+            (item.id?.toString() || index.toString())
           }
           key={`critical-issues-${numColumns}`}
           numColumns={numColumns}
@@ -56,12 +89,18 @@ export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) 
                   minWidth: 0, // Prevent overflow
                 },
               ]}
-              onPress={() =>
+              onPress={() => {
+                // Navigate to task details since these are tasks with isIssue flag
+                console.log('Navigate to task details:', item.id);
+                // You may want to navigate to a specific issue screen or task screen
+                // navigation.navigate('TaskDetailsScreen', { taskId: item.id });
+                
+                // For now, using existing navigation - you may need to adjust this
                 navigation.navigate('IssueDetails', {
-                  issueId: item.issueId || item.id || item._id,
+                  issueId: item.id,
                   section: "assigned",
-                })
-              }
+                });
+              }}
               activeOpacity={0.85}
             >
               <View style={styles.content}>
@@ -71,7 +110,10 @@ export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) 
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {item.title || item.issueTitle}
+                    {typeof item.name === 'object' 
+                      ? (item.name?.name || 'Untitled Issue')
+                      : (item.name || 'Untitled Issue')
+                    }
                   </Text>
                 </View>
                 <View style={{ width: '100%', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -80,14 +122,17 @@ export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) 
                     numberOfLines={1}
                     ellipsizeMode="tail"
                   >
-                    {item.projectName || item.project || '—'}
+                    {typeof item.project === 'object' 
+                      ? (item.project?.projectName || item.project?.name || '—')
+                      : (item.projectName || '—')
+                    }
                   </Text>
                   <Text numberOfLines={1}
                     ellipsizeMode="tail"
                     style={{
                       color:
-                        (item.status || item.issueStatus) === 'resolved' ? theme.primary :
-                          (item.status || item.issueStatus) === 'pending_approval' ? '#FFC107' :
+                        item.status === 'Completed' ? theme.primary :
+                          item.status === 'In Progress' ? '#FFC107' :
                             '#FF6F3C',
                       fontSize: 11,
                       fontWeight: '400',
@@ -97,7 +142,7 @@ export default function CriticalIssueCard({ onViewAll, theme, refreshKey = 0 }) 
                       flexShrink: 0,
                       maxWidth: 60,
                     }}>
-                    {(item.status || item.issueStatus || '').replace(/_/g, ' ')}
+                    {item.isCritical ? 'Critical' : (item.status || 'Pending').replace(/([a-z])([A-Z])/g, '$1 $2')}
                   </Text>
                 </View>
               </View>

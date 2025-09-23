@@ -97,9 +97,7 @@ export default function TaskCard({
       styles.card, 
       { 
         backgroundColor: theme.card, 
-        borderColor: isIssue ? '#FF7D66' : isCritical ? '#FFB366' : theme.border,
-        borderLeftWidth: isIssue || isCritical ? 4 : 1,
-        borderLeftColor: isIssue ? '#FF2700' : isCritical ? '#FF8C00' : theme.border,
+        borderColor:  theme.border,
       }
     ]}>
       {/* Issue Tag - positioned at top right */}

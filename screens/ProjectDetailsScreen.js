@@ -817,26 +817,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           zIndex: 10,
           elevation: 5,
         }}>
-        <TouchableOpacity
-          onPress={() => {
-            setIssueForm((prev) => ({
-              ...prev,
-              projectId: projectDetails?.id || '',
-            }));
-            setShowProjectIssuePopup(true);
-          }}
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.primary,
-            paddingVertical: 12,
-            borderRadius: 12,
-          }}>
-          <MaterialIcons name="report-problem" size={18} color="#fff" style={{ marginRight: 6 }} />
-          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>{t('raise_issue')}</Text>
-        </TouchableOpacity>
+        
 
         <TouchableOpacity
           onPress={() => {
