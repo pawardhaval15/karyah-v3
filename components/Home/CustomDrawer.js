@@ -217,7 +217,7 @@ export default function CustomDrawer({ onClose, theme }) {
             ) : (
               <DrawerItem
                 icon={<MaterialIcons name="analytics" size={20} color="#009688" />}
-                label={t('analytics')}
+                label={t('Pro Dashboard')}
                 onPress={() => {
                   navigation.navigate('ProfessionalDashboard');
                   onClose && onClose();
@@ -226,23 +226,10 @@ export default function CustomDrawer({ onClose, theme }) {
               />
             )}
           </View>
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('language')}</Text>
 
-            <DrawerItem
-              icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
-              label={t('select_language')}
-              onPress={() => {
-                setShowLanguageModal(true);
-                // do NOT call changeLanguage or use 'code' here since no language selected yet
-                // do NOT close drawer here to let modal render
-              }}
-
-              theme={theme}
-            />
-          </View>
           <View style={styles.menuSection}>
             <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('account')}</Text>
+
             <DrawerItem
               icon={<Feather name="user" size={20} color="#9C27B0" />}
               label={t('profile')}
@@ -276,7 +263,17 @@ export default function CustomDrawer({ onClose, theme }) {
                 </View>
               }
             />
+            <DrawerItem
+              icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
+              label={t('select_language')}
+              onPress={() => {
+                setShowLanguageModal(true);
+                // do NOT call changeLanguage or use 'code' here since no language selected yet
+                // do NOT close drawer here to let modal render
+              }}
 
+              theme={theme}
+            />
             <DrawerItem
               icon={<MaterialIcons name="help-outline" size={20} color={theme.primary} />}
               label={t('help_support')}
