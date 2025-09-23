@@ -1,3 +1,4 @@
+import { useNavigation } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -9,14 +10,13 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { BarChart } from 'react-native-chart-kit';
+import { LineChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import { getProjectById, getProjectsByUserId } from '../../utils/project';
-import { useNavigation } from '@react-navigation/native';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function ProjectsSnagBarChart({ theme }) {
+export default function ProjectsSnagLineChart({ theme, refreshKey }) {
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [selectedBar, setSelectedBar] = useState(null);
@@ -89,7 +89,7 @@ export default function ProjectsSnagBarChart({ theme }) {
       }
     };
     fetchData();
-  }, []);
+  }, [refreshKey]);
 
   // Add debug logging
   // console.log('🔍 Projects Chart Data:', projects);
@@ -102,20 +102,12 @@ export default function ProjectsSnagBarChart({ theme }) {
     return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
   }
 
-  if (!projects.length) {
-    return (
-      <View style={styles.messageWrap}>
-        <Text style={{ color: theme.text }}>No project data available</Text>
-      </View>
-    );
-  }
-
   // Show all projects, not just filtered ones for complete data visibility
-  const displayProjects = projects; // Show all projects
+  const displayProjects = projects.length > 0 ? projects : []; // Show all projects or empty array
 
   // Calculate dynamic chart width based on number of projects
-  const barWidth = 80; // Width per bar including spacing
-  const chartWidth = Math.max(screenWidth - 32, displayProjects.length * barWidth);
+  const dataPointSpacing = 60; // Spacing between data points
+  const chartWidth = Math.max(screenWidth - 32, displayProjects.length * dataPointSpacing);
 
   // Helper function for consistent color coding
   const getProjectColor = (count) => {
@@ -126,17 +118,22 @@ export default function ProjectsSnagBarChart({ theme }) {
     return '#10B981'; // Green for low
   };
 
-  // Prepare chart data with better label management
+  // Prepare chart data for line chart with better label management
   const chartData = {
-    labels: displayProjects.map((p) => {
-      const name = p.name || 'Untitled';
-      // Shorter labels to prevent overlap
-      return name.length > 6 ? name.slice(0, 5) + '…' : name;
-    }),
+    labels: displayProjects.length > 0 
+      ? displayProjects.map((p) => {
+          const name = p.name || 'Untitled';
+          // Shorter labels to prevent overlap
+          return name.length > 6 ? name.slice(0, 5) + '…' : name;
+        })
+      : ['No Data'], // Show placeholder when no data
     datasets: [
       {
-        data: displayProjects.map((p) => Math.max(p.count, 0.5)), // Minimum 0.5 for better visibility
-        colors: displayProjects.map((p) => () => getProjectColor(p.count)),
+        data: displayProjects.length > 0 
+          ? displayProjects.map((p) => Math.max(p.count, 0))
+          : [0], // Show zero line when no data
+        color: (opacity = 1) => theme.primary || `rgba(54, 108, 217, ${opacity})`, // Line color
+        strokeWidth: 3, // Line thickness
       },
     ],
   };
@@ -156,29 +153,31 @@ export default function ProjectsSnagBarChart({ theme }) {
       stroke: theme.border || '#E5E7EB',
       strokeOpacity: 0.3,
     },
-    barPercentage: 0.5, // Reduced from 0.6 to 0.5 for better spacing
-    categoryPercentage: 0.8, // Add category percentage for spacing
-    fillShadowGradient: 'transparent',
-    fillShadowGradientOpacity: 0,
     propsForLabels: {
-      fontSize: 9, // Reduced font size for labels
+      fontSize: 10,
     },
-    barRadius: 4, // Add rounded corners to bars
+    propsForDots: {
+      r: '4',
+      strokeWidth: '2',
+      stroke: theme.primary || '#366CD9',
+    },
+    fillShadowGradient: theme.primary || '#366CD9',
+    fillShadowGradientOpacity: 0.1,
   };
 
-  const handleBarPress = (data) => {
-    // console.log('🔍 Bar clicked - Raw data:', data);
+  const handleDataPointClick = (data) => {
+    // console.log('🔍 Data point clicked - Raw data:', data);
 
-    // Handle different data structures from react-native-chart-kit
+    // For LineChart onDataPointClick, data structure is simpler
     let index = -1;
 
     if (data && typeof data.index !== 'undefined') {
       index = data.index;
-    } else if (data && typeof data.datasetIndex !== 'undefined' && typeof data.dataIndex !== 'undefined') {
+    } else if (data && typeof data.dataIndex !== 'undefined') {
       index = data.dataIndex;
-    } else if (data && data.dataset && data.dataset.data && data.value) {
-      // Find index by matching the value
-      index = data.dataset.data.findIndex(val => Math.abs(val - data.value) < 0.01);
+    } else if (data && data.value && chartData?.datasets?.[0]?.data) {
+      // Find index by matching the value in the dataset
+      index = chartData.datasets[0].data.findIndex(val => Math.abs(val - data.value) < 0.01);
     }
     // console.log('🔍 Calculated index:', index);
     // console.log('🔍 Available projects:', displayProjects.length);
@@ -202,7 +201,7 @@ export default function ProjectsSnagBarChart({ theme }) {
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={[styles.iconBadge, { backgroundColor: `${theme.primary}20` }]}>
-            <Ionicons name="construct" size={20} color={theme.primary} />
+            <Ionicons name="trending-up" size={20} color={theme.primary} />
           </View>
           <View style={styles.titleContent}>
             <Text style={[styles.title, { color: theme.text }]}>Project Status</Text>
@@ -212,7 +211,7 @@ export default function ProjectsSnagBarChart({ theme }) {
           </View>
           <View style={[styles.totalBadge, { backgroundColor: theme.primary }]}>
             <Text style={[styles.totalText, { color: '#fff' }]}>
-              {projects.reduce((sum, p) => sum + p.count, 0)}
+              {displayProjects.length > 0 ? projects.reduce((sum, p) => sum + p.count, 0) : 0}
             </Text>
           </View>
         </View>
@@ -221,20 +220,11 @@ export default function ProjectsSnagBarChart({ theme }) {
       {/* Compact Legend */}
       <View style={styles.compactLegend}>
         <View style={styles.legendRow}>
-          <View style={[styles.dot, { backgroundColor: '#DC2626' }]} />
-          <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Critical</Text>
+          <View style={[styles.dot, { backgroundColor: theme.primary }]} />
+          <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Outstanding Items</Text>
         </View>
         <View style={styles.legendRow}>
-          <View style={[styles.dot, { backgroundColor: '#F59E0B' }]} />
-          <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>High</Text>
-        </View>
-        <View style={styles.legendRow}>
-          <View style={[styles.dot, { backgroundColor: '#3B82F6' }]} />
-          <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Medium</Text>
-        </View>
-        <View style={styles.legendRow}>
-          <View style={[styles.dot, { backgroundColor: '#10B981' }]} />
-          <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Low</Text>
+          <Text style={[styles.legendLabel, { color: theme.secondaryText }]}>Trend over projects</Text>
         </View>
       </View>
 
@@ -247,52 +237,66 @@ export default function ProjectsSnagBarChart({ theme }) {
             contentContainerStyle={{ paddingHorizontal: 16 }}
           >
             <View style={styles.chartWrapper}>
-              <BarChart
+              <LineChart
                 data={chartData}
-                width={Math.max(screenWidth - 64, displayProjects.length * 60)}
+                width={Math.max(screenWidth - 64, Math.max(displayProjects.length, 1) * 60)}
                 height={220}
                 chartConfig={chartConfig}
                 verticalLabelRotation={0}
-                showValuesOnTopOfBars={true}
                 fromZero={true}
-                // Remove bar touch handlers
-                withInnerLines={false}
-                showBarTops={false}
+                withInnerLines={true}
+                withOuterLines={false}
+                withVerticalLines={false}
+                withHorizontalLines={true}
+                withDots={displayProjects.length > 0}
+                withShadow={displayProjects.length > 0}
                 style={styles.chart}
+                onDataPointClick={displayProjects.length > 0 ? handleDataPointClick : undefined}
               />
 
-              {/* Add overlay for label touches */}
-              <View style={styles.labelTouchOverlay}>
-                {displayProjects.map((project, index) => {
-                  const chartWidth = Math.max(screenWidth - 64, displayProjects.length * 60);
-                  const barWidth = chartWidth / displayProjects.length;
-                  const labelHeight = 40; // Estimate vertical label area
-                  const leftOffset = index * barWidth;
-                  const paddingRight = 40; // Chart internal side padding, adjust if needed
-                  const chartUsableWidth = Math.max(screenWidth - 64, displayProjects.length * 60) - paddingRight;
-                  const labelLeft = paddingRight + index * chartUsableWidth / displayProjects.length;
-                  return (
-                    <TouchableOpacity
-                      key={`label-touch-${index}`}
-                      style={[
-                        styles.labelTouchRegion,
-                        {
-                          left: labelLeft,
-                          width: chartUsableWidth / displayProjects.length * 0.9, // 90% to cover most of label area
-                          height: labelHeight,
-                          top: 180, // as needed for label position
-                          // borderColor: 'red',
-                          // borderWidth: 1,
-                        }
-                      ]}
-                      onPress={() => setSelectedBar({ ...project, index })}
-                      activeOpacity={0.7}
-                    >
-                      {/* Optional: Highlight label on touch */}
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              {/* Add overlay for label touches - only when data available */}
+              {displayProjects.length > 0 && (
+                <View style={styles.labelTouchOverlay}>
+                  {displayProjects.map((project, index) => {
+                    const chartWidth = Math.max(screenWidth - 64, displayProjects.length * 60);
+                    const dataPointSpacing = chartWidth / displayProjects.length;
+                    const labelHeight = 40; // Estimate vertical label area
+                    const paddingRight = 40; // Chart internal side padding, adjust if needed
+                    const chartUsableWidth = Math.max(screenWidth - 64, displayProjects.length * 60) - paddingRight;
+                    const labelLeft = paddingRight + index * chartUsableWidth / displayProjects.length;
+                    return (
+                      <TouchableOpacity
+                        key={`label-touch-${index}`}
+                        style={[
+                          styles.labelTouchRegion,
+                          {
+                            left: labelLeft,
+                            width: chartUsableWidth / displayProjects.length * 0.9, // 90% to cover most of label area
+                            height: labelHeight,
+                            top: 180, // as needed for label position
+                            // borderColor: 'red',
+                            // borderWidth: 1,
+                          }
+                        ]}
+                        onPress={() => setSelectedBar({ ...project, index })}
+                        activeOpacity={0.7}
+                      >
+                        {/* Optional: Highlight label on touch */}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* Empty state overlay */}
+              {displayProjects.length === 0 && (
+                <View style={styles.emptyStateOverlay}>
+                  <Ionicons name="bar-chart-outline" size={32} color={theme.border} />
+                  <Text style={[styles.emptyStateText, { color: theme.secondaryText }]}>
+                    No project data available
+                  </Text>
+                </View>
+              )}
             </View>
 
           </ScrollView>
@@ -411,16 +415,6 @@ export default function ProjectsSnagBarChart({ theme }) {
                   <Ionicons name="eye-outline" size={16} color={theme.primary} />
                   <Text style={[styles.actionBtnText, { color: theme.primary }]}>View Details</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: `${theme.primary}20` }]}
-                  onPress={() => {
-                    console.log('Manage project:', selectedBar);
-                    // Add navigation to project management screen here
-                    setSelectedBar(null);
-                  }}>
-                  <Ionicons name="settings-outline" size={16} color={theme.primary} />
-                  <Text style={[styles.actionBtnText, { color: theme.primary }]}>Manage</Text>
-                </TouchableOpacity>
               </View>
             </View>
           </TouchableOpacity>
@@ -527,6 +521,22 @@ const styles = StyleSheet.create({
   chartWrapper: {
     position: 'relative',
   },
+  emptyStateOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 220,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontWeight: '500',
+    marginTop: 8,
+    opacity: 0.6,
+  },
   touchOverlay: {
     position: 'absolute',
     top: 0,
@@ -561,11 +571,6 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 320,
     borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
   },
   modalHeader: {
     flexDirection: 'row',

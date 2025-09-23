@@ -1,21 +1,15 @@
 import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import StatCardList from 'components/Home/StatCard';
 import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Animated, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import CustomDrawer from '../components/Home/CustomDrawer';
-import ProjectsSnagBarChart from '../components/professionalDashboard/BarChartNew';
+import ProjectsSnagLineChart from '../components/professionalDashboard/BarChartNew';
 import CriticalIssueCard from '../components/professionalDashboard/CriticalIssueCard';
 import DailyProgressCard from '../components/professionalDashboard/DailyProgressCard';
-import HeatmapChart from '../components/professionalDashboard/HeatmapChart';
 import AssignedIssuesBarChart from '../components/professionalDashboard/IssuesBarCharNew';
-import IssuesPieChart from '../components/professionalDashboard/IssuesPieChart';
-import ProjectsPieChart from '../components/professionalDashboard/ProjectsPieChart';
 import { useTheme } from '../theme/ThemeContext';
-import { fetchAssignedIssues, fetchCreatedByMeIssues } from '../utils/issues';
 import { fetchNotifications } from '../utils/notifications';
-import { getProjectById, getProjectsByUserId } from '../utils/project';
 import usePushNotifications from '../utils/usePushNotifications';
 const DRAWER_WIDTH = 300;
 
@@ -48,8 +42,6 @@ export default function ProfessionalDashboard({ navigation }) {
     const [refreshKey, setRefreshKey] = useState(0);
     const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
     const [selectedChart, setSelectedChart] = useState('projects');
-    const [selectedChartType, setSelectedChartType] = useState('bar'); // bar, pie, heatmap
-    const [chartData, setChartData] = useState([]);
     usePushNotifications();
 
     useEffect(() => {
@@ -69,136 +61,11 @@ export default function ProfessionalDashboard({ navigation }) {
         return () => clearInterval(interval);
     }, []);
 
-    // Effect to fetch data for heatmap when chart type changes
+    // Effect to fetch data when chart changes
     useEffect(() => {
-        const fetchHeatmapData = async () => {
-            if (selectedChartType !== 'heatmap') return;
-
-            try {
-                if (selectedChart === 'projects') {
-                    // Fetch projects data for heatmap
-                    const fetchedProjects = await getProjectsByUserId();
-                    const projectsWithCounts = await Promise.all(
-                        fetchedProjects.map(async (proj) => {
-                            try {
-                                const details = await getProjectById(proj.id);
-                                const issuesCount = Array.isArray(details.issues)
-                                    ? details.issues.filter(
-                                        (issue) =>
-                                            !issue.issueStatus || 
-                                            !['resolved', 'closed', 'done', 'completed'].includes(
-                                                String(issue.issueStatus).toLowerCase()
-                                            )
-                                    ).length
-                                    : 0;
-
-                                let tasks = [];
-                                if (Array.isArray(details.worklists)) {
-                                    details.worklists.forEach((w) => {
-                                        if (Array.isArray(w.tasks)) {
-                                            tasks = tasks.concat(w.tasks);
-                                        }
-                                    });
-                                }
-                                const incompleteTasks = tasks.filter(
-                                    (task) =>
-                                        typeof task.progress === 'number'
-                                            ? task.progress < 100
-                                            : true
-                                ).length;
-
-                                const totalCount = issuesCount + incompleteTasks;
-
-                                return {
-                                    id: proj.id,
-                                    name: proj.projectName,
-                                    count: totalCount,
-                                };
-                            } catch {
-                                return {
-                                    id: proj.id,
-                                    name: proj.projectName,
-                                    count: 0,
-                                };
-                            }
-                        })
-                    );
-                    setChartData(projectsWithCounts);
-                } else {
-                    // Fetch issues data for heatmap
-                    const loggedInUserIdRaw = await AsyncStorage.getItem('userId');
-                    const loggedInUserName = await AsyncStorage.getItem('userName');
-                    const loggedInUserId = loggedInUserIdRaw
-                        ? (isNaN(Number(loggedInUserIdRaw)) ? loggedInUserIdRaw : Number(loggedInUserIdRaw))
-                        : null;
-
-                    const [assignedIssues, createdByMeIssues] = await Promise.all([
-                        fetchAssignedIssues(),
-                        fetchCreatedByMeIssues(),
-                    ]);
-
-                    const normalizeIssues = (issues, isCreatedByMe = false) =>
-                        issues.map(issue => ({
-                            id: issue.issueId || issue.id,
-                            status: (issue.issueStatus || '').toLowerCase(),
-                            assignedUserId: isCreatedByMe ? issue.assignToUserId : issue.assignTo,
-                            assignedUserName: isCreatedByMe ? issue.assignToUserName : null,
-                        }));
-
-                    const normalizedCreated = normalizeIssues(createdByMeIssues, true);
-                    const normalizedAssigned = normalizeIssues(assignedIssues, false);
-
-                    const userIdToName = {};
-                    normalizedCreated.forEach(issue => {
-                        if (issue.assignedUserId && issue.assignedUserName) {
-                            userIdToName[issue.assignedUserId] = issue.assignedUserName;
-                        }
-                    });
-
-                    normalizedAssigned.forEach(issue => {
-                        if (issue.assignedUserId && !userIdToName[issue.assignedUserId]) {
-                            userIdToName[issue.assignedUserId] = `User-${issue.assignedUserId}`;
-                        }
-                    });
-
-                    if (loggedInUserId && loggedInUserName) {
-                        userIdToName[loggedInUserId] = loggedInUserName;
-                    }
-
-                    const isUnresolved = (status) =>
-                        !status || !['resolved', 'closed', 'done', 'completed'].includes(status);
-
-                    const combinedIssues = [
-                        ...normalizedCreated.filter(issue => isUnresolved(issue.status)),
-                        ...normalizedAssigned.filter(issue => isUnresolved(issue.status)),
-                    ];
-
-                    const grouped = {};
-                    combinedIssues.forEach(issue => {
-                        const userId = issue.assignedUserId;
-                        if (userId) {
-                            grouped[userId] = (grouped[userId] || 0) + 1;
-                        }
-                    });
-
-                    const issuesData = Object.entries(grouped)
-                        .map(([userId, count]) => ({
-                            userId: String(userId),
-                            userName: userIdToName[userId] || `User-${userId}`,
-                            count: Math.max(count, 0),
-                        }))
-                        .filter(item => item.count > 0);
-
-                    setChartData(issuesData);
-                }
-            } catch (err) {
-                console.error('Error fetching heatmap data:', err);
-                setChartData([]);
-            }
-        };
-
-        fetchHeatmapData();
-    }, [selectedChart, selectedChartType, refreshKey]);
+        // No additional data fetching needed for bar charts
+        // They handle their own data fetching internally
+    }, [selectedChart, refreshKey]);
 
     useEffect(() => {
         Animated.timing(drawerAnim, {
@@ -217,78 +84,26 @@ export default function ProfessionalDashboard({ navigation }) {
         }, 800);
     };
 
-    // Function to render the appropriate chart based on selected type and data
+    // Function to render the appropriate bar chart based on selected data type
     const renderChart = () => {
-        const chartKey = `${selectedChart}-${selectedChartType}-${refreshKey}`;
+        const chartKey = `${selectedChart}-bar-${refreshKey}`;
         
         if (selectedChart === 'projects') {
-            switch (selectedChartType) {
-                case 'bar':
-                    return (
-                        <ProjectsSnagBarChart
-                            theme={theme}
-                            refreshKey={refreshKey}
-                            key={chartKey}
-                        />
-                    );
-                case 'pie':
-                    return (
-                        <ProjectsPieChart
-                            theme={theme}
-                            key={chartKey}
-                        />
-                    );
-                case 'heatmap':
-                    return (
-                        <HeatmapChart
-                            theme={theme}
-                            data={chartData}
-                            type="projects"
-                            key={chartKey}
-                        />
-                    );
-                default:
-                    return (
-                        <ProjectsSnagBarChart
-                            theme={theme}
-                            refreshKey={refreshKey}
-                            key={chartKey}
-                        />
-                    );
-            }
+            return (
+                <ProjectsSnagLineChart
+                    theme={theme}
+                    refreshKey={refreshKey}
+                    key={chartKey}
+                />
+            );
         } else {
-            switch (selectedChartType) {
-                case 'bar':
-                    return (
-                        <AssignedIssuesBarChart
-                            theme={theme}
-                            key={chartKey}
-                        />
-                    );
-                case 'pie':
-                    return (
-                        <IssuesPieChart
-                            theme={theme}
-                            key={chartKey}
-                        />
-                    );
-                case 'heatmap':
-                    return (
-                        <HeatmapChart
-                            theme={theme}
-                            data={chartData}
-                            type="issues"
-                            key={chartKey}
-                        />
-                    );
-                default:
-                    return (
-                        <AssignedIssuesBarChart
-                            theme={theme}
-                            key={chartKey}
-                        />
-                    );
-            }
+            return (
+                <AssignedIssuesBarChart
+                    theme={theme}
+                    refreshKey={refreshKey}
+                    key={chartKey}
+                />
+            );
         }
     };
 
@@ -351,129 +166,43 @@ export default function ProfessionalDashboard({ navigation }) {
                 <DailyProgressCard theme={theme} refreshKey={refreshKey} key={`daily-${refreshKey}`} />
                 {/* Analytics Charts Section */}
                 <View style={[styles.chartsSection, { backgroundColor: theme.background }]}>
-                    {/* Integrated Chart Controls */}
+                    {/* Minimal Capsule Chart Controls */}
                     <View style={styles.chartControlsContainer}>
-                        {/* Chart Type & Data Type Combined Header */}
-                        <View style={[styles.controlsHeader, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                            {/* Data Type Selection */}
-                            <View style={styles.dataTypeSection}>
-                                <Text style={[styles.controlLabel, { color: theme.secondaryText }]}>Data View</Text>
-                                <View style={styles.dataTypeButtons}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.dataTypeButton,
-                                            { 
-                                                backgroundColor: selectedChart === 'projects' ? theme.primary : 'transparent',
-                                                borderColor: theme.border
-                                            },
-                                        ]}
-                                        onPress={() => setSelectedChart('projects')}
-                                        activeOpacity={0.8}
-                                    >
-                                        {/* <Feather
-                                            name="folder"
-                                            size={16}
-                                            color={selectedChart === 'projects' ? '#fff' : theme.primary}
-                                        /> */}
-                                        <Text style={[
-                                            styles.dataTypeText,
-                                            { color: selectedChart === 'projects' ? '#fff' : theme.primary }
-                                        ]}>
-                                            Projects
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.dataTypeButton,
-                                            { 
-                                                backgroundColor: selectedChart === 'issues' ? theme.primary : 'transparent',
-                                                borderColor: theme.border
-                                            },
-                                        ]}
-                                        onPress={() => setSelectedChart('issues')}
-                                        activeOpacity={0.8}
-                                    >
-                                        {/* <Feather
-                                            name="alert-circle"
-                                            size={16}
-                                            color={selectedChart === 'issues' ? '#fff' : theme.primary}
-                                        /> */}
-                                        <Text style={[
-                                            styles.dataTypeText,
-                                            { color: selectedChart === 'issues' ? '#fff' : theme.primary }
-                                        ]}>
-                                            Issues
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
-
-                            {/* Vertical Divider */}
-                            <View style={[styles.divider, { backgroundColor: theme.border }]} />
-
-                            {/* Chart Type Selection */}
-                            <View style={styles.chartTypeSection}>
-                                <Text style={[styles.controlLabel, { color: theme.secondaryText }]}>Chart Type</Text>
-                                <View style={styles.chartTypeButtons}>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.chartTypeButtonNew,
-                                            { 
-                                                backgroundColor: selectedChartType === 'bar' ? theme.primary : 'transparent',
-                                                borderColor: theme.border
-                                            },
-                                        ]}
-                                        onPress={() => setSelectedChartType('bar')}
-                                        activeOpacity={0.8}
-                                    >
-                                
-                                        <Text style={[
-                                            styles.chartTypeTextNew,
-                                            { color: selectedChartType === 'bar' ? '#fff' : theme.primary }
-                                        ]}>
-                                            Bar
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.chartTypeButtonNew,
-                                            { 
-                                                backgroundColor: selectedChartType === 'pie' ? theme.primary : 'transparent',
-                                                borderColor: theme.border
-                                            },
-                                        ]}
-                                        onPress={() => setSelectedChartType('pie')}
-                                        activeOpacity={0.8}
-                                    >
-                                
-                                        <Text style={[
-                                            styles.chartTypeTextNew,
-                                            { color: selectedChartType === 'pie' ? '#fff' : theme.primary }
-                                        ]}>
-                                            Pie
-                                        </Text>
-                                    </TouchableOpacity>
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.chartTypeButtonNew,
-                                            { 
-                                                backgroundColor: selectedChartType === 'heatmap' ? theme.primary : 'transparent',
-                                                borderColor: theme.border
-                                            },
-                                        ]}
-                                        onPress={() => setSelectedChartType('heatmap')}
-                                        activeOpacity={0.8}
-                                    >
-                                      
-                                        <Text style={[
-                                            styles.chartTypeTextNew,
-                                            { color: selectedChartType === 'heatmap' ? '#fff' : theme.primary }
-                                        ]}>
-                                            Heat
-                                        </Text>
-                                    </TouchableOpacity>
-                                </View>
-                            </View>
+                        <View style={[styles.capsuleContainer, { backgroundColor: `${theme.border}40` }]}>
+                            <TouchableOpacity
+                                style={[
+                                    styles.capsuleButton,
+                                    { 
+                                        backgroundColor: selectedChart === 'projects' ? theme.primary : 'transparent',
+                                    },
+                                ]}
+                                onPress={() => setSelectedChart('projects')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[
+                                    styles.capsuleText,
+                                    { color: selectedChart === 'projects' ? '#fff' : theme.text }
+                                ]}>
+                                    Projects
+                                </Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                style={[
+                                    styles.capsuleButton,
+                                    { 
+                                        backgroundColor: selectedChart === 'issues' ? theme.primary : 'transparent',
+                                    },
+                                ]}
+                                onPress={() => setSelectedChart('issues')}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[
+                                    styles.capsuleText,
+                                    { color: selectedChart === 'issues' ? '#fff' : theme.text }
+                                ]}>
+                                    Issues
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
 
@@ -523,76 +252,27 @@ const styles = StyleSheet.create({
     },
     chartControlsContainer: {
         paddingHorizontal: 16,
-        marginBottom: 16,
-    },
-    controlsHeader: {
-        borderRadius: 12,
-        padding: 16,
-        borderWidth: 1,
-        flexDirection: 'row',
-        alignItems: 'stretch',
-    },
-    dataTypeSection: {
-        flex: 1,
-        paddingRight: 12,
-    },
-    chartTypeSection: {
-        flex: 1,
-        paddingLeft: 12,
-    },
-    controlLabel: {
-        fontSize: 12,
-        fontWeight: '600',
         marginBottom: 10,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        alignItems: 'center',
     },
-    dataTypeButtons: {
+    capsuleContainer: {
         flexDirection: 'row',
-        gap: 6,
+        borderRadius: 25,
+        padding: 3,
+        alignItems: 'center',
     },
-    chartTypeButtons: {
-        flexDirection: 'row',
-        gap: 4,
-    },
-    dataTypeButton: {
-        flex: 1,
-        flexDirection: 'row',
+    capsuleButton: {
+        paddingVertical: 8,
+        paddingHorizontal: 20,
+        borderRadius: 22,
+        minWidth: 80,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-        borderRadius: 12,
-        borderWidth: 1,
     },
-    chartTypeButtonNew: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 4,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    dataTypeText: {
-        fontSize: 12,
+    capsuleText: {
+        fontSize: 14,
         fontWeight: '500',
-        marginLeft: 0,
         letterSpacing: 0.1,
-        textAlign: 'center',
-    },
-    chartTypeTextNew: {
-        fontSize: 10,
-        fontWeight: '600',
-        marginLeft: 3,
-        letterSpacing: 0.1,
-        textAlign: 'center',
-    },
-    divider: {
-        width: 1,
-        marginHorizontal: 8,
-        alignSelf: 'stretch',
     },
     chartContainer: {
         minHeight: 320,

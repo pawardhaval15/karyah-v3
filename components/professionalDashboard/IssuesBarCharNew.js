@@ -12,16 +12,16 @@ import {
 } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import { fetchAssignedIssues, fetchCreatedByMeIssues } from '../../utils/issues';
+import { fetchMyTasks } from '../../utils/task';
 
 const screenWidth = Dimensions.get('window').width;
 
-export default function AssignedIssuesBarChart({ theme }) {
+export default function AssignedIssuesBarChart({ theme, refreshKey }) {
     const [loading, setLoading] = useState(true);
     const [dataByPOC, setDataByPOC] = useState([]);
     const [selectedBar, setSelectedBar] = useState(null);
     const [assignedIssues, setAssignedIssues] = useState([]);
-    const [createdByMeIssues, setCreatedByMeIssues] = useState([]);
+    const [createdIssues, setCreatedIssues] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -34,31 +34,53 @@ export default function AssignedIssuesBarChart({ theme }) {
                     ? (isNaN(Number(loggedInUserIdRaw)) ? loggedInUserIdRaw : Number(loggedInUserIdRaw))
                     : null;
 
-                // Fetch both assigned and created by me issues simultaneously
-                const [assignedRaw, createdRaw] = await Promise.all([
-                    fetchAssignedIssues(),
-                    fetchCreatedByMeIssues(),
-                ]);
+                // Fetch all tasks for the user and filter for issues
+                const allTasks = await fetchMyTasks();
+                console.log('Fetched all tasks:', allTasks);
 
-                console.log('Fetched assignedIssues:', assignedRaw);
-                console.log('Fetched createdByMeIssues:', createdRaw);
+                // Filter tasks that are issues (isIssue: true)
+                const issueTasks = allTasks?.filter(task => task.isIssue === true) || [];
+                console.log('Filtered issue tasks:', issueTasks);
 
-                const normalizeIssues = (issues, isCreatedByMe = false) =>
-                    issues.map(issue => ({
-                        id: issue.issueId || issue.id,
-                        status: (issue.issueStatus || '').toLowerCase(),
-                        assignedUserId: isCreatedByMe ? issue.assignToUserId : issue.assignTo,
-                        assignedUserName: isCreatedByMe ? issue.assignToUserName : null,
-                        creatorUserId: issue.creatorUserId,  // add creatorUserId to each issue
+                // Separate assigned and created issues based on Task model structure
+                const assignedIssues = issueTasks.filter(task => {
+                    // Task is assigned to current user (in assignedUserIds array)
+                    const assignedUserIds = task.assignedUserIds || [];
+                    return assignedUserIds.includes(loggedInUserId);
+                });
+
+                const createdIssues = issueTasks.filter(task => {
+                    // Task is created by current user
+                    return task.creatorUserId === loggedInUserId;
+                });
+
+                console.log('Assigned issues:', assignedIssues);
+                console.log('Created issues:', createdIssues);
+
+                const normalizeTaskIssues = (tasks, isCreatedByMe = false) =>
+                    tasks.map(task => ({
+                        id: task.id,
+                        status: (task.status || '').toLowerCase(), // Task model uses 'status' field
+                        assignedUserId: isCreatedByMe 
+                            ? (task.assignedUserIds && task.assignedUserIds[0]) // Get first assigned user for created issues
+                            : task.creatorUserId, // For assigned issues, show creator
+                        assignedUserName: isCreatedByMe 
+                            ? (task.assignedUsers && task.assignedUsers[0]?.name) || 
+                              (task.assignedUserDetails && task.assignedUserDetails[0]?.name) // Check both assignedUsers and assignedUserDetails
+                            : task.creator?.name, // Get creator name
+                        creatorUserId: task.creatorUserId,
+                        isCritical: task.isCritical,
+                        progress: task.progress,
+                        resolvedImages: task.resolvedImages, // Include resolved images to check if issue is truly resolved
                     }));
 
+                const normalizedCreated = normalizeTaskIssues(createdIssues, true);
+                const normalizedAssigned = normalizeTaskIssues(assignedIssues, false);
 
-                const normalizedCreated = normalizeIssues(createdRaw, true);
-                const normalizedAssigned = normalizeIssues(assignedRaw, false);
+                setAssignedIssues(normalizedAssigned);
+                setCreatedIssues(normalizedCreated);
 
-                setAssignedIssues(normalizedAssigned); // preserve full normalized arrays
-                setCreatedByMeIssues(normalizedCreated);
-
+                // Build user ID to name mapping
                 const userIdToName = {};
                 normalizedCreated.forEach(issue => {
                     if (issue.assignedUserId && issue.assignedUserName) {
@@ -66,22 +88,40 @@ export default function AssignedIssuesBarChart({ theme }) {
                     }
                 });
                 normalizedAssigned.forEach(issue => {
-                    if (issue.assignedUserId && !userIdToName[issue.assignedUserId]) {
-                        userIdToName[issue.assignedUserId] = `User-${issue.assignedUserId}`;
+                    if (issue.assignedUserId && issue.assignedUserName) {
+                        userIdToName[issue.assignedUserId] = issue.assignedUserName;
                     }
                 });
                 if (loggedInUserId && loggedInUserName) {
                     userIdToName[loggedInUserId] = loggedInUserName;
                 }
 
-                const isUnresolved = (status) =>
-                    !status || !['resolved', 'closed', 'done', 'completed'].includes(status);
+                // Check if issue task is unresolved based on Task model status and resolution criteria
+                const isUnresolved = (task) => {
+                    const status = (task.status || '').toLowerCase();
+                    const progress = task.progress || 0;
+                    const hasResolvedImages = task.resolvedImages && task.resolvedImages.length > 0;
+                    
+                    // For issue tasks, consider them unresolved if:
+                    // 1. Status is not 'completed', OR
+                    // 2. Progress is less than 100%, OR  
+                    // 3. No resolved images (issue not properly resolved), OR
+                    // 4. Critical issues should always be shown for monitoring
+                    return (
+                        status !== 'completed' || 
+                        progress < 100 || 
+                        !hasResolvedImages ||
+                        task.isCritical
+                    );
+                };
 
+                // Combine and filter unresolved issues
                 const combinedIssues = [
-                    ...normalizedCreated.filter(issue => isUnresolved(issue.status)),
-                    ...normalizedAssigned.filter(issue => isUnresolved(issue.status)),
+                    ...normalizedCreated.filter(isUnresolved),
+                    ...normalizedAssigned.filter(isUnresolved),
                 ];
 
+                // Group by assigned user
                 const grouped = {};
                 combinedIssues.forEach(issue => {
                     const userId = issue.assignedUserId;
@@ -90,10 +130,12 @@ export default function AssignedIssuesBarChart({ theme }) {
                     }
                 });
 
+                // Ensure current user is included even with 0 count
                 if (loggedInUserId && !grouped[loggedInUserId]) {
                     grouped[loggedInUserId] = 0;
                 }
 
+                // Prepare chart data
                 const chartData = Object.entries(grouped)
                     .map(([userId, count]) => ({
                         userId: String(userId),
@@ -113,7 +155,15 @@ export default function AssignedIssuesBarChart({ theme }) {
             }
         };
         fetchData();
-    }, []);
+    }, [refreshKey]);
+
+    if (loading) {
+        return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
+    }
+
+    // Always show chart container, even with no data
+    const displayData = dataByPOC.length > 0 ? dataByPOC : [];
+
     const chartConfig = {
         backgroundColor: theme.card,
         backgroundGradientFrom: theme.card,
@@ -137,7 +187,7 @@ export default function AssignedIssuesBarChart({ theme }) {
         },
     };
     const barWidth = 70;
-    const chartWidth = Math.max(screenWidth - 32, dataByPOC.length * barWidth);
+    const chartWidth = Math.max(screenWidth - 32, Math.max(displayData.length, 1) * barWidth);
 
     const getIssueColor = (count) => {
         if (count === 0) return theme.border || '#E5E7EB';
@@ -148,47 +198,67 @@ export default function AssignedIssuesBarChart({ theme }) {
     };
 
     const chartData = {
-        labels: dataByPOC.map(item => {
-            const name = item.userName || 'Unknown';
-            return name.length > 8 ? name.slice(0, 6) + '…' : name;
-        }),
+        labels: displayData.length > 0 
+            ? displayData.map(item => {
+                const name = item.userName || 'Unknown';
+                return name.length > 8 ? name.slice(0, 6) + '…' : name;
+              })
+            : ['No Data'], // Show placeholder when no data
         datasets: [
             {
-                data: dataByPOC.map(item => Math.max(item.count, 1)),
-                colors: dataByPOC.map(item => () => getIssueColor(item.count)),
+                data: displayData.length > 0 
+                    ? displayData.map(item => Math.max(item.count, 1))
+                    : [1], // Show minimum bar when no data
+                colors: displayData.length > 0 
+                    ? displayData.map(item => () => getIssueColor(item.count))
+                    : [() => theme.border || '#E5E7EB'], // Gray color for empty state
             }
         ],
     };
 
     const handleBarPress = (data) => {
+        // Don't handle press if no data available
+        if (displayData.length === 0) return;
+        
         const index = data.index;
-        if (dataByPOC[index]) {
-            const userId = dataByPOC[index].userId;
+        if (displayData[index]) {
+            const userId = displayData[index].userId;
 
+            // Check if issue task is unresolved based on Task model
+            const isTaskUnresolved = (task) => {
+                const status = (task.status || '').toLowerCase();
+                const progress = task.progress || 0;
+                const hasResolvedImages = task.resolvedImages && task.resolvedImages.length > 0;
+                
+                // For issue tasks, consider them unresolved if:
+                // 1. Status is not 'completed', OR
+                // 2. Progress is less than 100%, OR
+                // 3. No resolved images (issue not properly resolved), OR
+                // 4. Critical issues should always be shown for monitoring
+                return (
+                    status !== 'completed' || 
+                    progress < 100 || 
+                    !hasResolvedImages ||
+                    task.isCritical
+                );
+            };
+
+            // Count assigned unresolved issues for this user
             const assignedCount = assignedIssues.filter(
-                issue => String(issue.assignedUserId) === userId &&
-                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+                issue => String(issue.assignedUserId) === userId && isTaskUnresolved(issue)
             ).length;
 
-            const createdCount = createdByMeIssues.filter(
-                issue => String(issue.assignedUserId) === userId &&
-                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+            // Count created unresolved issues assigned to this user  
+            const createdCount = createdIssues.filter(
+                issue => String(issue.assignedUserId) === userId && isTaskUnresolved(issue)
             ).length;
 
-            setSelectedBar({ ...dataByPOC[index], assignedCount, createdCount, index });
+            setSelectedBar({ ...displayData[index], assignedCount, createdCount, index });
         }
     };
 
     if (loading) {
         return <ActivityIndicator size="large" color={theme.primary} style={{ margin: 30 }} />;
-    }
-
-    if (!dataByPOC.length) {
-        return (
-            <View style={styles.messageWrap}>
-                <Text style={{ color: theme.text }}>No unresolved issues found</Text>
-            </View>
-        );
     }
 
     return (
@@ -204,7 +274,7 @@ export default function AssignedIssuesBarChart({ theme }) {
                     </View>
                     <View style={[styles.totalBadge, { backgroundColor: theme.primary }]}>
                         <Text style={styles.totalText}>
-                            {dataByPOC.reduce((sum, item) => sum + item.count, 0)}
+                            {displayData.length > 0 ? displayData.reduce((sum, item) => sum + item.count, 0) : 0}
                         </Text>
                     </View>
                 </View>
@@ -227,69 +297,81 @@ export default function AssignedIssuesBarChart({ theme }) {
 
             <View style={styles.chartSection}>
                 <ScrollView horizontal showsHorizontalScrollIndicator style={{ flexGrow: 0 }}>
-                    <View style={{ width: chartWidth }}>
+                    <View style={{ width: chartWidth, position: 'relative' }}>
                         <BarChart
                             data={chartData}
                             width={chartWidth}
                             height={200}
                             chartConfig={chartConfig}
                             verticalLabelRotation={0}
-                            showValuesOnTopOfBars={true}
+                            showValuesOnTopOfBars={displayData.length > 0}
                             fromZero={true}
-                            onDataPointClick={handleBarPress}
+                            onDataPointClick={displayData.length > 0 ? handleBarPress : undefined}
                             style={styles.chart}
                         />
 
-                        {/* Overlay for username label touch */}
-                        <View style={styles.labelTouchOverlay}>
-                            {dataByPOC.map((item, index) => {
-                                const paddingRight = 40;
-                                const chartUsableWidth = chartWidth - paddingRight;
-                                const labelLeft = paddingRight + index * (chartUsableWidth / dataByPOC.length);
-                                const labelWidth = (chartUsableWidth / dataByPOC.length) * 0.9;
-                                const labelHeight = 40;
-                                const labelTop = 160;
+                        {/* Overlay for username label touch - only when data available */}
+                        {displayData.length > 0 && (
+                            <View style={styles.labelTouchOverlay}>
+                                {displayData.map((item, index) => {
+                                    const paddingRight = 40;
+                                    const chartUsableWidth = chartWidth - paddingRight;
+                                    const labelLeft = paddingRight + index * (chartUsableWidth / displayData.length);
+                                    const labelWidth = (chartUsableWidth / displayData.length) * 0.9;
+                                    const labelHeight = 40;
+                                    const labelTop = 160;
 
-                                return (
-                                    <TouchableOpacity
-                                        key={`label-touch-${index}`}
-                                        style={[
-                                            styles.labelTouchRegion,
-                                            {
-                                                position: 'absolute',
-                                                left: labelLeft,
-                                                top: labelTop,
-                                                width: labelWidth,
-                                                height: labelHeight,
-                                                backgroundColor: 'transparent',
-                                            },
-                                        ]}
-                                        activeOpacity={0.7}
-                                        onPress={() => {
-                                            const userIdStr = String(item.userId);
+                                    return (
+                                        <TouchableOpacity
+                                            key={`label-touch-${index}`}
+                                            style={[
+                                                styles.labelTouchRegion,
+                                                {
+                                                    position: 'absolute',
+                                                    left: labelLeft,
+                                                    top: labelTop,
+                                                    width: labelWidth,
+                                                    height: labelHeight,
+                                                    backgroundColor: 'transparent',
+                                                },
+                                            ]}
+                                            activeOpacity={0.7}
+                                            onPress={() => {
+                                                const userIdStr = String(item.userId);
 
-                                            // Count unresolved issues assigned to user
-                                            const assignedCount = assignedIssues.filter(
-                                                issue =>
-                                                    (String(issue.assignedUserId) === userIdStr ||
-                                                        String(issue.creatorUserId) === userIdStr) && // Include also where user is creator
-                                                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
-                                            ).length;
+                                                // Count unresolved issues assigned to user
+                                                const assignedCount = assignedIssues.filter(
+                                                    issue =>
+                                                        (String(issue.assignedUserId) === userIdStr ||
+                                                            String(issue.creatorUserId) === userIdStr) && // Include also where user is creator
+                                                        !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+                                                ).length;
 
-                                            // Count unresolved issues created by user (same as before)
-                                            const createdCount = createdByMeIssues.filter(
-                                                issue =>
-                                                    String(issue.assignedUserId) === userIdStr &&
-                                                    !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
-                                            ).length;
+                                                // Count unresolved issues created by user (same as before)
+                                                const createdCount = createdIssues.filter(
+                                                    issue =>
+                                                        String(issue.assignedUserId) === userIdStr &&
+                                                        !['resolved', 'closed', 'done', 'completed'].includes(issue.status)
+                                                ).length;
 
-                                            setSelectedBar({ ...item, assignedCount, createdCount, index });
-                                        }}
+                                                setSelectedBar({ ...item, assignedCount, createdCount, index });
+                                            }}
 
-                                    />
-                                );
-                            })}
-                        </View>
+                                        />
+                                    );
+                                })}
+                            </View>
+                        )}
+
+                        {/* Empty state overlay */}
+                        {displayData.length === 0 && (
+                            <View style={styles.emptyStateOverlay}>
+                                <Ionicons name="bar-chart-outline" size={32} color={theme.border} />
+                                <Text style={[styles.emptyStateText, { color: theme.secondaryText }]}>
+                                    No unresolved issues found
+                                </Text>
+                            </View>
+                        )}
                     </View>
                 </ScrollView>
             </View>
@@ -340,7 +422,7 @@ export default function AssignedIssuesBarChart({ theme }) {
                                         {selectedBar?.createdCount ?? 0}
                                     </Text>
                                     <Text style={[styles.metricText, { color: theme.secondaryText }]}>
-                                        Created By Me Unresolved Issues
+                                        Created Issues (Assigned to User)
                                     </Text>
                                 </View>
                             </View>
@@ -447,6 +529,22 @@ const styles = StyleSheet.create({
     chartSection: {
         flex: 1,
         alignItems: 'center',
+    },
+    emptyStateOverlay: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 200,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    emptyStateText: {
+        fontSize: 14,
+        fontWeight: '500',
+        marginTop: 8,
+        opacity: 0.6,
     },
     chart: {
         borderRadius: 8,
