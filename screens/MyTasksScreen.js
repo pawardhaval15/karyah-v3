@@ -5,23 +5,23 @@ import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    FlatList,
-    Platform,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
 import TagsManagementModal from '../components/popups/TagsManagementModal';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { bulkAssignTasks, getTasksByProjectId, updateTaskTags } from '../utils/task';
+import { bulkAssignTasks, getTasksByProjectId, updateTask } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
@@ -90,6 +90,7 @@ export default function MyTasksScreen({ navigation }) {
       setSelectedTasks([]);
       // Clear filters when switching tabs
       clearAllFilters();
+
       setShowFilters(false);
     }, [activeTab])
   );
@@ -384,14 +385,15 @@ export default function MyTasksScreen({ navigation }) {
     try {
       console.log('🏷️ Saving tags:', { taskId, newTags });
       
-      // Use the PATCH API which merges tags instead of replacing
-      const result = await updateTaskTags(taskId, newTags);
+      // Use the main updateTask API to replace tags completely
+      // This avoids the PATCH /tags endpoint which merges instead of replaces
+      const result = await updateTask(taskId, { tags: newTags });
       
-      // Update the local tasks state with the merged tags returned by the API
+      // Update the local tasks state with the exact tags we set
       setTasks(prevTasks => 
         prevTasks.map(task => 
           (task.id === taskId || task.taskId === taskId) 
-            ? { ...task, tags: result.tags || newTags }
+            ? { ...task, tags: newTags } // Use newTags to ensure exact replacement
             : task
         )
       );
