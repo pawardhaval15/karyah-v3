@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../../theme/ThemeContext';
-import { fetchAssignedIssues } from '../../utils/issues';
+import { fetchIssuesByUser } from '../../utils/issues';
 import { fetchMyTasks } from '../../utils/task'; // <-- im
 import TaskCard from './TaskCard';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +19,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     const fetchData = async () => {
       setLoading(true);
       try {
-        const [tasksData, issuesData] = await Promise.all([fetchMyTasks(), fetchAssignedIssues()]);
+        const [tasksData, issuesData] = await Promise.all([fetchMyTasks(), fetchIssuesByUser()]);
         setTasks(tasksData || []);
         setIssues(issuesData || []);
         // console.log('Fetched tasks:', tasksData);

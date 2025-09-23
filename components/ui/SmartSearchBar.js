@@ -377,7 +377,7 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
           {isSearching && (
             <View style={styles.loadingContainer}>
               <ActivityIndicator size="small" color={theme.primary || '#366CD9'} />
-              <Text style={[styles.loadingText, { color: theme.secondaryText }]}>{i18n.t('searching')}</Text>
+              <Text style={[styles.loadingText, { color: theme.secondaryText }]}>{t('searching')}</Text>
             </View>
           )}
 
@@ -434,9 +434,9 @@ const SmartSearchBar = ({ navigation, theme, onClose }) => {
                     color={theme.secondaryText}
                     style={styles.emptyIcon}
                   />
-                  <Text style={[styles.emptyTitle, { color: theme.text }]}>{i18n.t('no_results')}</Text>
+                  <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_results')}</Text>
                   <Text style={[styles.emptySubtitle, { color: theme.secondaryText }]}>
-                    {i18n.t('try_searching')}
+                    {t('try_searching')}
                   </Text>
                 </View>
               ) : null

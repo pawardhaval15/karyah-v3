@@ -103,11 +103,11 @@ export default function TaskCard({
       }
     ]}>
       {/* Issue Tag - positioned at top right */}
-      {isIssue && (
+      {/* {isIssue && (
         <View style={styles.issueTag}>
           <Text style={styles.issueTagText}>ISSUE</Text>
         </View>
-      )}
+      )} */}
 
       {/* Critical Tag - positioned at top right */}
       {isCritical && !isIssue && (
