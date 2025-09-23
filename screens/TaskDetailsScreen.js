@@ -8,19 +8,19 @@ import { jwtDecode } from 'jwt-decode';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -35,12 +35,12 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import {
-    deleteTask,
-    getTaskDetailsById,
-    getTasksByProjectId,
-    updateTask,
-    updateTaskDetails,
-    updateTaskProgress,
+  deleteTask,
+  getTaskDetailsById,
+  getTasksByProjectId,
+  updateTask,
+  updateTaskDetails,
+  updateTaskProgress,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
@@ -845,6 +845,113 @@ export default function TaskDetailsScreen({ route, navigation }) {
               theme={theme}
               title={coAdminListPopupTitle}
             /></>)}
+
+        {/* Critical Toggle - Always Interactive */}
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: task.isIssue ? theme.criticalBg || '#FEF2F2' : theme.normalBg || '#F0F9FF',
+          borderRadius: 14,
+          borderWidth: 1,
+          borderColor: task.isIssue ? theme.criticalBorder || '#FF7D66' : theme.normalBorder || '#E0F2FE',
+          marginHorizontal: 20,
+          marginBottom: 16,
+          padding: 12,
+          gap: 12,
+        }}>
+          <View style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            backgroundColor: task.isIssue ? theme.criticalIconBg || '#FEC8BE' : theme.normalIconBg || '#DBEAFE',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            <MaterialIcons
+              name="priority-high"
+              size={24}
+              color={task.isIssue ? theme.criticalText || '#FF2700' : theme.normalText || '#3B82F6'}
+            />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{
+              color: task.isIssue ? theme.criticalText || '#FF2700' : theme.normalText || '#3B82F6',
+              fontWeight: '700',
+              fontSize: 16,
+              marginBottom: 2,
+            }}>
+              {task.isIssue ? 'Issue Task' : 'Normal Task'}
+            </Text>
+            <Text style={{
+              fontSize: 13,
+              fontWeight: '400',
+              lineHeight: 18,
+              color: theme.text,
+            }}>
+              {task.isIssue
+                ? 'This task is marked as an issue requiring attention'
+                : 'Toggle to convert this task into an issue'
+              }
+            </Text>
+          </View>
+          {/* Always show toggle for task creator */}
+          {isCreator ? (
+            <Switch
+              value={task.isIssue || false}
+              onValueChange={async (value) => {
+                try {
+                  setLoading(true);
+                  console.log('🔄 Updating task isIssue:', { taskId, value });
+                  
+                  // Use updateTaskDetails (same as UpdateTaskScreen for consistency)
+                  const data = {
+                    isIssue: value
+                  };
+                  await updateTaskDetails(taskId, data);
+                  
+                  // Refresh the task data
+                  const updatedTask = await getTaskDetailsById(taskId);
+                  setTask(updatedTask);
+                  
+                  console.log('✅ Task updated successfully:', { taskId, isIssue: value });
+                  Alert.alert(
+                    'Success', 
+                    value 
+                      ? 'Task converted to issue successfully.' 
+                      : 'Issue converted back to task successfully.'
+                  );
+                } catch (err) {
+                  console.error('❌ Error updating task:', err);
+                  Alert.alert('Error', err.message || 'Failed to update task status');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              trackColor={{ 
+                false: '#ddd', 
+                true: task.isIssue ? theme.criticalText || '#FF2700' : theme.primary 
+              }}
+              thumbColor="#fff"
+            />
+          ) : (
+            // Show status badge for non-creators
+            <View style={{
+              backgroundColor: task.isIssue ? theme.criticalBadgeBg || '#FF2700' : theme.normalBadgeBg || '#3B82F6',
+              paddingHorizontal: 12,
+              paddingVertical: 6,
+              borderRadius: 12,
+            }}>
+              <Text style={{
+                color: task.isIssue ? theme.criticalBadgeText || '#fff' : theme.normalBadgeText || '#fff',
+                fontWeight: '600',
+                fontSize: 12,
+              }}>
+                {task.isIssue ? 'ISSUE' : 'TASK'}
+              </Text>
+            </View>
+          )}
+        </View>
+
         <FieldBox
           label={t("added_attachments")}
           value=""

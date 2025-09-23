@@ -1,6 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
 export default function IssueList({
   issues,
   onPressIssue,
@@ -11,6 +11,8 @@ export default function IssueList({
   onStatusFilter,
   statusTab,
   refreshControl,
+  currentUserName, // Add this prop to identify current user
+  onToggleCritical, // Add this prop to handle critical toggle
 }) {
   // Filtering logic for task-based issues
   let filteredIssues = issues;
@@ -316,6 +318,30 @@ export default function IssueList({
                     </View>
                   </View>
                 </View>
+
+                {/* Critical Toggle Row - Show only for issues created by current user */}
+                {section === 'created' && 
+                 currentUserName && 
+                 (item.creatorName === currentUserName || item.creator?.name === currentUserName) && 
+                 onToggleCritical && (
+                  <View style={[styles.issueRow, { marginTop: 8, marginBottom: 4 }]}>
+                    <MaterialIcons 
+                      name="priority-high" 
+                      size={14} 
+                      color={item.isCritical ? '#FF2700' : theme.secondaryText} 
+                    />
+                    <Text style={[styles.issueInfo, { color: theme.secondaryText, flex: 1 }]}>
+                      Critical Priority
+                    </Text>
+                    <Switch
+                      value={item.isCritical || false}
+                      onValueChange={(value) => onToggleCritical(item, value)}
+                      trackColor={{ false: '#ddd', true: '#FF2700' }}
+                      thumbColor="#fff"
+                      style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                    />
+                  </View>
+                )}
                 
                 {/* User Info Row */}
                 <View style={styles.issueRow}>
@@ -325,11 +351,13 @@ export default function IssueList({
                     ellipsizeMode="tail"
                     style={[styles.issueInfo, { color: theme.secondaryText }]}>
                     {section === 'assigned'
-                      ? `Created by ${item.creator?.name || 'N/A'}`
+                      ? `Created by ${item.creatorName || item.creator?.name || 'N/A'}`
                       : `Assigned to ${
-                          Array.isArray(item.assignedUserIds) && item.assignedUserIds.length > 0 
-                            ? `${item.assignedUserIds.length} user(s)`
-                            : 'N/A'
+                          Array.isArray(item.assignedUserDetails) && item.assignedUserDetails.length > 0 
+                            ? item.assignedUserDetails.map(user => user.name).join(', ')
+                            : Array.isArray(item.assignedUserIds) && item.assignedUserIds.length > 0 
+                              ? `${item.assignedUserIds.length} user(s)`
+                              : 'N/A'
                         }`}
                   </Text>
                 </View>

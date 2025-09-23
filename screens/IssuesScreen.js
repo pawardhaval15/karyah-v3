@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
+    Alert,
     Platform,
     RefreshControl,
     ScrollView,
@@ -18,7 +19,9 @@ import {
 import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useTheme } from '../theme/ThemeContext';
+import { getUserNameFromToken } from '../utils/auth';
 import { fetchAssignedIssues, fetchCreatedByMeIssues, fetchIssuesByUser, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
+import { updateTask } from '../utils/task';
 export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
@@ -43,6 +46,7 @@ export default function IssuesScreen({ navigation }) {
     const [createdIssues, setCreatedIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [statusTab, setStatusTab] = useState('all'); // 'all', 'resolved', 'unresolved'
+    const [currentUserName, setCurrentUserName] = useState(null);
     const [filters, setFilters] = useState({
         status: [],
         progress: [],     // Optional: if progress applies to issues
@@ -123,6 +127,49 @@ export default function IssuesScreen({ navigation }) {
             setLoading(false);
         }
     };
+
+    // Handle critical toggle for issues created by current user
+    const handleToggleCritical = async (issue, isCritical) => {
+        try {
+            // Update the task using the task API
+            const updatePayload = {
+                isCritical,
+                isIssue: true // Ensure it remains as an issue
+            };
+            
+            await updateTask(issue.id || issue.taskId, updatePayload);
+            
+            // Update the local state
+            if (section === 'created') {
+                setCreatedIssues(prev => 
+                    prev.map(item => 
+                        (item.id || item.taskId) === (issue.id || issue.taskId) 
+                            ? { ...item, isCritical }
+                            : item
+                    )
+                );
+            }
+            
+            Alert.alert('Success', `Issue ${isCritical ? 'marked as critical' : 'unmarked as critical'}`);
+        } catch (error) {
+            Alert.alert('Error', error.message || 'Failed to update critical status');
+        }
+    };
+
+    // Fetch current user name
+    React.useEffect(() => {
+        const fetchCurrentUserName = async () => {
+            try {
+                const userName = await getUserNameFromToken();
+                setCurrentUserName(userName);
+            } catch (error) {
+                console.error('Error fetching current user name:', error);
+            }
+        };
+        
+        fetchCurrentUserName();
+    }, []);
+
     // Refetch issues on mount and when coming back from details with refresh param
     useFocusEffect(
         React.useCallback(() => {
@@ -510,6 +557,8 @@ export default function IssuesScreen({ navigation }) {
                     section={section}
                     onStatusFilter={setStatusTab}
                     statusTab={statusTab}
+                    currentUserName={currentUserName}
+                    onToggleCritical={handleToggleCritical}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}

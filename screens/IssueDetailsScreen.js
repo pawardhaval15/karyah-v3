@@ -35,7 +35,7 @@ import {
   resolveIssueByAssignedUser,
   updateIssue,
 } from '../utils/issues';
-import { deleteTask, getTaskDetailsById, updateTask } from '../utils/task';
+import { deleteTask, getTaskDetailsById, resolveCriticalOrIssueTask, updateTask, updateTaskDetails } from '../utils/task';
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -183,9 +183,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
     setLoading(true);
     try {
       if (issue?.isIssue) {
-        // Handle task-based issue resolution
-        const updateData = {
-          status: 'Completed',
+        // Handle task-based issue resolution using the specific resolve API
+        const resolveData = {
+          remarks: remark.trim(), // Include remarks
           resolvedImages: attachments.map((att, idx) => {
             let fileUri = att.uri;
             if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
@@ -202,13 +202,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
               name: att.name || fileUri.split('/').pop() || `file_${idx}`,
               type: mimeType,
             };
-          }),
-          // Add remark to description or create a remarks field
-          remarks: remark,
+          })
         };
         
-        await updateTask(issue.taskId, updateData);
-        Alert.alert('Success', 'Task issue resolved successfully');
+        // Use the dedicated resolve critical/issue task API
+        await resolveCriticalOrIssueTask(issue.taskId, resolveData);
+        Alert.alert('Success', 'Critical/Issue task resolved successfully');
       } else {
         // Handle traditional issue resolution
         const resolvedImages = attachments.map((att, idx) => {
@@ -340,6 +339,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         description: editFields.description.trim() || undefined,
                         endDate: editFields.dueDate || undefined,
                         isCritical: editFields.isCritical,
+                        // When turning ON critical, ensure it stays as an issue
+                        ...(editFields.isCritical === true && { isIssue: true }),
+                        // When turning OFF critical, keep it as a normal issue (don't remove from issues)
+                        ...(editFields.isCritical === false && { isIssue: true })
                       };
                       
                       // Remove undefined values
@@ -350,6 +353,8 @@ export default function IssueDetailsScreen({ navigation, route }) {
                       });
                       
                       await updateTask(issue.taskId, updatePayload);
+                      
+                      // Show appropriate success message
                       Alert.alert('Success', 'Issue updated successfully.');
                       
                       // Refresh the task data
@@ -572,7 +577,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
             alignItems: 'center',
             justifyContent: 'space-between',
             overflow: 'hidden',
-            minHeight: 110,
           }}>
           <View>
             {isEditing ? (
@@ -832,35 +836,25 @@ export default function IssueDetailsScreen({ navigation, route }) {
           />
         )}
 
-        {/* Critical Toggle - Matching IssuePopup Design */}
+        {/* Critical Toggle - Always Interactive */}
         <View style={[styles.criticalRow, {
-          backgroundColor: isEditing
-            ? theme.criticalBg
-            : (issue.isCritical ? theme.criticalBg : theme.normalBg),
-          borderColor: isEditing
-            ? theme.criticalBorder
-            : (issue.isCritical ? theme.criticalBorder : theme.normalBorder),
+          backgroundColor: (isEditing || issue.isCritical) ? theme.criticalBg : theme.normalBg,
+          borderColor: (isEditing || issue.isCritical) ? theme.criticalBorder : theme.normalBorder,
         }]}>
           <View style={[styles.criticalIconBox, {
-            backgroundColor: isEditing
-              ? theme.criticalIconBg
-              : (issue.isCritical ? theme.criticalIconBg : theme.normalIconBg),
+            backgroundColor: (isEditing || issue.isCritical) ? theme.criticalIconBg : theme.normalIconBg,
           }]}>
             <MaterialIcons
               name="priority-high"
               size={24}
-              color={isEditing
-                ? theme.criticalText
-                : (issue.isCritical ? theme.criticalText : theme.normalText)}
+              color={(isEditing || issue.isCritical) ? theme.criticalText : theme.normalText}
             />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.criticalLabel, {
-              color: isEditing
-                ? theme.criticalText
-                : (issue.isCritical ? theme.criticalText : theme.normalText),
+              color: (isEditing || issue.isCritical) ? theme.criticalText : theme.normalText,
             }]}>
-              {isEditing ? t('critical_issue') : (issue.isCritical ? t('critical_issue') : t('normal'))}
+              {(isEditing || issue.isCritical) ? t('critical_issue') : t('normal')}
             </Text>
             <Text style={[styles.criticalDesc, { color: theme.text }]}>
               {isEditing
@@ -872,14 +866,63 @@ export default function IssueDetailsScreen({ navigation, route }) {
               }
             </Text>
           </View>
-          {isEditing ? (
+          {/* Always show toggle for owner/creator */}
+          {userName && (issue?.creatorName === userName || issue?.creator?.name === userName) ? (
             <Switch
-              value={editFields.isCritical}
-              onValueChange={(value) => setEditFields((f) => ({ ...f, isCritical: value }))}
+              value={isEditing ? editFields.isCritical : issue.isCritical}
+              onValueChange={async (value) => {
+                if (isEditing) {
+                  // In edit mode, just update the local state
+                  setEditFields((f) => ({ ...f, isCritical: value }));
+                } else {
+                  // In view mode, immediately update the backend
+                  try {
+                    setLoading(true);
+                    
+                    if (issue.isIssue) {
+                      // For task-based issues, update through updateTaskDetails
+                      const data = {
+                        isCritical: value,
+                        // When turning ON critical, ensure it stays as an issue
+                        ...(value === true && { isIssue: true }),
+                        // When turning OFF critical, keep it as a normal issue (don't remove from issues)
+                        ...(value === false && { isIssue: true })
+                      };
+                      await updateTaskDetails(issue.taskId, data);
+                      
+                      // Refresh the task data
+                      const updated = await getTaskDetailsById(issue.taskId);
+                      setIssue(updated);
+                    } else {
+                      // For traditional issues, update directly
+                      const updatePayload = {
+                        issueId: issue.issueId,
+                        isCritical: value,
+                      };
+                      await updateIssue(updatePayload);
+                      
+                      // Refresh the issue data
+                      const updated = await fetchIssueById(issue.issueId);
+                      setIssue(updated);
+                    }
+                    
+                    Alert.alert('Success', 
+                      value 
+                        ? 'Task marked as critical issue.' 
+                        : 'Task marked as normal issue.'
+                    );
+                  } catch (err) {
+                    Alert.alert('Error', err.message || 'Failed to update critical status');
+                  } finally {
+                    setLoading(false);
+                  }
+                }
+              }}
               trackColor={{ false: '#ddd', true: theme.criticalText }}
               thumbColor="#fff"
             />
           ) : (
+            // Show status badge for non-owners
             <View style={[styles.criticalStatusBadge, {
               backgroundColor: issue.isCritical ? theme.criticalBadgeBg : theme.normalBadgeBg,
             }]}>
@@ -978,14 +1021,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
             </View>
 
             {/* Show resolution remark */}
-            <FieldBox
+            {/* <FieldBox
               label={t("resolution_remark")}
               value={issue.remarks || ''}
               placeholder={t("no_resolution_remark")}
               multiline
               theme={theme}
               editable={false}
-            />
+            /> */}
           </View>
         )}
         {section === 'assigned' && issue.issueStatus === 'resolved' && (
@@ -1025,14 +1068,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
             </View>
 
             {/* Show previous resolution remark */}
-            <FieldBox
+            {/* <FieldBox
               label={t("resolution_remark")}
               value={issue.remarks || ''}
               placeholder={t("no_resolution_remark")}
               multiline
               theme={theme}
               editable={false}
-            />
+            /> */}
           </View>
         )}
         {section === 'assigned' &&
@@ -1203,7 +1246,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   setShowAttachmentSheet(false);
                 }}
               />
-              <FieldBox
+              {/* <FieldBox
                 label={t("resolution_remark")}
                 value={remark}
                 onChangeText={setRemark}
@@ -1211,7 +1254,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 multiline
                 theme={theme}
                 editable={true}
-              />
+              /> */}
             </View>
           )}
         {section === 'created' && (

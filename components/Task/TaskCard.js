@@ -10,11 +10,30 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
     <TouchableOpacity
       style={[
         styles.taskCard,
-        { backgroundColor: theme.card, borderColor: theme.border }
+        { 
+          backgroundColor: theme.card, 
+          borderColor: task.isIssue ? '#FF7D66' : task.isCritical ? '#FFB366' : theme.border,
+          borderLeftWidth: task.isIssue || task.isCritical ? 4 : 1,
+          borderLeftColor: task.isIssue ? '#FF2700' : task.isCritical ? '#FF8C00' : theme.border,
+        }
       ]}
       onPress={() => onSubtaskPress(task.taskId || task.id)} // ✅ Send taskId
       activeOpacity={0.85}
     >
+      {/* Issue Tag - positioned at top right */}
+      {task.isIssue && (
+        <View style={styles.issueTag}>
+          <Text style={styles.issueTagText}>ISSUE</Text>
+        </View>
+      )}
+
+      {/* Critical Tag - positioned at top right */}
+      {task.isCritical && !task.isIssue && (
+        <View style={styles.criticalTag}>
+          <Text style={styles.criticalTagText}>CRITICAL</Text>
+        </View>
+      )}
+
       <View style={[styles.taskIcon, { backgroundColor: theme.avatarBg }]}>
         <Text style={[styles.projectIconText, { color: theme.primary }]}>
           {(task.name || task.title || 'T')[0]}
@@ -136,6 +155,51 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1,
     borderColor: '#e6eaf3',
+    position: 'relative', // For absolute positioning of issue tag
+  },
+  issueTag: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF2700',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderTopRightRadius: 14,
+    zIndex: 10,
+    shadowColor: '#FF2700',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  issueTagText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  criticalTag: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#FF8C00',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderTopRightRadius: 14,
+    zIndex: 10,
+    shadowColor: '#FF8C00',
+    shadowOpacity: 0.3,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  criticalTagText: {
+    color: '#fff',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
   taskIcon: {
     width: 44,

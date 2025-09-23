@@ -620,3 +620,83 @@ export const bulkAssignTasks = async (taskIds, assignedUserIds) => {
     throw error;
   }
 };
+
+export const resolveCriticalOrIssueTask = async (taskId, resolveData) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/resolve`;
+    
+    console.log('🔄 Resolving critical/issue task:', { taskId, resolveData, url });
+    
+    const formData = new FormData();
+    
+    // Add imagesToRemove if provided
+    if (resolveData.imagesToRemove && Array.isArray(resolveData.imagesToRemove)) {
+      resolveData.imagesToRemove.forEach(index => {
+        formData.append('imagesToRemove', String(index));
+      });
+    }
+    
+    // Add remarks if provided
+    if (resolveData.remarks) {
+      formData.append('remarks', resolveData.remarks);
+    }
+    
+    // Add resolved images if provided
+    if (resolveData.resolvedImages && Array.isArray(resolveData.resolvedImages)) {
+      resolveData.resolvedImages.forEach((img, idx) => {
+        if (img && img.uri) {
+          const uri = img.uri.startsWith('file://') ? img.uri : `file://${img.uri}`;
+          
+          // Fix MIME type
+          let mimeType = img.type;
+          if (mimeType && !mimeType.includes('/')) {
+            if (mimeType === 'image') mimeType = 'image/jpeg';
+            else if (mimeType === 'video') mimeType = 'video/mp4';
+            else mimeType = 'application/octet-stream';
+          }
+          
+          // Use 'images' as the field name to match backend multer configuration
+          formData.append('images', {
+            uri,
+            name: img.name || `resolved-${idx}`,
+            type: mimeType || 'application/octet-stream',
+          });
+        }
+      });
+    }
+    
+    // Debug log
+    console.log('[resolveCriticalOrIssueTask] FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        // Don't set Content-Type for FormData
+      },
+      body: formData,
+    });
+    
+    const responseText = await response.text();
+    
+    try {
+      const data = JSON.parse(responseText);
+      if (!response.ok) {
+        console.error('[resolveCriticalOrIssueTask] API Error:', data);
+        throw new Error(data.message || 'Failed to resolve critical/issue task');
+      }
+      console.log('[resolveCriticalOrIssueTask] Success:', data);
+      return data;
+    } catch (parseError) {
+      console.error('[resolveCriticalOrIssueTask] Invalid JSON response:', responseText);
+      throw new Error('Server response was not JSON');
+    }
+  } catch (error) {
+    console.error('[resolveCriticalOrIssueTask] Network error:', error);
+    throw error;
+  }
+};

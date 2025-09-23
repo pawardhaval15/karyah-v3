@@ -93,7 +93,29 @@ export default function TaskCard({
     return status.replace(/_/g, ' ');
   };
   return (
-    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}>
+    <View style={[
+      styles.card, 
+      { 
+        backgroundColor: theme.card, 
+        borderColor: isIssue ? '#FF7D66' : isCritical ? '#FFB366' : theme.border,
+        borderLeftWidth: isIssue || isCritical ? 4 : 1,
+        borderLeftColor: isIssue ? '#FF2700' : isCritical ? '#FF8C00' : theme.border,
+      }
+    ]}>
+      {/* Issue Tag - positioned at top right */}
+      {isIssue && (
+        <View style={styles.issueTag}>
+          <Text style={styles.issueTagText}>ISSUE</Text>
+        </View>
+      )}
+
+      {/* Critical Tag - positioned at top right */}
+      {isCritical && !isIssue && (
+        <View style={styles.criticalTag}>
+          <Text style={styles.criticalTagText}>CRITICAL</Text>
+        </View>
+      )}
+
       {/* Uncomment if you want overdue banner, currently commented out */}
       {/* {dueDateStatus && dueDateStatus.isOverdue && !(isIssue && isCritical) && (
         <View style={[styles.dueDateBanner, { backgroundColor: dueDateStatus.color }]}>
@@ -261,6 +283,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
+  },
+  issueTag: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#FF5252',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 2,
+  },
+  issueTagText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  criticalTag: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: '#FF8C00',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 2,
+  },
+  criticalTagText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: 'bold',
   },
   criticalBanner: {
     position: 'absolute',
