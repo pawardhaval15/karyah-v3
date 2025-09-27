@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../../theme/ThemeContext';
 import { fetchIssuesByUser } from '../../utils/issues';
 import { fetchMyTasks } from '../../utils/task'; // <-- im
 import TaskCard from './TaskCard';
-import { useTranslation } from 'react-i18next';
 export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
   const theme = useTheme();
 
@@ -255,9 +255,11 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
               // Hide completed tasks (either by status or full percent)
               const isCompletedByPercent = (item.percent || item.progress || 0) === 100;
               const isCompletedByStatus = String(item.status || '').toLowerCase() === 'completed';
-              return !isCompletedByPercent && !isCompletedByStatus;
+              // Also hide tasks that are marked as issues (isIssue: true)
+              const isMarkedAsIssue = item.isIssue === true;
+              return !isCompletedByPercent && !isCompletedByStatus && !isMarkedAsIssue;
             }
-          }) // <-- filter out resolved issues!
+          }) // <-- filter out resolved issues and items marked as issues!
           .map((item, idx) => (
             <TouchableOpacity
               key={(item.title || item.issueTitle || '') + idx}
