@@ -100,35 +100,29 @@ export default function TaskCard({
         borderColor:  theme.border,
       }
     ]}>
-      {/* Issue Tag - positioned at top right */}
-      {/* {isIssue && (
-        <View style={styles.issueTag}>
-          <Text style={styles.issueTagText}>ISSUE</Text>
-        </View>
-      )} */}
-
-      {/* Critical Tag - positioned at top right */}
-      {isCritical && !isIssue && (
-        <View style={styles.criticalTag}>
-          <Text style={styles.criticalTagText}>CRITICAL</Text>
-        </View>
-      )}
-
-      {/* Uncomment if you want overdue banner, currently commented out */}
-      {/* {dueDateStatus && dueDateStatus.isOverdue && !(isIssue && isCritical) && (
-        <View style={[styles.dueDateBanner, { backgroundColor: dueDateStatus.color }]}>
-          <Text style={styles.dueDateBannerText}>{dueDateStatus.text}</Text>
-        </View>
-      )} */}
 
       <View style={styles.content}>
         <View style={styles.row}>
-          <Text
-            style={[styles.taskTitle, { color: theme.text }]}
-            numberOfLines={1}
-            ellipsizeMode="tail">
-            {title}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+            {/* Issue Red Dot Indicator */}
+            {isIssue && (
+              <View
+                style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 4,
+                  backgroundColor: '#FF4444',
+                  marginRight: 6,
+                }}
+              />
+            )}
+            <Text
+              style={[styles.taskTitle, { color: theme.text, flex: 1 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {title}
+            </Text>
+          </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
             {/* Creator initials circle */}
             {creatorName && (
@@ -167,34 +161,6 @@ export default function TaskCard({
               {project}
             </Text>
 
-            {/* Critical indicator for issues */}
-            {isIssue && isCritical && (
-              <Text style={[styles.criticalText, { color: '#FF0000' }]} numberOfLines={1}>
-                Critical
-              </Text>
-            )}
-
-            {isIssue && issueStatus && !isCritical && (
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={{
-                  color:
-                    issueStatus === 'resolved'
-                      ? theme.primary
-                      : issueStatus === 'pending_approval'
-                        ? '#FFC107'
-                        : '#FF6F3C',
-                  fontSize: 11,
-                  fontWeight: '400',
-                  marginLeft: 6,
-                  fontStyle: 'italic',
-                  flexShrink: 0,
-                  maxWidth: 80,
-                }}>
-                {formatIssueStatus(issueStatus)}
-              </Text>
-            )}
             {/* Show due date for both issues and tasks */}
             {dueDateStatus && (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
