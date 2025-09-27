@@ -574,12 +574,26 @@ export default function MyTasksScreen({ navigation }) {
             <View style={styles.compactContent}>
               {/* Title and Progress Row */}
               <View style={styles.titleProgressRow}>
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={[styles.compactTitle, { color: theme.text }]}>
-                  {taskName}
-                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                  {/* Issue Indicator Red Dot */}
+                  {item.isIssue && (
+                    <View
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: 4,
+                        backgroundColor: '#FF4444',
+                        marginRight: 6,
+                      }}
+                    />
+                  )}
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={[styles.compactTitle, { color: theme.text, flex: 1 }]}>
+                    {taskName}
+                  </Text>
+                </View>
                 <View style={styles.compactProgressContainer}>
                   <Text style={[styles.compactProgressText, { color: theme.secondaryText }]}>
                     {item.progress || 0}%
@@ -812,6 +826,16 @@ export default function MyTasksScreen({ navigation }) {
             </View>
           )}
         </TouchableOpacity>
+      </View>
+
+      {/* Legend for Issue Indicator */}
+      <View style={styles.legendContainer}>
+        <View style={styles.legendItem}>
+          <View style={styles.legendRedDot} />
+          <Text style={[styles.legendText, { color: theme.secondaryText }]}>
+            Issue Task
+          </Text>
+        </View>
       </View>
       {/* Tabs (pill design, with icons, like ProjectScreen) */}
       <View style={[styles.tabRow, { marginTop: 4 }]}>
@@ -1525,6 +1549,29 @@ const styles = StyleSheet.create({
     position: 'relative',
     marginLeft: 8,
   },
+  legendContainer: {
+    marginHorizontal: 20,
+    marginBottom: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  legendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  legendRedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF4444',
+    marginRight: 6,
+  },
+  legendText: {
+    fontSize: 12,
+    fontWeight: '500',
+    fontStyle: 'italic',
+  },
   filterBadge: {
     position: 'absolute',
     top: -4,
@@ -1663,6 +1710,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
     lineHeight: 20,
+    
   },
   compactProgressContainer: {
     alignItems: 'center',
