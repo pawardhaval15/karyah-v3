@@ -918,7 +918,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               </View>
               {/* Note for attachments and description */}
               <View style={{ marginHorizontal: 20, marginBottom: 8 }}>
-                <Text style={{ color: '#E53935', fontSize: 13, fontWeight: '500' }}>
+                <Text style={{ color: theme.dangerText, fontSize: 13, fontWeight: '500' }}>
                   {t("resolution_note")}
                 </Text>
               </View>
@@ -971,7 +971,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   style={styles.inputIcon}
                   onPress={isRecording ? stopRecording : startRecording}
                 />
-                {isRecording && <Text style={{ color: '#E53935', marginLeft: 8 }}>{seconds}s</Text>}
+                {isRecording && <Text style={{ color: theme.dangerText, marginLeft: 8 }}>{seconds}s</Text>}
               </View>
               {attachments.length > 0 && (
                 <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
@@ -1073,7 +1073,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           )}
 
         {/* Resolution Buttons */}
-        <View style={{ marginHorizontal: 20, marginTop: 20 }}>
+        <View style={{ marginHorizontal: 20, marginTop: 30, marginBottom: 20 }}>
           <View
             style={{
               flexDirection: 'row',
@@ -1085,48 +1085,48 @@ export default function IssueDetailsScreen({ navigation, route }) {
               style={{
                 flex: 1,
                 backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.secondaryButton + '30' 
-                  : theme.secondaryButton + '11',
+                  ? theme.secCard 
+                  : theme.primary + '15',
                 borderRadius: 16,
                 paddingVertical: 12,
                 alignItems: 'center',
                 borderWidth: 1,
                 borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.secondaryButton + '50' 
-                  : theme.secondaryButton,
+                  ? theme.border 
+                  : theme.primary,
                 opacity: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') ? 0.5 : 1,
               }}
               onPress={() => setShowReassignModal(true)}
               disabled={issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed'}>
               <Text style={{ 
                 color: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.secondaryButton + '80' 
-                  : theme.secondaryButton, 
+                  ? theme.secondaryText 
+                  : theme.primary, 
                 fontWeight: '600', 
                 fontSize: 16 
               }}>
-                {t("Reassign")}
+                {t("Reassign") || "Reassign"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={{
                 flex: 1,
                 backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.card + '50' 
-                  : theme.card,
+                  ? theme.secCard 
+                  : theme.primary,
                 borderRadius: 16,
                 paddingVertical: 12,
                 alignItems: 'center',
                 borderWidth: 1,
                 borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.buttonText + '50' 
-                  : theme.buttonText,
+                  ? theme.border 
+                  : theme.primary,
                 opacity: (() => {
                   const isResolved = issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed';
                   const hasNoContent = attachments.length === 0 && !remark;
                   
-                  if (isResolved) return 0.3;
-                  if (hasNoContent) return 0.5;
+                  if (isResolved) return 0.5;
+                  if (hasNoContent) return 0.7;
                   return 1;
                 })(),
               }}
@@ -1140,14 +1140,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
             >
               <Text style={{ 
                 color: (issue.status === 'Completed' || issue.issueStatus === 'resolved') 
-                  ? theme.buttonText + '60' 
-                  : theme.buttonText, 
+                  ? theme.secondaryText 
+                  : '#fff', 
                 fontWeight: '600', 
                 fontSize: 16 
               }}>
                 {(issue.status === 'Completed' || issue.issueStatus === 'resolved') 
-                  ? t('resolved') 
-                  : t('submit_resolution')}
+                  ? (t('resolved') || 'Resolved')
+                  : (t('submit_resolution') || 'Submit Resolution')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -1652,10 +1652,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginHorizontal: 20,
     marginTop: 16,
-    backgroundColor: '#FEF2F2',
+    // backgroundColor, borderColor moved to inline style for theme responsiveness
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#FF7D66',
     padding: 12,
     gap: 12,
   },
@@ -1663,12 +1662,12 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 10,
-    backgroundColor: '#FEC8BE',
+    // backgroundColor moved to inline style for theme responsiveness
     alignItems: 'center',
     justifyContent: 'center',
   },
   criticalLabel: {
-    color: '#FF2700',
+    // color moved to inline style for theme responsiveness
     fontWeight: '700',
     fontSize: 16,
     marginBottom: 2,

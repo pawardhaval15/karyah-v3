@@ -271,8 +271,8 @@ export default function CustomDrawer({ onClose, theme }) {
                 // do NOT call changeLanguage or use 'code' here since no language selected yet
                 // do NOT close drawer here to let modal render
               }}
-
               theme={theme}
+              showBorder={true}
             />
             <DrawerItem
               icon={<MaterialIcons name="help-outline" size={20} color={theme.primary} />}
