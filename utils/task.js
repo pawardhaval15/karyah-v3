@@ -439,11 +439,9 @@ export const updateTaskDetails = async (taskId, data) => {
       formData.append('isApproved', String(data.isApproved));
     }
     
-    // ✅ Tags field
+    // ✅ Tags field - send as JSON array as expected by backend
     if (Array.isArray(data.tags)) {
-      data.tags.forEach(tag => {
-        formData.append('tags', String(tag));
-      });
+      formData.append('tags', JSON.stringify(data.tags));
     }
 
     // ✅ Assigned user IDs
@@ -697,6 +695,45 @@ export const resolveCriticalOrIssueTask = async (taskId, resolveData) => {
     }
   } catch (error) {
     console.error('[resolveCriticalOrIssueTask] Network error:', error);
+    throw error;
+  }
+};
+
+// Dedicated function to clear all tags from a task
+export const clearTaskTags = async (taskId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}`;
+    
+    console.log('[clearTaskTags] Clearing tags for task:', taskId);
+    
+    const formData = new FormData();
+    formData.append('tags', JSON.stringify([])); // Send empty array as JSON
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+    
+    const responseText = await response.text();
+    
+    try {
+      const data = JSON.parse(responseText);
+      if (!response.ok) {
+        console.error('[clearTaskTags] Server error:', data);
+        throw new Error(data.message || 'Failed to clear tags');
+      }
+      console.log('[clearTaskTags] Success:', data);
+      return data;
+    } catch (parseError) {
+      console.error('[clearTaskTags] Invalid JSON response:', responseText);
+      throw new Error('Server response was not JSON');
+    }
+  } catch (error) {
+    console.error('[clearTaskTags] Error:', error);
     throw error;
   }
 };

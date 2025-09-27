@@ -21,7 +21,7 @@ import AddTaskPopup from '../components/popups/AddTaskPopup';
 import TagsManagementModal from '../components/popups/TagsManagementModal';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { bulkAssignTasks, getTasksByProjectId, updateTask } from '../utils/task';
+import { bulkAssignTasks, getTasksByProjectId, updateTaskDetails } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
@@ -385,15 +385,32 @@ export default function MyTasksScreen({ navigation }) {
     try {
       console.log('🏷️ Saving tags:', { taskId, newTags });
       
-      // Use the main updateTask API to replace tags completely
-      // This avoids the PATCH /tags endpoint which merges instead of replaces
-      const result = await updateTask(taskId, { tags: newTags });
+      // Get current task to see existing tags
+      const currentTask = tasks.find(task => task.id === taskId || task.taskId === taskId);
+      const currentTags = currentTask?.tags || [];
       
-      // Update the local tasks state with the exact tags we set
+      console.log('🏷️ Current tags:', currentTags);
+      console.log('🏷️ New tags:', newTags);
+      
+      // Clean newTags to remove any empty strings or invalid tags
+      const cleanedTags = newTags.filter(tag => tag && typeof tag === 'string' && tag.trim().length > 0);
+      console.log('🏷️ Cleaned tags:', cleanedTags);
+      
+      // If tags are the same, no need to update
+      if (JSON.stringify(currentTags.sort()) === JSON.stringify(cleanedTags.sort())) {
+        console.log('🏷️ Tags unchanged, skipping update');
+        return Promise.resolve();
+      }
+      
+      // Use updateTaskDetails for both adding and clearing tags (now that it sends JSON properly)
+      console.log('🏷️ Updating tags via updateTaskDetails...');
+      const result = await updateTaskDetails(taskId, { tags: cleanedTags });
+      
+      // Update local state with the exact tags we set
       setTasks(prevTasks => 
         prevTasks.map(task => 
           (task.id === taskId || task.taskId === taskId) 
-            ? { ...task, tags: newTags } // Use newTags to ensure exact replacement
+            ? { ...task, tags: cleanedTags }
             : task
         )
       );

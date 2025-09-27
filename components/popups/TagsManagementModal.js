@@ -1,12 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
-    Alert,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import TagsInput from '../ui/TagsInput';
 
@@ -20,14 +20,27 @@ export default function TagsManagementModal({
   const [tags, setTags] = useState(task?.tags || []);
   const [saving, setSaving] = useState(false);
 
+  // Update tags when task changes
+  useEffect(() => {
+    if (task) {
+      setTags(task.tags || []);
+    }
+  }, [task?.id, task?.taskId, task?.tags]);
+
   const handleSave = async () => {
     setSaving(true);
     try {
+      console.log('🏷️ [TagsManagementModal] Saving tags:', { 
+        taskId: task.id || task.taskId, 
+        tags,
+        originalTags: task?.tags 
+      });
+      
       await onSave(task.id || task.taskId, tags);
       Alert.alert('Success', 'Tags updated successfully!');
       onClose();
     } catch (error) {
-      console.error('Failed to save tags:', error);
+      console.error('🏷️ [TagsManagementModal] Failed to save tags:', error);
       Alert.alert('Error', 'Failed to save tags: ' + error.message);
     } finally {
       setSaving(false);

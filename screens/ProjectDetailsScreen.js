@@ -818,32 +818,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           elevation: 5,
         }}>
         
-
-        <TouchableOpacity
-          onPress={() => {
-            if (projectDetails?.id) {
-              navigation.navigate('ProjectIssuesScreen', { projectId: projectDetails.id });
-            }
-          }}
-          style={{
-            flex: 1,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: theme.card,
-            borderWidth: 1,
-            borderColor: theme.primary,
-            paddingVertical: 12,
-            borderRadius: 12,
-          }}>
-          <MaterialIcons
-            name="list-alt"
-            size={18}
-            color={theme.primary}
-            style={{ marginRight: 6 }}
-          />
-          <Text style={{ color: theme.primary, fontWeight: '600', fontSize: 14 }}>{t('view_issues')}</Text>
-        </TouchableOpacity>
       </View>
       {/* Create Worklist Modal */}
       <Modal
