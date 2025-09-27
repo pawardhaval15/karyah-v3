@@ -49,7 +49,7 @@ export default function IssuesScreen({ navigation }) {
         status: [],
         progress: [],     // Optional: if progress applies to issues
         projects: [],
-        assignedTo: [],
+        createdBy: [],
         locations: [], // Optional: if you have location-based filtering
     });
     // Show/hide filters panel
@@ -67,7 +67,7 @@ export default function IssuesScreen({ navigation }) {
             status: [],
             progress: [],
             projects: [],
-            assignedTo: [],
+            createdBy: [],
             locations: [], // Reset all filters
         });
     };
@@ -85,18 +85,8 @@ export default function IssuesScreen({ navigation }) {
         currentIssues.map(issue => issue.project?.name || issue.projectName).filter(Boolean)
     ));
     
-    const assignedOptions = Array.from(new Set(
-        currentIssues.flatMap(issue => {
-            const names = [];
-            // Handle Task model assignedUsers array
-            if (issue.assignedUsers && Array.isArray(issue.assignedUsers)) {
-                names.push(...issue.assignedUsers.map(user => user.name).filter(Boolean));
-            }
-            // Handle legacy fields
-            if (issue.assignToUserName) names.push(issue.assignToUserName);
-            if (issue.assignTo?.name) names.push(issue.assignTo.name);
-            return names;
-        }).filter(Boolean)
+    const creatorOptions = Array.from(new Set(
+        currentIssues.map(issue => issue.creatorName || issue.creator?.name).filter(Boolean)
     ));
     
     const locationOptions = Array.from(new Set(
@@ -227,27 +217,18 @@ export default function IssuesScreen({ navigation }) {
                 const projectName = item.project?.name || item.projectName || '';
                 const projectMatch = filters.projects.length === 0 || filters.projects.includes(projectName);
 
-                // AssignedTo filter based on Task model associations
-                let assignedMatch = true;
-                if (filters.assignedTo.length > 0) {
-                    // Check assigned users
-                    const assignedUserNames = [];
-                    if (item.assignedUsers && Array.isArray(item.assignedUsers)) {
-                        assignedUserNames.push(...item.assignedUsers.map(user => user.name || '').filter(Boolean));
-                    }
-                    // Also check legacy fields for backward compatibility
-                    if (item.assignToUserName) assignedUserNames.push(item.assignToUserName);
-                    if (item.assignTo?.name) assignedUserNames.push(item.assignTo.name);
-                    
-                    assignedMatch = assignedUserNames.length === 0 || 
-                                   filters.assignedTo.some(filterName => assignedUserNames.includes(filterName));
+                // CreatedBy filter based on creator information
+                let creatorMatch = true;
+                if (filters.createdBy.length > 0) {
+                    const creatorName = item.creatorName || item.creator?.name || '';
+                    creatorMatch = creatorName && filters.createdBy.includes(creatorName);
                 }
 
                 // Location filter - check project location
                 const location = item.project?.location || item.projectLocation || '';
                 const locationMatch = filters.locations.length === 0 || filters.locations.includes(location);
 
-                return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && assignedMatch && locationMatch;
+                return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && creatorMatch && locationMatch;
             })
             .sort((a, b) => {
                 // Sort by completion status - incomplete tasks first
@@ -435,26 +416,26 @@ export default function IssuesScreen({ navigation }) {
                             </View>
                         )}
 
-                        {/* Assigned To Filter */}
-                        {assignedOptions.length > 0 && (
+                        {/* Created By Filter */}
+                        {creatorOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
                                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
-                                    {t('assigned_to')}
+                                    {t('created_by') || 'Created By'}
                                 </Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                                     <View style={styles.compactChipsRow}>
-                                        {assignedOptions.map(person => (
+                                        {creatorOptions.map(person => (
                                             <TouchableOpacity
                                                 key={person}
                                                 style={[
                                                     styles.compactChip,
                                                     {
-                                                        backgroundColor: filters.assignedTo.includes(person) ? theme.primary : 'transparent',
-                                                        borderColor: filters.assignedTo.includes(person) ? theme.primary : theme.border,
+                                                        backgroundColor: filters.createdBy.includes(person) ? theme.primary : 'transparent',
+                                                        borderColor: filters.createdBy.includes(person) ? theme.primary : theme.border,
                                                     },
                                                 ]}
-                                                onPress={() => toggleFilter('assignedTo', person)}>
-                                                <Text style={[styles.compactChipText, { color: filters.assignedTo.includes(person) ? '#fff' : theme.text }]} numberOfLines={1}>
+                                                onPress={() => toggleFilter('createdBy', person)}>
+                                                <Text style={[styles.compactChipText, { color: filters.createdBy.includes(person) ? '#fff' : theme.text }]} numberOfLines={1}>
                                                     {person.length > 8 ? person.substring(0, 8) + '...' : person}
                                                 </Text>
                                             </TouchableOpacity>

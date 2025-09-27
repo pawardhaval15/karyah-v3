@@ -350,15 +350,7 @@ export default function IssueList({
                     numberOfLines={1}
                     ellipsizeMode="tail"
                     style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                    {section === 'assigned'
-                      ? `Created by ${item.creatorName || item.creator?.name || 'N/A'}`
-                      : `Assigned to ${
-                          Array.isArray(item.assignedUserDetails) && item.assignedUserDetails.length > 0 
-                            ? item.assignedUserDetails.map(user => user.name).join(', ')
-                            : Array.isArray(item.assignedUserIds) && item.assignedUserIds.length > 0 
-                              ? `${item.assignedUserIds.length} user(s)`
-                              : 'N/A'
-                        }`}
+                    {`Assigned by ${item.creatorName || item.creator?.name || 'N/A'}`}
                   </Text>
                 </View>
 

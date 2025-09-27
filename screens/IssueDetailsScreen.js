@@ -623,6 +623,68 @@ export default function IssueDetailsScreen({ navigation, route }) {
               editable={false}
             />
             <FieldBox
+              label={t('created_by') || 'Created By'}
+              value={issue.isIssue ? (issue.creatorName || issue.creator?.name || '') : (issue.creatorName || issue.creator?.name || '')}
+              placeholder={t('created_by') || 'Created By'}
+              theme={theme}
+              editable={false}
+              rightComponent={
+                issue.isIssue ? (
+                  issue.creator?.profilePhoto ? (
+                    <Image
+                      source={{ uri: issue.creator.profilePhoto }}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        marginLeft: 10,
+                        borderWidth: 2,
+                        borderColor: theme.border,
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        marginLeft: 10,
+                        borderWidth: 2,
+                        borderColor: theme.border,
+                      }}
+                    />
+                  )
+                ) : (
+                  issue.creator?.profilePhoto ? (
+                    <Image
+                      source={{ uri: issue.creator.profilePhoto }}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        marginLeft: 10,
+                        borderWidth: 2,
+                        borderColor: theme.border,
+                      }}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
+                      style={{
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        marginLeft: 10,
+                        borderWidth: 2,
+                        borderColor: theme.border,
+                      }}
+                    />
+                  )
+                )
+              }
+            />
+            <FieldBox
               label={t('description')}
               value={isEditing ? editFields.description : issue.description}
               placeholder={t('description')}
