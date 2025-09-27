@@ -277,7 +277,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
     const fetchTask = async () => {
       try {
         const data = await getTaskDetailsById(taskId);
-        // console.log('Fetched task:', data);
+        console.log('Fetched task:', data);
         setTask(data);
       } catch (err) {
         console.error('Failed to fetch task:', err);
@@ -1260,6 +1260,78 @@ export default function TaskDetailsScreen({ route, navigation }) {
           multiline={true}
           theme={theme}
         />
+
+        {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
+        {task.isIssue && 
+         Array.isArray(task.resolvedImages) && 
+         task.resolvedImages.length > 0 && (
+          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+            <View style={{ 
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 8,
+            }}>
+              <Text style={{
+                fontSize: 12,
+                fontWeight: '600',
+                textTransform: 'uppercase',
+                letterSpacing: 0.5,
+                color: theme.text,
+              }}>
+                {t('resolved_attachments') || 'Resolved Attachments'}
+              </Text>
+            </View>
+
+            <View style={{
+              borderRadius: 12,
+              borderWidth: 1,
+              padding: 16,
+              minHeight: 80,
+              justifyContent: 'center',
+              backgroundColor: theme.card, 
+              borderColor: theme.border,
+            }}>
+              <Text style={{
+                fontSize: 14,
+                fontWeight: '500',
+                marginBottom: 8,
+                color: theme.text,
+              }}>
+                {`${task.resolvedImages.length} file${task.resolvedImages.length !== 1 ? 's' : ''} attached`}
+              </Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 8,
+                    paddingHorizontal: 12,
+                    borderRadius: 8,
+                    borderWidth: 1,
+                    alignSelf: 'flex-start',
+                    gap: 4,
+                    backgroundColor: theme.primary + '10', 
+                    borderColor: theme.primary,
+                  }}
+                  onPress={() => {
+                    setDrawerAttachments(task.resolvedImages || []);
+                    setDrawerVisible(true);
+                  }}>
+                  <MaterialIcons name="folder-open" size={16} color={theme.primary} />
+                  <Text style={{
+                    fontSize: 14,
+                    fontWeight: '500',
+                    color: theme.primary,
+                  }}>
+                    {t('view_files') || 'View Files'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>            
+          </View>
+        )}
+
         {/* Dependencies */}
         {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
           <TouchableOpacity activeOpacity={0.7} onPress={() => setShowDependentPopup(true)}>
@@ -1982,7 +2054,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               <View style={[styles.coAdminPopup, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>{t("task_name")}</Text>
                 <Text style={[{ color: theme.text, fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 12 }]}>
-                  {task?.taskName}
+                  {task?.name}
                 </Text>
                 <TouchableOpacity
                   style={styles.coAdminPopupCloseBtn}

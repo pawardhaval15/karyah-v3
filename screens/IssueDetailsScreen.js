@@ -13,12 +13,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -29,13 +28,12 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth'; // import this
 import {
-  approveIssue,
   deleteIssue,
   fetchIssueById,
   resolveIssueByAssignedUser,
   updateIssue,
 } from '../utils/issues';
-import { deleteTask, getTaskDetailsById, resolveCriticalOrIssueTask, updateTask, updateTaskDetails } from '../utils/task';
+import { deleteTask, getTaskDetailsById, resolveCriticalOrIssueTask, updateTask } from '../utils/task';
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -44,7 +42,7 @@ function formatDate(dateString) {
 }
 export default function IssueDetailsScreen({ navigation, route }) {
   const theme = useTheme();
-  const { issueId, section } = route.params || {};
+  const { issueId } = route.params || {};
   const [showReassignModal, setShowReassignModal] = useState(false);
   const [loading, setLoading] = useState(true);
   const [issue, setIssue] = useState(null);
@@ -54,7 +52,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
     issueTitle: '',
     description: '',
     dueDate: '',
-    isCritical: false,
   });
   const { t } = useTranslation();
   // Add menuVisible state for three-dots menu
@@ -72,6 +69,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [showIssueTitleModal, setShowIssueTitleModal] = useState(false);
   const [showAttachmentPreviewModal, setShowAttachmentPreviewModal] = useState(false);
+  const [showIssueDetails, setShowIssueDetails] = useState(false);
   useEffect(() => {
     getUserNameFromToken().then(setUserName);
   }, []);
@@ -124,7 +122,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
               issueTitle: taskData.taskName || '',
               description: taskData.description || '',
               dueDate: taskData.endDate || '',
-              isCritical: taskData.isCritical || false,
             });
             return;
           } else {
@@ -152,7 +149,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
               issueTitle: issueData.issueTitle || '',
               description: issueData.description || '',
               dueDate: issueData.dueDate || '',
-              isCritical: issueData.isCritical || false,
             });
             return;
           } else {
@@ -207,7 +203,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         
         // Use the dedicated resolve critical/issue task API
         await resolveCriticalOrIssueTask(issue.taskId, resolveData);
-        Alert.alert('Success', 'Critical/Issue task resolved successfully');
+        Alert.alert('Success', 'Issue task completed successfully');
       } else {
         // Handle traditional issue resolution
         const resolvedImages = attachments.map((att, idx) => {
@@ -232,9 +228,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
           issueId,
           remarks: remark,
           resolvedImages,
-          issueStatus: 'resolved',
+          issueStatus: 'completed',  // Changed from 'resolved' to 'completed'
         });
-        Alert.alert('Success', 'Issue resolved successfully');
+        Alert.alert('Success', 'Issue completed successfully');
       }
       
       navigation.goBack();
@@ -249,7 +245,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
     // For task-based issues, use images and resolvedImages
     ...(issue?.isIssue ? (issue.images || []) : (issue?.unresolvedImages || [])),
     ...(issue?.resolvedImages || []),
-    ...(section === 'assigned' ? attachments : []),
+    ...attachments,
   ];
 
   if (loading) {
@@ -301,9 +297,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
           style={{
             flexDirection: 'row',
             alignItems: 'center',
-            marginTop: Platform.OS === 'ios' ? 70 : 25,
+            marginTop: Platform.OS === 'ios' ? 65 : 25,
             marginLeft: 16,
-            marginBottom: 18,
+            marginBottom: 10,
             justifyContent: 'space-between',
           }}>
           <TouchableOpacity
@@ -322,8 +318,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   if (
                     !editFields.issueTitle.trim() &&
                     !editFields.description.trim() &&
-                    !editFields.dueDate &&
-                    editFields.isCritical === (issue.isCritical || false)
+                    !editFields.dueDate
                   ) {
                     Alert.alert('Error', 'Please fill at least one field to update the issue.');
                     return;
@@ -338,11 +333,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         taskName: editFields.issueTitle.trim() || undefined,
                         description: editFields.description.trim() || undefined,
                         endDate: editFields.dueDate || undefined,
-                        isCritical: editFields.isCritical,
-                        // When turning ON critical, ensure it stays as an issue
-                        ...(editFields.isCritical === true && { isIssue: true }),
-                        // When turning OFF critical, keep it as a normal issue (don't remove from issues)
-                        ...(editFields.isCritical === false && { isIssue: true })
                       };
                       
                       // Remove undefined values
@@ -598,157 +588,179 @@ export default function IssueDetailsScreen({ navigation, route }) {
             <Text style={styles.bannerDesc}>{t('all_issues_details')}</Text>
           </View>
         </LinearGradient>
-        <FieldBox
-          label={t('project_name')}
-          value={issue.isIssue ? (issue.projectName || '') : (issue.projectName || '')}
-          placeholder={t('project_name')}
-          theme={theme}
-          editable={false}
-        />
-        <FieldBox
-          label={t('location')}
-          value={issue.isIssue ? (issue.project?.location || '') : (issue.projectLocation || '')}
-          placeholder={t('location')}
-          theme={theme}
-          editable={false}
-        />
-        <FieldBox
-          label={t('description')}
-          value={isEditing ? editFields.description : issue.description}
-          placeholder={t('description')}
-          multiline
-          theme={theme}
-          editable={isEditing}
-          onChangeText={(text) => isEditing && setEditFields((f) => ({ ...f, description: text }))}
-        />
+
+        {/* Issue Details Toggle Section */}
+        <View style={styles.issueDetailsHeader}>
+          <Text style={styles.issueDetailsTitle}>Issue Details</Text>
+          <TouchableOpacity
+            style={styles.viewDetailsBtn}
+            onPress={() => setShowIssueDetails(!showIssueDetails)}>
+            <MaterialIcons 
+              name={showIssueDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
+              size={20} 
+              color="#2563EB" 
+            />
+            <Text style={styles.viewDetailsBtnText}>
+              {showIssueDetails ? 'Hide Details' : 'Show Details'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {showIssueDetails && (
+          <>
+            <FieldBox
+              label={t('project_name')}
+              value={issue.isIssue ? (issue.projectName || '') : (issue.projectName || '')}
+              placeholder={t('project_name')}
+              theme={theme}
+              editable={false}
+            />
+            <FieldBox
+              label={t('location')}
+              value={issue.isIssue ? (issue.project?.location || '') : (issue.projectLocation || '')}
+              placeholder={t('location')}
+              theme={theme}
+              editable={false}
+            />
+            <FieldBox
+              label={t('description')}
+              value={isEditing ? editFields.description : issue.description}
+              placeholder={t('description')}
+              multiline
+              theme={theme}
+              editable={isEditing}
+              onChangeText={(text) => isEditing && setEditFields((f) => ({ ...f, description: text }))}
+            />
+          </>
+        )}
 
         {/* Added Attachments Section */}
         <View style={styles.attachmentSection}>
-          <View style={styles.attachmentHeader}>
-            <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('added_attachments')}</Text>
-            {isEditing && (
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: theme.primary + '15' }]}
-                onPress={() => setShowAttachmentSheet(true)}>
-                <MaterialIcons name="add" size={16} color={theme.primary} />
-                <Text style={[styles.addButtonText, { color: theme.primary }]}>{t('add_files')}</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View
-            style={[
-              styles.attachmentCard,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}>
-            {attachments.length > 0 ||
-              ((issue?.isIssue ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
-              <>
-                <Text style={[styles.attachmentCount, { color: theme.text }]}>
-                  {isEditing
-                    ? `${attachments.length} attachment${attachments.length !== 1 ? 's' : ''} selected`
-                    : `${allAttachments.length} file${allAttachments.length !== 1 ? 's' : ''} attached`}
-                </Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
-                  <TouchableOpacity
-                    style={[
-                      styles.viewFilesButton,
-                      { backgroundColor: theme.primary + '10', borderColor: theme.primary },
-                    ]}
-                    onPress={() => {
-                      setDrawerVisible(true);
-                      setDrawerAttachments(isEditing ? attachments : allAttachments);
-                    }}>
-                    <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                    <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
-                  </TouchableOpacity>
-                  
-                  {/* Preview Button for newly added attachments in editing mode */}
-                  {isEditing && attachments.length > 0 && (
-                    <TouchableOpacity
-                      style={[
-                        styles.viewFilesButton,
-                        { backgroundColor: theme.secondary + '10', borderColor: theme.secondary || theme.primary },
-                      ]}
-                      onPress={() => setShowAttachmentPreviewModal(true)}>
-                      <MaterialIcons name="preview" size={16} color={theme.secondary || theme.primary} />
-                      <Text style={[styles.viewFilesText, { color: theme.secondary || theme.primary }]}>Preview</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              </>
-            ) : (
-              <View style={styles.noAttachmentContainer}>
-                <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                <Text style={styles.noAttachmentText}>{t('no_attachments_added')}</Text>
+              <View style={styles.attachmentHeader}>
+                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('added_attachments')}</Text>
                 {isEditing && (
-                  <Text style={styles.tapToAddText}>
-                    {t('tap_to_add_files')}
-                  </Text>
+                  <TouchableOpacity
+                    style={[styles.addButton, { backgroundColor: theme.primary + '15' }]}
+                    onPress={() => setShowAttachmentSheet(true)}>
+                    <MaterialIcons name="add" size={16} color={theme.primary} />
+                    <Text style={[styles.addButtonText, { color: theme.primary }]}>{t('add_files')}</Text>
+                  </TouchableOpacity>
                 )}
               </View>
-            )}
-          </View>
 
-          {/* Show attachment previews in edit mode */}
-          {isEditing && attachments.length > 0 && (
-            <View style={styles.attachmentPreviewContainer}>
-              {attachments.map((att, idx) => (
-                <View
-                  key={att.uri || att.name || idx}
-                  style={[
-                    styles.attachmentPreviewItem,
-                    { backgroundColor: theme.card, borderColor: theme.border },
-                  ]}>
-                  <View style={styles.attachmentPreviewContent}>
-                    {/* File type icon/preview */}
-                    {att.type && att.type.startsWith('image') ? (
-                      <Image source={{ uri: att.uri }} style={styles.attachmentPreviewImage} />
-                    ) : att.type && att.type.startsWith('audio') ? (
-                      <View style={styles.attachmentIconContainer}>
-                        <MaterialCommunityIcons name="music-note" size={20} color="#1D4ED8" />
-                      </View>
-                    ) : (
-                      <View style={styles.attachmentIconContainer}>
-                        <MaterialCommunityIcons
-                          name="file-document-outline"
-                          size={20}
-                          color="#888"
-                        />
-                      </View>
-                    )}
-
-                    {/* File name */}
-                    <Text
-                      style={[styles.attachmentPreviewName, { color: theme.text }]}
-                      numberOfLines={1}>
-                      {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 25
-                        ? (att.name || att.uri?.split('/').pop()).slice(0, 22) + '...'
-                        : att.name || att.uri?.split('/').pop()}
+              <View
+                style={[
+                  styles.attachmentCard,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}>
+                {attachments.length > 0 ||
+                  ((issue?.isIssue ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
+                  <>
+                    <Text style={[styles.attachmentCount, { color: theme.text }]}>
+                      {isEditing
+                        ? `${attachments.length} attachment${attachments.length !== 1 ? 's' : ''} selected`
+                        : `${allAttachments.length} file${allAttachments.length !== 1 ? 's' : ''} attached`}
                     </Text>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[
+                          styles.viewFilesButton,
+                          { backgroundColor: theme.primary + '10', borderColor: theme.primary },
+                        ]}
+                        onPress={() => {
+                          setDrawerVisible(true);
+                          setDrawerAttachments(isEditing ? attachments : allAttachments);
+                        }}>
+                        <MaterialIcons name="folder-open" size={16} color={theme.primary} />
+                        <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
+                      </TouchableOpacity>
+                      
+                      {/* Preview Button for newly added attachments in editing mode */}
+                      {isEditing && attachments.length > 0 && (
+                        <TouchableOpacity
+                          style={[
+                            styles.viewFilesButton,
+                            { backgroundColor: theme.secondary + '10', borderColor: theme.secondary || theme.primary },
+                          ]}
+                          onPress={() => setShowAttachmentPreviewModal(true)}>
+                          <MaterialIcons name="preview" size={16} color={theme.secondary || theme.primary} />
+                          <Text style={[styles.viewFilesText, { color: theme.secondary || theme.primary }]}>Preview</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.noAttachmentContainer}>
+                    <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
+                    <Text style={styles.noAttachmentText}>{t('no_attachments_added')}</Text>
+                    {isEditing && (
+                      <Text style={styles.tapToAddText}>
+                        {t('tap_to_add_files')}
+                      </Text>
+                    )}
                   </View>
+                )}
+              </View>
 
-                  {/* Remove button */}
-                  <TouchableOpacity
-                    onPress={() => {
-                      setAttachments((prev) => prev.filter((_, i) => i !== idx));
-                    }}
-                    style={styles.removeAttachmentButton}>
-                    <MaterialCommunityIcons name="close-circle" size={18} color="#E53935" />
-                  </TouchableOpacity>
+              {/* Show attachment previews in edit mode */}
+              {isEditing && attachments.length > 0 && (
+                <View style={styles.attachmentPreviewContainer}>
+                  {attachments.map((att, idx) => (
+                    <View
+                      key={att.uri || att.name || idx}
+                      style={[
+                        styles.attachmentPreviewItem,
+                        { backgroundColor: theme.card, borderColor: theme.border },
+                      ]}>
+                      <View style={styles.attachmentPreviewContent}>
+                        {/* File type icon/preview */}
+                        {att.type && att.type.startsWith('image') ? (
+                          <Image source={{ uri: att.uri }} style={styles.attachmentPreviewImage} />
+                        ) : att.type && att.type.startsWith('audio') ? (
+                          <View style={styles.attachmentIconContainer}>
+                            <MaterialCommunityIcons name="music-note" size={20} color="#1D4ED8" />
+                          </View>
+                        ) : (
+                          <View style={styles.attachmentIconContainer}>
+                            <MaterialCommunityIcons
+                              name="file-document-outline"
+                              size={20}
+                              color="#888"
+                            />
+                          </View>
+                        )}
+
+                        {/* File name */}
+                        <Text
+                          style={[styles.attachmentPreviewName, { color: theme.text }]}
+                          numberOfLines={1}>
+                          {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 25
+                            ? (att.name || att.uri?.split('/').pop()).slice(0, 22) + '...'
+                            : att.name || att.uri?.split('/').pop()}
+                        </Text>
+                      </View>
+
+                      {/* Remove button */}
+                      <TouchableOpacity
+                        onPress={() => {
+                          setAttachments((prev) => prev.filter((_, i) => i !== idx));
+                        }}
+                        style={styles.removeAttachmentButton}>
+                        <MaterialCommunityIcons name="close-circle" size={18} color="#E53935" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
-          )}
+              )}
 
-          <AttachmentSheet
-            visible={showAttachmentSheet}
-            onClose={() => setShowAttachmentSheet(false)}
-            onPick={async (type) => {
-              await pickAttachment(type);
-              setShowAttachmentSheet(false);
-            }}
-          />
+              <AttachmentSheet
+                visible={showAttachmentSheet}
+                onClose={() => setShowAttachmentSheet(false)}
+                onPick={async (type) => {
+                  await pickAttachment(type);
+                  setShowAttachmentSheet(false);
+                }}
+              />
         </View>
 
         <FieldBox
@@ -836,155 +848,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
           />
         )}
 
-        {/* Critical Toggle - Always Interactive */}
-        <View style={[styles.criticalRow, {
-          backgroundColor: (isEditing || issue.isCritical) ? theme.criticalBg : theme.normalBg,
-          borderColor: (isEditing || issue.isCritical) ? theme.criticalBorder : theme.normalBorder,
-        }]}>
-          <View style={[styles.criticalIconBox, {
-            backgroundColor: (isEditing || issue.isCritical) ? theme.criticalIconBg : theme.normalIconBg,
-          }]}>
-            <MaterialIcons
-              name="priority-high"
-              size={24}
-              color={(isEditing || issue.isCritical) ? theme.criticalText : theme.normalText}
-            />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={[styles.criticalLabel, {
-              color: (isEditing || issue.isCritical) ? theme.criticalText : theme.normalText,
-            }]}>
-              {(isEditing || issue.isCritical) ? t('critical_issue') : t('normal')}
-            </Text>
-            <Text style={[styles.criticalDesc, { color: theme.text }]}>
-              {isEditing
-                ? t('turn_on_toggle')
-                : (issue.isCritical
-                  ? t('critical_issue_requires_attention')
-                  : t('normal_priority_description')
-                )
-              }
-            </Text>
-          </View>
-          {/* Always show toggle for owner/creator */}
-          {userName && (issue?.creatorName === userName || issue?.creator?.name === userName) ? (
-            <Switch
-              value={isEditing ? editFields.isCritical : issue.isCritical}
-              onValueChange={async (value) => {
-                if (isEditing) {
-                  // In edit mode, just update the local state
-                  setEditFields((f) => ({ ...f, isCritical: value }));
-                } else {
-                  // In view mode, immediately update the backend
-                  try {
-                    setLoading(true);
-                    
-                    if (issue.isIssue) {
-                      // For task-based issues, update through updateTaskDetails
-                      const data = {
-                        isCritical: value,
-                        // When turning ON critical, ensure it stays as an issue
-                        ...(value === true && { isIssue: true }),
-                        // When turning OFF critical, keep it as a normal issue (don't remove from issues)
-                        ...(value === false && { isIssue: true })
-                      };
-                      await updateTaskDetails(issue.taskId, data);
-                      
-                      // Refresh the task data
-                      const updated = await getTaskDetailsById(issue.taskId);
-                      setIssue(updated);
-                    } else {
-                      // For traditional issues, update directly
-                      const updatePayload = {
-                        issueId: issue.issueId,
-                        isCritical: value,
-                      };
-                      await updateIssue(updatePayload);
-                      
-                      // Refresh the issue data
-                      const updated = await fetchIssueById(issue.issueId);
-                      setIssue(updated);
-                    }
-                    
-                    Alert.alert('Success', 
-                      value 
-                        ? 'Task marked as critical issue.' 
-                        : 'Task marked as normal issue.'
-                    );
-                  } catch (err) {
-                    Alert.alert('Error', err.message || 'Failed to update critical status');
-                  } finally {
-                    setLoading(false);
-                  }
-                }
-              }}
-              trackColor={{ false: '#ddd', true: theme.criticalText }}
-              thumbColor="#fff"
-            />
-          ) : (
-            // Show status badge for non-owners
-            <View style={[styles.criticalStatusBadge, {
-              backgroundColor: issue.isCritical ? theme.criticalBadgeBg : theme.normalBadgeBg,
-            }]}>
-              <Text style={[styles.criticalStatusText, {
-                color: issue.isCritical ? theme.criticalBadgeText : theme.normalBadgeText,
-              }]}>
-                {issue.isCritical ? `${t('critical')}` : `${t('normal')}`}
-              </Text>
-            </View>
-          )}
-        </View>
+
 
         <View
           style={{ height: 1, backgroundColor: '#e6eaf3', marginTop: 18, marginHorizontal: 20 }}
         />
-        {section === 'created' && issue.issueStatus === 'pending_approval' && (
-          <View style={{ marginHorizontal: 0, marginTop: 16 }}>
-            {/* Resolved Attachments Section */}
-            <View style={styles.attachmentSection}>
-              <View style={styles.attachmentHeader}>
-                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('resolved_attachments')}</Text>
-              </View>
 
-              <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                {Array.isArray(issue.resolvedImages) && issue.resolvedImages.length > 0 ? (
-                  <>
-                    <Text style={[styles.attachmentCount, { color: theme.text }]}>
-                      {`${issue.resolvedImages.length} file${issue.resolvedImages.length !== 1 ? 's' : ''} attached`}
-                    </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.viewFilesButton,
-                        { backgroundColor: theme.primary + '10', borderColor: theme.primary },
-                      ]}
-                      onPress={() => {
-                        setDrawerVisible(true);
-                        setDrawerAttachments(issue.resolvedImages || []);
-                      }}>
-                      <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <View style={styles.noAttachmentContainer}>
-                    <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                    <Text style={styles.noAttachmentText}>No resolution attachments</Text>
-                  </View>
-                )}
-              </View>
-            </View>
 
-            <FieldBox
-              label={t("resolution_remark")}
-              value={issue.remarks || ''}
-              placeholder={t("no_resolution_remark")}
-              multiline
-              theme={theme}
-              editable={false}
-            />
-          </View>
-        )}
-        {section === 'assigned' && issue.issueStatus === 'pending_approval' && (
+        {(issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') && (
           <View style={{ marginHorizontal: 0, marginTop: 16 }}>
             {/* Resolved Attachments Section */}
             <View style={styles.attachmentSection}>
@@ -1020,67 +891,32 @@ export default function IssueDetailsScreen({ navigation, route }) {
               </View>
             </View>
 
-            {/* Show resolution remark */}
-            {/* <FieldBox
-              label={t("resolution_remark")}
-              value={issue.remarks || ''}
-              placeholder={t("no_resolution_remark")}
-              multiline
-              theme={theme}
-              editable={false}
-            /> */}
-          </View>
-        )}
-        {section === 'assigned' && issue.issueStatus === 'resolved' && (
-          <View style={{ marginHorizontal: 0, marginTop: 16 }}>
-            {/* Resolved Attachments Section */}
-            <View style={styles.attachmentSection}>
-              <View style={styles.attachmentHeader}>
-                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('resolved_attachments')}</Text>
-              </View>
-
-              <View style={[styles.attachmentCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                {Array.isArray(issue.resolvedImages) && issue.resolvedImages.length > 0 ? (
-                  <>
-                    <Text style={[styles.attachmentCount, { color: theme.text }]}>
-                      {`${issue.resolvedImages.length} file${issue.resolvedImages.length !== 1 ? 's' : ''} attached`}
-                    </Text>
-                    <TouchableOpacity
-                      style={[
-                        styles.viewFilesButton,
-                        { backgroundColor: theme.primary + '10', borderColor: theme.primary },
-                      ]}
-                      onPress={() => {
-                        setDrawerVisible(true);
-                        setDrawerAttachments(issue.resolvedImages || []);
-                      }}>
-                      <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                      <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <View style={styles.noAttachmentContainer}>
-                    <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                    <Text style={styles.noAttachmentText}>{t('no_resolution_attachments')}</Text>
-                  </View>
-                )}
-              </View>
+            {/* Show resolution status indicator */}
+            <View style={{ 
+              backgroundColor: theme.primary + '10', 
+              borderColor: theme.primary,
+              borderWidth: 1,
+              borderRadius: 12,
+              padding: 16,
+              marginHorizontal: 20,
+              marginTop: 16,
+              alignItems: 'center'
+            }}>
+              <MaterialIcons name="check-circle" size={24} color={theme.primary} />
+              <Text style={{ 
+                color: theme.primary, 
+                fontWeight: '600', 
+                fontSize: 16,
+                marginTop: 8 
+              }}>
+                {t('issue_resolved')}
+              </Text>
             </View>
-
-            {/* Show previous resolution remark */}
-            {/* <FieldBox
-              label={t("resolution_remark")}
-              value={issue.remarks || ''}
-              placeholder={t("no_resolution_remark")}
-              multiline
-              theme={theme}
-              editable={false}
-            /> */}
           </View>
         )}
-        {section === 'assigned' &&
-          issue.issueStatus !== 'resolved' &&
-          issue.issueStatus !== 'pending_approval' && (
+        {issue.status !== 'Completed' &&
+          issue.issueStatus !== 'resolved' && 
+          issue.issueStatus !== 'completed' && (
             <View style={{ marginBottom: 24 }}>
               <View
                 style={{
@@ -1257,181 +1093,87 @@ export default function IssueDetailsScreen({ navigation, route }) {
               /> */}
             </View>
           )}
-        {section === 'created' && (
+
+        {/* Resolution Buttons */}
+        <View style={{ marginHorizontal: 20, marginTop: 20 }}>
           <View
             style={{
               flexDirection: 'row',
-              justifyContent: isEditing ? 'flex-end' : 'space-between',
-              marginHorizontal: 20,
-              marginTop: 20,
+              justifyContent: 'space-between',
               gap: 12,
+              marginBottom: 16,
             }}>
-            {!isEditing && (
-              <>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: theme.secondaryButton + '11',
-                    borderRadius: 16,
-                    paddingVertical: 12,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: theme.secondaryButton,
-                  }}
-                  onPress={() => setShowReassignModal(true)}>
-                  <Text style={{ color: theme.secondaryButton, fontWeight: '600', fontSize: 16 }}>
-                    {t("no_reassign")}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={{
-                    flex: 1,
-                    backgroundColor: (() => {
-                      const isApproved = issue.isApproved === true;
-                      const isResolved = issue.isIssue 
-                        ? issue.status === 'Completed'
-                        : issue.issueStatus === 'resolved';
-                      return (isApproved || !isResolved) ? '#222' : theme.buttonText + '22';
-                    })(),
-                    borderRadius: 16,
-                    paddingVertical: 12,
-                    alignItems: 'center',
-                    borderWidth: 1,
-                    borderColor: (() => {
-                      const isApproved = issue.isApproved === true;
-                      const isResolved = issue.isIssue 
-                        ? issue.status === 'Completed'
-                        : issue.issueStatus === 'resolved';
-                      return (isApproved || !isResolved) ? '#999' : theme.buttonText;
-                    })(),
-                    opacity: (() => {
-                      const isApproved = issue.isApproved === true;
-                      const isResolved = issue.isIssue 
-                        ? issue.status === 'Completed'
-                        : issue.issueStatus === 'resolved';
-                      return (isApproved || !isResolved) ? 0.5 : 1;
-                    })(),
-                  }}
-                  onPress={async () => {
-                    // Check if issue can be approved (different logic for task vs traditional issue)
-                    const canApprove = issue.isIssue 
-                      ? (issue.status === 'Completed' && issue.isApproved !== true)
-                      : (issue.issueStatus === 'resolved' && issue.isApproved !== true);
-                    
-                    if (!canApprove) {
-                      const message = issue.isIssue 
-                        ? 'Task must be completed before it can be approved.'
-                        : 'Issue must be resolved before it can be approved.';
-                      Alert.alert('Cannot Approve', message);
-                      return;
-                    }
-                    
-                    try {
-                      setLoading(true);
-                      if (issue.isIssue) {
-                        // For task-based issues, update isApproved field
-                        await updateTask(issue.taskId, { isApproved: true });
-                        Alert.alert('Success', 'Task issue approved successfully.');
-                      } else {
-                        // For traditional issues, use existing approval API
-                        await approveIssue(issue.issueId);
-                        Alert.alert('Success', 'Issue approved and marked as resolved.');
-                      }
-                      await refreshIssueData();
-                    } catch (err) {
-                      Alert.alert('Error', err.message || 'Failed to approve issue');
-                    } finally {
-                      setLoading(false);
-                    }
-                  }}
-                  disabled={(() => {
-                    const isApproved = issue.isApproved === true;
-                    const isResolved = issue.isIssue 
-                      ? issue.status === 'Completed'
-                      : issue.issueStatus === 'resolved';
-                    return isApproved || !isResolved;
-                  })()}>
-                  <Text style={{
-                    color: (() => {
-                      const isApproved = issue.isApproved === true;
-                      const isResolved = issue.isIssue 
-                        ? issue.status === 'Completed'
-                        : issue.issueStatus === 'resolved';
-                      return (isApproved || !isResolved) ? '#FAFAFA' : theme.buttonText;
-                    })(),
-                    fontWeight: '700',
-                    fontSize: 16
-                  }}>
-                    {(() => {
-                      const isResolved = issue.isIssue 
-                        ? issue.status === 'Completed'
-                        : issue.issueStatus === 'resolved';
-                      return isResolved ? t('resolved') : t('approve_complete');
-                    })()}
-                  </Text>
-                </TouchableOpacity>
-              </>
-            )}
-          </View>
-        )}
-        {section === 'assigned' && (
-          <View style={{ marginHorizontal: 20, marginTop: 20 }}>
-            <View
+            <TouchableOpacity
               style={{
-                flexDirection: 'row',
-                justifyContent: 'space-between',
-                gap: 12,
-                marginBottom: 16,
+                flex: 1,
+                backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
+                  ? theme.secondaryButton + '30' 
+                  : theme.secondaryButton + '11',
+                borderRadius: 16,
+                paddingVertical: 12,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
+                  ? theme.secondaryButton + '50' 
+                  : theme.secondaryButton,
+                opacity: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') ? 0.5 : 1,
+              }}
+              onPress={() => setShowReassignModal(true)}
+              disabled={issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed'}>
+              <Text style={{ 
+                color: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
+                  ? theme.secondaryButton + '80' 
+                  : theme.secondaryButton, 
+                fontWeight: '600', 
+                fontSize: 16 
               }}>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: theme.secondaryButton + '11',
-                  borderRadius: 16,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.secondaryButton,
-                }}
-                onPress={() => setShowReassignModal(true)}>
-                <Text style={{ color: theme.secondaryButton, fontWeight: '600', fontSize: 16 }}>
-                  {t("Reassign")}
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{
-                  flex: 1,
-                  backgroundColor: theme.card,
-                  borderRadius: 16,
-                  paddingVertical: 12,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: theme.buttonText,
-                  opacity:
-                    (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
-                      attachments.length === 0 &&
-                      !remark
-                      ? 0.5
-                      : 1,
-                }}
-                onPress={handleSubmit}
-                disabled={
-                  (issue.issueStatus === 'pending_approval' || issue.issueStatus === 'resolved') &&
-                  attachments.length === 0 &&
-                  !remark
-                }
-              >
-                <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 16 }}>
-                  {issue.issueStatus === 'resolved'
-                    ? t('resolved')
-                    : issue.issueStatus === 'pending_approval'
-                      ? t('waiting_for_approval')
-                      : t('submit_resolution')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+                {t("Reassign")}
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flex: 1,
+                backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
+                  ? theme.card + '50' 
+                  : theme.card,
+                borderRadius: 16,
+                paddingVertical: 12,
+                alignItems: 'center',
+                borderWidth: 1,
+                borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
+                  ? theme.buttonText + '50' 
+                  : theme.buttonText,
+                opacity: (() => {
+                  const isResolved = issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed';
+                  const hasNoContent = attachments.length === 0 && !remark;
+                  
+                  if (isResolved) return 0.3;
+                  if (hasNoContent) return 0.5;
+                  return 1;
+                })(),
+              }}
+              onPress={handleSubmit}
+              disabled={(() => {
+                const isResolved = issue.status === 'Completed' || issue.issueStatus === 'resolved';
+                const hasNoContent = attachments.length === 0 && !remark;
+                
+                return isResolved || hasNoContent;
+              })()}
+            >
+              <Text style={{ 
+                color: (issue.status === 'Completed' || issue.issueStatus === 'resolved') 
+                  ? theme.buttonText + '60' 
+                  : theme.buttonText, 
+                fontWeight: '600', 
+                fontSize: 16 
+              }}>
+                {(issue.status === 'Completed' || issue.issueStatus === 'resolved') 
+                  ? t('resolved') 
+                  : t('submit_resolution')}
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
+        </View>
 
       </ScrollView>
       <AttachmentDrawer
@@ -1732,6 +1474,33 @@ export default function IssueDetailsScreen({ navigation, route }) {
   );
 }
 const styles = StyleSheet.create({
+  issueDetailsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 20,
+    marginTop: 9,
+    marginBottom: 18,
+  },
+  issueDetailsTitle: {
+    fontWeight: '500',
+    fontSize: 16,
+    color: '#222',
+  },
+  viewDetailsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#E0E7FF',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+  },
+  viewDetailsBtnText: {
+    color: '#2563EB',
+    fontWeight: '400',
+    fontSize: 14,
+    marginLeft: 6,
+  },
   inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
