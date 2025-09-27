@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import ReassignPopup from 'components/popups/AssignUserPopup';
 import AttachmentSheet from 'components/popups/AttachmentSheet';
+import TaskReassignPopup from 'components/popups/TaskReassignPopup';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -1185,24 +1185,18 @@ export default function IssueDetailsScreen({ navigation, route }) {
           setPreviewVisible(false);
         }}
       />
-      <ReassignPopup
+      <TaskReassignPopup
         visible={showReassignModal}
         onClose={async (wasReassigned = false) => {
           setShowReassignModal(false);
           if (wasReassigned) {
             // Navigate back to IssuesScreen after successful reassignment
             navigation.navigate('IssuesScreen', { refresh: true });
-          } else {
-            // Just refresh the current issue if reassign was cancelled
-            setLoading(true);
-            try {
-              await refreshIssueData();
-            } catch { }
-            setLoading(false);
           }
+          // Don't do anything if just canceled - stay on current screen
         }}
-        issueId={issue?.isIssue ? issue.taskId : (issue?.issueId || issueId)}
-        currentAssignee={issue?.assignTo}
+        taskId={issue?.isIssue ? issue.taskId : (issue?.issueId || issueId)}
+        currentAssignees={issue?.assignedUserDetails || []}
         theme={theme}
       />
 

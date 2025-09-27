@@ -769,3 +769,40 @@ export const clearTaskTags = async (taskId) => {
     throw error;
   }
 };
+
+// Reassign task to new users (removes current user and adds new ones with existing assignees)
+export const reassignTask = async (taskId, newAssignedUserIds) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/reassign`;
+    
+    console.log('[reassignTask] Reassigning task:', { taskId, newAssignedUserIds });
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ assignedUserIds: newAssignedUserIds }),
+    });
+    
+    const responseText = await response.text();
+    
+    try {
+      const data = JSON.parse(responseText);
+      if (!response.ok) {
+        console.error('[reassignTask] Server error:', data);
+        throw new Error(data.message || 'Failed to reassign task');
+      }
+      console.log('[reassignTask] Success:', data);
+      return data;
+    } catch (parseError) {
+      console.error('[reassignTask] Invalid JSON response:', responseText);
+      throw new Error('Server response was not JSON');
+    }
+  } catch (error) {
+    console.error('[reassignTask] Error:', error);
+    throw error;
+  }
+};
