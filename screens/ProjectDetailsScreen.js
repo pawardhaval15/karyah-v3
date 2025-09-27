@@ -4,6 +4,7 @@ import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import CustomCircularProgress from 'components/task details/CustomCircularProgress';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -29,8 +30,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 import { deleteProjectById, getProjectById } from '../utils/project';
-import { deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist, createWorklist } from '../utils/worklist';
-import { useTranslation } from 'react-i18next';
+import { createWorklist, deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -770,37 +770,17 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={{ maxHeight: 250 }}>
+            <ScrollView 
+              style={{ maxHeight: 400 }}
+              showsVerticalScrollIndicator={false}
+              nestedScrollEnabled={true}
+            >
               {worklists
                 .filter((w) => w.name?.toLowerCase().includes(searchWorklist.toLowerCase()))
-                .slice(0, 4)
                 .map((item) => (
                   <WorklistCard key={item.id} worklist={item} />
                 ))}
-              {worklists.filter((w) => w.name?.toLowerCase().includes(searchWorklist.toLowerCase()))
-                .length > 4 && (
-                  <TouchableOpacity
-                    onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
-                    style={{
-                      alignItems: 'center',
-                      padding: 12,
-                      marginHorizontal: 20,
-                      marginTop: 8,
-                      backgroundColor: `${theme.primary}08`,
-                      borderRadius: 8,
-                      borderWidth: 1,
-                      borderColor: `${theme.primary}20`,
-                    }}>
-                    <Text style={{ color: theme.primary, fontSize: 14, fontWeight: '500' }}>
-                      View{' '}
-                      {worklists.filter((w) =>
-                        w.name?.toLowerCase().includes(searchWorklist.toLowerCase())
-                      ).length - 4}{' '}
-                      {t('more_worklists')}
-                    </Text>
-                  </TouchableOpacity>
-                )}
-            </View>
+            </ScrollView>
           )}
         </View>
       </ScrollView>

@@ -33,6 +33,13 @@ const lightTheme = {
   normalText: '#3B82F6',
   normalBadgeBg: '#3B82F6',
   normalBadgeText: '#fff',
+  // Normal issue colors
+  normalIssueBg: '#F3E5F5',
+  normalIssueBorder: '#E1BEE7',
+  normalIssueIconBg: '#E1BEE7',
+  normalIssueText: '#7B1FA2',
+  normalIssueBadgeBg: '#7B1FA2',
+  normalIssueBadgeText: '#fff',
   justifyContent: 'space-between',
   width:"100%",
   alignItems: 'center',
@@ -69,6 +76,13 @@ const darkTheme = {
   normalText: '#3B82F6',
   normalBadgeBg: '#3B82F6',
   normalBadgeText: '#fff',
+  // Normal issue colors
+  normalIssueBg: '#2A1B3D',
+  normalIssueBorder: '#6B46C1',
+  normalIssueIconBg: '#4C1D95',
+  normalIssueText: '#A855F7',
+  normalIssueBadgeBg: '#7B1FA2',
+  normalIssueBadgeText: '#fff',
 };
 
 const ThemeContext = createContext({

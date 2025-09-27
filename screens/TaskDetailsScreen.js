@@ -40,6 +40,7 @@ import {
   getTasksByProjectId,
   updateTask,
   updateTaskDetails,
+  updateTaskFlags,
   updateTaskProgress,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
@@ -157,6 +158,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
     startDate: '',
     endDate: '',
     isIssue: false,
+    isCritical: false,
   });
   // Fix for ReferenceError: showAttachmentSheet
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
@@ -169,6 +171,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
         startDate: task.startDate || '',
         endDate: task.endDate || '',
         isIssue: task.isIssue || false,
+        isCritical: task.isCritical || false,
       });
     }
   }, [task]);
@@ -903,11 +906,17 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   setLoading(true);
                   console.log('🔄 Updating task isIssue:', { taskId, value });
                   
-                  // Use updateTaskDetails (same as UpdateTaskScreen for consistency)
-                  const data = {
+                  // Use updateTaskFlags to preserve assigned users
+                  const flags = {
                     isIssue: value
                   };
-                  await updateTaskDetails(taskId, data);
+                  
+                  // If converting from issue to normal task, also reset critical flag
+                  if (!value && task.isCritical) {
+                    flags.isCritical = false;
+                  }
+                  
+                  await updateTaskFlags(taskId, flags);
                   
                   // Refresh the task data
                   const updatedTask = await getTaskDetailsById(taskId);
@@ -951,6 +960,114 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </View>
           )}
         </View>
+
+        {/* Critical Toggle - Only show when task is an issue */}
+        {task.isIssue && (
+          <View style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: task.isCritical ? theme.criticalBg : theme.normalIssueBg,
+            borderRadius: 14,
+            borderWidth: 1,
+            borderColor: task.isCritical ? theme.criticalBorder : theme.normalIssueBorder,
+            marginHorizontal: 20,
+            marginBottom: 16,
+            padding: 12,
+            gap: 12,
+          }}>
+            <View style={{
+              width: 40,
+              height: 40,
+              borderRadius: 10,
+              backgroundColor: task.isCritical ? theme.criticalIconBg : theme.normalIssueIconBg,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <MaterialIcons
+                name="warning"
+                size={24}
+                color={task.isCritical ? theme.criticalText : theme.normalIssueText}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{
+                color: task.isCritical ? theme.criticalText : theme.normalIssueText,
+                fontWeight: '700',
+                fontSize: 16,
+                marginBottom: 2,
+              }}>
+                {task.isCritical ? 'Critical Issue' : 'Normal Issue'}
+              </Text>
+              <Text style={{
+                fontSize: 13,
+                fontWeight: '400',
+                lineHeight: 18,
+                color: theme.text,
+              }}>
+                {task.isCritical
+                  ? 'This issue requires immediate attention'
+                  : 'Toggle to mark this issue as critical'
+                }
+              </Text>
+            </View>
+            {/* Show toggle for task creator */}
+            {isCreator ? (
+              <Switch
+                value={task.isCritical || false}
+                onValueChange={async (value) => {
+                  try {
+                    setLoading(true);
+                    console.log('🔄 Updating task isCritical:', { taskId, value });
+                    
+                    // Use updateTaskFlags to preserve assigned users
+                    const flags = {
+                      isCritical: value
+                    };
+                    await updateTaskFlags(taskId, flags);
+                    
+                    // Refresh the task data
+                    const updatedTask = await getTaskDetailsById(taskId);
+                    setTask(updatedTask);
+                    
+                    console.log('✅ Task critical status updated successfully:', { taskId, isCritical: value });
+                    Alert.alert(
+                      'Success', 
+                      value 
+                        ? 'Issue marked as critical successfully.' 
+                        : 'Issue no longer marked as critical.'
+                    );
+                  } catch (err) {
+                    console.error('❌ Error updating task critical status:', err);
+                    Alert.alert('Error', err.message || 'Failed to update critical status');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                trackColor={{ 
+                  false: '#ddd', 
+                  true: theme.criticalText
+                }}
+                thumbColor="#fff"
+              />
+            ) : (
+              // Show status badge for non-creators
+              <View style={{
+                backgroundColor: task.isCritical ? theme.criticalBadgeBg : theme.normalIssueBadgeBg,
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 12,
+              }}>
+                <Text style={{
+                  color: task.isCritical ? theme.criticalBadgeText : theme.normalIssueBadgeText,
+                  fontWeight: '600',
+                  fontSize: 12,
+                }}>
+                  {task.isCritical ? 'CRITICAL' : 'NORMAL'}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
 
         <FieldBox
           label={t("added_attachments")}
@@ -1740,12 +1857,58 @@ export default function TaskDetailsScreen({ route, navigation }) {
               </View>
               <Switch
                 value={editValues.isIssue}
-                onValueChange={(value) => setEditValues((v) => ({ ...v, isIssue: value }))}
+                onValueChange={(value) => setEditValues((v) => ({ 
+                  ...v, 
+                  isIssue: value,
+                  // If converting from issue to normal task, also reset critical flag
+                  isCritical: value ? v.isCritical : false
+                }))}
                 trackColor={{ false: '#ddd', true: theme.primary }}
                 thumbColor="#fff"
                 ios_backgroundColor="#ddd"
               />
             </View>
+
+            {/* Critical Toggle - Only show when isIssue is true */}
+            {editValues.isIssue && (
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingVertical: 16,
+                borderBottomWidth: 1,
+                borderBottomColor: theme.border,
+                marginBottom: 18,
+              }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{
+                    color: theme.text,
+                    fontSize: 16,
+                    fontWeight: '500',
+                    marginBottom: 4,
+                  }}>
+                    Mark as Critical
+                  </Text>
+                  <Text style={{
+                    color: theme.secondaryText,
+                    fontSize: 14,
+                    lineHeight: 18,
+                  }}>
+                    {editValues.isCritical 
+                      ? 'This issue will be marked as critical and require immediate attention'
+                      : 'Mark this issue as critical for higher priority'
+                    }
+                  </Text>
+                </View>
+                <Switch
+                  value={editValues.isCritical}
+                  onValueChange={(value) => setEditValues((v) => ({ ...v, isCritical: value }))}
+                  trackColor={{ false: '#ddd', true: theme.criticalText }}
+                  thumbColor="#fff"
+                  ios_backgroundColor="#ddd"
+                />
+              </View>
+            )}
 
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
               <TouchableOpacity style={{ marginRight: 16 }} onPress={() => setShowEditModal(false)}>
@@ -1760,18 +1923,41 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 }}
                 onPress={async () => {
                   try {
+                    // Check if flags changed
+                    const flagsChanged = editValues.isIssue !== task.isIssue || editValues.isCritical !== task.isCritical;
+                    
+                    // Update basic task fields first
                     const updated = await updateTask(task.id || task._id || task.taskId, {
                       taskName: editValues.taskName,
                       description: editValues.description,
                       startDate: editValues.startDate,
                       endDate: editValues.endDate,
-                      isIssue: editValues.isIssue,
                     });
-                    setTask(updated);
+                    
+                    // Update flags separately to preserve assigned users
+                    if (flagsChanged) {
+                      await updateTaskFlags(task.id || task._id || task.taskId, {
+                        isIssue: editValues.isIssue,
+                        isCritical: editValues.isCritical,
+                      });
+                    }
+                    
+                    // Refresh task data
+                    const refreshedTask = await getTaskDetailsById(task.id || task._id || task.taskId);
+                    setTask(refreshedTask);
                     setShowEditModal(false);
-                    const message = editValues.isIssue 
-                      ? (task.isIssue ? 'Task updated!' : 'Task converted to issue successfully!')
-                      : (task.isIssue ? 'Issue converted back to task successfully!' : 'Task updated!');
+                    
+                    let message = 'Task updated successfully!';
+                    if (editValues.isIssue !== task.isIssue) {
+                      message = editValues.isIssue 
+                        ? 'Task converted to issue successfully!'
+                        : 'Issue converted back to task successfully!';
+                    } else if (editValues.isCritical !== task.isCritical) {
+                      message = editValues.isCritical
+                        ? 'Issue marked as critical successfully!'
+                        : 'Issue no longer marked as critical!';
+                    }
+                    
                     Alert.alert('Success', message);
                   } catch (err) {
                     Alert.alert('Error', err.message || 'Failed to update task.');

@@ -1,5 +1,4 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useState } from 'react';
@@ -20,17 +19,17 @@ import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth';
-import { fetchAssignedIssues, fetchCreatedByMeIssues, fetchIssuesByUser, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
+import { fetchIssuesByUser, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { updateTask } from '../utils/task';
 export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');
-    const [section, setSection] = useState('assigned');
+
     const [projects, setProjects] = useState([]);
     const [users, setUsers] = useState([]);
     const [showIssuePopup, setShowIssuePopup] = useState(false);
-    const [viewMode, setViewMode] = useState('assigned'); // 'assigned' or 'created'
+
     const [refreshing, setRefreshing] = useState(false);
     const { t } = useTranslation();
     const [issueForm, setIssueForm] = useState({
@@ -42,8 +41,7 @@ export default function IssuesScreen({ navigation }) {
         isCritical: false,
     });
 
-    const [assignedIssues, setAssignedIssues] = useState([]);
-    const [createdIssues, setCreatedIssues] = useState([]);
+    const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
     const [statusTab, setStatusTab] = useState('all'); // 'all', 'resolved', 'unresolved'
     const [currentUserName, setCurrentUserName] = useState(null);
@@ -76,7 +74,7 @@ export default function IssuesScreen({ navigation }) {
     const getActiveFiltersCount = () => {
         return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
     };
-    const currentIssues = section === 'assigned' ? assignedIssues : createdIssues;
+    const currentIssues = issues;
     
     // Generate filter options based on Task model structure
     const statuses = Array.from(new Set(
@@ -88,19 +86,17 @@ export default function IssuesScreen({ navigation }) {
     ));
     
     const assignedOptions = Array.from(new Set(
-        section === 'assigned'
-            ? currentIssues.map(issue => issue.creator?.name || issue.creatorName).filter(Boolean)
-            : currentIssues.flatMap(issue => {
-                const names = [];
-                // Handle Task model assignedUsers array
-                if (issue.assignedUsers && Array.isArray(issue.assignedUsers)) {
-                    names.push(...issue.assignedUsers.map(user => user.name).filter(Boolean));
-                }
-                // Handle legacy fields
-                if (issue.assignToUserName) names.push(issue.assignToUserName);
-                if (issue.assignTo?.name) names.push(issue.assignTo.name);
-                return names;
-            }).filter(Boolean)
+        currentIssues.flatMap(issue => {
+            const names = [];
+            // Handle Task model assignedUsers array
+            if (issue.assignedUsers && Array.isArray(issue.assignedUsers)) {
+                names.push(...issue.assignedUsers.map(user => user.name).filter(Boolean));
+            }
+            // Handle legacy fields
+            if (issue.assignToUserName) names.push(issue.assignToUserName);
+            if (issue.assignTo?.name) names.push(issue.assignTo.name);
+            return names;
+        }).filter(Boolean)
     ));
     
     const locationOptions = Array.from(new Set(
@@ -111,34 +107,19 @@ export default function IssuesScreen({ navigation }) {
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
-            // You can use your fetchData logic from useFocusEffect for full reload:
-            const token = await AsyncStorage.getItem('token');
-            
-            // Fetch both original issues and task-based issues
-            const [assigned, taskBasedIssues, created, projects, connections] = await Promise.all([
-                fetchAssignedIssues(),
-                fetchIssuesByUser(), // New API for task-based issues
-                fetchCreatedByMeIssues(),
+            const [taskBasedIssues, projects, connections] = await Promise.all([
+                fetchIssuesByUser(), // Fetch issues using the new API
                 fetchProjectsByUser(),
                 fetchUserConnections()
             ]);
             
-            console.log(`Fetched assignedIssues: ${assigned ? assigned.length : 0}`);
-            console.log(`Fetched taskBasedIssues: ${taskBasedIssues ? taskBasedIssues.length : 0}`);
+            console.log(`Fetched issues: ${taskBasedIssues ? taskBasedIssues.length : 0}`);
             
-            // Combine original issues with task-based issues
-            const combinedAssignedIssues = [
-                ...(assigned || []),
-                ...(taskBasedIssues || [])
-            ];
-            
-            setAssignedIssues(combinedAssignedIssues);
-            setCreatedIssues(created || []);
+            setIssues(taskBasedIssues || []);
             setProjects(projects || []);
             setUsers(connections || []);
         } catch (e) {
-            setAssignedIssues([]);
-            setCreatedIssues([]);
+            setIssues([]);
             setProjects([]);
             setUsers([]);
         } finally {
@@ -159,16 +140,14 @@ export default function IssuesScreen({ navigation }) {
             
             await updateTask(taskId, updatePayload);
             
-            // Update the local state based on Task model structure
-            if (section === 'created') {
-                setCreatedIssues(prev => 
-                    prev.map(item => 
-                        item.id === taskId 
-                            ? { ...item, isCritical }
-                            : item
-                    )
-                );
-            }
+            // Update the local state
+            setIssues(prev => 
+                prev.map(item => 
+                    item.id === taskId 
+                        ? { ...item, isCritical }
+                        : item
+                )
+            );
             
             Alert.alert('Success', `Issue ${isCritical ? 'marked as critical' : 'unmarked as critical'}`);
         } catch (error) {
@@ -196,30 +175,17 @@ export default function IssuesScreen({ navigation }) {
             const fetchData = async () => {
                 setLoading(true);
                 try {
-                    const token = await AsyncStorage.getItem('token');
-                    
-                    // Fetch both original issues and task-based issues
-                    const [assigned, taskBasedIssues, created, projects, connections] = await Promise.all([
-                        fetchAssignedIssues(),
-                        fetchIssuesByUser(), // New API for task-based issues
-                        fetchCreatedByMeIssues(),
+                    const [taskBasedIssues, projects, connections] = await Promise.all([
+                        fetchIssuesByUser(), // Fetch issues using the new API
                         fetchProjectsByUser(),
                         fetchUserConnections()
                     ]);
                     
-                    // Combine original issues with task-based issues
-                    const combinedAssignedIssues = [
-                        ...(assigned || []),
-                        ...(taskBasedIssues || [])
-                    ];
-                    
-                    setAssignedIssues(combinedAssignedIssues);
-                    setCreatedIssues(created || []);
+                    setIssues(taskBasedIssues || []);
                     setProjects(projects || []);
                     setUsers(connections || []);
                 } catch (e) {
-                    setAssignedIssues([]);
-                    setCreatedIssues([]);
+                    setIssues([]);
                     setProjects([]);
                     setUsers([]);
                 } finally {
@@ -264,24 +230,17 @@ export default function IssuesScreen({ navigation }) {
                 // AssignedTo filter based on Task model associations
                 let assignedMatch = true;
                 if (filters.assignedTo.length > 0) {
-                    if (section === 'assigned') {
-                        // For assigned issues, check creator
-                        const creatorName = item.creator?.name || item.creatorName || '';
-                        assignedMatch = filters.assignedTo.includes(creatorName);
-                    } else {
-                        // For created issues, check assigned users
-                        // Handle assignedUserIds array from Task model
-                        const assignedUserNames = [];
-                        if (item.assignedUsers && Array.isArray(item.assignedUsers)) {
-                            assignedUserNames.push(...item.assignedUsers.map(user => user.name || '').filter(Boolean));
-                        }
-                        // Also check legacy fields for backward compatibility
-                        if (item.assignToUserName) assignedUserNames.push(item.assignToUserName);
-                        if (item.assignTo?.name) assignedUserNames.push(item.assignTo.name);
-                        
-                        assignedMatch = assignedUserNames.length === 0 || 
-                                       filters.assignedTo.some(filterName => assignedUserNames.includes(filterName));
+                    // Check assigned users
+                    const assignedUserNames = [];
+                    if (item.assignedUsers && Array.isArray(item.assignedUsers)) {
+                        assignedUserNames.push(...item.assignedUsers.map(user => user.name || '').filter(Boolean));
                     }
+                    // Also check legacy fields for backward compatibility
+                    if (item.assignToUserName) assignedUserNames.push(item.assignToUserName);
+                    if (item.assignTo?.name) assignedUserNames.push(item.assignTo.name);
+                    
+                    assignedMatch = assignedUserNames.length === 0 || 
+                                   filters.assignedTo.some(filterName => assignedUserNames.includes(filterName));
                 }
 
                 // Location filter - check project location
@@ -307,8 +266,7 @@ export default function IssuesScreen({ navigation }) {
             });
     };
 
-    const filteredAssigned = filterAndSortIssues(assignedIssues);
-    const filteredCreated = filterAndSortIssues(createdIssues);
+    const filteredIssues = filterAndSortIssues(issues);
 
     const handleIssueChange = (field, value) => {
         setIssueForm(prev => ({ ...prev, [field]: value }));
@@ -322,24 +280,10 @@ export default function IssuesScreen({ navigation }) {
         // After creating a new issue, refresh the issues from the API for up-to-date data
         setLoading(true);
         try {
-            // Fetch both original issues and task-based issues
-            const [assigned, taskBasedIssues, created] = await Promise.all([
-                fetchAssignedIssues(),
-                fetchIssuesByUser(), // New API for task-based issues
-                fetchCreatedByMeIssues()
-            ]);
-            
-            // Combine original issues with task-based issues
-            const combinedAssignedIssues = [
-                ...(assigned || []),
-                ...(taskBasedIssues || [])
-            ];
-            
-            setAssignedIssues(combinedAssignedIssues);
-            setCreatedIssues(created || []);
+            const taskBasedIssues = await fetchIssuesByUser(); // Fetch issues using the new API
+            setIssues(taskBasedIssues || []);
         } catch (e) {
-            setAssignedIssues([]);
-            setCreatedIssues([]);
+            setIssues([]);
         } finally {
             setLoading(false);
         }
@@ -388,32 +332,7 @@ export default function IssuesScreen({ navigation }) {
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
                 </TouchableOpacity> */}
             </LinearGradient>
-            {/* Dynamic Section Tabs */}
-            <View style={[styles.tabRow, { borderColor: theme.border }]}>
-                {[
-                    { key: 'assigned', label: t('assigned_to_me') },
-                    { key: 'created', label: t('created_by_me') },
-                ].map(tab => (
-                    <TouchableOpacity
-                        key={tab.key}
-                        style={[
-                            styles.tabButton,
-                            { borderColor: theme.border },
-                            section === tab.key && [styles.activeTab, { backgroundColor: theme.primary, borderColor: theme.border }]
-                        ]}
-                        onPress={() => setSection(tab.key)}
-                    >
-                        <Text
-                            style={[
-                                styles.tabText,
-                                section === tab.key ? { color: '#fff' } : { color: theme.secondaryText, borderColor: theme.border }
-                            ]}
-                        >
-                            {tab.label}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
-            </View>
+
             {/* Search */}
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
                 <TextInput
@@ -516,11 +435,11 @@ export default function IssuesScreen({ navigation }) {
                             </View>
                         )}
 
-                        {/* Assigned To/By Filter */}
+                        {/* Assigned To Filter */}
                         {assignedOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
                                 <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
-                                    {section === 'assigned' ? t('assigned_by') : t('assigned_to')}
+                                    {t('assigned_to')}
                                 </Text>
                                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
                                     <View style={styles.compactChipsRow}>
@@ -598,14 +517,12 @@ export default function IssuesScreen({ navigation }) {
                 <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 40 }} />
             ) : (
                 <IssueList
-                    issues={section === 'assigned' ? filteredAssigned : filteredCreated}
+                    issues={filteredIssues}
                     onPressIssue={issue => navigation.navigate('IssueDetails', { 
-                        issueId: issue.id, // Use Task model ID 
-                        section 
+                        issueId: issue.id // Use Task model ID 
                     })}
                     styles={styles}
                     theme={theme}
-                    section={section}
                     onStatusFilter={setStatusTab}
                     statusTab={statusTab}
                     currentUserName={currentUserName}

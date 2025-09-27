@@ -4,18 +4,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Image,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import AttachmentSheet from '../components/popups/AttachmentSheet';
@@ -54,6 +54,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
     endDate: '',
     images: [],
     isIssue: false,
+    isCritical: false,
   });
   const [selectedUsers, setSelectedUsers] = useState([]);
   const [searchText, setSearchText] = useState('');
@@ -126,6 +127,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
           startDate: res.startDate,
           endDate: res.endDate,
           isIssue: res.isIssue || false,
+          isCritical: res.isCritical || false,
         });
         // Preload dependencies
         setSelectedDepIds((res.dependentTaskIds || []).map(String));
@@ -232,6 +234,7 @@ export default function UpdateTaskScreen({ route, navigation }) {
         attachments: newImages,
         dependentTaskIds: selectedDepIds.map(String),
         isIssue: values.isIssue,
+        isCritical: values.isCritical,
       };
       console.log('[handleUpdate] Final updatePayload:', updatePayload);
       await updateTaskDetails(taskId, updatePayload);
@@ -761,26 +764,89 @@ export default function UpdateTaskScreen({ route, navigation }) {
         )}
 
         {/* Issue Toggle */}
-        <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <View style={styles.toggleIconBox}>
-            <Feather name="alert-triangle" size={24} color="#FF6B35" />
+        <View style={[styles.toggleRow, { 
+          backgroundColor: values.isIssue ? theme.criticalBg : theme.normalBg, 
+          borderColor: values.isIssue ? theme.criticalBorder : theme.normalBorder 
+        }]}>
+          <View style={[styles.toggleIconBox, {
+            backgroundColor: values.isIssue ? theme.criticalIconBg : theme.normalIconBg
+          }]}>
+            <MaterialIcons 
+              name="priority-high" 
+              size={20} 
+              color={values.isIssue ? theme.criticalText : theme.normalText} 
+            />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text>
+            <Text style={[styles.toggleLabel, { 
+              color: values.isIssue ? theme.criticalText : theme.normalText 
+            }]}>
+              {values.isIssue ? 'Issue Task' : 'Mark as Issue'}
+            </Text>
             <Text style={[styles.toggleDesc, { color: theme.secondaryText }]}>
               {values.isIssue 
-                ? t('thisTaskWillAppearInIssuesSection')
-                : t('convertThisTaskToAnIssue')
+                ? 'This task is marked as an issue requiring attention'
+                : 'Convert this task to an issue'
               }
             </Text>
           </View>
           <Switch
             value={values.isIssue || false}
-            onValueChange={v => handleChange('isIssue', v)}
-            trackColor={{ false: '#ddd', true: '#FF6B35' }}
+            onValueChange={v => {
+              handleChange('isIssue', v);
+              // Reset critical flag when converting from issue to normal task
+              if (!v && values.isCritical) {
+                handleChange('isCritical', false);
+              }
+            }}
+            trackColor={{ 
+              false: '#ddd', 
+              true: values.isIssue ? theme.criticalText : theme.primary 
+            }}
             thumbColor="#fff"
           />
         </View>
+
+        {/* Critical Toggle - Only show when task is an issue */}
+        {values.isIssue && (
+          <View style={[styles.toggleRow, { 
+            backgroundColor: values.isCritical ? theme.criticalBg : theme.normalIssueBg,
+            borderColor: values.isCritical ? theme.criticalBorder : theme.normalIssueBorder,
+            marginTop: 8
+          }]}>
+            <View style={[styles.toggleIconBox, {
+              backgroundColor: values.isCritical ? theme.criticalIconBg : theme.normalIssueIconBg
+            }]}>
+              <MaterialIcons 
+                name="warning" 
+                size={20} 
+                color={values.isCritical ? theme.criticalText : theme.normalIssueText} 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.toggleLabel, { 
+                color: values.isCritical ? theme.criticalText : theme.normalIssueText 
+              }]}>
+                {values.isCritical ? 'Critical Issue' : 'Mark as Critical'}
+              </Text>
+              <Text style={[styles.toggleDesc, { color: theme.secondaryText }]}>
+                {values.isCritical
+                  ? 'This issue requires immediate attention'
+                  : 'Mark this issue as critical'
+                }
+              </Text>
+            </View>
+            <Switch
+              value={values.isCritical || false}
+              onValueChange={v => handleChange('isCritical', v)}
+              trackColor={{ 
+                false: '#ddd', 
+                true: theme.criticalText
+              }}
+              thumbColor="#fff"
+            />
+          </View>
+        )}
 
         <AttachmentSheet
           visible={showAttachmentSheet}
@@ -895,31 +961,28 @@ const styles = StyleSheet.create({
   toggleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
+    borderRadius: 14,
     marginHorizontal: 20,
     marginBottom: 14,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   toggleIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 107, 53, 0.1)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
   toggleLabel: {
-    fontSize: 16,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
     marginBottom: 2,
   },
   toggleDesc: {
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: 12,
+    lineHeight: 16,
   },
 });

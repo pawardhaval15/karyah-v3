@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import AddWorklistPopup from 'components/popups/AddWorklistPopup';
 import ProjectPopup from 'components/popups/ProjectPopup';
@@ -150,6 +150,7 @@ export default function AddTaskForm({
                 progress: 0,
                 images,
                 isIssue: values.isIssue || false,
+                isCritical: values.isCritical || false,
                 ...(parentId && { parentId }),
             };
 
@@ -492,23 +493,77 @@ export default function AddTaskForm({
 
 
             {/* Issue Toggle */}
-            <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                <View style={styles.toggleIconBox}>
-                    <Feather name="alert-triangle" size={24} color="#FF6B35" />
+            <View style={[styles.toggleRow, { 
+                backgroundColor: values.isIssue ? theme.criticalBg : theme.normalBg, 
+                borderColor: values.isIssue ? theme.criticalBorder : theme.normalBorder 
+            }]}>
+                <View style={[styles.toggleIconBox, {
+                    backgroundColor: values.isIssue ? theme.criticalIconBg : theme.normalIconBg
+                }]}>
+                    <MaterialIcons 
+                        name="priority-high" 
+                        size={16} 
+                        color={values.isIssue ? theme.criticalText : theme.normalText} 
+                    />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text>
-                    {/* <Text style={[styles.toggleDesc, { color: theme.secondaryText }]}>
-                        {t('markAsIssueDesc')}
-                    </Text> */}
+                    <Text style={[styles.toggleLabel, { 
+                        color: values.isIssue ? theme.criticalText : theme.normalText 
+                    }]}>
+                        Issue
+                    </Text>
                 </View>
                 <Switch
                     value={values.isIssue || false}
-                    onValueChange={v => onChange('isIssue', v)}
-                    trackColor={{ false: '#ddd', true: '#FF6B35' }}
+                    onValueChange={v => {
+                        onChange('isIssue', v);
+                        // Reset critical flag when converting from issue to normal task
+                        if (!v && values.isCritical) {
+                            onChange('isCritical', false);
+                        }
+                    }}
+                    trackColor={{ 
+                        false: '#ddd', 
+                        true: values.isIssue ? theme.criticalText : theme.primary 
+                    }}
                     thumbColor="#fff"
                 />
             </View>
+
+            {/* Critical Toggle - Only show when task is an issue */}
+            {values.isIssue && (
+                <View style={[styles.toggleRow, { 
+                    backgroundColor: values.isCritical ? theme.criticalBg : theme.normalIssueBg,
+                    borderColor: values.isCritical ? theme.criticalBorder : theme.normalIssueBorder,
+                    marginTop: 6
+                }]}>
+                    <View style={[styles.toggleIconBox, {
+                        backgroundColor: values.isCritical ? theme.criticalIconBg : theme.normalIssueIconBg
+                    }]}>
+                        <MaterialIcons 
+                            name="warning" 
+                            size={16} 
+                            color={values.isCritical ? theme.criticalText : theme.normalIssueText} 
+                        />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.toggleLabel, { 
+                            color: values.isCritical ? theme.criticalText : theme.normalIssueText 
+                        }]}>
+                            Critical
+                        </Text>
+                    </View>
+                    <Switch
+                        value={values.isCritical || false}
+                        onValueChange={v => onChange('isCritical', v)}
+                        trackColor={{ 
+                            false: '#ddd', 
+                            true: theme.criticalText
+                        }}
+                        thumbColor="#fff"
+                    />
+                </View>
+            )}
 
             <FieldBox
                 value={values.taskDesc}
@@ -662,31 +717,23 @@ const styles = StyleSheet.create({
     toggleRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#F8FAFC',
-        borderRadius: 16,
+        borderRadius: 12,
         marginHorizontal: 20,
-        marginBottom: 14,
+        marginBottom: 10,
         paddingHorizontal: 10,
-        paddingVertical: 6,
+        paddingVertical: 8,
         borderWidth: 1,
-        borderColor: '#E5E7EB',
     },
     toggleIconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        backgroundColor: 'rgba(255, 107, 53, 0.1)',
+        width: 28,
+        height: 28,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        marginRight: 12,
+        marginRight: 10,
     },
     toggleLabel: {
-        fontSize: 16,
+        fontSize: 14,
         fontWeight: '500',
-        marginBottom: 2,
-    },
-    toggleDesc: {
-        fontSize: 13,
-        lineHeight: 18,
     },
 });

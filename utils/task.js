@@ -411,6 +411,38 @@ export const updateTaskTags = async (taskId, tags) => {
   }
 };
 
+// Update only task flags (isIssue/isCritical) without affecting other data
+export const updateTaskFlags = async (taskId, flags) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/flags`;
+
+    console.log('[updateTaskFlags] Updating flags:', { taskId, flags });
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(flags),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('[updateTaskFlags] Server error:', data);
+      throw new Error(data.message || 'Failed to update task flags');
+    }
+
+    console.log('[updateTaskFlags] Success:', data);
+    return data;
+  } catch (error) {
+    console.error('[updateTaskFlags] Error:', error);
+    throw error;
+  }
+};
+
 export const updateTaskDetails = async (taskId, data) => {
   try {
     const token = await AsyncStorage.getItem('token');
