@@ -584,7 +584,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('chat')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
+          {/* <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setShowMaterialRequest(true)}
             style={{
@@ -599,7 +599,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             }}>
             <MaterialIcons name="inventory" size={18} color="#FF9800" style={{ marginRight: 7 }} />
             <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('requirements')}</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
         <TaskChatPopup
           visible={showTaskChat}

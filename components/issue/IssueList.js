@@ -16,20 +16,12 @@ export default function IssueList({
 }) {
   // Filtering logic for task-based issues
   let filteredIssues = issues;
-  if (statusTab === 'critical') {
-    filteredIssues = issues.filter((i) => i.isCritical);
-  } else if (statusTab === 'resolved') {
-    filteredIssues = issues.filter((i) => 
-      i.status === 'Completed' && i.isApproved === true
-    );
-  } else if (statusTab === 'unresolved') {
-    filteredIssues = issues.filter((i) => 
-      i.status === 'Pending' || i.status === 'In Progress' || !i.isApproved
-    );
-  } else if (statusTab === 'pending_approval') {
-    filteredIssues = issues.filter((i) => 
-      i.status === 'Completed' && i.isApprovalNeeded === true && i.isApproved === false
-    );
+  if (statusTab === 'pending') {
+    filteredIssues = issues.filter((i) => i.status === 'Pending');
+  } else if (statusTab === 'in_progress') {
+    filteredIssues = issues.filter((i) => i.status === 'In Progress');
+  } else if (statusTab === 'completed') {
+    filteredIssues = issues.filter((i) => i.status === 'Completed');
   }
   // console.log(issues);
   filteredIssues = filteredIssues.slice().sort((a, b) => {
@@ -81,66 +73,46 @@ export default function IssueList({
             color: theme.primary,
           },
           {
-            key: 'critical',
-            label: t('critical'),
-            icon: (
-              <Feather
-                name="alert-triangle"
-                size={13}
-                color={statusTab === 'critical' ? '#fff' : '#FF2700'}
-                style={{ marginRight: 2 }}
-              />
-            ),
-            count: issues.filter((i) => i.isCritical).length,
-            color: '#FF2700',
-          },
-          {
-            key: 'resolved',
-            label: t('resolved'),
-            icon: (
-              <Feather
-                name="check-circle"
-                size={13}
-                color={statusTab === 'resolved' ? '#fff' : '#039855'}
-                style={{ marginRight: 2 }}
-              />
-            ),
-            count: issues.filter((i) => 
-              i.status === 'Completed' && i.isApproved === true
-            ).length,
-            color: '#039855',
-          },
-          {
-            key: 'pending_approval',
-            label: t('pending'),
+            key: 'pending',
+            label: t('pending') || 'Pending',
             icon: (
               <Feather
                 name="clock"
                 size={13}
-                color={statusTab === 'pending_approval' ? '#fff' : '#FFC107'}
+                color={statusTab === 'pending' ? '#fff' : '#FFC107'}
                 style={{ marginRight: 2 }}
               />
             ),
-            count: issues.filter((i) => 
-              i.status === 'Completed' && i.isApprovalNeeded === true && i.isApproved === false
-            ).length,
+            count: issues.filter((i) => i.status === 'Pending').length,
             color: '#FFC107',
           },
           {
-            key: 'unresolved',
-            label: t('unresolved'),
+            key: 'in_progress',
+            label: t('in_progress') || 'In Progress',
             icon: (
-              <MaterialIcons
-                name="error-outline"
+              <Feather
+                name="play-circle"
                 size={13}
-                color={statusTab === 'unresolved' ? '#fff' : '#E67514'}
+                color={statusTab === 'in_progress' ? '#fff' : '#2563EB'}
                 style={{ marginRight: 2 }}
               />
             ),
-            count: issues.filter((i) => 
-              i.status === 'Pending' || i.status === 'In Progress' || !i.isApproved
-            ).length,
-            color: '#E67514',
+            count: issues.filter((i) => i.status === 'In Progress').length,
+            color: '#2563EB',
+          },
+          {
+            key: 'completed',
+            label: t('completed') || 'Completed',
+            icon: (
+              <Feather
+                name="check-circle"
+                size={13}
+                color={statusTab === 'completed' ? '#fff' : '#039855'}
+                style={{ marginRight: 2 }}
+              />
+            ),
+            count: issues.filter((i) => i.status === 'Completed').length,
+            color: '#039855',
           },
         ].map((tab) => (
           <TouchableOpacity
