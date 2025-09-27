@@ -216,7 +216,7 @@
   "turn_on_toggle": "Turn on the toggle only if the Issue needs immediate attention.",
   "normal": "NORMAL",
   "resolve_issue": "Resolve Issue",
-  "resolution_note": "Note: You must add at least one attachment and enter a description to submit the resolution.",
+  "resolution_note": "Note: You must add at least one attachment to submit the resolution.",
   "resolution_remark": "RESOLUTION REMARK",
   "no_resolution_remark": "No resolution remark",
   "describe_resolution": "Describe how the issue was resolved...",

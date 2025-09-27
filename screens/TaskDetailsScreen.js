@@ -277,7 +277,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
     const fetchTask = async () => {
       try {
         const data = await getTaskDetailsById(taskId);
-        console.log('Fetched task:', data);
         setTask(data);
       } catch (err) {
         console.error('Failed to fetch task:', err);

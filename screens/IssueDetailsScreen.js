@@ -544,7 +544,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         color="#E53935"
                         style={{ marginRight: 8 }}
                       />
-                      <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>
+                      <Text style={{ color: theme.dangerText, fontWeight: '500', fontSize: 15 }}>
                         {t('delete')}
                       </Text>
                     </TouchableOpacity>
@@ -585,22 +585,22 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 </Text>
               </TouchableOpacity>
             )}
-            <Text style={styles.bannerDesc}>{t('all_issues_details')}</Text>
+            <Text style={[styles.bannerDesc, { color: '#e6eaf3' }]}>{t('all_issues_details')}</Text>
           </View>
         </LinearGradient>
 
         {/* Issue Details Toggle Section */}
         <View style={styles.issueDetailsHeader}>
-          <Text style={styles.issueDetailsTitle}>Issue Details</Text>
+          <Text style={[styles.attachmentLabel, { color: theme.text }]}>Issue Details</Text>
           <TouchableOpacity
-            style={styles.viewDetailsBtn}
+            style={[styles.viewDetailsBtn, { backgroundColor: theme.primary + '15' }]}
             onPress={() => setShowIssueDetails(!showIssueDetails)}>
             <MaterialIcons 
               name={showIssueDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
               size={20} 
-              color="#2563EB" 
+              color={theme.primary} 
             />
-            <Text style={styles.viewDetailsBtnText}>
+            <Text style={[styles.viewDetailsBtnText, { color: theme.primary }]}>
               {showIssueDetails ? 'Hide Details' : 'Show Details'}
             </Text>
           </TouchableOpacity>
@@ -691,10 +691,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   </>
                 ) : (
                   <View style={styles.noAttachmentContainer}>
-                    <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                    <Text style={styles.noAttachmentText}>{t('no_attachments_added')}</Text>
+                    <MaterialCommunityIcons name="file-outline" size={40} color={theme.secondaryText} />
+                    <Text style={[styles.noAttachmentText, { color: theme.secondaryText }]}>{t('no_attachments_added')}</Text>
                     {isEditing && (
-                      <Text style={styles.tapToAddText}>
+                      <Text style={[styles.tapToAddText, { color: theme.secondaryText }]}>
                         {t('tap_to_add_files')}
                       </Text>
                     )}
@@ -717,15 +717,15 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         {att.type && att.type.startsWith('image') ? (
                           <Image source={{ uri: att.uri }} style={styles.attachmentPreviewImage} />
                         ) : att.type && att.type.startsWith('audio') ? (
-                          <View style={styles.attachmentIconContainer}>
-                            <MaterialCommunityIcons name="music-note" size={20} color="#1D4ED8" />
+                          <View style={[styles.attachmentIconContainer, { backgroundColor: theme.secCard }]}>
+                            <MaterialCommunityIcons name="music-note" size={20} color={theme.primary} />
                           </View>
                         ) : (
-                          <View style={styles.attachmentIconContainer}>
+                          <View style={[styles.attachmentIconContainer, { backgroundColor: theme.secCard }]}>
                             <MaterialCommunityIcons
                               name="file-document-outline"
                               size={20}
-                              color="#888"
+                              color={theme.secondaryText}
                             />
                           </View>
                         )}
@@ -783,7 +783,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   borderRadius: 20,
                   marginLeft: 10,
                   borderWidth: 2,
-                  borderColor: '#e6eaf3',
+                  borderColor: theme.border,
                 }}
               />
             ) : !issue.isIssue && issue.assignTo?.profilePhoto ? (
@@ -795,7 +795,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   borderRadius: 20,
                   marginLeft: 10,
                   borderWidth: 2,
-                  borderColor: '#e6eaf3',
+                  borderColor: theme.border,
                 }}
               />
             ) : (
@@ -807,7 +807,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   borderRadius: 20,
                   marginLeft: 10,
                   borderWidth: 2,
-                  borderColor: '#e6eaf3',
+                  borderColor: theme.border,
                 }}
               />
             )
@@ -851,10 +851,8 @@ export default function IssueDetailsScreen({ navigation, route }) {
 
 
         <View
-          style={{ height: 1, backgroundColor: '#e6eaf3', marginTop: 18, marginHorizontal: 20 }}
+          style={{ height: 1, backgroundColor: theme.border, marginTop: 18, marginHorizontal: 20 }}
         />
-
-
         {(issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') && (
           <View style={{ marginHorizontal: 0, marginTop: 16 }}>
             {/* Resolved Attachments Section */}
@@ -884,34 +882,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   </>
                 ) : (
                   <View style={styles.noAttachmentContainer}>
-                    <MaterialCommunityIcons name="file-outline" size={40} color="#888" />
-                    <Text style={styles.noAttachmentText}>{t('no_resolution_attachments')}</Text>
+                    <MaterialCommunityIcons name="file-outline" size={40} color={theme.secondaryText} />
+                    <Text style={[styles.noAttachmentText, { color: theme.secondaryText }]}>{t('no_resolution_attachments')}</Text>
                   </View>
                 )}
               </View>
             </View>
 
-            {/* Show resolution status indicator */}
-            <View style={{ 
-              backgroundColor: theme.primary + '10', 
-              borderColor: theme.primary,
-              borderWidth: 1,
-              borderRadius: 12,
-              padding: 16,
-              marginHorizontal: 20,
-              marginTop: 16,
-              alignItems: 'center'
-            }}>
-              <MaterialIcons name="check-circle" size={24} color={theme.primary} />
-              <Text style={{ 
-                color: theme.primary, 
-                fontWeight: '600', 
-                fontSize: 16,
-                marginTop: 8 
-              }}>
-                {t('issue_resolved')}
-              </Text>
-            </View>
+            
           </View>
         )}
         {issue.status !== 'Completed' &&
@@ -982,14 +960,14 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 <Feather
                   name="paperclip"
                   size={20}
-                  color="#888"
+                  color={theme.secondaryText}
                   style={styles.inputIcon}
                   onPress={() => setShowAttachmentSheet(true)}
                 />
                 <MaterialCommunityIcons
                   name={isRecording ? 'microphone' : 'microphone-outline'}
                   size={20}
-                  color={isRecording ? '#E53935' : '#888'}
+                  color={isRecording ? '#E53935' : theme.secondaryText}
                   style={styles.inputIcon}
                   onPress={isRecording ? stopRecording : startRecording}
                 />
@@ -1015,7 +993,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                               justifyContent: 'flex-start',
                               padding: 8,
                               borderWidth: 1,
-                              borderColor: '#ccc',
+                              borderColor: theme.border,
                               borderRadius: 10,
                               backgroundColor: theme.card,
                               marginRight: colIdx === 0 ? 12 : 0,
@@ -1485,18 +1463,18 @@ const styles = StyleSheet.create({
   issueDetailsTitle: {
     fontWeight: '500',
     fontSize: 16,
-    color: '#222',
+    // color moved to inline style for theme responsiveness
   },
   viewDetailsBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#E0E7FF',
+    // backgroundColor moved to inline style for theme responsiveness
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 8,
   },
   viewDetailsBtnText: {
-    color: '#2563EB',
+    // color moved to inline style for theme responsiveness
     fontWeight: '400',
     fontSize: 14,
     marginLeft: 6,
@@ -1516,7 +1494,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     paddingVertical: 0,
     paddingRight: 8,
-    color: '#222',
+    // color moved to inline style for theme responsiveness
   },
   inputIcon: {
     marginLeft: 8,
@@ -1533,9 +1511,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     padding: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
+    // borderColor and backgroundColor moved to inline style for theme responsiveness
     borderRadius: 10,
-    backgroundColor: '#F9FAFB',
     marginRight: 12,
   },
   attachmentImage: {
@@ -1543,10 +1520,10 @@ const styles = StyleSheet.create({
     height: 25,
     borderRadius: 6,
     marginRight: 8,
-    backgroundColor: '#eee',
+    // backgroundColor moved to inline style for theme responsiveness
   },
   attachmentFileName: {
-    color: '#444',
+    // color moved to inline style for theme responsiveness
     fontSize: 13,
     flex: 1,
   },
@@ -1554,7 +1531,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   bannerDesc: {
-    color: '#e6eaf3',
+    // color moved to inline style for theme responsiveness
     fontSize: 14,
     fontWeight: '400',
     maxWidth: '80%',
@@ -1621,13 +1598,13 @@ const styles = StyleSheet.create({
   },
   noAttachmentText: {
     fontSize: 16,
-    color: '#888',
+    // color moved to inline style for theme responsiveness
     marginTop: 8,
     marginBottom: 4,
   },
   tapToAddText: {
     fontSize: 12,
-    color: '#aaa',
+    // color moved to inline style for theme responsiveness
     textAlign: 'center',
     marginTop: 4,
   },
@@ -1657,7 +1634,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 6,
-    backgroundColor: '#f5f5f5',
+    // backgroundColor moved to inline style for theme responsiveness
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
