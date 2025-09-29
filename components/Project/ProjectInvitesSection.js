@@ -1,4 +1,4 @@
-import { Feather, MaterialIcons } from '@expo/vector-icons';
+import { Feather } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -157,7 +157,7 @@ export default function ProjectInvitesSection({ theme, onInviteResponse }) {
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <TouchableOpacity 
-        style={styles.sectionRow}
+        style={[styles.sectionRow, { borderColor: theme.border + '80', backgroundColor: theme.card }]}
         onPress={() => setExpanded(!expanded)}
         activeOpacity={0.7}
       >
@@ -204,7 +204,9 @@ const styles = StyleSheet.create({
     marginTop: 0,
     marginBottom: 0,
     justifyContent: 'space-between',
-    paddingVertical: 0,
+    borderWidth:1,
+    padding:12,
+    borderRadius: 12,
   },
   sectionTitle: {
     fontSize: 16,
