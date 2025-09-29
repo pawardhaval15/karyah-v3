@@ -1,8 +1,10 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -13,14 +15,15 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import io from 'socket.io-client';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
+import { API_URL } from '../utils/config';
 import {
   checkUserDiscussionRestrictions,
   getMessagesByProject,
-  postMessage,
   reactToMessage,
-  togglePinMessage,
+  togglePinMessage
 } from '../utils/discussion';
 
 export default function ProjectDiscussionScreen({ route, navigation }) {
@@ -42,16 +45,365 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
   const [refreshing, setRefreshing] = useState(false);
   const inputRef = useRef(null);
   const scrollViewRef = useRef(null);
+  const [showMentions, setShowMentions] = useState(false);
+  const [mentionSearch, setMentionSearch] = useState('');
+  const [cursorPosition, setCursorPosition] = useState(0);
+  const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+  const [mentionMap, setMentionMap] = useState({});
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [projectUsers, setProjectUsers] = useState([]);
+  const [socket, setSocket] = useState(null);
+  const [isConnected, setIsConnected] = useState(false);
+  
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchMessages();
     setRefreshing(false);
   };
 
+  // Emoji categories
+  const emojiCategories = {
+    'Smileys': ['😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊', '😇', '🥰', '😍', '🤩', '😘', '😗', '☺️', '😚', '😶', '😐', '😑', '😋', '😛', '😝', '😜', '🤪', '🤨', '🧐', '🤓', '😎', '🤩', '🥳'],
+    'Gestures': ['👍', '👎', '👌', '🤞', '✌️', '🤟', '🤘', '👈', '👉', '👆', '🖕', '👇', '☝️', '👋', '🤚', '🖐️', '✋', '🖖', '👏', '🙌', '🤲', '🤝', '🙏'],
+    'Hearts': ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕', '💞', '💓', '💗', '💖', '💘', '💝'],
+    'Work': ['💼', '📊', '📈', '📉', '📋', '📌', '📍', '🎯', '✅', '❌', '⚠️', '🔥', '💡', '🚀', '⭐', '🏆']
+  };
+
+  // Close mentions dropdown
+  const closeMentions = () => {
+    setShowMentions(false);
+    setMentionStartIndex(-1);
+    setMentionSearch('');
+  };
+
+  // Get mentionable users from project
+  const getMentionableUsers = () => {
+    return projectUsers.map(user => ({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role
+    }));
+  };
+
+  // Handle text input changes and detect mentions
+  const handleMessageChange = (text) => {
+    setNewMessage(text);
+    
+    // Check for @ mentions from the current cursor position
+    const currentCursor = cursorPosition || text.length;
+    const atIndex = text.lastIndexOf('@', currentCursor);
+    
+    console.log('Text changed:', text, 'Cursor:', currentCursor, 'AtIndex:', atIndex);
+    
+    if (atIndex !== -1 && (atIndex === 0 || text[atIndex - 1] === ' ')) {
+      const afterAt = text.slice(atIndex + 1, currentCursor);
+      console.log('After @:', afterAt);
+      
+      if (!afterAt.includes(' ') && afterAt.length >= 0) {
+        setMentionStartIndex(atIndex);
+        setMentionSearch(afterAt);
+        setShowMentions(true);
+        console.log('Showing mentions for:', afterAt);
+      } else {
+        closeMentions();
+      }
+    } else {
+      closeMentions();
+    }
+  };
+
+  // Handle cursor position changes
+  const handleSelectionChange = (event) => {
+    const newCursorPos = event.nativeEvent.selection.start;
+    console.log('Cursor position changed to:', newCursorPos);
+    setCursorPosition(newCursorPos);
+    
+    // Re-check mentions when cursor moves
+    if (newMessage.includes('@')) {
+      const atIndex = newMessage.lastIndexOf('@', newCursorPos);
+      if (atIndex !== -1 && (atIndex === 0 || newMessage[atIndex - 1] === ' ')) {
+        const afterAt = newMessage.slice(atIndex + 1, newCursorPos);
+        if (!afterAt.includes(' ') && afterAt.length >= 0) {
+          setMentionStartIndex(atIndex);
+          setMentionSearch(afterAt);
+          setShowMentions(true);
+        } else {
+          closeMentions();
+        }
+      } else {
+        closeMentions();
+      }
+    }
+  };
+
+  // Filter users based on mention search
+  const getFilteredMentionUsers = () => {
+    const users = getMentionableUsers();
+    console.log('Available mentionable users:', users);
+    console.log('Mention search term:', mentionSearch);
+    
+    if (!mentionSearch) return users;
+    const filtered = users.filter(user => 
+      user.name.toLowerCase().includes(mentionSearch.toLowerCase())
+    );
+    console.log('Filtered users:', filtered);
+    return filtered;
+  };
+
+  // Handle mention selection
+  const handleMentionSelect = (user) => {
+    const beforeMention = newMessage.slice(0, mentionStartIndex);
+    const afterMention = newMessage.slice(cursorPosition);
+    const mentionText = `@${user.name}`;
+    
+    const newText = beforeMention + mentionText + ' ' + afterMention;
+    setNewMessage(newText);
+    
+    // Update mention map
+    setMentionMap(prev => ({
+      ...prev,
+      [user.name]: user.id
+    }));
+    
+    closeMentions();
+    
+    // Focus input and set cursor position
+    setTimeout(() => {
+      if (inputRef.current) {
+        const newCursorPos = beforeMention.length + mentionText.length + 1;
+        inputRef.current.focus();
+        setCursorPosition(newCursorPos);
+      }
+    }, 100);
+  };
+
+  // Handle emoji selection
+  const handleEmojiSelect = (emoji) => {
+    const beforeCursor = newMessage.slice(0, cursorPosition);
+    const afterCursor = newMessage.slice(cursorPosition);
+    const newText = beforeCursor + emoji + afterCursor;
+    
+    setNewMessage(newText);
+    setShowEmojiPicker(false);
+    
+    // Focus input and set cursor position
+    setTimeout(() => {
+      if (inputRef.current) {
+        const newCursorPos = cursorPosition + emoji.length;
+        inputRef.current.focus();
+        setCursorPosition(newCursorPos);
+      }
+    }, 100);
+  };
+
+  // Extract mentions from text
+  const extractMentions = (text) => {
+    // Updated regex to match both names with spaces and numbers (user IDs): @[Name with spaces or numbers]
+    const mentionRegex = /@([A-Za-z0-9\s]+?)(?=\s|$|[^\w\s])/g;
+    const mentions = [];
+    let match;
+    
+    while ((match = mentionRegex.exec(text)) !== null) {
+      const mentionText = match[1].trim();
+      
+      // First try to find by name in mentionMap
+      let userId = mentionMap[mentionText];
+      let userName = mentionText;
+      
+      // If not found by name, check if it's a user ID or username that matches any project user
+      if (!userId) {
+        // Check if it's a numeric user ID
+        if (/^\d+$/.test(mentionText)) {
+          const userById = projectUsers.find(user => user.id.toString() === mentionText);
+          if (userById) {
+            userId = userById.id;
+            userName = userById.name;
+          }
+        } else {
+          // It's a username, find by name
+          const userByName = projectUsers.find(user => 
+            user.name.toLowerCase() === mentionText.toLowerCase()
+          );
+          if (userByName) {
+            userId = userByName.id;
+            userName = userByName.name;
+          }
+        }
+      }
+      
+      if (userId) {
+        mentions.push({
+          userId,
+          name: userName,
+          startIndex: match.index,
+          endIndex: match.index + match[0].length
+        });
+      }
+    }
+    
+    return mentions;
+  };
+
   useEffect(() => {
     fetchCurrentUser();
     checkUserRestrictions();
+    fetchProjectUsers();
+    initializeSocket();
+    
+    // Cleanup socket on unmount
+    return () => {
+      if (socket) {
+        socket.emit('leaveProject', projectId);
+        socket.disconnect();
+      }
+    };
   }, [projectId]);
+
+  // Initialize Socket.IO connection
+  const initializeSocket = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        console.log('No token found for socket connection');
+        return;
+      }
+
+      // Create socket connection with auth
+      const socketInstance = io(API_URL.replace('/api/', '').replace('api/', ''), {
+        auth: {
+          token: token
+        },
+        transports: ['websocket', 'polling']
+      });
+
+      socketInstance.on('connect', () => {
+        console.log('✅ Socket connected:', socketInstance.id);
+        setIsConnected(true);
+        
+        // Join project room for real-time updates
+        socketInstance.emit('joinProject', projectId);
+        console.log(`Joined project room: ${projectId}`);
+      });
+
+      socketInstance.on('disconnect', () => {
+        console.log('❌ Socket disconnected');
+        setIsConnected(false);
+      });
+
+      socketInstance.on('connect_error', (error) => {
+        console.error('Socket connection error:', error);
+        setIsConnected(false);
+      });
+
+      // Listen for new messages
+      socketInstance.on('newMessage', (message) => {
+        console.log('📨 New message received:', message);
+        setMessages(prevMessages => {
+          // Check if message already exists to avoid duplicates
+          const messageExists = prevMessages.some(msg => msg.id === message.id);
+          if (messageExists) return prevMessages;
+          
+          // Add new message to the list
+          return [...prevMessages, message];
+        });
+        
+        // Auto scroll to bottom when new message arrives
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+      });
+
+      // Listen for message reactions
+      socketInstance.on('messageReaction', (data) => {
+        console.log('👍 Message reaction received:', data);
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === data.messageId
+              ? { ...msg, reactions: data.reactions }
+              : msg
+          )
+        );
+      });
+
+      // Listen for message pin/unpin updates
+      socketInstance.on('messagePinned', (data) => {
+        console.log('📌 Message pin update received:', data);
+        setMessages(prevMessages =>
+          prevMessages.map(msg =>
+            msg.id === data.messageId
+              ? { ...msg, isPinned: data.isPinned, pinned: data.isPinned }
+              : msg
+          )
+        );
+      });
+
+      setSocket(socketInstance);
+    } catch (error) {
+      console.error('Failed to initialize socket:', error);
+    }
+  };
+
+  const fetchProjectUsers = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        console.log('No token found for fetching project users');
+        return;
+      }
+
+      console.log('Fetching project details for projectId:', projectId);
+      
+      // Get project details which includes owner and co-admins
+      const projectResponse = await fetch(`${API_URL}api/projects/${projectId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!projectResponse.ok) {
+        console.error('Failed to fetch project details:', projectResponse.status);
+        return;
+      }
+
+      const projectData = await projectResponse.json();
+      console.log('Project data:', projectData);
+      
+      const users = [];
+      
+      // Add project owner/creator
+      if (projectData.project) {
+        users.push({
+          id: projectData.project.creatorId || projectData.project.userId,
+          name: projectData.project.creatorName,
+          email: projectData.project.creatorEmail,
+          role: 'owner'
+        });
+      }
+
+      // Add co-admins from project data
+      if (projectData.project?.coAdmins && Array.isArray(projectData.project.coAdmins)) {
+        projectData.project.coAdmins.forEach(coAdmin => {
+          // Avoid duplicate owner
+          if (coAdmin.userId !== projectData.project.creatorId) {
+            users.push({
+              id: coAdmin.userId || coAdmin.id,
+              name: coAdmin.name,
+              email: coAdmin.email,
+              role: 'co-admin'
+            });
+          }
+        });
+      }
+
+      console.log('Final users list:', users);
+      console.log('User IDs in project:', users.map(u => ({ id: u.id, name: u.name })));
+      setProjectUsers(users);
+    } catch (error) {
+      console.error('Error fetching project users:', error);
+    }
+  };
 
   useEffect(() => {
     if (userPermissions.canView) {
@@ -122,42 +474,84 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     }
   };
 
-  const handleSendMessage = async () => {
+    const handleSendMessage = async () => {
+    console.log('Send message called. Message:', newMessage.trim(), 'Sending:', sending, 'CanReply:', userPermissions.canReply);
+    
     if (!newMessage.trim() || sending || !userPermissions.canReply) return;
 
     try {
       setSending(true);
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token retrieved:', !!token);
+      
+      // Extract mentions from the message
+      const mentions = extractMentions(newMessage);
+      console.log('Extracted mentions:', mentions);
+      
       const messageData = {
         content: newMessage.trim(),
-        type: 'text',
-        replyToId: replyingTo?.id || null, // send replyToId
+        senderId: currentUserId,
+        projectId,
+        replyToId: replyingTo?.id || null,
+        mentions: mentions.map(mention => ({
+          userId: mention.userId,
+          name: mention.name
+        }))
       };
 
-      const response = await postMessage(projectId, messageData);
-      // Backend returns the message directly, but we need to add user info for immediate display
-      const messageWithUserInfo = {
-        ...response,
-        User: {
-          name: 'You', // Since it's the current user's message
-          userId: currentUserId,
+      console.log('Sending message data:', messageData);
+      console.log('API URL:', `${API_URL}api/discussions/${projectId}`);
+
+      const response = await fetch(`${API_URL}api/discussions/${projectId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         },
-      };
+        body: JSON.stringify(messageData)
+      });
 
-      setMessages((prev) => [...prev, messageWithUserInfo]);
-      setNewMessage('');
-      setReplyingTo(null);
+      console.log('Response status:', response.status);
+      const responseText = await response.text();
+      console.log('Response text:', responseText);
 
-      // Scroll to bottom to show the new message
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 100);
-    } catch (error) {
-      console.error('Failed to send message:', error);
-      if (error.message.includes('access restricted')) {
-        Alert.alert('Access Restricted', 'You do not have permission to send messages in this discussion.');
+      if (response.ok) {
+        const messageResponse = JSON.parse(responseText);
+        console.log('Message sent successfully:', messageResponse);
+        
+        // Emit socket event for real-time updates to other users
+        if (socket && isConnected) {
+          socket.emit('sendMessage', {
+            projectId,
+            message: messageResponse.message || messageResponse,
+            senderId: currentUserId
+          });
+        }
+        
+        setNewMessage('');
+        setReplyingTo(null);
+        setMentionMap({});
+        closeMentions();
+        
+        // Add message to local state immediately for better UX
+        if (messageResponse.message || messageResponse) {
+          const newMsg = messageResponse.message || messageResponse;
+          setMessages(prevMessages => [...prevMessages, newMsg]);
+        } else {
+          // Fallback: fetch messages if response structure is different
+          await fetchMessages();
+        }
+        
+        // Scroll to bottom after sending
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
       } else {
-        Alert.alert('Error', 'Failed to send message. Please try again.');
+        throw new Error(`Failed to send message: ${response.status} - ${responseText}`);
       }
+    } catch (error) {
+      console.error('Error sending message:', error);
+      Alert.alert('Error', 'Failed to send message. Please try again.');
     } finally {
       setSending(false);
     }
@@ -181,6 +575,16 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
         userId: currentUserId,
       };
       const response = await reactToMessage(messageId, reactionData);
+
+      // Emit socket event for real-time reaction updates
+      if (socket && isConnected) {
+        socket.emit('messageReaction', {
+          projectId,
+          messageId,
+          reactions: response.reactions,
+          userId: currentUserId
+        });
+      }
 
       // Update local messages with new reaction data
       setMessages((prev) =>
@@ -222,6 +626,16 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
       const response = await togglePinMessage(messageId, requestData);
 
+      // Emit socket event for real-time pin updates
+      if (socket && isConnected) {
+        socket.emit('messagePinned', {
+          projectId,
+          messageId,
+          isPinned: response.pinned || newPinStatus,
+          userId: currentUserId
+        });
+      }
+
       // Update local messages with new pin status
       setMessages((prev) =>
         prev.map((msg) =>
@@ -248,20 +662,122 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
   const formatMessageTime = (timestamp) => {
     const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format date for date separators
+  const formatDateSeparator = (timestamp) => {
+    const date = new Date(timestamp);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today.getTime() - 24 * 60 * 60 * 1000);
     const messageDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
     if (messageDate.getTime() === today.getTime()) {
-      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return 'Today';
+    } else if (messageDate.getTime() === yesterday.getTime()) {
+      return 'Yesterday';
     } else {
-      return date.toLocaleString([], {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+      return date.toLocaleDateString([], { 
+        day: 'numeric', 
+        month: 'short', 
+        year: 'numeric' 
       });
     }
+  };
+
+  // Check if we need to show date separator
+  const shouldShowDateSeparator = (currentMessage, prevMessage) => {
+    if (!prevMessage) return true; // Always show for first message
+    
+    const currentDate = new Date(currentMessage.createdAt);
+    const prevDate = new Date(prevMessage.createdAt);
+    
+    const currentDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), currentDate.getDate());
+    const prevDay = new Date(prevDate.getFullYear(), prevDate.getMonth(), prevDate.getDate());
+    
+    return currentDay.getTime() !== prevDay.getTime();
+  };
+
+  // Render message text with highlighted mentions
+  const renderMessageText = (text, isOwnMessage) => {
+    // Updated regex to match both names with spaces and numbers (user IDs): @[Name with spaces or numbers]
+    const mentionRegex = /@([A-Za-z0-9\s]+?)(?=\s|$|[^\w\s])/g;
+    const parts = [];
+    let lastIndex = 0;
+    let match;
+
+    while ((match = mentionRegex.exec(text)) !== null) {
+      // Add text before mention
+      if (match.index > lastIndex) {
+        parts.push(
+          <Text key={`text-${lastIndex}`} style={{ color: isOwnMessage ? '#fff' : theme.text }}>
+            {text.slice(lastIndex, match.index)}
+          </Text>
+        );
+      }
+
+      // Find the correct display name for the mention
+      const mentionText = match[1].trim();
+      let displayName = mentionText;
+      
+      // First check if it's a numeric user ID
+      if (/^\d+$/.test(mentionText)) {
+        // It's a user ID, find the user by ID
+        const userById = projectUsers.find(user => user.id.toString() === mentionText);
+        if (userById) {
+          displayName = userById.name;
+        } else {
+          // User not found in current project users (might have been removed)
+          // Show "User" instead of the raw ID for better UX
+          displayName = `User ${mentionText}`;
+        }
+      } else {
+        // It's a username, find by exact name match
+        const userByName = projectUsers.find(user => 
+          user.name.toLowerCase() === mentionText.toLowerCase()
+        );
+        
+        if (userByName) {
+          displayName = userByName.name;
+        } else if (mentionMap[mentionText]) {
+          // Check mentionMap for mapped usernames
+          const mappedUser = projectUsers.find(user => user.id === mentionMap[mentionText]);
+          if (mappedUser) {
+            displayName = mappedUser.name;
+          }
+        }
+      }
+
+      // Add highlighted mention with proper display name
+      parts.push(
+        <Text
+          key={`mention-${match.index}`}
+          style={{
+            color: isOwnMessage ? '#FFE5B4' : theme.primary,
+            fontWeight: '600'
+          }}>
+          @{displayName}
+        </Text>
+      );
+
+      lastIndex = match.index + match[0].length;
+    }
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      parts.push(
+        <Text key={`text-${lastIndex}`} style={{ color: isOwnMessage ? '#fff' : theme.text }}>
+          {text.slice(lastIndex)}
+        </Text>
+      );
+    }
+
+    return parts.length > 0 ? parts : [
+      <Text key="full-text" style={{ color: isOwnMessage ? '#fff' : theme.text }}>
+        {text}
+      </Text>
+    ];
   };
 
   const renderMessage = (message, index) => {
@@ -363,7 +879,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
           )}
 
           <Text style={[styles.messageText, { color: isOwnMessage ? '#fff' : theme.text }]}> 
-            {message.content}
+            {renderMessageText(message.content, isOwnMessage)}
           </Text>
 
           {/* Always show time and actions for better UX */}
@@ -456,8 +972,17 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
           <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} /> 
         </TouchableOpacity>
         <View style={styles.headerContent}> 
-          <Text style={[styles.headerTitle, { color: theme.text }]}>Discussion</Text> 
-          <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>{projectName}</Text> 
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <Text style={[styles.headerTitle, { color: theme.text }]}>Discussion</Text>
+            {/* Connection Status Indicator */}
+            <View style={[
+              styles.connectionIndicator,
+              { backgroundColor: isConnected ? '#4CAF50' : '#F44336' }
+            ]} />
+          </View>
+          <Text style={[styles.headerSubtitle, { color: theme.secondaryText }]}>
+            {projectName} {isConnected ? '• Live' : '• Offline'}
+          </Text> 
         </View>
         <View style={{ flexDirection: 'row' }}>
           <TouchableOpacity style={styles.headerAction} onPress={handleRefresh}>
@@ -496,7 +1021,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                   style={[
                     styles.compactPinnedMessage,
                     {
-                      backgroundColor: theme.background,
+                      backgroundColor: theme.card,
                       borderColor: isSelected ? theme.primary : theme.border,
                       borderWidth: isSelected ? 2 : 1,
                       shadowColor: isSelected ? theme.primary : 'transparent',
@@ -600,8 +1125,29 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               </Text>
             </View>
           ) : (
-            // Show all messages in chronological order (old at top, new at bottom)
-            messages.map((message, index) => renderMessage(message, index))
+            // Show all messages in chronological order with date separators
+            messages.map((message, index) => {
+              const prevMessage = index > 0 ? messages[index - 1] : null;
+              const showDateSeparator = shouldShowDateSeparator(message, prevMessage);
+              
+              return (
+                <React.Fragment key={`message-group-${index}-${message.id}`}>
+                  {showDateSeparator && (
+                    <View style={styles.dateSeparatorContainer}>
+                      <View style={[styles.dateSeparator, { backgroundColor: theme.border }]} />
+                      <Text style={[styles.dateSeparatorText, { 
+                        backgroundColor: theme.background, 
+                        color: theme.secondaryText 
+                      }]}>
+                        {formatDateSeparator(message.createdAt)}
+                      </Text>
+                      <View style={[styles.dateSeparator, { backgroundColor: theme.border }]} />
+                    </View>
+                  )}
+                  {renderMessage(message, index)}
+                </React.Fragment>
+              );
+            })
           )}
         </ScrollView>
 
@@ -637,30 +1183,35 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               ]}>
               {userPermissions.canReply ? (
               <>
-                <TextInput
-                  ref={inputRef}
-                  style={[
-                    styles.textInput,
-                    {
-                      backgroundColor: theme.background,
-                      borderColor: theme.border,
-                      color: theme.text,
-                    },
-                  ]}
-                  placeholder={replyingTo ? `Reply to ${replyingTo.User?.name || 'message'}...` : "Type your message..."}
-                  placeholderTextColor={theme.secondaryText}
-                  value={newMessage}
-                  onChangeText={setNewMessage}
-                  multiline
-                  maxLength={1000}
-                  onSubmitEditing={() => {
-                    if (!newMessage.includes('\n')) {
-                      handleSendMessage();
-                    }
-                  }}
-                  blurOnSubmit={!newMessage.includes('\n')}
-                  returnKeyType="send"
-                />
+                <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1 }}>
+                  <TextInput
+                    ref={inputRef}
+                    style={[
+                      styles.textInput,
+                      {
+                        backgroundColor: theme.background,
+                        borderColor: theme.border,
+                        color: theme.text,
+                        flex: 1,
+                      },
+                    ]}
+                    placeholder={replyingTo ? `Reply to ${replyingTo.User?.name || 'message'}...` : "Type your message... (@ to mention)"}
+                    placeholderTextColor={theme.secondaryText}
+                    value={newMessage}
+                    onChangeText={handleMessageChange}
+                    onSelectionChange={handleSelectionChange}
+                    multiline
+                    maxLength={1000}
+                    onSubmitEditing={() => {
+                      if (!newMessage.includes('\n')) {
+                        handleSendMessage();
+                      }
+                    }}
+                    blurOnSubmit={!newMessage.includes('\n')}
+                    returnKeyType="send"
+                  />
+                </View>
+                
                 <TouchableOpacity
                   style={[
                     styles.sendButton,
@@ -691,6 +1242,86 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               </View>
             )}
             </View>
+
+            {/* Mention Dropdown */}
+            {showMentions && (
+              <View style={[
+                styles.mentionDropdown, 
+                { backgroundColor: theme.card, borderColor: theme.border }
+              ]}>
+                {getFilteredMentionUsers().length > 0 ? (
+                  <>
+                    <Text style={[styles.mentionHeader, { color: theme.text }]}>
+                      Available to mention ({getFilteredMentionUsers().length})
+                    </Text>
+                    <FlatList
+                      data={getFilteredMentionUsers()}
+                      keyExtractor={(item) => item.id.toString()}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          style={[styles.mentionItem, { borderBottomColor: theme.border }]}
+                          onPress={() => handleMentionSelect(item)}>
+                          <View style={styles.mentionUserInfo}>
+                            <View style={[
+                              styles.mentionAvatar,
+                              { backgroundColor: item.role === 'owner' ? '#FF6B6B' : item.role === 'co-admin' ? '#FFA726' : '#4ECDC4' }
+                            ]}>
+                              <Text style={styles.mentionAvatarText}>
+                                {item.name.charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <View style={styles.mentionTextContainer}>
+                              <Text style={[styles.mentionName, { color: theme.text }]}>
+                                {item.name}
+                              </Text>
+                              <Text style={[styles.mentionRole, { color: theme.secondaryText }]}>
+                                {item.role === 'owner' ? 'Project Owner' : item.role === 'co-admin' ? 'Co-Admin' : 'Collaborator'}
+                              </Text>
+                            </View>
+                            <Text style={[styles.mentionSymbol, { color: theme.secondaryText }]}>
+                              @
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    />
+                  </>
+                ) : (
+                  <Text style={[styles.noMentionsText, { color: theme.secondaryText }]}>
+                    No users found
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Emoji Picker */}
+            {showEmojiPicker && (
+              <View style={[
+                styles.emojiPickerContainer,
+                { backgroundColor: theme.card, borderColor: theme.border }
+              ]}>
+                <ScrollView style={{ maxHeight: 200 }}>
+                  {Object.entries(emojiCategories).map(([category, emojis]) => (
+                    <View key={category} style={{ marginBottom: 10 }}>
+                      <Text style={[styles.emojiCategoryTitle, { color: theme.text }]}>
+                        {category}
+                      </Text>
+                      <View style={styles.emojiGrid}>
+                        {emojis.map((emoji, index) => (
+                          <TouchableOpacity
+                            key={index}
+                            style={styles.emojiButton}
+                            onPress={() => handleEmojiSelect(emoji)}>
+                            <Text style={styles.emoji}>{emoji}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
           </>
         )}
       </KeyboardAvoidingView>
@@ -725,6 +1356,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginTop: 2,
   },
+  connectionIndicator: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
   headerAction: {
     padding: 4,
   },
@@ -736,7 +1373,25 @@ const styles = StyleSheet.create({
   },
   messagesContent: {
     padding: 12,
-    paddingBottom: 100,
+    paddingBottom: 20,
+  },
+  dateSeparatorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+    marginHorizontal: 20,
+  },
+  dateSeparator: {
+    flex: 1,
+    height: 1,
+  },
+  dateSeparatorText: {
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    fontSize: 12,
+    fontWeight: '500',
+    textAlign: 'center',
+    borderRadius: 12,
   },
   loadingContainer: {
     flex: 1,
@@ -985,5 +1640,106 @@ const styles = StyleSheet.create({
     fontSize: 14,
     marginLeft: 8,
     fontStyle: 'italic',
+  },
+  mentionDropdown: {
+    position: 'absolute',
+    bottom: 65,
+    left: 12,
+    right: 12,
+    maxHeight: 200,
+    borderWidth: 1,
+    borderRadius: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    paddingVertical: 8,
+  },
+  mentionHeader: {
+    fontSize: 12,
+    fontWeight: '600',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  mentionItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 0.5,
+  },
+  mentionUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  mentionAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  mentionAvatarText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  mentionTextContainer: {
+    flex: 1,
+  },
+  mentionName: {
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 18,
+  },
+  mentionRole: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  mentionSymbol: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  noMentionsText: {
+    textAlign: 'center',
+    padding: 16,
+    fontSize: 14,
+    fontStyle: 'italic',
+  },
+  emojiPickerContainer: {
+    position: 'absolute',
+    bottom: 65,
+    left: 12,
+    right: 12,
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  },
+  emojiCategoryTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emojiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  emojiButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  emoji: {
+    fontSize: 24,
   },
 });

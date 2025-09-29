@@ -68,6 +68,7 @@
     "react-native-svg-circular-progress": "^1.0.4",
     "react-native-toast-message": "^2.3.3",
     "react-native-vector-icons": "^10.2.0",
+    "socket.io-client": "^4.8.1",
     "victory-native": "^41.19.3"
   },
   "devDependencies": {
