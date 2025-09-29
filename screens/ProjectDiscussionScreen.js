@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Image,
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
@@ -16,6 +17,7 @@ import {
   View
 } from 'react-native';
 import io from 'socket.io-client';
+import useAttachmentPicker from '../components/popups/useAttachmentPicker';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { API_URL } from '../utils/config';
@@ -54,6 +56,19 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
   const [projectUsers, setProjectUsers] = useState([]);
   const [socket, setSocket] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [showAttachmentOptions, setShowAttachmentOptions] = useState(false);
+  
+  // Attachment picker hook
+  const {
+    attachments,
+    pickAttachment,
+    clearAttachments,
+    removeAttachment,
+    attaching,
+    getFormattedSize,
+    getFileType,
+    getFileIcon
+  } = useAttachmentPicker();
   
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -74,6 +89,11 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     setShowMentions(false);
     setMentionStartIndex(-1);
     setMentionSearch('');
+  };
+
+  // Close attachment options
+  const closeAttachmentOptions = () => {
+    setShowAttachmentOptions(false);
   };
 
   // Get mentionable users from project
@@ -477,7 +497,12 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
     const handleSendMessage = async () => {
     console.log('Send message called. Message:', newMessage.trim(), 'Sending:', sending, 'CanReply:', userPermissions.canReply);
     
-    if (!newMessage.trim() || sending || !userPermissions.canReply) return;
+    if ((!newMessage.trim() && attachments.length === 0) || sending || !userPermissions.canReply) return;
+
+    if (!currentUserId) {
+      Alert.alert('Error', 'User not authenticated. Please try logging in again.');
+      return;
+    }
 
     try {
       setSending(true);
@@ -488,28 +513,79 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       const mentions = extractMentions(newMessage);
       console.log('Extracted mentions:', mentions);
       
-      const messageData = {
-        content: newMessage.trim(),
-        senderId: currentUserId,
-        projectId,
-        replyToId: replyingTo?.id || null,
-        mentions: mentions.map(mention => ({
+      let response;
+      
+      if (attachments.length > 0) {
+        // Send with attachments using FormData
+        const formData = new FormData();
+        
+        // If there's no text content but there are attachments, send a space character
+        const messageContent = newMessage.trim() || ' ';
+        formData.append('content', messageContent);
+        formData.append('senderId', currentUserId.toString());
+        formData.append('projectId', projectId.toString());
+        
+        console.log('FormData values:', {
+          content: messageContent,
+          senderId: currentUserId,
+          projectId: projectId,
+          attachmentCount: attachments.length
+        });
+        
+        if (replyingTo?.id) {
+          formData.append('replyToId', replyingTo.id.toString());
+        }
+        formData.append('mentions', JSON.stringify(mentions.map(mention => ({
           userId: mention.userId,
           name: mention.name
-        }))
-      };
+        }))));
 
-      console.log('Sending message data:', messageData);
-      console.log('API URL:', `${API_URL}api/discussions/${projectId}`);
+        // Add attachments to FormData
+        attachments.forEach((attachment, index) => {
+          const fileObject = {
+            uri: attachment.uri,
+            type: attachment.type,
+            name: attachment.name,
+          };
+          formData.append('attachments', fileObject);
+        });
 
-      const response = await fetch(`${API_URL}api/discussions/${projectId}`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(messageData)
-      });
+        console.log('Sending message with attachments. Attachment count:', attachments.length);
+        console.log('API URL:', `${API_URL}api/discussions/${projectId}`);
+
+        response = await fetch(`${API_URL}api/discussions/${projectId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            // Don't set Content-Type for FormData - let the browser set it with boundary
+          },
+          body: formData
+        });
+      } else {
+        // Send without attachments using JSON
+        const messageData = {
+          content: newMessage.trim(),
+          senderId: currentUserId,
+          projectId,
+          replyToId: replyingTo?.id || null,
+          mentions: mentions.map(mention => ({
+            userId: mention.userId,
+            name: mention.name
+          }))
+        };
+
+        console.log('Sending message data (JSON):', messageData);
+        console.log('API URL:', `${API_URL}api/discussions/${projectId}`);
+
+        response = await fetch(`${API_URL}api/discussions/${projectId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(messageData)
+        });
+      }
 
       console.log('Response status:', response.status);
       const responseText = await response.text();
@@ -532,6 +608,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
         setReplyingTo(null);
         setMentionMap({});
         closeMentions();
+        clearAttachments(); // Clear attachments after successful send
         
         // Add message to local state immediately for better UX
         if (messageResponse.message || messageResponse) {
@@ -1082,6 +1159,14 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
             // Scroll to bottom to see latest messages
             scrollViewRef.current?.scrollToEnd({ animated: false });
           }}
+          onTouchStart={() => {
+            if (showAttachmentOptions) {
+              setShowAttachmentOptions(false);
+            }
+            if (showEmojiPicker) {
+              setShowEmojiPicker(false);
+            }
+          }}
           refreshControl={
             <RefreshControl
               refreshing={refreshing}
@@ -1176,6 +1261,46 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               </View>
             )}
 
+            {/* Attachment Preview */}
+            {attachments.length > 0 && (
+              <View style={[styles.attachmentPreviewContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+                <View style={styles.attachmentPreviewHeader}>
+                  <Text style={[styles.attachmentPreviewTitle, { color: theme.text }]}>
+                    {attachments.length} attachment{attachments.length > 1 ? 's' : ''}
+                  </Text>
+                  <TouchableOpacity onPress={clearAttachments} style={styles.clearAttachmentsButton}>
+                    <Text style={[styles.clearAttachmentsText, { color: theme.primary }]}>Clear All</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.attachmentsList}>
+                  {attachments.map((attachment, index) => (
+                    <View key={index} style={[styles.attachmentItem, { backgroundColor: theme.background, borderColor: theme.border }]}>
+                      {getFileType(attachment) === 'image' ? (
+                        <Image source={{ uri: attachment.uri }} style={styles.attachmentImage} />
+                      ) : (
+                        <View style={[styles.attachmentFileIcon, { backgroundColor: theme.primary }]}>
+                          <Feather name={getFileIcon(attachment)} size={20} color="#fff" />
+                        </View>
+                      )}
+                      <View style={styles.attachmentInfo}>
+                        <Text style={[styles.attachmentName, { color: theme.text }]} numberOfLines={1}>
+                          {attachment.name}
+                        </Text>
+                        <Text style={[styles.attachmentSize, { color: theme.secondaryText }]}>
+                          {getFormattedSize(attachment.size)}
+                        </Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => removeAttachment(index)}
+                        style={[styles.removeAttachmentButton, { backgroundColor: 'rgba(244, 67, 54, 0.1)' }]}>
+                        <MaterialIcons name="close" size={16} color="#F44336" />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+
             <View
               style={[
                 styles.inputContainer,
@@ -1184,6 +1309,18 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
               {userPermissions.canReply ? (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'flex-end', flex: 1 }}>
+                  {/* Attachment Button */}
+                  <TouchableOpacity 
+                    onPress={() => setShowAttachmentOptions(!showAttachmentOptions)}
+                    style={[styles.attachmentButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+                    disabled={attaching}>
+                    {attaching ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <MaterialIcons name="attach-file" size={20} color={theme.primary} />
+                    )}
+                  </TouchableOpacity>
+                  
                   <TextInput
                     ref={inputRef}
                     style={[
@@ -1195,7 +1332,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                         flex: 1,
                       },
                     ]}
-                    placeholder={replyingTo ? `Reply to ${replyingTo.User?.name || 'message'}...` : "Type your message... (@ to mention)"}
+                    placeholder={replyingTo ? `Reply to ${replyingTo.User?.name || 'message'}...` : "Type your message..."}
                     placeholderTextColor={theme.secondaryText}
                     value={newMessage}
                     onChangeText={handleMessageChange}
@@ -1217,11 +1354,11 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                     styles.sendButton,
                     {
                       backgroundColor: theme.primary,
-                      opacity: newMessage.trim() && !sending ? 1 : 0.5,
+                      opacity: (newMessage.trim() || attachments.length > 0) && !sending ? 1 : 0.5,
                     },
                   ]}
                   onPress={handleSendMessage}
-                  disabled={!newMessage.trim() || sending}>
+                  disabled={(!newMessage.trim() && attachments.length === 0) || sending}>
                   {sending ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
@@ -1319,6 +1456,54 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
                     </View>
                   ))}
                 </ScrollView>
+              </View>
+            )}
+
+            {/* Attachment Options Dropdown */}
+            {showAttachmentOptions && (
+              <View style={[
+                styles.attachmentOptionsContainer,
+                { backgroundColor: theme.card, borderColor: theme.border }
+              ]}>
+                <TouchableOpacity
+                  style={[styles.attachmentOption, { borderBottomColor: theme.border }]}
+                  onPress={async () => {
+                    setShowAttachmentOptions(false);
+                    await pickAttachment('camera');
+                  }}>
+                  <MaterialIcons name="camera-alt" size={24} color={theme.primary} />
+                  <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Camera</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.attachmentOption, { borderBottomColor: theme.border }]}
+                  onPress={async () => {
+                    setShowAttachmentOptions(false);
+                    await pickAttachment('photo');
+                  }}>
+                  <MaterialIcons name="photo" size={24} color={theme.primary} />
+                  <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Gallery</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.attachmentOption, { borderBottomColor: theme.border }]}
+                  onPress={async () => {
+                    setShowAttachmentOptions(false);
+                    await pickAttachment('video');
+                  }}>
+                  <MaterialIcons name="videocam" size={24} color={theme.primary} />
+                  <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Video</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.attachmentOption}
+                  onPress={async () => {
+                    setShowAttachmentOptions(false);
+                    await pickAttachment('document');
+                  }}>
+                  <MaterialIcons name="description" size={24} color={theme.primary} />
+                  <Text style={[styles.attachmentOptionText, { color: theme.text }]}>Document</Text>
+                </TouchableOpacity>
               </View>
             )}
 
@@ -1741,5 +1926,109 @@ const styles = StyleSheet.create({
   },
   emoji: {
     fontSize: 24,
+  },
+  // Attachment styles
+  attachmentPreviewContainer: {
+    borderTopWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  attachmentPreviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  attachmentPreviewTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  clearAttachmentsButton: {
+    padding: 4,
+  },
+  clearAttachmentsText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  attachmentsList: {
+    flexDirection: 'row',
+  },
+  attachmentItem: {
+    width: 120,
+    borderRadius: 8,
+    borderWidth: 1,
+    padding: 8,
+    marginRight: 8,
+    position: 'relative',
+  },
+  attachmentImage: {
+    width: '100%',
+    height: 60,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  attachmentFileIcon: {
+    width: '100%',
+    height: 60,
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  attachmentInfo: {
+    flex: 1,
+  },
+  attachmentName: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  attachmentSize: {
+    fontSize: 10,
+  },
+  removeAttachmentButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  attachmentButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  attachmentOptionsContainer: {
+    position: 'absolute',
+    bottom: 65,
+    left: 12,
+    width: 180,
+    borderWidth: 1,
+    borderRadius: 8,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    paddingVertical: 8,
+  },
+  attachmentOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  attachmentOptionText: {
+    fontSize: 16,
+    marginLeft: 12,
+    fontWeight: '500',
   },
 });

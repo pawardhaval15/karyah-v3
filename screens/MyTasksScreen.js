@@ -185,12 +185,10 @@ export default function MyTasksScreen({ navigation }) {
     const nameMatch = (task.name || task.taskName || '')
       .toLowerCase()
       .includes(search.toLowerCase());
-    
+
     // Search in task description
-    const descMatch = (task.description || '')
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    
+    const descMatch = (task.description || '').toLowerCase().includes(search.toLowerCase());
+
     // Search in project name
     const projectMatch = (
       task.projectName ||
@@ -199,17 +197,21 @@ export default function MyTasksScreen({ navigation }) {
       task.projectTitle ||
       (typeof task.project === 'string' ? task.project : '') ||
       ''
-    ).toLowerCase().includes(search.toLowerCase());
-    
+    )
+      .toLowerCase()
+      .includes(search.toLowerCase());
+
     // Search in tags
-    const tagsMatch = task.tags && Array.isArray(task.tags) && 
-      task.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
-    
+    const tagsMatch =
+      task.tags &&
+      Array.isArray(task.tags) &&
+      task.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()));
+
     // Search in location
     const locationMatch = ((task.project && task.project.location) || '')
       .toLowerCase()
       .includes(search.toLowerCase());
-    
+
     // Combine all search matches
     const searchMatch = nameMatch || descMatch || projectMatch || tagsMatch || locationMatch;
 
@@ -239,10 +241,10 @@ export default function MyTasksScreen({ navigation }) {
       filters.projects.length === 0 ||
       filters.projects.includes(
         task.projectName ||
-        (task.project && task.project.projectName) ||
-        (task.project && task.project.name) ||
-        task.projectTitle ||
-        (typeof task.project === 'string' ? task.project : null)
+          (task.project && task.project.projectName) ||
+          (task.project && task.project.name) ||
+          task.projectTitle ||
+          (typeof task.project === 'string' ? task.project : null)
       );
 
     // Assigned to filter
@@ -264,19 +266,26 @@ export default function MyTasksScreen({ navigation }) {
         }
       }
     }
-    
+
     const locationFilterMatch =
       filters.locations.length === 0 ||
       filters.locations.includes((task.project && task.project.location) || '');
 
     // Tags filter
-    const tagsFilterMatch = 
+    const tagsFilterMatch =
       filters.tags.length === 0 ||
-      (task.tags && Array.isArray(task.tags) && 
-       filters.tags.some(filterTag => task.tags.includes(filterTag)));
+      (task.tags &&
+        Array.isArray(task.tags) &&
+        filters.tags.some((filterTag) => task.tags.includes(filterTag)));
 
     return (
-      searchMatch && statusMatch && progressMatch && projectFilterMatch && assignedMatch && locationFilterMatch && tagsFilterMatch
+      searchMatch &&
+      statusMatch &&
+      progressMatch &&
+      projectFilterMatch &&
+      assignedMatch &&
+      locationFilterMatch &&
+      tagsFilterMatch
     );
   });
 
@@ -384,37 +393,37 @@ export default function MyTasksScreen({ navigation }) {
   const handleSaveTags = async (taskId, newTags) => {
     try {
       console.log('🏷️ Saving tags:', { taskId, newTags });
-      
+
       // Get current task to see existing tags
-      const currentTask = tasks.find(task => task.id === taskId || task.taskId === taskId);
+      const currentTask = tasks.find((task) => task.id === taskId || task.taskId === taskId);
       const currentTags = currentTask?.tags || [];
-      
+
       console.log('🏷️ Current tags:', currentTags);
       console.log('🏷️ New tags:', newTags);
-      
+
       // Clean newTags to remove any empty strings or invalid tags
-      const cleanedTags = newTags.filter(tag => tag && typeof tag === 'string' && tag.trim().length > 0);
+      const cleanedTags = newTags.filter(
+        (tag) => tag && typeof tag === 'string' && tag.trim().length > 0
+      );
       console.log('🏷️ Cleaned tags:', cleanedTags);
-      
+
       // If tags are the same, no need to update
       if (JSON.stringify(currentTags.sort()) === JSON.stringify(cleanedTags.sort())) {
         console.log('🏷️ Tags unchanged, skipping update');
         return Promise.resolve();
       }
-      
+
       // Use updateTaskDetails for both adding and clearing tags (now that it sends JSON properly)
       console.log('🏷️ Updating tags via updateTaskDetails...');
       const result = await updateTaskDetails(taskId, { tags: cleanedTags });
-      
+
       // Update local state with the exact tags we set
-      setTasks(prevTasks => 
-        prevTasks.map(task => 
-          (task.id === taskId || task.taskId === taskId) 
-            ? { ...task, tags: cleanedTags }
-            : task
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId || task.taskId === taskId ? { ...task, tags: cleanedTags } : task
         )
       );
-      
+
       console.log('✅ Tags saved successfully');
       return Promise.resolve();
     } catch (error) {
@@ -491,13 +500,7 @@ export default function MyTasksScreen({ navigation }) {
     }
 
     // Get unique tags from all tasks
-    const tagOptions = [
-      ...new Set(
-        tasks
-          .flatMap((task) => task.tags || [])
-          .filter(Boolean)
-      ),
-    ];
+    const tagOptions = [...new Set(tasks.flatMap((task) => task.tags || []).filter(Boolean))];
 
     return { statuses, projectOptions, assignedOptions, locations, tagOptions };
   };
@@ -517,7 +520,7 @@ export default function MyTasksScreen({ navigation }) {
       activeTab === 'mytasks'
         ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
         : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
-        'Unassigned';
+          'Unassigned';
 
     return (
       <>
@@ -563,18 +566,19 @@ export default function MyTasksScreen({ navigation }) {
                 {
                   backgroundColor: theme.primary + '15',
                   borderColor: theme.primary + '20',
-                }
+                },
               ]}>
               <Text style={[styles.compactAvatarText, { color: theme.primary }]}>
                 {(taskName.charAt(0) || '?').toUpperCase()}
               </Text>
             </View>
-            
+
             {/* Main Content */}
             <View style={styles.compactContent}>
               {/* Title and Progress Row */}
               <View style={styles.titleProgressRow}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                <View
+                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
                   {/* Issue Indicator Red Dot */}
                   {item.isIssue && (
                     <View
@@ -600,13 +604,13 @@ export default function MyTasksScreen({ navigation }) {
                   </Text>
                 </View>
               </View>
-              
+
               {/* Project and Location Info */}
               <View style={styles.compactInfoRow}>
-                <MaterialIcons 
-                  name="folder" 
-                  size={13} 
-                  color={theme.primary} 
+                <MaterialIcons
+                  name="folder"
+                  size={13}
+                  color={theme.primary}
                   style={{ marginRight: 4 }}
                 />
                 <Text
@@ -620,14 +624,17 @@ export default function MyTasksScreen({ navigation }) {
                     item.project ||
                     'No Project'}
                 </Text>
-                
+
                 {((item.project && item.project.location) || '').length > 0 && (
                   <>
-                    <Text style={[styles.compactSeparator, { color: theme.secondaryText }]}> • </Text>
-                    <MaterialIcons 
-                      name="location-on" 
-                      size={13} 
-                      color={theme.secondaryText} 
+                    <Text style={[styles.compactSeparator, { color: theme.secondaryText }]}>
+                      {' '}
+                      •{' '}
+                    </Text>
+                    <MaterialIcons
+                      name="location-on"
+                      size={13}
+                      color={theme.secondaryText}
                       style={{ marginRight: 3 }}
                     />
                     <Text
@@ -642,10 +649,10 @@ export default function MyTasksScreen({ navigation }) {
 
               {/* Assignment Info */}
               <View style={styles.compactAssignmentRow}>
-                <MaterialIcons 
-                  name={activeTab === 'mytasks' ? 'person' : 'group'} 
-                  size={13} 
-                  color={theme.primary} 
+                <MaterialIcons
+                  name={activeTab === 'mytasks' ? 'person' : 'group'}
+                  size={13}
+                  color={theme.primary}
                   style={{ marginRight: 4 }}
                 />
                 <Text style={[styles.compactAssignLabel, { color: theme.secondaryText }]}>
@@ -675,11 +682,7 @@ export default function MyTasksScreen({ navigation }) {
                             backgroundColor: theme.avatarBg,
                           },
                         ]}>
-                        <Text
-                          style={[
-                            styles.compactTagText,
-                            { color: theme.secondaryText },
-                          ]}>
+                        <Text style={[styles.compactTagText, { color: theme.secondaryText }]}>
                           {tag}
                         </Text>
                       </View>
@@ -692,11 +695,7 @@ export default function MyTasksScreen({ navigation }) {
                             backgroundColor: theme.background,
                           },
                         ]}>
-                        <Text
-                          style={[
-                            styles.compactTagText,
-                            { color: theme.secondaryText },
-                          ]}>
+                        <Text style={[styles.compactTagText, { color: theme.secondaryText }]}>
                           +{item.tags.length - 3}
                         </Text>
                       </View>
@@ -705,21 +704,17 @@ export default function MyTasksScreen({ navigation }) {
                 </View>
               )}
             </View>
-
-            {/* Action Button */}
-            {activeTab === 'createdby' && (
-              <TouchableOpacity
-                style={[
-                  styles.compactActionButton, 
-                  { 
-                    backgroundColor: theme.primary + '10', 
-                    borderColor: theme.primary + '20'
-                  }
-                ]}
-                onPress={() => handleTagsManagement(item)}>
-                <MaterialIcons name="local-offer" size={16} color={theme.primary} />
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity
+              style={[
+                styles.compactActionButton,
+                {
+                  backgroundColor: theme.primary + '10',
+                  borderColor: theme.primary + '20',
+                },
+              ]}
+              onPress={() => handleTagsManagement(item)}>
+              <MaterialIcons name="local-offer" size={16} color={theme.primary} />
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
 
@@ -832,9 +827,7 @@ export default function MyTasksScreen({ navigation }) {
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
           <View style={styles.legendRedDot} />
-          <Text style={[styles.legendText, { color: theme.secondaryText }]}>
-            Issue Task
-          </Text>
+          <Text style={[styles.legendText, { color: theme.secondaryText }]}>Issue Task</Text>
         </View>
       </View>
       {/* Tabs (pill design, with icons, like ProjectScreen) */}
@@ -921,7 +914,9 @@ export default function MyTasksScreen({ navigation }) {
             <Text style={[styles.filterHeaderText, { color: theme.text }]}>{t('filters')}</Text>
             <View style={styles.filterHeaderActions}>
               <TouchableOpacity onPress={clearAllFilters} style={styles.clearFiltersBtn}>
-                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>{t('clear')}</Text>
+                <Text style={[styles.clearFiltersText, { color: theme.primary }]}>
+                  {t('clear')}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowFilters(false)} style={styles.closeBtn}>
                 <MaterialIcons name="close" size={16} color={theme.secondaryText} />
@@ -936,7 +931,9 @@ export default function MyTasksScreen({ navigation }) {
             {/* Status Filter */}
             {statuses.length > 0 && (
               <View style={styles.compactFilterSection}>
-                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('status')}</Text>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
+                  {t('status')}
+                </Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1016,7 +1013,9 @@ export default function MyTasksScreen({ navigation }) {
             {/* Projects Filter */}
             {projectOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
-                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('projects')}</Text>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
+                  {t('projects')}
+                </Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1054,7 +1053,9 @@ export default function MyTasksScreen({ navigation }) {
             {/* Location Filter */}
             {locations.length > 0 && (
               <View style={styles.compactFilterSection}>
-                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>{t('location')}</Text>
+                <Text style={[styles.compactFilterTitle, { color: theme.text }]}>
+                  {t('location')}
+                </Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -1153,19 +1154,15 @@ export default function MyTasksScreen({ navigation }) {
                             backgroundColor: filters.tags.includes(tag)
                               ? theme.primary
                               : theme.card,
-                            borderColor: filters.tags.includes(tag)
-                              ? theme.primary
-                              : theme.border,
+                            borderColor: filters.tags.includes(tag) ? theme.primary : theme.border,
                           },
                         ]}
                         onPress={() => toggleFilter('tags', tag)}>
                         <Text
                           style={[
                             styles.compactChipText,
-                            { 
-                              color: filters.tags.includes(tag) 
-                                ? '#ffffff' 
-                                : theme.text 
+                            {
+                              color: filters.tags.includes(tag) ? '#ffffff' : theme.text,
                             },
                           ]}
                           numberOfLines={1}>
@@ -1426,7 +1423,7 @@ export default function MyTasksScreen({ navigation }) {
           </View>
         </View>
       )}
-      
+
       {/* Tags Management Modal */}
       <TagsManagementModal
         visible={showTagsModal}
@@ -1710,7 +1707,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
     lineHeight: 20,
-    
   },
   compactProgressContainer: {
     alignItems: 'center',

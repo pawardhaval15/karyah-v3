@@ -35,7 +35,6 @@ export default function TaskChatPopup({
   const [showAttachOptions, setShowAttachOptions] = useState(false);
   const [imageModal, setImageModal] = useState({ visible: false, uri: null });
   const [localMessages, setLocalMessages] = useState([]);
-  const [sendingMessage, setSendingMessage] = useState(false);
   const [showMentions, setShowMentions] = useState(false);
   const [mentionSearch, setMentionSearch] = useState('');
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -46,12 +45,43 @@ export default function TaskChatPopup({
 
   // Auto-scroll to bottom when messages change or popup opens
   useEffect(() => {
-    if (visible && messages.length > 0) {
+    if (visible && (messages?.length > 0 || allMessages?.length > 0)) {
+      // Use a longer timeout to ensure the component is fully rendered
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 200);
+    }
+  }, [visible, messages?.length, allMessages?.length]);
+
+  // Additional scroll effect for when allMessages updates
+  useEffect(() => {
+    if (visible && allMessages?.length > 0) {
+      // Scroll to bottom when new messages are added
       setTimeout(() => {
         scrollViewRef.current?.scrollToEnd({ animated: true });
       }, 100);
     }
-  }, [visible, messages.length]);
+  }, [allMessages?.length, visible]);
+
+  // Ensure scroll to latest message when popup opens
+  useEffect(() => {
+    if (visible) {
+      // Multiple attempts to scroll to ensure it works
+      const scrollToBottom = () => {
+        scrollViewRef.current?.scrollToEnd({ animated: false });
+      };
+      
+      // Immediate scroll
+      scrollToBottom();
+      
+      // Delayed scrolls to handle different loading states
+      setTimeout(scrollToBottom, 100);
+      setTimeout(scrollToBottom, 300);
+      setTimeout(() => {
+        scrollViewRef.current?.scrollToEnd({ animated: true });
+      }, 500);
+    }
+  }, [visible]);
 
   // Sync server messages with local messages
   useEffect(() => {
@@ -342,7 +372,8 @@ export default function TaskChatPopup({
 
   // Handle sending message with optimistic UI
   const handleSendMessage = async () => {
-    if ((!input.trim() && attachments.length === 0) || sendingMessage) return;
+    // Only check if there's content, remove sendingMessage blocking
+    if (!input.trim() && attachments.length === 0) return;
 
     const messageText = input.trim();
     const messageAttachments = [...attachments];
@@ -360,22 +391,24 @@ export default function TaskChatPopup({
       status: 'sending', // sending, sent, delivered, failed
       isTemp: true,
     };
+    
     // Add optimistic message to local state
     setLocalMessages((prev) => [...prev, tempMessage]);
-    // Clear input and attachments immediately
+    
+    // Clear input and attachments immediately for smooth UX
     setInput('');
     clearAttachments();
-    setSendingMessage(true);
     setShowMentions(false);
     setMentionStartIndex(-1);
     setMentionSearch('');
+    
     // Scroll to bottom immediately
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
-    }, 100);
+    }, 50);
 
+    // Send message in background without blocking UI
     try {
-      // Send message to server
       await onSend(messageText, messageAttachments, messageMentions);
       // Update message status to sent
       setLocalMessages((prev) =>
@@ -387,30 +420,51 @@ export default function TaskChatPopup({
       setLocalMessages((prev) =>
         prev.map((msg) => (msg.id === tempMessage.id ? { ...msg, status: 'failed' } : msg))
       );
-    } finally {
-      setSendingMessage(false);
     }
+    // No finally block needed since we don't set sendingMessage anymore
   };
 
   // Format timestamp for display
   const formatMessageTime = (timestamp) => {
     if (!timestamp) return '';
     const msgDate = new Date(timestamp);
+    // Always show time for individual messages
+    return msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format date for date separators
+  const formatDateSeparator = (timestamp) => {
+    if (!timestamp) return '';
+    const msgDate = new Date(timestamp);
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
     const msgDateOnly = new Date(msgDate.getFullYear(), msgDate.getMonth(), msgDate.getDate());
+    
     if (msgDateOnly.getTime() === today.getTime()) {
-      // Today: show only time
-      return msgDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return 'Today';
+    } else if (msgDateOnly.getTime() === yesterday.getTime()) {
+      return 'Yesterday';
     } else {
-      // Other days: show date and time
-      return msgDate.toLocaleString([], {
+      return msgDate.toLocaleDateString([], {
+        weekday: 'long',
         month: 'short',
         day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+        year: msgDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
       });
     }
+  };
+
+  // Check if we need to show date separator
+  const shouldShowDateSeparator = (currentMessage, prevMessage) => {
+    if (!prevMessage) return true; // Always show for first message
+    
+    const currentDate = new Date(currentMessage.createdAt);
+    const prevDate = new Date(prevMessage.createdAt);
+    
+    // Check if dates are different (ignoring time)
+    return currentDate.toDateString() !== prevDate.toDateString();
   };
 
   // Get status icon for message
@@ -455,7 +509,20 @@ export default function TaskChatPopup({
 
   // Render text with highlighted mentions
   const renderMessageText = (text, isCurrentUser) => {
-    const mentionRegex = /@(\w+(?:\s+\w+)*)/g;
+    if (!text || typeof text !== 'string') {
+      return (
+        <Text
+          style={{
+            color: isCurrentUser ? '#fff' : theme.text,
+            fontSize: 15,
+          }}>
+          {text || ''}
+        </Text>
+      );
+    }
+
+    // Updated regex to match both names with spaces and numbers (user IDs): @[Name with spaces or numbers]
+    const mentionRegex = /@([A-Za-z0-9\s]+?)(?=\s|$|[^\w\s])/g;
     const parts = [];
     let lastIndex = 0;
     let match;
@@ -464,27 +531,61 @@ export default function TaskChatPopup({
       // Add text before mention
       if (match.index > lastIndex) {
         parts.push(
-          <Text
-            key={`text-${lastIndex}`}
-            style={{
+          <Text 
+            key={`text-${lastIndex}`} 
+            style={{ 
               color: isCurrentUser ? '#fff' : theme.text,
               fontSize: 15,
             }}>
-            {text.substring(lastIndex, match.index)}
+            {text.slice(lastIndex, match.index)}
           </Text>
         );
       }
 
-      // Add highlighted mention
+      // Find the correct display name for the mention
+      const mentionText = match[1].trim();
+      let displayName = mentionText;
+      
+      // Get mentionable users for lookup
+      const mentionableUsers = getMentionableUsers();
+      
+      // First check if it's a numeric user ID
+      if (/^\d+$/.test(mentionText)) {
+        // It's a user ID, find the user by ID
+        const userById = mentionableUsers.find(user => user.id.toString() === mentionText);
+        if (userById) {
+          displayName = userById.name;
+        } else {
+          // User not found in current mentionable users
+          displayName = `User ${mentionText}`;
+        }
+      } else {
+        // It's a username, find by exact name match
+        const userByName = mentionableUsers.find(user => 
+          user.name.toLowerCase() === mentionText.toLowerCase()
+        );
+        
+        if (userByName) {
+          displayName = userByName.name;
+        } else if (mentionMap[`@${mentionText}`]) {
+          // Check mentionMap for mapped usernames
+          const mappedUser = mentionableUsers.find(user => user.id === mentionMap[`@${mentionText}`]);
+          if (mappedUser) {
+            displayName = mappedUser.name;
+          }
+        }
+      }
+
+      // Add highlighted mention with proper display name
       parts.push(
         <Text
           key={`mention-${match.index}`}
           style={{
-            color: isCurrentUser ? '#B3E5FC' : theme.primary,
+            color: isCurrentUser ? '#FFE5B4' : theme.primary,
             fontSize: 15,
-            fontWeight: '600',
+            fontWeight: '600'
           }}>
-          {match[0]}
+          @{displayName}
         </Text>
       );
 
@@ -494,37 +595,36 @@ export default function TaskChatPopup({
     // Add remaining text
     if (lastIndex < text.length) {
       parts.push(
-        <Text
-          key={`text-${lastIndex}`}
-          style={{
+        <Text 
+          key={`text-${lastIndex}`} 
+          style={{ 
             color: isCurrentUser ? '#fff' : theme.text,
             fontSize: 15,
           }}>
-          {text.substring(lastIndex)}
+          {text.slice(lastIndex)}
         </Text>
       );
     }
 
-    return parts.length > 0 ? (
-      parts
-    ) : (
-      <Text
-        style={{
+    return parts.length > 0 ? parts : [
+      <Text 
+        key="full-text" 
+        style={{ 
           color: isCurrentUser ? '#fff' : theme.text,
           fontSize: 15,
         }}>
         {text}
       </Text>
-    );
+    ];
   };
 
   // Normalize server messages
-  const normalizedServerMessages = messages.map(normalizeMessage);
+  const normalizedServerMessages = Array.isArray(messages) ? messages.map(normalizeMessage) : [];
 
   // Combine and deduplicate messages
   const allMessages = [
     ...normalizedServerMessages,
-    ...localMessages.filter((msg) => {
+    ...(Array.isArray(localMessages) ? localMessages.filter((msg) => {
       // Only show temp messages that haven't been replaced by server messages
       if (msg.isTemp) {
         return !normalizedServerMessages.some(
@@ -535,8 +635,20 @@ export default function TaskChatPopup({
         );
       }
       return false; // Don't include non-temp local messages since they're already in messages array
-    }),
+    }) : []),
   ].sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+
+  // Scroll to bottom whenever allMessages changes (for real-time updates)
+  useEffect(() => {
+    if (visible && Array.isArray(allMessages) && allMessages.length > 0) {
+      // Use requestAnimationFrame to ensure the scroll happens after render
+      requestAnimationFrame(() => {
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: false });
+        }, 50);
+      });
+    }
+  }, [allMessages?.length, visible]);
 
   return (
     <Modal visible={visible} animationType="fade" transparent onRequestClose={onClose}>
@@ -565,200 +677,261 @@ export default function TaskChatPopup({
                 borderRadius: 12,
               }}
               contentContainerStyle={{ paddingBottom: 12 }}
-              showsVerticalScrollIndicator={false}>
+              showsVerticalScrollIndicator={false}
+              onLayout={() => {
+                // Scroll to bottom when layout is complete
+                if (visible && Array.isArray(allMessages) && allMessages.length > 0) {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: false });
+                  }, 50);
+                }
+              }}
+              onContentSizeChange={() => {
+                // Scroll to bottom when content size changes
+                if (visible && Array.isArray(allMessages) && allMessages.length > 0) {
+                  scrollViewRef.current?.scrollToEnd({ animated: false });
+                }
+              }}>
               {loading ? (
                 <Text style={{ color: theme.secondaryText, textAlign: 'center', marginTop: 30 }}>
                   Loading...
                 </Text>
-              ) : allMessages.length === 0 ? (
+              ) : !Array.isArray(allMessages) || allMessages.length === 0 ? (
                 <Text style={{ color: theme.secondaryText, textAlign: 'center', marginTop: 30 }}>
                   No messages yet.
                 </Text>
               ) : (
-                allMessages.map((msg, idx) => (
-                  <View
-                    key={idx}
-                    style={{
-                      marginBottom: 8,
-                      alignItems: msg.userId === currentUserId ? 'flex-end' : 'flex-start',
-                    }}>
-                    <Text
-                      style={{
-                        color: theme.secondaryText,
-                        fontSize: 11,
-                        marginVertical: 10,
-                        textAlign: 'center',
-                        alignSelf: 'center',
-                        opacity: 0.85,
-                      }}>
-                      {formatMessageTime(msg.createdAt)}
-                    </Text>
-
-                    <View
-                      style={{
-                        alignSelf: msg.userId === currentUserId ? 'flex-end' : 'flex-start',
-                        backgroundColor: msg.userId === currentUserId ? theme.primary : theme.card,
-                        borderRadius: 14,
-                        borderWidth: 1,
-                        borderColor: msg.userId === currentUserId ? theme.border : theme.border,
-                        paddingHorizontal: 16,
-                        paddingVertical: 6,
-                        maxWidth: '80%',
-                      }}>
-                      {/* Sender name (show for all except current user, or always for clarity) */}
-                      {msg.sender && msg.sender.name && msg.userId !== currentUserId && (
-                        <Text
-                          style={{
-                            color: theme.secondaryText,
+                allMessages.map((msg, idx) => {
+                  const prevMsg = idx > 0 ? allMessages[idx - 1] : null;
+                  const shouldShowTime = !prevMsg || 
+                    (new Date(msg.createdAt) - new Date(prevMsg.createdAt)) > 5 * 60 * 1000; // 5 minutes
+                  const showDateSep = shouldShowDateSeparator(msg, prevMsg);
+                  
+                  return (
+                    <View key={idx}>
+                      {/* Date separator */}
+                      {showDateSep && (
+                        <View style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          marginVertical: 16,
+                          marginHorizontal: 20,
+                        }}>
+                          <View style={{
+                            flex: 1,
+                            height: 1,
+                            backgroundColor: theme.border,
+                            opacity: 0.3,
+                          }} />
+                          <Text style={{
+                            paddingHorizontal: 12,
+                            paddingVertical: 4,
                             fontSize: 12,
-                            fontWeight: '400',
-                            marginBottom: 2,
+                            fontWeight: '500',
+                            color: theme.secondaryText,
+                            backgroundColor: theme.background,
+                            borderRadius: 12,
+                            textAlign: 'center',
                           }}>
-                          {msg.sender.name}
-                        </Text>
-                      )}
-                      <TouchableOpacity
-                        activeOpacity={0.8}
-                        onLongPress={() => setShowTimeIdx(idx)}
-                        onPressOut={() => setShowTimeIdx(null)}>
-                        {/* Message text */}
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                          {renderMessageText(msg.text, msg.userId === currentUserId)}
+                            {formatDateSeparator(msg.createdAt)}
+                          </Text>
+                          <View style={{
+                            flex: 1,
+                            height: 1,
+                            backgroundColor: theme.border,
+                            opacity: 0.3,
+                          }} />
                         </View>
+                      )}
 
-                        {/* Message status indicator for sent messages */}
-                        {msg.userId === currentUserId && msg.status && (
+                      {/* Message */}
+                      <View style={{ marginBottom: 8 }}>
+                        <View
+                          style={{
+                            alignItems: msg.userId === currentUserId ? 'flex-end' : 'flex-start',
+                          }}>
                           <View
                             style={{
-                              flexDirection: 'row',
-                              justifyContent: 'flex-end',
-                              alignItems: 'center',
-                              marginTop: 4,
+                              alignSelf: msg.userId === currentUserId ? 'flex-end' : 'flex-start',
+                              backgroundColor: msg.userId === currentUserId ? theme.primary : theme.card,
+                              borderRadius: 14,
+                              borderWidth: 1,
+                              borderColor: msg.userId === currentUserId ? theme.border : theme.border,
+                              paddingHorizontal: 16,
+                              paddingVertical: 10,
+                              maxWidth: '80%',
+                              marginBottom: 2,
                             }}>
-                            {msg.status === 'failed' && (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  // Retry sending message
-                                  setInput(msg.text);
-                                  if (msg.attachments && msg.attachments.length > 0) {
-                                    // Convert server attachment URLs back to file objects for retry
-                                    const retryAttachments = msg.attachments.map((att) => {
-                                      if (typeof att === 'string') {
-                                        return {
-                                          uri: att,
-                                          name: att.split('/').pop(),
-                                          type: 'application/octet-stream',
-                                        };
-                                      }
-                                      return att;
-                                    });
-                                    setAttachments(retryAttachments);
-                                  }
-                                  // Clear mentions UI
-                                  setShowMentions(false);
-                                  setMentionStartIndex(-1);
-                                  setMentionSearch('');
-                                  setLocalMessages((prev) => prev.filter((m) => m.id !== msg.id));
-                                }}
-                                style={{ marginRight: 4 }}>
-                                <Text style={{ color: '#ff6b6b', fontSize: 11 }}>Tap to retry</Text>
-                              </TouchableOpacity>
-                            )}
-                            {getStatusIcon(msg)}
-                          </View>
+                        {/* Sender name (show for all except current user, or always for clarity) */}
+                        {msg.sender && msg.sender.name && msg.userId !== currentUserId && (
+                          <Text
+                            style={{
+                              color: theme.secondaryText,
+                              fontSize: 12,
+                              fontWeight: '400',
+                              marginBottom: 2,
+                            }}>
+                            {msg.sender.name}
+                          </Text>
                         )}
-                        {/* Attachments rendering */}
-                        {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
-                          <View style={{ marginTop: 6 }}>
-                            {msg.attachments.map((att, attIdx) => {
-                              // Handle both string URLs and file objects
-                              let attachmentUrl, fileName;
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onLongPress={() => setShowTimeIdx(idx)}
+                          onPressOut={() => setShowTimeIdx(null)}>
+                          {/* Message text */}
+                          <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
+                            {renderMessageText(msg.text, msg.userId === currentUserId)}
+                          </View>
 
-                              if (typeof att === 'string') {
-                                attachmentUrl = att;
-                                fileName = att.split('/').pop();
-                              } else if (att && att.uri) {
-                                attachmentUrl = att.uri;
-                                fileName = att.name || att.uri.split('/').pop();
-                              } else {
-                                return null;
-                              }
+                          {/* Message status indicator for sent messages */}
+                          {msg.userId === currentUserId && msg.status && (
+                            <View
+                              style={{
+                                flexDirection: 'row',
+                                justifyContent: 'flex-end',
+                                alignItems: 'center',
+                                marginTop: 4,
+                              }}>
+                              {msg.status === 'failed' && (
+                                <TouchableOpacity
+                                  onPress={() => {
+                                    // Retry sending message
+                                    setInput(msg.text);
+                                    if (msg.attachments && msg.attachments.length > 0) {
+                                      // Convert server attachment URLs back to file objects for retry
+                                      const retryAttachments = msg.attachments.map((att) => {
+                                        if (typeof att === 'string') {
+                                          return {
+                                            uri: att,
+                                            name: att.split('/').pop(),
+                                            type: 'application/octet-stream',
+                                          };
+                                        }
+                                        return att;
+                                      });
+                                      setAttachments(retryAttachments);
+                                    }
+                                    // Clear mentions UI
+                                    setShowMentions(false);
+                                    setMentionStartIndex(-1);
+                                    setMentionSearch('');
+                                    setLocalMessages((prev) => prev.filter((m) => m.id !== msg.id));
+                                  }}
+                                  style={{ marginRight: 4 }}>
+                                  <Text style={{ color: '#ff6b6b', fontSize: 11 }}>Tap to retry</Text>
+                                </TouchableOpacity>
+                              )}
+                              {getStatusIcon(msg)}
+                            </View>
+                          )}
+                          {/* Attachments rendering */}
+                          {Array.isArray(msg.attachments) && msg.attachments.length > 0 && (
+                            <View style={{ marginTop: 6 }}>
+                              {msg.attachments.map((att, attIdx) => {
+                                // Handle both string URLs and file objects
+                                let attachmentUrl, fileName;
 
-                              const isImage = fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
-                              const isPdf = fileName.match(/\.pdf$/i);
-                              const isDoc = fileName.match(/\.(doc|docx|xls|xlsx|ppt|pptx)$/i);
+                                if (typeof att === 'string') {
+                                  attachmentUrl = att;
+                                  fileName = att.split('/').pop();
+                                } else if (att && att.uri) {
+                                  attachmentUrl = att.uri;
+                                  fileName = att.name || att.uri.split('/').pop();
+                                } else {
+                                  return null;
+                                }
 
-                              if (isImage) {
-                                return (
-                                  <TouchableOpacity
-                                    key={attIdx}
-                                    onPress={() =>
-                                      setImageModal({ visible: true, uri: attachmentUrl })
-                                    }>
-                                    <View
-                                      style={{
-                                        borderRadius: 8,
-                                        overflow: 'hidden',
-                                        marginTop: 2,
-                                        borderWidth: 1,
-                                        borderColor: '#eee',
-                                        backgroundColor: '#fafbfc',
-                                      }}>
-                                      <Image
-                                        source={{ uri: attachmentUrl }}
-                                        style={{ width: 120, height: 90, resizeMode: 'cover' }}
-                                      />
-                                    </View>
-                                  </TouchableOpacity>
-                                );
-                              } else {
-                                // File link (pdf, doc, etc)
-                                return (
-                                  <TouchableOpacity
-                                    key={attIdx}
-                                    onPress={() => {
-                                      Linking.openURL(attachmentUrl);
-                                    }}>
-                                    <View
-                                      style={{
-                                        flexDirection: 'row',
-                                        alignItems: 'center',
-                                        marginTop: 2,
-                                        backgroundColor: '#f5f5f5',
-                                        borderRadius: 6,
-                                        paddingVertical: 2,
-                                        paddingHorizontal: 6,
-                                        borderWidth: 1,
-                                        borderColor: '#eee',
-                                      }}>
-                                      <Feather
-                                        name={isPdf ? 'file-text' : isDoc ? 'file' : 'file'}
-                                        size={16}
-                                        color={theme.primary}
-                                      />
-                                      <Text
+                                const isImage = fileName.match(/\.(jpg|jpeg|png|gif|webp)$/i);
+                                const isPdf = fileName.match(/\.pdf$/i);
+                                const isDoc = fileName.match(/\.(doc|docx|xls|xlsx|ppt|pptx)$/i);
+
+                                if (isImage) {
+                                  return (
+                                    <TouchableOpacity
+                                      key={attIdx}
+                                      onPress={() =>
+                                        setImageModal({ visible: true, uri: attachmentUrl })
+                                      }>
+                                      <View
                                         style={{
-                                          color: theme.primary,
-                                          marginLeft: 4,
-                                          textDecorationLine: 'underline',
-                                          fontSize: 13,
-                                          maxWidth: '90%',
-                                        }}
-                                        numberOfLines={1}
-                                        ellipsizeMode="middle">
-                                        {fileName}
-                                      </Text>
-                                    </View>
-                                  </TouchableOpacity>
-                                );
-                              }
-                            })}
-                          </View>
-                        )}
-                      </TouchableOpacity>
+                                          borderRadius: 8,
+                                          overflow: 'hidden',
+                                          marginTop: 2,
+                                          borderWidth: 1,
+                                          borderColor: '#eee',
+                                          backgroundColor: '#fafbfc',
+                                        }}>
+                                        <Image
+                                          source={{ uri: attachmentUrl }}
+                                          style={{ width: 120, height: 90, resizeMode: 'cover' }}
+                                        />
+                                      </View>
+                                    </TouchableOpacity>
+                                  );
+                                } else {
+                                  // File link (pdf, doc, etc)
+                                  return (
+                                    <TouchableOpacity
+                                      key={attIdx}
+                                      onPress={() => {
+                                        Linking.openURL(attachmentUrl);
+                                      }}>
+                                      <View
+                                        style={{
+                                          flexDirection: 'row',
+                                          alignItems: 'center',
+                                          marginTop: 2,
+                                          backgroundColor: '#f5f5f5',
+                                          borderRadius: 6,
+                                          paddingVertical: 2,
+                                          paddingHorizontal: 6,
+                                          borderWidth: 1,
+                                          borderColor: '#eee',
+                                        }}>
+                                        <Feather
+                                          name={isPdf ? 'file-text' : isDoc ? 'file' : 'file'}
+                                          size={16}
+                                          color={theme.primary}
+                                        />
+                                        <Text
+                                          style={{
+                                            color: theme.primary,
+                                            marginLeft: 4,
+                                            textDecorationLine: 'underline',
+                                            fontSize: 13,
+                                            maxWidth: '90%',
+                                          }}
+                                          numberOfLines={1}
+                                          ellipsizeMode="middle">
+                                          {fileName}
+                                        </Text>
+                                      </View>
+                                    </TouchableOpacity>
+                                  );
+                                }
+                              })}
+                            </View>
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                      
+                      {/* Individual message time */}
+                      <Text
+                        style={{
+                          fontSize: 11,
+                          color: theme.secondaryText,
+                          opacity: 0.7,
+                          marginBottom: 4,
+                          textAlign: msg.userId === currentUserId ? 'right' : 'left',
+                          marginHorizontal: 16,
+                        }}>
+                        {formatMessageTime(msg.createdAt)}
+                      </Text>
                     </View>
                   </View>
-                ))
+                    </View>
+                  );
+                })
               )}
             </ScrollView>
             <Modal
@@ -997,7 +1170,6 @@ export default function TaskChatPopup({
                 value={input}
                 onChangeText={handleInputChange}
                 onSelectionChange={handleSelectionChange}
-                editable={!sendingMessage}
                 multiline={false}
                 onSubmitEditing={handleSendMessage}
                 returnKeyType="send"
@@ -1009,15 +1181,11 @@ export default function TaskChatPopup({
                   backgroundColor: theme.primary,
                   borderRadius: 20,
                   padding: 10,
-                  opacity: (input.trim() || attachments.length > 0) && !sendingMessage ? 1 : 0.5,
+                  opacity: (input.trim() || attachments.length > 0) ? 1 : 0.5,
                 }}
-                disabled={(!input.trim() && attachments.length === 0) || sendingMessage}
+                disabled={(!input.trim() && attachments.length === 0)}
                 onPress={handleSendMessage}>
-                {sendingMessage ? (
-                  <MaterialIcons name="schedule" size={20} color="#fff" />
-                ) : (
-                  <Feather name="send" size={20} color="#fff" />
-                )}
+                <Feather name="send" size={20} color="#fff" />
               </TouchableOpacity>
             </View>
 
