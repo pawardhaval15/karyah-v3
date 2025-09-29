@@ -66,6 +66,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const [editedWorklistName, setEditedWorklistName] = useState('');
   const [createWorklistModal, setCreateWorklistModal] = useState(false);
   const [newWorklistName, setNewWorklistName] = useState('');
+  const [showPendingInvites, setShowPendingInvites] = useState(false);
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -81,6 +82,8 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         const id = projectId || (project && project.id);
         if (!id) throw new Error('No projectId provided');
         const res = await getProjectById(id);
+        console.log('📨 Full project details:', JSON.stringify(res, null, 2));
+        console.log('📨 Pending invites array:', res.pendingInvites);
         setProjectDetails(res);
       } catch (err) {
         console.error('Failed to fetch project details:', err.message);
@@ -661,6 +664,211 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 </View>
               </Modal>
             </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Pending Invites Section */}
+        {projectDetails.pendingInvites && 
+         Array.isArray(projectDetails.pendingInvites) && 
+         projectDetails.pendingInvites.length > 0 && (
+          <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+            {/* Collapsible Header */}
+            <TouchableOpacity
+              onPress={() => setShowPendingInvites(!showPendingInvites)}
+              style={{
+                flexDirection: 'row', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                borderWidth: 1,
+                borderRadius: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                marginBottom: showPendingInvites ? 12 : 0
+              }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <MaterialIcons 
+                  name="person-add" 
+                  size={20} 
+                  color={theme.primary} 
+                  style={{ marginRight: 8 }}
+                />
+                <Text style={{ 
+                  fontSize: 16, 
+                  fontWeight: '600', 
+                  color: theme.text 
+                }}>
+                  Pending Invites ({projectDetails.pendingInvites.length})
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <View style={{
+                  backgroundColor: '#FF3B30',
+                  borderRadius: 8,
+                  paddingHorizontal: 6,
+                  paddingVertical: 2,
+                  marginRight: 8
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>
+                    PENDING
+                  </Text>
+                </View>
+                <MaterialIcons
+                  name={showPendingInvites ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                  size={20}
+                  color={theme.text}
+                />
+              </View>
+            </TouchableOpacity>
+            
+            {/* Collapsible Content */}
+            {showPendingInvites && (
+              <View>
+                {projectDetails.pendingInvites.map((invite, index) => {
+                  console.log('📨 Processing invite:', invite);
+                  
+                  // Handle the actual data structure from your API
+                  const userName = invite.recipientName || invite.name || 'Unknown User';
+                  const userEmail = invite.recipientEmail || invite.email;
+                  const profilePhoto = invite.profilePhoto || invite.avatar;
+                  const createdAt = invite.createdAt || invite.sentAt || invite.invitedAt;
+                  
+                  return (
+                    <View key={invite.inviteId || invite.id || index} style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                      borderWidth: 1,
+                      borderRadius: 12,
+                      paddingHorizontal: 16,
+                      paddingVertical: 12,
+                      marginBottom: 8
+                    }}>
+                      {/* Avatar */}
+                      <View style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 20,
+                        backgroundColor: theme.primary + '20',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12
+                      }}>
+                        {profilePhoto ? (
+                          <Image 
+                            source={{ uri: profilePhoto }} 
+                            style={{ width: 40, height: 40, borderRadius: 20 }}
+                          />
+                        ) : (
+                          <Text style={{ 
+                            color: theme.primary, 
+                            fontWeight: '600', 
+                            fontSize: 16 
+                          }}>
+                            {userName?.charAt(0)?.toUpperCase() || '?'}
+                          </Text>
+                        )}
+                      </View>
+                      
+                      {/* User Info */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ 
+                          color: theme.text, 
+                          fontSize: 16, 
+                          fontWeight: '500' 
+                        }}>
+                          {userName || 'Unknown User'}
+                        </Text>
+                        {userName && userEmail && (
+                          <Text style={{ 
+                            color: theme.secondaryText, 
+                            fontSize: 12, 
+                            marginTop: 2 
+                          }}>
+                            {userEmail}
+                          </Text>
+                        )}
+                        <Text style={{ 
+                          color: theme.secondaryText, 
+                          fontSize: 11, 
+                          marginTop: 2 
+                        }}>
+                          Sent {createdAt ? new Date(createdAt).toLocaleDateString() : 'Recently'}
+                        </Text>
+                      </View>
+                      
+                      {/* Status Badge and Actions */}
+                      <View style={{ alignItems: 'flex-end' }}>
+                        <View style={{
+                          backgroundColor: invite.status === 'pending' ? '#FFF3CD' : '#D4EDDA',
+                          borderRadius: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          marginBottom: 8
+                        }}>
+                          <Text style={{ 
+                            color: invite.status === 'pending' ? '#856404' : '#155724', 
+                            fontSize: 11, 
+                            fontWeight: '500' 
+                          }}>
+                            {invite.status?.toUpperCase() || 'PENDING'}
+                          </Text>
+                        </View>
+                        
+                        {/* {invite.status === 'pending' && (
+                          <View style={{ flexDirection: 'row', gap: 8 }}>
+                            <TouchableOpacity 
+                              style={{
+                                backgroundColor: theme.primary + '20',
+                                borderRadius: 6,
+                                paddingHorizontal: 8,
+                                paddingVertical: 4
+                              }}
+                              onPress={() => {
+                                // Handle resend invite
+                                console.log('Resending invite to:', userName);
+                              }}
+                            >
+                              <Text style={{ 
+                                color: theme.primary, 
+                                fontSize: 10, 
+                                fontWeight: '500' 
+                              }}>
+                                Resend
+                              </Text>
+                            </TouchableOpacity>
+                            
+                            <TouchableOpacity 
+                              style={{
+                                backgroundColor: '#FF3B3020',
+                                borderRadius: 6,
+                                paddingHorizontal: 8,
+                                paddingVertical: 4
+                              }}
+                              onPress={() => {
+                                // Handle cancel invite
+                                console.log('Canceling invite for:', userName);
+                              }}
+                            >
+                              <Text style={{ 
+                                color: '#FF3B30', 
+                                fontSize: 10, 
+                                fontWeight: '500' 
+                              }}>
+                                Cancel
+                              </Text>
+                            </TouchableOpacity>
+                          </View>
+                        )} */}
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
