@@ -5,14 +5,15 @@ import TaskSection from 'components/Home/TaskSection';
 import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
 import SmartSearchBar from 'components/ui/SmartSearchBar';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Animated, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import StatCardList from '../components/Home/StatCard';
 import { useTheme } from '../theme/ThemeContext';
+import { getMyProjectInvites } from '../utils/connections';
 import { fetchNotifications } from '../utils/notifications';
 import { getProjectsByUserId } from '../utils/project';
 import usePushNotifications from '../utils/usePushNotifications';
-import { useTranslation } from 'react-i18next';
 const DRAWER_WIDTH = 300;
 
 const projectProgressData = [
@@ -72,6 +73,10 @@ export default function HomeScreen({ navigation }) {
   const [search, setSearch] = useState('');
   const [refreshKey, setRefreshKey] = useState(0);
   const [showSmartSearch, setShowSmartSearch] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState(0);
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+  const waveAnim = useRef(new Animated.Value(0)).current;
+  const bellWaveAnim = useRef(new Animated.Value(0)).current;
   const { t } = useTranslation();
   usePushNotifications();
 
@@ -113,6 +118,75 @@ export default function HomeScreen({ navigation }) {
     }).start();
   }, [drawerOpen]);
 
+  // Blinking animation for pending invites - Red alert style
+  useEffect(() => {
+    if (pendingInvites > 0) {
+      const blinkAnimation = Animated.loop(
+        Animated.sequence([
+          Animated.timing(blinkAnim, {
+            toValue: 0.4,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(blinkAnim, {
+            toValue: 1,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+      
+      const waveAnimation = Animated.loop(
+        Animated.timing(waveAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        })
+      );
+      
+      blinkAnimation.start();
+      waveAnimation.start();
+      
+      return () => {
+        blinkAnimation.stop();
+        waveAnimation.stop();
+      };
+    } else {
+      blinkAnim.setValue(1);
+      waveAnim.setValue(0);
+    }
+  }, [pendingInvites]);
+
+  // Wave animation for bell notification
+  useEffect(() => {
+    if (hasUnreadNotifications) {
+      const bellWaveAnimation = Animated.loop(
+        Animated.timing(bellWaveAnim, {
+          toValue: 1,
+          duration: 1500,
+          useNativeDriver: true,
+        })
+      );
+      
+      bellWaveAnimation.start();
+      
+      return () => bellWaveAnimation.stop();
+    } else {
+      bellWaveAnim.setValue(0);
+    }
+  }, [hasUnreadNotifications]);
+
+  const fetchPendingInvites = async () => {
+    try {
+      const invitesData = await getMyProjectInvites();
+      console.log('📨 Fetched project invites on HomeScreen:', invitesData?.length || 0);
+      setPendingInvites(invitesData?.length || 0);
+    } catch (err) {
+      console.error('Error fetching pending invites:', err.message);
+      setPendingInvites(0);
+    }
+  };
+
   const fetchProjectsData = async () => {
     try {
       setLoadingProjects(true);
@@ -121,6 +195,9 @@ export default function HomeScreen({ navigation }) {
         project => project.status?.toLowerCase() !== 'completed'
       );
       setProjects(filtered);
+      
+      // Also fetch pending invites
+      await fetchPendingInvites();
     } catch (err) {
       console.error('Failed to fetch projects:', err.message);
     } finally {
@@ -183,7 +260,44 @@ export default function HomeScreen({ navigation }) {
                   <View style={{ position: 'relative' }}>
                     <Feather name="bell" size={22} color={theme.text} />
                     {hasUnreadNotifications && (
-                      <View style={styles.notificationDot} />
+                      <>
+                        {/* Wave circles */}
+                        <Animated.View style={[
+                          styles.waveCircle,
+                          {
+                            transform: [
+                              {
+                                scale: bellWaveAnim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [1, 2.5],
+                                }),
+                              },
+                            ],
+                            opacity: bellWaveAnim.interpolate({
+                              inputRange: [0, 0.5, 1],
+                              outputRange: [0.8, 0.3, 0],
+                            }),
+                          },
+                        ]} />
+                        <Animated.View style={[
+                          styles.waveCircle,
+                          {
+                            transform: [
+                              {
+                                scale: bellWaveAnim.interpolate({
+                                  inputRange: [0, 1],
+                                  outputRange: [1, 2],
+                                }),
+                              },
+                            ],
+                            opacity: bellWaveAnim.interpolate({
+                              inputRange: [0, 0.7, 1],
+                              outputRange: [0.6, 0.2, 0],
+                            }),
+                          },
+                        ]} />
+                        <View style={styles.notificationDot} />
+                      </>
                     )}
                   </View>
                 </TouchableOpacity>
@@ -218,9 +332,11 @@ export default function HomeScreen({ navigation }) {
               {projects.length > 0 && (
                 <>
                   <View style={styles.sectionRow}>
-                    <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                      {t('ongoing_projects')} <Text style={{ color: theme.text, fontWeight: '600', fontSize: 20, marginLeft: 12 }}>{projects.length}</Text>
-                    </Text>
+                    <View style={styles.sectionTitleContainer}>
+                      <Text style={[styles.sectionTitle, { color: theme.text }]}>
+                        {t('ongoing_projects')} <Text style={{ color: theme.text, fontWeight: '600', fontSize: 20, marginLeft: 12 }}>{projects.length}</Text>
+                      </Text>
+                    </View>
                   </View>
                   <ScrollView
                     horizontal
@@ -423,10 +539,48 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     justifyContent: 'space-between',
   },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
   sectionTitle: {
     fontSize: 16,
     fontWeight: '500',
     marginTop: 6,
+  },
+  inviteIndicator: {
+    marginLeft: 12,
+  },
+  inviteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  inviteText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  inviteCount: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    minWidth: 16,
+    height: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inviteCountText: {
+    fontSize: 10,
+    fontWeight: '700',
   },
   viewAll: {
     color: '#363942',

@@ -258,7 +258,7 @@ const NotificationScreen = ({ navigation, route }) => {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.tabRow, { gap: isTablet ? 2 : 8 }]}>
+          contentContainerStyle={[styles.tabRow, { gap: isTablet ? 0 : 0 }]}>
           {tabs.map((tab) => {
             const isActive = activeTab.toLowerCase() === tab.toLowerCase();
 
