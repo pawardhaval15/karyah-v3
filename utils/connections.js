@@ -124,7 +124,7 @@ export const searchConnections = async (query) => {
     if (!token) throw new Error('User not authenticated');
 
     if (!query || query.trim() === '') {
-      console.warn('Search query is empty, skipping API call.');
+      console.warn('Search query is empty, returning empty array.');
       return [];
     }
 
@@ -143,13 +143,18 @@ export const searchConnections = async (query) => {
     // console.log('[searchConnections] Response data:', data);
 
     if (!response.ok) {
+      // Don't throw error for "no connections found" - just return empty array
+      if (data.message && data.message.includes('No matching connections found')) {
+        return [];
+      }
       throw new Error(data.message || 'Failed to search connections');
     }
 
     return data.connections || [];
   } catch (error) {
-    console.error('Error searching connections:', error.message);
-    throw error;
+    console.log('Error searching connections:', error.message);
+    // Return empty array instead of throwing error to prevent app crashes
+    return [];
   }
 };
 
@@ -278,4 +283,60 @@ export const getConnectionSuggestions = async () => {
   if (!response.ok) throw new Error(data.message || 'Failed to fetch suggestions');
   console.log('[getConnectionSuggestions] Response data:', data);
   return data.suggestions;
+};
+
+// Project Invite Functions
+export const getMyProjectInvites = async () => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/projects/my-invites`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await response.json();
+    console.log('[getMyProjectInvites] Response data:', data);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to fetch project invites');
+    }
+
+    return data.invites || [];
+  } catch (error) {
+    console.error('Error fetching project invites:', error.message);
+    throw error;
+  }
+};
+
+export const respondToProjectInvite = async (inviteId, action) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/projects/invites/${inviteId}/respond`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ action }), // 'accept' or 'decline'
+    });
+
+    const data = await response.json();
+    console.log('[respondToProjectInvite] Response data:', data);
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to respond to invite');
+    }
+
+    return data.message;
+  } catch (error) {
+    console.error('Error responding to project invite:', error.message);
+    throw error;
+  }
 };

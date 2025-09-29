@@ -20,6 +20,7 @@ import ProjectPopup from '../components/popups/ProjectPopup';
 import ProjectTagsManagementModal from '../components/popups/ProjectTagsManagementModal';
 import ProjectBanner from '../components/Project/ProjectBanner';
 import ProjectCard from '../components/Project/ProjectCard';
+import ProjectInvitesSection from '../components/Project/ProjectInvitesSection';
 import ProjectSearchBar from '../components/Project/ProjectSearchBar';
 import { getProjectsByUserId, updateProjectTags } from '../utils/project';
 export default function ProjectScreen({ navigation }) {
@@ -323,8 +324,19 @@ export default function ProjectScreen({ navigation }) {
       </TouchableOpacity>
       <ProjectBanner onAdd={() => setShowProjectPopup(true)} theme={theme} />
       <ProjectSearchBar value={search} onChange={setSearch} theme={theme} />
+      
+      {/* Project Invites Section */}
+      <ProjectInvitesSection 
+        theme={theme} 
+        onInviteResponse={(action) => {
+          // Refresh projects list when invite is accepted
+          if (action === 'accept') {
+            fetchProjects();
+          }
+        }}
+      />
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginBottom: 12, gap: 2, flexWrap: 'wrap', rowGap: 10, maxWidth: "95%" }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginTop: 12, marginBottom: 12, gap: 2, flexWrap: 'wrap', rowGap: 10, maxWidth: "95%" }}>
         {[
           {
             key: 'all',

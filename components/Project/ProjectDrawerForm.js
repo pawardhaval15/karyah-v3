@@ -8,7 +8,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import categoriesData from '../../utils/categories.json';
-import { searchConnections } from '../../utils/connections';
+import { getUserConnections, searchConnections, searchUsers, sendConnectionRequest } from '../../utils/connections';
 import { createProject } from '../../utils/project';
 import DateBox from '../task details/DateBox';
 export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimpleForm = false }) {
@@ -17,6 +17,8 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   const [selectedCoAdmins, setSelectedCoAdmins] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [filteredConnections, setFilteredConnections] = useState([]);
+  const [allUsers, setAllUsers] = useState([]);
+  const [showingAllUsers, setShowingAllUsers] = useState(false);
   const [showCoAdminPicker, setShowCoAdminPicker] = useState(false);
   const [isStartDateModalVisible, setStartDateModalVisible] = useState(false);
   const [isEndDateModalVisible, setEndDateModalVisible] = useState(false);
@@ -145,26 +147,98 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
     if (!showFullForm) return;
     const fetchConnections = async () => {
       try {
-        const result = await searchConnections('a');
-        setConnections(result);
-        setFilteredConnections(result);
+        // Get all user connections
+        const result = await getUserConnections();
+        setConnections(result || []);
       } catch (err) {
-        console.error('Error fetching connections:', err);
+        console.log('Error fetching connections:', err.message);
+        setConnections([]);
       }
     };
     fetchConnections();
   }, [showFullForm]);
 
   useEffect(() => {
-    if (!searchText) {
-      setFilteredConnections([]);
-    } else {
-      const filtered = connections.filter((user) =>
-        user.name.toLowerCase().includes(searchText.toLowerCase())
-      );
-      setFilteredConnections(filtered);
+    const performSearch = async () => {
+      if (!searchText) {
+        setFilteredConnections([]);
+        setAllUsers([]);
+        setShowingAllUsers(false);
+        return;
+      }
+
+      try {
+        // First, search in connections
+        const filtered = connections.filter((user) =>
+          user.name.toLowerCase().includes(searchText.toLowerCase())
+        );
+        setFilteredConnections(filtered);
+
+        // Then search all users if we want to show more options
+        if (searchText.length >= 2) {
+          try {
+            const users = await searchUsers(searchText);
+            // Filter out users who are already in connections to avoid duplicates
+            const connectedUserIds = connections.map(conn => conn.userId);
+            const filteredUsers = (users || []).filter(user => !connectedUserIds.includes(user.userId));
+            setAllUsers(filteredUsers);
+            setShowingAllUsers(true);
+          } catch (searchError) {
+            console.log('SearchUsers API error:', searchError.message);
+            // Don't show error for API failures, just don't show additional users
+            setAllUsers([]);
+            setShowingAllUsers(false);
+          }
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+        setAllUsers([]);
+        setShowingAllUsers(false);
+      }
+    };
+
+    const timeoutId = setTimeout(performSearch, 300); // Debounce search
+    return () => clearTimeout(timeoutId);
+  }, [searchText, connections]);
+
+  const handleUserSelection = async (user) => {
+    if (user.connectionStatus === 'accepted') {
+      // If already connected, toggle selection
+      if (selectedCoAdmins.includes(user.userId)) {
+        setSelectedCoAdmins(selectedCoAdmins.filter(id => id !== user.userId));
+      } else {
+        setSelectedCoAdmins([...selectedCoAdmins, user.userId]);
+      }
+    } else if (user.connectionStatus === 'none') {
+      // Send connection request for non-connected users
+      try {
+        await sendConnectionRequest(user.userId);
+        Alert.alert(
+          'Connection Request Sent',
+          `Connection request sent to ${user.name}. They will be invited to the project and added as co-admin once they accept your connection request.`
+        );
+        // Add them to selected list - they'll be invited to the project
+        if (!selectedCoAdmins.includes(user.userId)) {
+          setSelectedCoAdmins([...selectedCoAdmins, user.userId]);
+        }
+      } catch (error) {
+        console.error('Failed to send connection request:', error);
+        Alert.alert('Error', 'Failed to send connection request. Please try again.');
+      }
+    } else if (user.connectionStatus === 'pending') {
+      // If request is pending, still allow them to be selected for project invitation
+      if (selectedCoAdmins.includes(user.userId)) {
+        setSelectedCoAdmins(selectedCoAdmins.filter(id => id !== user.userId));
+      } else {
+        setSelectedCoAdmins([...selectedCoAdmins, user.userId]);
+        Alert.alert(
+          'User Added',
+          `${user.name} will be invited to the project. They can join once the connection request is accepted.`
+        );
+      }
     }
-  }, [searchText]);
+  };
+
   return (
     <>
       {!showFullForm && !hideSimpleForm && (
@@ -587,12 +661,20 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               color: theme.text,
                               fontWeight: 'bold',
                               fontSize: 16,
-                              marginBottom: 12,
+                              marginBottom: 8,
                             }}>
                             {t('select_co_admins')}
                           </Text>
+                          <Text
+                            style={{
+                              color: theme.secondaryText,
+                              fontSize: 12,
+                              marginBottom: 12,
+                            }}>
+                            Search your connections or add new users. Connection requests will be sent automatically.
+                          </Text>
                           <TextInput
-                            placeholder={t('search_connections')}
+                            placeholder="Search connections or add new users..."
                             placeholderTextColor={theme.secondaryText}
                             value={searchText}
                             onChangeText={async (text) => {
@@ -618,71 +700,165 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               marginBottom: 10,
                             }}
                           />
-                          <FlatList
-                            keyboardShouldPersistTaps="always"
-                            data={filteredConnections.slice(0, 10)}
-                            keyExtractor={(item) => item.userId.toString()}
-                            renderItem={({ item }) => (
-                              <TouchableOpacity
-                                onPress={() => {
-                                  if (selectedCoAdmins.includes(item.userId)) {
-                                    setSelectedCoAdmins((prev) =>
-                                      prev.filter((id) => id !== item.userId)
-                                    );
-                                  } else {
-                                    setSelectedCoAdmins((prev) => [...prev, item.userId]);
-                                  }
-                                }}
-                                style={{
-                                  flexDirection: 'row',
-                                  alignItems: 'center',
-                                  paddingVertical: 10,
-                                  borderBottomWidth: 0.5,
-                                  borderColor: theme.border,
-                                }}>
-                                <Image
-                                  source={{
-                                    uri:
-                                      item.profilePhoto ||
-                                      'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                                  }}
-                                  style={{
-                                    width: 36,
-                                    height: 36,
-                                    borderRadius: 18,
-                                    marginRight: 10,
-                                    borderWidth: 1,
-                                    borderColor: theme.border,
-                                  }}
-                                />
-                                <View style={{ flex: 1 }}>
-                                  <Text style={{ color: theme.text, fontWeight: '500' }}>
-                                    {item.name}
-                                  </Text>
-                                  {item.phone && (
-                                    <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                                      {t('phone')}: {item.phone}
-                                    </Text>
-                                  )}
-                                </View>
-                                {selectedCoAdmins.includes(item.userId) && (
-                                  <Feather name="check-circle" size={20} color={theme.primary} />
+                          {/* Show Connections First */}
+                          {filteredConnections.length > 0 && (
+                            <>
+                              <Text style={{ 
+                                color: theme.text, 
+                                fontWeight: '600', 
+                                fontSize: 14, 
+                                marginBottom: 8,
+                                marginTop: 8 
+                              }}>
+                                Your Connections
+                              </Text>
+                              <FlatList
+                                keyboardShouldPersistTaps="always"
+                                data={filteredConnections.slice(0, 5)}
+                                keyExtractor={(item) => `connection-${item.userId}`}
+                                renderItem={({ item }) => (
+                                  <TouchableOpacity
+                                    onPress={() => handleUserSelection({ ...item, connectionStatus: 'accepted' })}
+                                    style={{
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      paddingVertical: 10,
+                                      borderBottomWidth: 0.5,
+                                      borderColor: theme.border,
+                                    }}>
+                                    <Image
+                                      source={{
+                                        uri:
+                                          item.profilePhoto ||
+                                          'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                                      }}
+                                      style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 18,
+                                        marginRight: 10,
+                                        borderWidth: 1,
+                                        borderColor: theme.border,
+                                      }}
+                                    />
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={{ color: theme.text, fontWeight: '500' }}>
+                                        {item.name}
+                                      </Text>
+                                      {item.phone && (
+                                        <Text style={{ fontSize: 12, color: theme.secondaryText }}>
+                                          {t('phone')}: {item.phone}
+                                        </Text>
+                                      )}
+                                      <Text style={{ fontSize: 10, color: theme.primary }}>
+                                        Connected
+                                      </Text>
+                                    </View>
+                                    {selectedCoAdmins.includes(item.userId) && (
+                                      <Feather name="check-circle" size={20} color={theme.primary} />
+                                    )}
+                                  </TouchableOpacity>
                                 )}
-                              </TouchableOpacity>
-                            )}
-                            ListEmptyComponent={
-                              searchText.trim() !== '' ? (
-                                <Text
-                                  style={{
-                                    color: theme.secondaryText,
-                                    textAlign: 'center',
-                                    marginTop: 20,
-                                  }}>
-                                  No connections found.
-                                </Text>
-                              ) : null
-                            }
-                          />
+                              />
+                            </>
+                          )}
+
+                          {/* Show All Users */}
+                          {showingAllUsers && allUsers.length > 0 && (
+                            <>
+                              <Text style={{ 
+                                color: theme.text, 
+                                fontWeight: '600', 
+                                fontSize: 14, 
+                                marginBottom: 8,
+                                marginTop: 12 
+                              }}>
+                                All Users
+                              </Text>
+                              <FlatList
+                                keyboardShouldPersistTaps="always"
+                                data={allUsers.slice(0, 8)}
+                                keyExtractor={(item) => `user-${item.userId}`}
+                                renderItem={({ item }) => (
+                                  <TouchableOpacity
+                                    onPress={() => handleUserSelection(item)}
+                                    style={{
+                                      flexDirection: 'row',
+                                      alignItems: 'center',
+                                      paddingVertical: 10,
+                                      borderBottomWidth: 0.5,
+                                      borderColor: theme.border,
+                                    }}>
+                                    <Image
+                                      source={{
+                                        uri:
+                                          item.profilePhoto ||
+                                          'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                                      }}
+                                      style={{
+                                        width: 36,
+                                        height: 36,
+                                        borderRadius: 18,
+                                        marginRight: 10,
+                                        borderWidth: 1,
+                                        borderColor: theme.border,
+                                      }}
+                                    />
+                                    <View style={{ flex: 1 }}>
+                                      <Text style={{ color: theme.text, fontWeight: '500' }}>
+                                        {item.name}
+                                      </Text>
+                                      {item.phone && (
+                                        <Text style={{ fontSize: 12, color: theme.secondaryText }}>
+                                          {t('phone')}: {item.phone}
+                                        </Text>
+                                      )}
+                                      <Text style={{ 
+                                        fontSize: 10, 
+                                        color: item.connectionStatus === 'accepted' 
+                                          ? theme.primary 
+                                          : item.connectionStatus === 'pending' 
+                                            ? '#FFA500' 
+                                            : theme.secondaryText 
+                                      }}>
+                                        {item.connectionStatus === 'accepted' 
+                                          ? 'Connected' 
+                                          : item.connectionStatus === 'pending' 
+                                            ? 'Request Pending' 
+                                            : 'Not Connected'}
+                                      </Text>
+                                    </View>
+                                    <View style={{ alignItems: 'center' }}>
+                                      {selectedCoAdmins.includes(item.userId) && (
+                                        <Feather name="check-circle" size={20} color={theme.primary} />
+                                      )}
+                                      {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
+                                        <Text style={{ 
+                                          fontSize: 10, 
+                                          color: theme.secondaryText,
+                                          textAlign: 'center' 
+                                        }}>
+                                          Tap to send{'\n'}connection request
+                                        </Text>
+                                      )}
+                                    </View>
+                                  </TouchableOpacity>
+                                )}
+                              />
+                            </>
+                          )}
+                          
+                          {/* Show message when no results found */}
+                          {searchText.trim() !== '' && filteredConnections.length === 0 && allUsers.length === 0 && (
+                            <Text
+                              style={{
+                                color: theme.secondaryText,
+                                textAlign: 'center',
+                                marginTop: 20,
+                              }}>
+                              No users found. Try a different search term.
+                            </Text>
+                          )}
                           <TouchableOpacity
                             style={{
                               marginTop: 18,
@@ -769,27 +945,24 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 color: theme.text,
                 fontWeight: 'bold',
                 fontSize: 16,
-                marginBottom: 12,
+                marginBottom: 8,
               }}>
               {t('select_co_admins')}
             </Text>
+            <Text
+              style={{
+                color: theme.secondaryText,
+                fontSize: 12,
+                marginBottom: 12,
+              }}>
+              Search your connections or add new users. Connection requests will be sent automatically.
+            </Text>
             <TextInput
-              placeholder={t('search_connections')}
+              placeholder="Search connections or add new users..."
               placeholderTextColor={theme.secondaryText}
               value={searchText}
-              onChangeText={async (text) => {
+              onChangeText={(text) => {
                 setSearchText(text);
-                if (text.trim()) {
-                  try {
-                    const result = await searchConnections(text.trim());
-                    setFilteredConnections(result);
-                  } catch (err) {
-                    console.error('Search Error:', err);
-                    setFilteredConnections([]);
-                  }
-                } else {
-                  setFilteredConnections([]);
-                }
               }}
               style={{
                 color: theme.text,
@@ -800,71 +973,156 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 marginBottom: 10,
               }}
             />
-            <FlatList
-              keyboardShouldPersistTaps="always"
-              data={filteredConnections.slice(0, 10)}
-              keyExtractor={(item) => item.userId.toString()}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  onPress={() => {
-                    if (selectedCoAdmins.includes(item.userId)) {
-                      setSelectedCoAdmins((prev) =>
-                        prev.filter((id) => id !== item.userId)
-                      );
-                    } else {
-                      setSelectedCoAdmins((prev) => [...prev, item.userId]);
-                    }
-                  }}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 10,
-                    borderBottomWidth: 0.5,
-                    borderColor: theme.border,
-                  }}>
-                  <Image
-                    source={{
-                      uri:
-                        item.profilePhoto ||
-                        'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                    }}
-                    style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      marginRight: 10,
-                      borderWidth: 1,
-                      borderColor: theme.border,
-                    }}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: theme.text, fontWeight: '500' }}>
-                      {item.name}
-                    </Text>
-                    {item.phone && (
-                      <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                        {t('phone')}: {item.phone}
-                      </Text>
-                    )}
-                  </View>
-                  {selectedCoAdmins.includes(item.userId) && (
-                    <Feather name="check-circle" size={20} color={theme.primary} />
+            {/* Show Connections First */}
+            {filteredConnections.length > 0 && (
+              <>
+                <Text style={{ 
+                  color: theme.text, 
+                  fontWeight: '600', 
+                  fontSize: 14, 
+                  marginBottom: 8,
+                  marginTop: 8 
+                }}>
+                  Your Connections
+                </Text>
+                <FlatList
+                  keyboardShouldPersistTaps="always"
+                  data={filteredConnections.slice(0, 5)}
+                  keyExtractor={(item) => `connection-${item.userId}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => handleUserSelection({ ...item, connectionStatus: 'accepted' })}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 10,
+                        borderBottomWidth: 0.5,
+                        borderColor: theme.border,
+                      }}>
+                      <Image
+                        source={{
+                          uri:
+                            item.profilePhoto ||
+                            'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                        }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          marginRight: 10,
+                          borderWidth: 1,
+                          borderColor: theme.border,
+                        }}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: theme.text, fontWeight: '500' }}>
+                          {item.name}
+                        </Text>
+                        <Text style={{ fontSize: 10, color: theme.primary }}>
+                          Connected
+                        </Text>
+                      </View>
+                      {selectedCoAdmins.includes(item.userId) && (
+                        <Feather name="check-circle" size={20} color={theme.primary} />
+                      )}
+                    </TouchableOpacity>
                   )}
-                </TouchableOpacity>
-              )}
-              ListEmptyComponent={
-                searchText.trim() !== '' ? (
-                  <Text
-                    style={{
-                      color: theme.secondaryText,
-                      textAlign: 'center',
-                      marginTop: 20,
-                    }}>
-                    No connections found.
-                  </Text>
-                ) : null
-              }
-            />
+                />
+              </>
+            )}
+
+            {/* Show All Users */}
+            {showingAllUsers && allUsers.length > 0 && (
+              <>
+                <Text style={{ 
+                  color: theme.text, 
+                  fontWeight: '600', 
+                  fontSize: 14, 
+                  marginBottom: 8,
+                  marginTop: 12 
+                }}>
+                  All Users
+                </Text>
+                <FlatList
+                  keyboardShouldPersistTaps="always"
+                  data={allUsers.slice(0, 8)}
+                  keyExtractor={(item) => `user-${item.userId}`}
+                  renderItem={({ item }) => (
+                    <TouchableOpacity
+                      onPress={() => handleUserSelection(item)}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: 10,
+                        borderBottomWidth: 0.5,
+                        borderColor: theme.border,
+                      }}>
+                      <Image
+                        source={{
+                          uri:
+                            item.profilePhoto ||
+                            'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                        }}
+                        style={{
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          marginRight: 10,
+                          borderWidth: 1,
+                          borderColor: theme.border,
+                        }}
+                      />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: theme.text, fontWeight: '500' }}>
+                          {item.name}
+                        </Text>
+
+                        <Text style={{ 
+                          fontSize: 10, 
+                          color: item.connectionStatus === 'accepted' 
+                            ? theme.primary 
+                            : item.connectionStatus === 'pending' 
+                              ? '#FFA500' 
+                              : theme.secondaryText 
+                        }}>
+                          {item.connectionStatus === 'accepted' 
+                            ? 'Connected' 
+                            : item.connectionStatus === 'pending' 
+                              ? 'Request Pending' 
+                              : 'Not Connected'}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems: 'center' }}>
+                        {selectedCoAdmins.includes(item.userId) && (
+                          <Feather name="check-circle" size={20} color={theme.primary} />
+                        )}
+                        {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
+                          <Text style={{ 
+                            fontSize: 10, 
+                            color: theme.secondaryText,
+                            textAlign: 'center' 
+                          }}>
+                            Tap to send{'\n'}connection request
+                          </Text>
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  )}
+                />
+              </>
+            )}
+            
+            {/* Show message when no results found */}
+            {searchText.trim() !== '' && filteredConnections.length === 0 && allUsers.length === 0 && (
+              <Text
+                style={{
+                  color: theme.secondaryText,
+                  textAlign: 'center',
+                  marginTop: 20,
+                }}>
+                No users found. Try a different search term.
+              </Text>
+            )}
             <TouchableOpacity
               style={{
                 marginTop: 18,
