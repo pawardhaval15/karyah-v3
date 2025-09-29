@@ -1,0 +1,185 @@
+{
+    
+    "categories": [
+      {
+        "name": "Interior Design & Renovation",
+        "subcategories": [
+          "Residential Interior Design",
+          "Commercial Interior Design",
+          "Luxury Interior Design",
+          "Minimalist Interior Design",
+          "Traditional Interior Design",
+          "Modern Interior Design",
+          "Industrial Interior Design",
+          "3D Interior Rendering",
+          "Space Planning",
+          "Custom Interior Decor"
+        ]
+      },
+      {
+        "name": "Modular Kitchen & Cabinetry",
+        "subcategories": [
+          "Modular Kitchen Design",
+          "Kitchen Renovation",
+          "Custom Kitchen Cabinets",
+          "Countertop Installation",
+          "Backsplash & Tile Work",
+          "Pantry & Storage Solutions"
+        ]
+      },
+      {
+        "name": "False Ceiling & POP Work",
+        "subcategories": [
+          "POP False Ceiling",
+          "Gypsum Ceiling",
+          "PVC Ceiling Panels",
+          "Wooden Ceiling Panels",
+          "3D Ceiling Designs",
+          "Cove & Drop Ceiling",
+          "Acoustic Ceiling Solutions"
+        ]
+      },
+      {
+        "name": "Flooring & Tiling",
+        "subcategories": [
+          "Wooden Flooring",
+          "Marble Flooring",
+          "Granite Flooring",
+          "Vinyl Flooring",
+          "Epoxy Flooring",
+          "Carpet Flooring",
+          "Mosaic & Designer Tiles",
+          "Outdoor Deck Flooring"
+        ]
+      },
+      {
+        "name": "Wall Design & Finishing",
+        "subcategories": [
+          "Wall Painting",
+          "Textured Wall Finishes",
+          "Wallpaper Installation",
+          "Wooden Wall Panels",
+          "3D Wall Panels",
+          "Stone Cladding",
+          "Glass Wall Partitions"
+        ]
+      },
+      {
+        "name": "Lighting & Electrical Fixtures",
+        "subcategories": [
+          "LED Panel Lights",
+          "Chandeliers & Pendant Lights",
+          "Smart Home Lighting",
+          "Wall & Cove Lighting",
+          "Track Lighting Solutions",
+          "Outdoor & Landscape Lighting"
+        ]
+      },
+      {
+        "name": "Furniture & Upholstery",
+        "subcategories": [
+          "Custom Furniture Design",
+          "Wooden Furniture",
+          "Modular Furniture",
+          "Luxury Furniture",
+          "Office Furniture",
+          "Sofa & Upholstery",
+          "Bed & Mattress Solutions",
+          "Dining & Seating Furniture"
+        ]
+      },
+      {
+        "name": "Glass & Aluminium Work",
+        "subcategories": [
+          "Glass Partition Walls",
+          "Aluminium Sliding Windows",
+          "Glass Door Installation",
+          "Shower Enclosure Glass",
+          "Glass Staircase & Railings"
+        ]
+      },
+      {
+        "name": "Wardrobes & Storage Solutions",
+        "subcategories": [
+          "Walk-in Wardrobes",
+          "Sliding Door Wardrobes",
+          "Customized Storage Units",
+          "Bookshelves & Wall Shelves",
+          "Space-Saving Storage"
+        ]
+      },
+      {
+        "name": "Home Theaters & Soundproofing",
+        "subcategories": [
+          "Home Theater Setup",
+          "Acoustic Panels",
+          "Soundproof Doors & Windows",
+          "Media Room Interiors"
+        ]
+      },
+      {
+        "name": "Office & Commercial Interiors",
+        "subcategories": [
+          "Corporate Office Interiors",
+          "Retail & Showroom Interiors",
+          "Restaurant & Cafe Interiors",
+          "Hotel & Resort Interiors",
+          "Salon & Spa Interiors",
+          "Coworking Space Design"
+        ]
+      },
+      {
+        "name": "Bathroom Renovation & Accessories",
+        "subcategories": [
+          "Luxury Bathroom Design",
+          "Shower Enclosures",
+          "Bathtub Installation",
+          "Jacuzzi & Spa Tubs",
+          "Bathroom Vanities",
+          "Waterproofing Solutions"
+        ]
+      },
+      {
+        "name": "Outdoor & Landscape Interiors",
+        "subcategories": [
+          "Garden & Balcony Design",
+          "Patio & Terrace Interiors",
+          "Gazebo & Pergola Installation",
+          "Outdoor Seating Solutions",
+          "Artificial Grass & Turf"
+        ]
+      },
+      {
+        "name": "Doors & Windows",
+        "subcategories": [
+          "Wooden Doors",
+          "Glass Doors",
+          "Aluminium Windows",
+          "UPVC Windows & Doors",
+          "Automatic Sliding Doors",
+          "Curtain Wall Systems"
+        ]
+      },
+      {
+        "name": "Curtains & Blinds",
+        "subcategories": [
+          "Custom Window Curtains",
+          "Roller Blinds",
+          "Roman Blinds",
+          "Motorized Blinds",
+          "Sheer & Blackout Curtains"
+        ]
+      },
+      {
+        "name": "Smart Home Automation",
+        "subcategories": [
+          "Smart Lighting Control",
+          "Automated Window Blinds",
+          "Voice-Controlled Home Devices",
+          "Home Security Automation",
+          "Thermostat & Climate Control"
+        ]
+      }
+    ]
+  }
+  

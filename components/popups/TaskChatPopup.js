@@ -999,6 +999,9 @@ export default function TaskChatPopup({
                 onSelectionChange={handleSelectionChange}
                 editable={!sendingMessage}
                 multiline={false}
+                onSubmitEditing={handleSendMessage}
+                returnKeyType="send"
+                blurOnSubmit={false}
               />
               <TouchableOpacity
                 style={{

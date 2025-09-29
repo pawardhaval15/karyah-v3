@@ -1,5 +1,5 @@
 import { Feather } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Animated, Dimensions, Modal, PanResponder, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
@@ -11,108 +11,177 @@ export default function ImageModal({ visible, image, onClose, theme }) {
     const [lastScale, setLastScale] = useState(1);
     const [lastTranslateX, setLastTranslateX] = useState(0);
     const [lastTranslateY, setLastTranslateY] = useState(0);
+    const [initialDistance, setInitialDistance] = useState(null);
+    const [initialScale, setInitialScale] = useState(1);
+    const [lastTap, setLastTap] = useState(0);
 
     const panResponder = useRef(
         PanResponder.create({
-            onMoveShouldSetPanResponder: (evt, gestureState) => {
-                // Only allow pan if zoomed in or if it's a pinch gesture
-                return lastScale > 1 || Math.abs(gestureState.dx) > 10 || Math.abs(gestureState.dy) > 10;
-            },
-            onMoveShouldSetPanResponderCapture: () => false,
-            onPanResponderGrant: () => {
-                // Set the offset to the current values when gesture starts
-                scale.setOffset(lastScale - 1);
-                translateX.setOffset(lastTranslateX);
-                translateY.setOffset(lastTranslateY);
-                scale.setValue(1);
-                translateX.setValue(0);
-                translateY.setValue(0);
+            onStartShouldSetPanResponder: () => true,
+            onMoveShouldSetPanResponder: () => true,
+            onPanResponderGrant: (evt) => {
+                // Set initial values when gesture starts
+                if (evt.nativeEvent.touches.length === 2) {
+                    // Pinch gesture starting
+                    const touches = evt.nativeEvent.touches;
+                    const distance = Math.sqrt(
+                        Math.pow(touches[0].pageX - touches[1].pageX, 2) +
+                        Math.pow(touches[0].pageY - touches[1].pageY, 2)
+                    );
+                    setInitialDistance(distance);
+                    setInitialScale(lastScale);
+                } else if (evt.nativeEvent.touches.length === 1 && lastScale > 1) {
+                    // Single touch panning when zoomed
+                    translateX.setOffset(lastTranslateX);
+                    translateY.setOffset(lastTranslateY);
+                    translateX.setValue(0);
+                    translateY.setValue(0);
+                }
             },
             onPanResponderMove: (evt, gestureState) => {
-                // Handle pinch-to-zoom (when there are 2 touches)
                 if (evt.nativeEvent.touches.length === 2) {
+                    // Pinch to zoom
                     const touches = evt.nativeEvent.touches;
                     const distance = Math.sqrt(
                         Math.pow(touches[0].pageX - touches[1].pageX, 2) +
                         Math.pow(touches[0].pageY - touches[1].pageY, 2)
                     );
                     
-                    if (!panResponder.current.initialDistance) {
-                        panResponder.current.initialDistance = distance;
+                    if (initialDistance && initialDistance > 0) {
+                        const scaleRatio = distance / initialDistance;
+                        const newScale = initialScale * scaleRatio;
+                        const constrainedScale = Math.max(0.8, Math.min(newScale, 5));
+                        scale.setValue(constrainedScale);
                     }
-                    
-                    const scaleValue = distance / panResponder.current.initialDistance;
-                    scale.setValue(Math.max(0.5, Math.min(scaleValue, 3))); // Limit scale between 0.5x and 3x
-                } else if (lastScale > 1) {
-                    // Handle panning when zoomed in
+                } else if (evt.nativeEvent.touches.length === 1 && lastScale > 1) {
+                    // Pan when zoomed
                     translateX.setValue(gestureState.dx);
                     translateY.setValue(gestureState.dy);
                 }
             },
-            onPanResponderRelease: () => {
-                // Reset initial distance for next pinch gesture
-                panResponder.current.initialDistance = null;
-                
-                // Flatten the offset and update last values
-                scale.flattenOffset();
-                translateX.flattenOffset();
-                translateY.flattenOffset();
-                
-                // Get current values
-                const currentScale = lastScale * scale._value;
-                const currentTranslateX = lastTranslateX + translateX._value;
-                const currentTranslateY = lastTranslateY + translateY._value;
-                
-                // Constrain scale
-                const constrainedScale = Math.max(1, Math.min(currentScale, 3));
-                
-                // Reset to fit if scale is too small
-                if (constrainedScale < 1.1) {
-                    Animated.parallel([
-                        Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
-                        Animated.spring(translateX, { toValue: 0, useNativeDriver: true }),
-                        Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
-                    ]).start();
-                    setLastScale(1);
-                    setLastTranslateX(0);
-                    setLastTranslateY(0);
-                } else {
-                    // Constrain translation to keep image in bounds
-                    const maxTranslateX = (screenWidth * (constrainedScale - 1)) / 2;
-                    const maxTranslateY = (600 * (constrainedScale - 1)) / 2; // Image height is 600
+            onPanResponderRelease: (evt, gestureState) => {
+                if (evt.nativeEvent.touches.length === 0) {
+                    // Check for double tap
+                    const now = Date.now();
+                    const DOUBLE_TAP_DELAY = 300;
                     
-                    const constrainedTranslateX = Math.max(-maxTranslateX, Math.min(currentTranslateX, maxTranslateX));
-                    const constrainedTranslateY = Math.max(-maxTranslateY, Math.min(currentTranslateY, maxTranslateY));
+                    if (now - lastTap < DOUBLE_TAP_DELAY && Math.abs(gestureState.dx) < 10 && Math.abs(gestureState.dy) < 10) {
+                        // Double tap detected - toggle zoom
+                        const currentScale = scale._value;
+                        if (currentScale > 1.5) {
+                            resetZoom();
+                        } else {
+                            // Zoom to 2x
+                            Animated.parallel([
+                                Animated.spring(scale, { toValue: 2, useNativeDriver: true }),
+                                Animated.spring(translateX, { toValue: 0, useNativeDriver: true }),
+                                Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
+                            ]).start();
+                            setLastScale(2);
+                            setLastTranslateX(0);
+                            setLastTranslateY(0);
+                        }
+                        setLastTap(0); // Reset to prevent triple tap
+                        return;
+                    }
                     
-                    Animated.parallel([
-                        Animated.spring(scale, { toValue: constrainedScale, useNativeDriver: true }),
-                        Animated.spring(translateX, { toValue: constrainedTranslateX, useNativeDriver: true }),
-                        Animated.spring(translateY, { toValue: constrainedTranslateY, useNativeDriver: true }),
-                    ]).start();
+                    setLastTap(now);
                     
-                    setLastScale(constrainedScale);
-                    setLastTranslateX(constrainedTranslateX);
-                    setLastTranslateY(constrainedTranslateY);
+                    // All fingers lifted
+                    const currentScale = scale._value;
+                    
+                    // Update scale state
+                    setLastScale(currentScale);
+                    
+                    // Handle translation bounds if panning occurred
+                    if (currentScale > 1 && (gestureState.dx !== 0 || gestureState.dy !== 0)) {
+                        translateX.flattenOffset();
+                        translateY.flattenOffset();
+                        
+                        const currentTranslateX = translateX._value;
+                        const currentTranslateY = translateY._value;
+                        
+                        // Calculate bounds
+                        const maxTranslateX = (screenWidth * (currentScale - 1)) / 2;
+                        const maxTranslateY = (500 * (currentScale - 1)) / 2;
+                        
+                        const constrainedTranslateX = Math.max(-maxTranslateX, Math.min(currentTranslateX, maxTranslateX));
+                        const constrainedTranslateY = Math.max(-maxTranslateY, Math.min(currentTranslateY, maxTranslateY));
+                        
+                        if (constrainedTranslateX !== currentTranslateX || constrainedTranslateY !== currentTranslateY) {
+                            Animated.parallel([
+                                Animated.spring(translateX, { toValue: constrainedTranslateX, useNativeDriver: true }),
+                                Animated.spring(translateY, { toValue: constrainedTranslateY, useNativeDriver: true }),
+                            ]).start();
+                        }
+                        
+                        setLastTranslateX(constrainedTranslateX);
+                        setLastTranslateY(constrainedTranslateY);
+                    }
+                    
+                    // Reset to normal if zoomed out too much
+                    if (currentScale < 0.9) {
+                        resetZoom();
+                    }
+                    
+                    // Reset pinch data
+                    setInitialDistance(null);
+                    setInitialScale(1);
                 }
             },
         })
     ).current;
 
     const resetZoom = () => {
-        Animated.parallel([
-            Animated.spring(scale, { toValue: 1, useNativeDriver: true }),
-            Animated.spring(translateX, { toValue: 0, useNativeDriver: true }),
-            Animated.spring(translateY, { toValue: 0, useNativeDriver: true }),
-        ]).start();
-        setLastScale(1);
-        setLastTranslateX(0);
-        setLastTranslateY(0);
+        try {
+            // Clear any existing offsets
+            scale.flattenOffset();
+            translateX.flattenOffset();
+            translateY.flattenOffset();
+            
+            // Reset to default values
+            Animated.parallel([
+                Animated.spring(scale, { 
+                    toValue: 1, 
+                    useNativeDriver: true,
+                    tension: 100,
+                    friction: 8
+                }),
+                Animated.spring(translateX, { 
+                    toValue: 0, 
+                    useNativeDriver: true,
+                    tension: 100,
+                    friction: 8
+                }),
+                Animated.spring(translateY, { 
+                    toValue: 0, 
+                    useNativeDriver: true,
+                    tension: 100,
+                    friction: 8
+                }),
+            ]).start();
+            
+            setLastScale(1);
+            setLastTranslateX(0);
+            setLastTranslateY(0);
+            setInitialDistance(null);
+            setInitialScale(1);
+        } catch (error) {
+            console.warn('Reset zoom error:', error);
+        }
     };
 
     const handleClose = () => {
         resetZoom();
         onClose();
     };
+
+    // Reset zoom when modal becomes visible
+    useEffect(() => {
+        if (visible) {
+            resetZoom();
+        }
+    }, [visible]);
     return (
         <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
             <View style={styles.bg}>
@@ -147,7 +216,7 @@ export default function ImageModal({ visible, image, onClose, theme }) {
                         )}
                     </View>
                     <Text style={[styles.instructions, { color: theme?.secondaryText || '#666' }]}>
-                        Pinch to zoom • Drag to pan • Tap reset to fit
+                        Pinch to zoom • Double tap to zoom • Drag to pan • Tap reset to fit
                     </Text>
                 </View>
             </View>

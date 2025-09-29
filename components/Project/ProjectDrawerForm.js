@@ -2,14 +2,15 @@ import { Feather, Ionicons } from '@expo/vector-icons';
 import FieldBox from 'components/task details/FieldBox';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import categoriesData from '../../utils/categories.json';
 import { searchConnections } from '../../utils/connections';
 import { createProject } from '../../utils/project';
 import DateBox from '../task details/DateBox';
-import { useTranslation } from 'react-i18next';
 export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimpleForm = false }) {
   const [showFullForm, setShowFullForm] = useState(hideSimpleForm);
   const [connections, setConnections] = useState([]);
@@ -23,6 +24,92 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const { t } = useTranslation();
+  
+  // Category suggestions state
+  const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
+  const [categorySuggestions, setCategorySuggestions] = useState([]);
+
+  // Filter categories and subcategories based on search text
+  const filterCategories = (searchText) => {
+    if (!searchText || searchText.trim() === '') {
+      // Return main categories when no search text for cleaner initial view
+      const allSuggestions = [];
+      categoriesData.categories.forEach((category) => {
+        allSuggestions.push({
+          text: category.name,
+          type: 'category'
+        });
+      });
+      return allSuggestions;
+    }
+
+    const suggestions = [];
+    const lowercaseSearch = searchText.toLowerCase();
+
+    categoriesData.categories.forEach((category) => {
+      // Check if main category name matches
+      if (category.name.toLowerCase().includes(lowercaseSearch)) {
+        suggestions.push({
+          text: category.name,
+          type: 'category'
+        });
+        // If category matches, add its subcategories too
+        category.subcategories.forEach((subcategory) => {
+          suggestions.push({
+            text: subcategory,
+            type: 'subcategory',
+            parentCategory: category.name
+          });
+        });
+      } else {
+        // Check subcategories only if main category doesn't match
+        category.subcategories.forEach((subcategory) => {
+          if (subcategory.toLowerCase().includes(lowercaseSearch)) {
+            suggestions.push({
+              text: subcategory,
+              type: 'subcategory',
+              parentCategory: category.name
+            });
+          }
+        });
+      }
+    });
+
+    return suggestions.slice(0, 15); // Increase limit to show more suggestions
+  };
+
+  // Handle category input change
+  const handleCategoryChange = (text) => {
+    onChange('projectCategory', text);
+    
+    const suggestions = filterCategories(text);
+    setCategorySuggestions(suggestions);
+    setShowCategorySuggestions(true); // Always show suggestions when typing
+  };
+
+  // Handle category suggestion selection
+  const handleCategorySuggestionSelect = (suggestion) => {
+    onChange('projectCategory', suggestion.text);
+    
+    // If a main category is selected, show its subcategories
+    if (suggestion.type === 'category') {
+      const category = categoriesData.categories.find(cat => cat.name === suggestion.text);
+      if (category && category.subcategories.length > 0) {
+        const subcategorySuggestions = category.subcategories.map(sub => ({
+          text: sub,
+          type: 'subcategory',
+          parentCategory: category.name
+        }));
+        setCategorySuggestions(subcategorySuggestions);
+        setShowCategorySuggestions(true);
+        return;
+      }
+    }
+    
+    setShowCategorySuggestions(false);
+    setCategorySuggestions([]);
+  };
+
   const handleCreate = async () => {
     try {
       const payload = {
@@ -153,13 +240,118 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               theme={theme}
             />
           </View>
-          <FieldBox
-            value={values?.projectCategory || ''}
-            placeholder={t('project_category')}
-            theme={theme}
-            editable={true}
-            onChangeText={(t) => onChange('projectCategory', t)}
-          />
+          
+          {/* Custom Category Input with Suggestions */}
+          <View style={[styles.categoryInputContainer, { zIndex: 1000 }]}>
+            <View style={[
+              styles.inputBox,
+              { backgroundColor: theme.card, borderColor: theme.border }
+            ]}>
+              <Feather
+                name="tag"
+                size={20}
+                color={theme.secondaryText}
+                style={{ marginRight: 10 }}
+              />
+              <TextInput
+                style={[styles.input, { color: theme.text }]}
+                placeholder={t('project_category')}
+                placeholderTextColor={theme.secondaryText}
+                value={values?.projectCategory || ''}
+                onChangeText={handleCategoryChange}
+                onFocus={() => {
+                  const suggestions = filterCategories(values?.projectCategory || '');
+                  setCategorySuggestions(suggestions);
+                  setShowCategorySuggestions(true);
+                }}
+                onBlur={() => {
+                  // Delay hiding suggestions to allow selection
+                  setTimeout(() => setShowCategorySuggestions(false), 200);
+                }}
+              />
+            </View>
+            
+            {/* Category Suggestions Dropdown */}
+            {showCategorySuggestions && categorySuggestions.length > 0 && (
+              <View style={[
+                styles.suggestionsContainer,
+                { 
+                  backgroundColor: theme.card, 
+                  borderColor: theme.border,
+                  shadowColor: '#000'
+                }
+              ]}>
+                <ScrollView 
+                  style={{ maxHeight: 250 }}
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled={true}
+                >
+                  {categorySuggestions.map((item, index) => (
+                    <TouchableOpacity
+                      key={`${item.text}-${index}`}
+                      style={[
+                        styles.suggestionItem,
+                        { 
+                          borderBottomColor: theme.border,
+                          borderBottomWidth: index === categorySuggestions.length - 1 ? 0 : 0.5
+                        }
+                      ]}
+                      onPress={() => handleCategorySuggestionSelect(item)}
+                      activeOpacity={0.7}
+                    >
+                      <View style={{ flex: 1 }}>
+                        <Text style={[
+                          styles.suggestionText, 
+                          { 
+                            color: theme.text,
+                            fontWeight: item.type === 'category' ? '600' : '500',
+                            marginLeft: item.type === 'subcategory' ? 20 : 0
+                          }
+                        ]}>
+                          {item.text}
+                        </Text>
+                        {item.type === 'subcategory' && (
+                          <Text style={[
+                            styles.suggestionSubtext, 
+                            { 
+                              color: theme.secondaryText,
+                              marginLeft: 20
+                            }
+                          ]}>
+                            in {item.parentCategory}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: theme.secondaryText,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: 'transparent'
+                      }}>
+                        {item.type === 'category' ? (
+                          <Feather name="folder" size={12} color={theme.secondaryText} />
+                        ) : (
+                          <View style={{
+                            width: 8,
+                            height: 8,
+                            borderRadius: 4,
+                            backgroundColor: theme.secondaryText,
+                            opacity: 0.6
+                          }} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+          </View>
+          
           <FieldBox
             value={values?.location || ''}
             placeholder={t('location')}
@@ -251,13 +443,118 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                         theme={theme}
                       />
                     </View>
-                    <FieldBox
-                      value={values?.projectCategory || ''}
-                      placeholder={t('project_category')}
-                      theme={theme}
-                      editable={true}
-                      onChangeText={(t) => onChange('projectCategory', t)}
-                    />
+                    
+                    {/* Custom Category Input with Suggestions */}
+                    <View style={[styles.categoryInputContainer, { zIndex: 1000, marginHorizontal: 24, marginBottom: 14 }]}>
+                      <View style={[
+                        styles.inputBox,
+                        { backgroundColor: theme.card, borderColor: theme.border, marginHorizontal: 0, marginBottom: 0 }
+                      ]}>
+                        <Feather
+                          name="tag"
+                          size={20}
+                          color={theme.secondaryText}
+                          style={{ marginRight: 10 }}
+                        />
+                        <TextInput
+                          style={[styles.input, { color: theme.text }]}
+                          placeholder={t('project_category')}
+                          placeholderTextColor={theme.secondaryText}
+                          value={values?.projectCategory || ''}
+                          onChangeText={handleCategoryChange}
+                          onFocus={() => {
+                            const suggestions = filterCategories(values?.projectCategory || '');
+                            setCategorySuggestions(suggestions);
+                            setShowCategorySuggestions(true);
+                          }}
+                          onBlur={() => {
+                            // Delay hiding suggestions to allow selection
+                            setTimeout(() => setShowCategorySuggestions(false), 200);
+                          }}
+                        />
+                      </View>
+                      
+                      {/* Category Suggestions Dropdown */}
+                      {showCategorySuggestions && categorySuggestions.length > 0 && (
+                        <View style={[
+                          styles.suggestionsContainer,
+                          { 
+                            backgroundColor: theme.card, 
+                            borderColor: theme.border,
+                            shadowColor: '#000'
+                          }
+                        ]}>
+                          <ScrollView 
+                            style={{ maxHeight: 250 }}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            nestedScrollEnabled={true}
+                          >
+                            {categorySuggestions.map((item, index) => (
+                              <TouchableOpacity
+                                key={`${item.text}-${index}`}
+                                style={[
+                                  styles.suggestionItem,
+                                  { 
+                                    borderBottomColor: theme.border,
+                                    borderBottomWidth: index === categorySuggestions.length - 1 ? 0 : 0.5
+                                  }
+                                ]}
+                                onPress={() => handleCategorySuggestionSelect(item)}
+                                activeOpacity={0.7}
+                              >
+                                <View style={{ flex: 1 }}>
+                                  <Text style={[
+                                    styles.suggestionText, 
+                                    { 
+                                      color: theme.text,
+                                      fontWeight: item.type === 'category' ? '600' : '500',
+                                      marginLeft: item.type === 'subcategory' ? 20 : 0
+                                    }
+                                  ]}>
+                                    {item.text}
+                                  </Text>
+                                  {item.type === 'subcategory' && (
+                                    <Text style={[
+                                      styles.suggestionSubtext, 
+                                      { 
+                                        color: theme.secondaryText,
+                                        marginLeft: 20
+                                      }
+                                    ]}>
+                                      in {item.parentCategory}
+                                    </Text>
+                                  )}
+                                </View>
+                                <View style={{
+                                  width: 24,
+                                  height: 24,
+                                  borderRadius: 12,
+                                  borderWidth: 1.5,
+                                  borderColor: theme.secondaryText,
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  backgroundColor: 'transparent'
+                                }}>
+                                  {item.type === 'category' ? (
+                                    <Feather name="folder" size={12} color={theme.secondaryText} />
+                                  ) : (
+                                    <View style={{
+                                      width: 8,
+                                      height: 8,
+                                      borderRadius: 4,
+                                      backgroundColor: theme.secondaryText,
+                                      opacity: 0.6
+                                    }} />
+                                  )}
+                                </View>
+                              </TouchableOpacity>
+                            ))}
+                          </ScrollView>
+                        </View>
+                      )}
+                    </View>
+                    
                     <FieldBox
                       value={values?.location || ''}
                       placeholder={t('location')}
@@ -699,5 +996,40 @@ const styles = StyleSheet.create({
   closeBtn: {
     borderRadius: 20,
     padding: 4,
+  },
+  categoryInputContainer: {
+    position: 'relative',
+    width: '100%',
+  },
+  suggestionsContainer: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    maxHeight: 250,
+    borderWidth: 1,
+    borderRadius: 14,
+    marginTop: 0,
+    marginHorizontal: 16,
+    zIndex: 1000,
+  },
+  suggestionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 0.5,
+    minHeight: 60,
+  },
+  suggestionText: {
+    fontSize: 15,
+    fontWeight: '500',
+    lineHeight: 20,
+  },
+  suggestionSubtext: {
+    fontSize: 11,
+    fontStyle: 'italic',
+    marginTop: 4,
+    opacity: 0.8,
   },
 });
