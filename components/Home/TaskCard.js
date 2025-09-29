@@ -104,18 +104,6 @@ export default function TaskCard({
       <View style={styles.content}>
         <View style={styles.row}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-            {/* Issue Red Dot Indicator */}
-            {isIssue && (
-              <View
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 4,
-                  backgroundColor: '#FF4444',
-                  marginRight: 6,
-                }}
-              />
-            )}
             <Text
               style={[styles.taskTitle, { color: theme.text, flex: 1 }]}
               numberOfLines={1}

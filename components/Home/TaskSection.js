@@ -271,18 +271,24 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                   : navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' })
               }
             >
-              <TaskCard
-                title={item.title || item.issueTitle || item.name || t('untitled')}
-                project={item.project?.projectName || item.project || item.projectName}
-                percent={item.percent || item.progress || 0}
-                desc={item.desc || item.description}
-                date={item.date || item.dueDate || item.endDate}
-                theme={theme}
-                creatorName={item.creatorName || item.createdBy || item.creator?.name}
-                isIssue={activeTab === 'issues'}
-                issueStatus={item.issueStatus}
-                isCritical={item.isCritical}
-              />
+              <View style={{ position: 'relative' }}>
+                <TaskCard
+                  title={item.title || item.issueTitle || item.name || t('untitled')}
+                  project={item.project?.projectName || item.project || item.projectName}
+                  percent={item.percent || item.progress || 0}
+                  desc={item.desc || item.description}
+                  date={item.date || item.dueDate || item.endDate}
+                  theme={theme}
+                  creatorName={item.creatorName || item.createdBy || item.creator?.name}
+                  isIssue={activeTab === 'issues'}
+                  issueStatus={item.issueStatus}
+                  isCritical={item.isCritical}
+                />
+                {/* Critical Issue Red Dot Indicator */}
+                {activeTab === 'issues' && item.isCritical && (
+                  <View style={styles.criticalDot} />
+                )}
+              </View>
             </TouchableOpacity>
           ))}
       </ScrollView>
@@ -379,5 +385,18 @@ const styles = StyleSheet.create({
   },
   searchIcon: {
     marginLeft: 8,
+  },
+  criticalDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF3B30',
+    borderWidth: 2,
+    borderColor: '#fff',
+    zIndex: 10,
+    elevation: 5,
   },
 });
