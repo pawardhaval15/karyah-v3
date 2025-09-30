@@ -121,7 +121,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
 
   const handleConfirmReassign = async () => {
     if (selectedUsers.length === 0) {
-      Alert.alert("Error", "Please select at least one user to reassign the issue to.");
+      Alert.alert("Error", "Please select at least one user to reassign.");
       return;
     }
     
@@ -145,7 +145,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
         .map(assignee => assignee.userName || assignee.name)
         .join(', ');
       
-      let message = `Issue assignment updated successfully!\n\n✅ You have been removed from the issue\n✅ ${selectedUsers.length} new user(s) added: ${selectedUserNames}`;
+      let message = `assignment updated successfully!\n\n✅ You have been removed\n✅ ${selectedUsers.length} new user(s) added: ${selectedUserNames}`;
       
       if (existingCount > 0) {
         message += `\n✅ ${existingCount} existing assignee(s) remain: ${remainingAssignees}`;
@@ -154,7 +154,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
       Alert.alert("Success", message, [{ text: "OK", onPress: () => handleClose(true) }]);
     } catch (err) {
       console.error('[TaskReassignPopup] Error:', err);
-      Alert.alert("Error", err.message || "Failed to reassign issue");
+      Alert.alert("Error", err.message || "Failed to reassign");
     }
   };
 
@@ -244,7 +244,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           {/* Header */}
           <View style={styles.header}>
             <Text style={[styles.headerTitle, { color: theme.text }]}>
-              {t("Reassign Issue") || "Reassign Issue"}
+              {t("Reassign") || "Reassign"}
             </Text>
             <TouchableOpacity onPress={handleClose} style={styles.closeBtn}>
               <Ionicons name="close" size={22} color={theme.text} />
@@ -293,7 +293,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           {/* Search Input */}
           <View style={{ marginBottom: 20 }}>
             <Text style={[styles.searchSectionLabel, { color: theme.secondaryText, marginBottom: 12 }]}>
-              {t("SELECT USERS TO ADD TO ISSUE") || "SELECT USERS TO ADD TO ISSUE"}
+              {t("SELECT USERS TO ADDED") || "SELECT USERS TO ADDED"}
             </Text>
             <Text style={[styles.searchHintText, { color: theme.secondaryText + '80', marginBottom: 8, fontSize: 12 }]}>
               {t("Current assignees are marked and cannot be removed") || "Current assignees are marked and cannot be removed"}
@@ -391,7 +391,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               <Text style={[styles.assignBtnText, { 
                 color: selectedUsers.length > 0 ? '#fff' : theme.secondaryText 
               }]}>
-                {t("Reassign Issue") || "Reassign Issue"} {selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                {t("Reassign") || "Reassign"} {selectedUsers.length > 0 && `(${selectedUsers.length})`}
               </Text>
             </TouchableOpacity>
           </View>
