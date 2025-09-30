@@ -6,18 +6,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    TouchableWithoutFeedback,
+    View
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -28,10 +28,10 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth'; // import this
 import {
-  deleteIssue,
-  fetchIssueById,
-  resolveIssueByAssignedUser,
-  updateIssue,
+    deleteIssue,
+    fetchIssueById,
+    resolveIssueByAssignedUser,
+    updateIssue,
 } from '../utils/issues';
 import { deleteTask, getTaskDetailsById, resolveCriticalOrIssueTask, updateTask } from '../utils/task';
 function formatDate(dateString) {
@@ -247,6 +247,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
     ...(issue?.resolvedImages || []),
     ...attachments,
   ];
+
+  // Check if current user is the creator
+  const isCreator = userName && issue && (issue?.creatorName === userName || issue?.creator?.name === userName);
 
   if (loading) {
     return (
@@ -1260,6 +1263,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         taskId={issue?.isIssue ? issue.taskId : (issue?.issueId || issueId)}
         currentAssignees={issue?.assignedUserDetails || []}
         theme={theme}
+        isCreator={isCreator}
       />
 
       {/* Issue Title Modal */}

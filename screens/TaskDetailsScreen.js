@@ -653,6 +653,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           taskId={task?.id || task?._id || task?.taskId}
           theme={theme}
           currentAssignees={task?.assignedUserDetails || []}
+          isCreator={isCreator}
         />
         {task && typeof editableProgress === 'number' && (
           <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>

@@ -4,22 +4,22 @@ import { jwtDecode } from 'jwt-decode';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    FlatList,
-    Image,
-    Modal,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 
 import { useTheme } from '../../theme/ThemeContext';
 import { getUserConnections } from '../../utils/connections';
 import { reassignTask } from '../../utils/task';
 
-const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, currentAssignees = [] }) => {
+const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, currentAssignees = [], isCreator = false }) => {
   const { t } = useTranslation();
   const contextTheme = useTheme();
   const theme = propTheme || contextTheme;
@@ -28,6 +28,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
   const [connections, setConnections] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
+  const [removedUsers, setRemovedUsers] = useState([]); // Track users being removed
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [currentUserId, setCurrentUserId] = useState(null);
 
@@ -78,6 +79,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
       setConnections([]);
       setSearchResults([]);
       setSelectedUsers([]);
+      setRemovedUsers([]);
       setQuery('');
     }
   }, [visible, currentAssignees]);
@@ -103,53 +105,111 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
     const userId = user.userId || user.id;
     const isCurrentlyAssigned = currentAssignees.some(assignee => (assignee.userId || assignee.id) === userId);
     
-    // Don't allow selection/deselection of current assignees or current user
-    if (isCurrentlyAssigned || userId === currentUserId) {
+    // If creator: allow selection/deselection of anyone except current user
+    // If not creator: don't allow selection/deselection of current assignees or current user
+    if (!isCreator && (isCurrentlyAssigned || userId === currentUserId)) {
       return;
     }
     
-    const isSelected = selectedUsers.some(u => (u.userId || u.id) === userId);
+    // Don't allow the current user to select/deselect themselves
+    if (userId === currentUserId) {
+      return;
+    }
     
-    if (isSelected) {
-      // Remove user from selection
-      setSelectedUsers(prev => prev.filter(u => (u.userId || u.id) !== userId));
+    if (isCurrentlyAssigned) {
+      // Handle removal of current assignee (only if creator)
+      const isMarkedForRemoval = removedUsers.some(u => (u.userId || u.id) === userId);
+      if (isMarkedForRemoval) {
+        // Remove from removal list (keep them assigned)
+        setRemovedUsers(prev => prev.filter(u => (u.userId || u.id) !== userId));
+      } else {
+        // Add to removal list
+        setRemovedUsers(prev => [...prev, user]);
+      }
     } else {
-      // Add user to selection
-      setSelectedUsers(prev => [...prev, user]);
+      // Handle addition of new assignee
+      const isSelected = selectedUsers.some(u => (u.userId || u.id) === userId);
+      if (isSelected) {
+        // Remove user from selection
+        setSelectedUsers(prev => prev.filter(u => (u.userId || u.id) !== userId));
+      } else {
+        // Add user to selection
+        setSelectedUsers(prev => [...prev, user]);
+      }
     }
   };
 
   const handleConfirmReassign = async () => {
-    if (selectedUsers.length === 0) {
-      Alert.alert("Error", "Please select at least one user to reassign.");
+    if (selectedUsers.length === 0 && removedUsers.length === 0) {
+      Alert.alert("Error", "Please select users to add or remove.");
       return;
     }
     
     try {
-      // Create new assignment array by combining:
-      // 1. All existing assignees EXCEPT current user (keep all others)
-      // 2. Newly selected users
+      // Create new assignment array by:
+      // 1. Starting with all existing assignees
+      // 2. Removing users marked for removal
+      // 3. Adding newly selected users
+      // 4. Removing current user if they're not the creator (existing logic)
+      
       const currentAssigneeIds = (currentAssignees || []).map(assignee => assignee.userId || assignee.id);
-      const existingAssigneesExceptCurrent = currentAssigneeIds.filter(id => id !== currentUserId);
+      const removedUserIds = removedUsers.map(user => user.userId || user.id);
       const newUserIds = selectedUsers.map(user => user.userId || user.id);
       
-      // Combine existing assignees (except current user) with new selected users, remove duplicates
-      const finalAssignedUserIds = [...new Set([...existingAssigneesExceptCurrent, ...newUserIds])];
+      // Start with existing assignees, remove those marked for removal
+      let finalAssignedUserIds = currentAssigneeIds.filter(id => !removedUserIds.includes(id));
+      
+      // If not creator, remove current user (existing behavior)
+      if (!isCreator) {
+        finalAssignedUserIds = finalAssignedUserIds.filter(id => id !== currentUserId);
+      }
+      
+      // Add newly selected users, remove duplicates
+      finalAssignedUserIds = [...new Set([...finalAssignedUserIds, ...newUserIds])];
       
       await reassignTask(taskId, finalAssignedUserIds);
       
-      const selectedUserNames = selectedUsers.map(u => u.userName || u.name).join(', ');
-      const existingCount = currentAssignees.filter(assignee => (assignee.userId || assignee.id) !== currentUserId).length;
-      const remainingAssignees = currentAssignees
-        .filter(assignee => (assignee.userId || assignee.id) !== currentUserId)
-        .map(assignee => assignee.userName || assignee.name)
-        .join(', ');
+      // Create success message that matches backend logic
+      let messageParts = [];
       
-      let message = `assignment updated successfully!\n\n✅ You have been removed\n✅ ${selectedUsers.length} new user(s) added: ${selectedUserNames}`;
+      // Users actually removed (including current user if not creator)
+      const actuallyRemoved = currentAssigneeIds.filter(id => 
+        removedUserIds.includes(id) || (!isCreator && id === currentUserId)
+      );
       
-      if (existingCount > 0) {
-        message += `\n✅ ${existingCount} existing assignee(s) remain: ${remainingAssignees}`;
+      // Users actually added (new selections)
+      const actuallyAdded = newUserIds;
+      
+      // Users retained (existing assignees not removed)
+      const retained = currentAssigneeIds.filter(id => 
+        !removedUserIds.includes(id) && (isCreator || id !== currentUserId)
+      );
+      
+      if (actuallyRemoved.includes(currentUserId)) {
+        messageParts.push("✅ You have been removed from this task");
       }
+      
+      if (actuallyAdded.length > 0) {
+        const addedUserNames = selectedUsers.map(u => u.userName || u.name).join(', ');
+        messageParts.push(`✅ ${actuallyAdded.length} new user(s) added: ${addedUserNames}`);
+      }
+      
+      if (removedUsers.length > 0 && !actuallyRemoved.includes(currentUserId)) {
+        const removedUserNames = removedUsers.map(u => u.userName || u.name).join(', ');
+        messageParts.push(`✅ ${removedUsers.length} user(s) removed: ${removedUserNames}`);
+      }
+      
+      if (retained.length > 0) {
+        const retainedAssignees = currentAssignees
+          .filter(assignee => retained.includes(assignee.userId || assignee.id))
+          .map(assignee => assignee.userName || assignee.name)
+          .join(', ');
+        messageParts.push(`✅ ${retained.length} assignee(s) retained: ${retainedAssignees}`);
+      }
+      
+      const message = messageParts.length > 0 
+        ? `Assignment updated successfully!\n\n${messageParts.join('\n')}`
+        : "Assignment updated successfully!";
       
       Alert.alert("Success", message, [{ text: "OK", onPress: () => handleClose(true) }]);
     } catch (err) {
@@ -163,6 +223,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
     setQuery('');
     setSearchResults([]);
     setSelectedUsers([]);
+    setRemovedUsers([]);
     setShowConfirmation(false);
     setConnections([]);
     setLoading(false);
@@ -179,8 +240,27 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
     const isSelected = selectedUsers.some(u => (u.userId || u.id) === userId);
     const isCurrentUser = userId === currentUserId;
     const isCurrentlyAssigned = currentAssignees.some(assignee => (assignee.userId || assignee.id) === userId);
-    const isDisabled = isCurrentlyAssigned || isCurrentUser;
+    const isMarkedForRemoval = removedUsers.some(u => (u.userId || u.id) === userId);
     
+    // Disable interaction for current user or (non-creators with current assignees)
+    const isDisabled = isCurrentUser || (!isCreator && isCurrentlyAssigned);
+    
+    // Determine visual state
+    let borderColor = theme.border;
+    let showCheckmark = false;
+    let showRemovalIcon = false;
+    
+    if (isCurrentlyAssigned) {
+      if (isCreator && isMarkedForRemoval) {
+        borderColor = '#FF6B6B'; // Red border for removal
+        showRemovalIcon = true;
+      } else if (!isMarkedForRemoval) {
+        borderColor = theme.border; // Normal border for staying assigned
+      }
+    } else if (isSelected) {
+      borderColor = theme.primary; // Blue border for new selection
+      showCheckmark = true;
+    }
     
     return (
       <TouchableOpacity
@@ -188,9 +268,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           styles.userItemCard, 
           {  
             backgroundColor: theme.card,
-            borderColor: isCurrentlyAssigned
-              ? theme.border
-              : (isSelected ? theme.primary : theme.border),
+            borderColor: borderColor,
             borderWidth: 1,
             opacity: isDisabled ? 0.6 : 1
           }
@@ -217,13 +295,21 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
             </Text>
             <Text style={[styles.userEmail, { color: theme.secondaryText, fontSize: 12 }]}>{item.email}</Text>
           </View>
-          {isCurrentlyAssigned && (
+          {isCurrentlyAssigned && !isMarkedForRemoval && (
             <View style={[styles.badge, { backgroundColor: theme.secCard, borderWidth: 1, borderColor: theme.border }]}>
               <Text style={[styles.badgeText, { color: theme.secondaryText }]}>ASSIGNED</Text>
             </View>
           )}
-          {isSelected && !isCurrentlyAssigned && (
+          {isMarkedForRemoval && (
+            <View style={[styles.badge, { backgroundColor: '#FFF5F5', borderWidth: 1, borderColor: '#FF6B6B' }]}>
+              <Text style={[styles.badgeText, { color: '#FF6B6B' }]}>REMOVING</Text>
+            </View>
+          )}
+          {showCheckmark && (
             <Ionicons name="checkmark-circle" size={20} color={theme.primary} />
+          )}
+          {showRemovalIcon && (
+            <Ionicons name="remove-circle" size={20} color="#FF6B6B" />
           )}
         </View>
       </TouchableOpacity>
@@ -260,33 +346,55 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               <View style={styles.capsuleContainer}>
                 {currentAssignees.map((assignee, index) => {
                   const isCurrentUser = (assignee.userId || assignee.id) === currentUserId;
+                  const isMarkedForRemoval = removedUsers.some(u => (u.userId || u.id) === (assignee.userId || assignee.id));
                   const displayName = assignee.userName || assignee.name || 'Unknown User';
+                  const canBeRemoved = isCreator && !isCurrentUser; // Creator can remove others, but not themselves
+                  
                   return (
-                    <View 
+                    <TouchableOpacity 
                       key={index} 
                       style={[
                         styles.assigneeCapsule, 
                         { 
-                          backgroundColor: isCurrentUser ? theme.secCard : theme.card,
-                          borderColor: isCurrentUser ? theme.primary : theme.border,
+                          backgroundColor: isMarkedForRemoval ? '#FFF5F5' : (isCurrentUser ? theme.secCard : theme.card),
+                          borderColor: isMarkedForRemoval ? '#FF6B6B' : (isCurrentUser ? theme.primary : theme.border),
+                          opacity: canBeRemoved ? 1 : 0.8,
                         }
                       ]}
+                      onPress={() => {
+                        if (canBeRemoved) {
+                          handleUserSelect(assignee);
+                        }
+                      }}
+                      activeOpacity={canBeRemoved ? 0.7 : 1}
+                      disabled={!canBeRemoved}
                     >
                       <Text style={[styles.capsuleName, { 
-                        color: isCurrentUser ? theme.primary : theme.text 
+                        color: isMarkedForRemoval ? '#FF6B6B' : (isCurrentUser ? theme.primary : theme.text)
                       }]}>
                         {displayName}
                       </Text>
-                      {isCurrentUser && (
+                      {isCurrentUser && !isCreator && (
                         <Ionicons name="remove-circle-outline" size={14} color={theme.primary} style={{ marginLeft: 4 }} />
                       )}
-                      {!isCurrentUser && (
+                      {!isCurrentUser && !isMarkedForRemoval && canBeRemoved && (
                         <Ionicons name="checkmark-circle-outline" size={14} color={theme.secondaryText} style={{ marginLeft: 4 }} />
                       )}
-                    </View>
+                      {!isCurrentUser && !isMarkedForRemoval && !canBeRemoved && (
+                        <Ionicons name="checkmark-circle-outline" size={14} color={theme.secondaryText} style={{ marginLeft: 4 }} />
+                      )}
+                      {isMarkedForRemoval && (
+                        <Ionicons name="remove-circle" size={14} color="#FF6B6B" style={{ marginLeft: 4 }} />
+                      )}
+                    </TouchableOpacity>
                   );
                 })}
               </View>
+              {isCreator && currentAssignees.length > 0 && (
+                <Text style={[styles.tapHintText, { color: theme.secondaryText + '80', marginTop: 8, fontSize: 11, fontStyle: 'italic' }]}>
+                  {t("Tap assignees above to remove them") || "Tap assignees above to remove them"}
+                </Text>
+              )}
             </View>
           )}
 
@@ -296,7 +404,10 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               {t("SELECT USERS TO ADDED") || "SELECT USERS TO ADDED"}
             </Text>
             <Text style={[styles.searchHintText, { color: theme.secondaryText + '80', marginBottom: 8, fontSize: 12 }]}>
-              {t("Current assignees are marked and cannot be removed") || "Current assignees are marked and cannot be removed"}
+              {isCreator 
+                ? (t("As creator, you can add new users or remove existing assignees") || "As creator, you can add new users or remove existing assignees")
+                : (t("Current assignees are marked and cannot be removed") || "Current assignees are marked and cannot be removed")
+              }
             </Text>
             <View style={[styles.inputBox, { backgroundColor: theme.secCard, borderColor: theme.border, marginBottom: 0 }]}>
               <Ionicons name="search" size={20} color={theme.secondaryText} style={{ marginRight: 12 }} />
@@ -312,13 +423,15 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           </View>
 
           {/* Selected Users Count */}
-          {selectedUsers.length > 0 && (
+          {(selectedUsers.length > 0 || removedUsers.length > 0) && (
             <View style={[styles.selectedCountBox, { 
               backgroundColor: theme.primary + '15',
               borderColor: theme.primary + '30'
             }]}>
               <Text style={[styles.selectedCountText, { color: theme.primary }]}>
-                {selectedUsers.length} {t("user(s) selected") || "user(s) selected"}
+                {selectedUsers.length > 0 && `${selectedUsers.length} ${t("user(s) to add") || "user(s) to add"}`}
+                {selectedUsers.length > 0 && removedUsers.length > 0 && " • "}
+                {removedUsers.length > 0 && `${removedUsers.length} ${t("user(s) to remove") || "user(s) to remove"}`}
               </Text>
             </View>
           )}
@@ -376,22 +489,22 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               style={[
                 styles.assignBtn, 
                 { 
-                  backgroundColor: selectedUsers.length > 0 ? theme.primary : theme.border,
-                  opacity: selectedUsers.length > 0 ? 1 : 0.6,
-                  shadowColor: selectedUsers.length > 0 ? theme.primary : 'transparent',
+                  backgroundColor: (selectedUsers.length > 0 || removedUsers.length > 0) ? theme.primary : theme.border,
+                  opacity: (selectedUsers.length > 0 || removedUsers.length > 0) ? 1 : 0.6,
+                  shadowColor: (selectedUsers.length > 0 || removedUsers.length > 0) ? theme.primary : 'transparent',
                   shadowOffset: { width: 0, height: 2 },
                   shadowOpacity: 0.2,
                   shadowRadius: 4,
-                  elevation: selectedUsers.length > 0 ? 2 : 0
+                  elevation: (selectedUsers.length > 0 || removedUsers.length > 0) ? 2 : 0
                 }
               ]}
               onPress={handleConfirmReassign}
-              disabled={selectedUsers.length === 0}
+              disabled={selectedUsers.length === 0 && removedUsers.length === 0}
             >
               <Text style={[styles.assignBtnText, { 
-                color: selectedUsers.length > 0 ? '#fff' : theme.secondaryText 
+                color: (selectedUsers.length > 0 || removedUsers.length > 0) ? '#fff' : theme.secondaryText 
               }]}>
-                {t("Reassign") || "Reassign"} {selectedUsers.length > 0 && `(${selectedUsers.length})`}
+                {t("Update") || "Update"} {(selectedUsers.length > 0 || removedUsers.length > 0) && `(${selectedUsers.length + removedUsers.length})`}
               </Text>
             </TouchableOpacity>
           </View>
@@ -455,6 +568,11 @@ const styles = StyleSheet.create({
   searchHintText: {
     fontStyle: 'italic',
     lineHeight: 16,
+  },
+  tapHintText: {
+    fontStyle: 'italic',
+    lineHeight: 14,
+    textAlign: 'center',
   },
   currentAssigneesLabel: {
     fontSize: 12,
