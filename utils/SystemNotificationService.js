@@ -96,15 +96,15 @@ class SystemNotificationService {
         }
         break;
       case 'issue':
-        if (data.issueId) {
+        if (data.issueId || data.taskId) {
           navigationRef.navigate('IssueDetails', {
-            issueId: data.issueId,
+            issueId: data.issueId || data.taskId,
           });
         }
         break;
       case 'connection':
-    navigationRef.navigate('NotificationScreen', { defaultTab: 'Connections' });
-    break;
+        navigationRef.navigate('NotificationScreen', { defaultTab: 'Connections' });
+        break;
 
       default:
         console.warn('📬 Unknown notification type:', data.type);
