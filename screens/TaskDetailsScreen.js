@@ -940,22 +940,22 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   try {
                     setLoading(true);
                     console.log('🔄 Updating task isCritical:', { taskId, value });
-                    
+
                     // Use updateTaskFlags to preserve assigned users
                     const flags = {
                       isCritical: value
                     };
                     await updateTaskFlags(taskId, flags);
-                    
+
                     // Refresh the task data
                     const updatedTask = await getTaskDetailsById(taskId);
                     setTask(updatedTask);
-                    
+
                     console.log('✅ Task critical status updated successfully:', { taskId, isCritical: value });
                     Alert.alert(
-                      'Success', 
-                      value 
-                        ? 'Issue marked as critical successfully.' 
+                      'Success',
+                      value
+                        ? 'Issue marked as critical successfully.'
                         : 'Issue no longer marked as critical.'
                     );
                   } catch (err) {
@@ -965,8 +965,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     setLoading(false);
                   }
                 }}
-                trackColor={{ 
-                  false: '#ddd', 
+                trackColor={{
+                  false: '#ddd',
                   true: theme.criticalText
                 }}
                 thumbColor="#fff"
@@ -1184,11 +1184,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
         />
 
         {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
-        {task.isIssue && 
-         Array.isArray(task.resolvedImages) && 
+        {task.isIssue &&
+         Array.isArray(task.resolvedImages) &&
          task.resolvedImages.length > 0 && (
           <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-            <View style={{ 
+            <View style={{
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -1211,7 +1211,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               padding: 16,
               minHeight: 80,
               justifyContent: 'center',
-              backgroundColor: theme.card, 
+              backgroundColor: theme.card,
               borderColor: theme.border,
             }}>
               <Text style={{
@@ -1233,7 +1233,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     borderWidth: 1,
                     alignSelf: 'flex-start',
                     gap: 4,
-                    backgroundColor: theme.primary + '10', 
+                    backgroundColor: theme.primary + '10',
                     borderColor: theme.primary,
                   }}
                   onPress={() => {
@@ -1250,7 +1250,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   </Text>
                 </TouchableOpacity>
               </View>
-            </View>            
+            </View>
           </View>
         )}
 
@@ -1818,7 +1818,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 }}
               />
             </View>
-            
             {/* Issue Toggle */}
             <View style={{
               flexDirection: 'row',
@@ -1843,7 +1842,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   fontSize: 14,
                   lineHeight: 18,
                 }}>
-                  {editValues.isIssue 
+                  {editValues.isIssue
                     ? 'This task will appear in the issues section'
                     : 'Convert this task to an issue'
                   }
@@ -1851,8 +1850,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
               </View>
               <Switch
                 value={editValues.isIssue}
-                onValueChange={(value) => setEditValues((v) => ({ 
-                  ...v, 
+                onValueChange={(value) => setEditValues((v) => ({
+                  ...v,
                   isIssue: value,
                   // If converting from issue to normal task, also reset critical flag
                   isCritical: value ? v.isCritical : false
@@ -1888,7 +1887,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     fontSize: 14,
                     lineHeight: 18,
                   }}>
-                    {editValues.isCritical 
+                    {editValues.isCritical
                       ? 'This issue will be marked as critical and require immediate attention'
                       : 'Mark this issue as critical for higher priority'
                     }
@@ -1919,7 +1918,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   try {
                     // Check if flags changed
                     const flagsChanged = editValues.isIssue !== task.isIssue || editValues.isCritical !== task.isCritical;
-                    
+
                     // Update basic task fields first
                     const updated = await updateTask(task.id || task._id || task.taskId, {
                       taskName: editValues.taskName,
@@ -1927,7 +1926,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                       startDate: editValues.startDate,
                       endDate: editValues.endDate,
                     });
-                    
                     // Update flags separately to preserve assigned users
                     if (flagsChanged) {
                       await updateTaskFlags(task.id || task._id || task.taskId, {
@@ -1935,12 +1933,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         isCritical: editValues.isCritical,
                       });
                     }
-                    
                     // Refresh task data
                     const refreshedTask = await getTaskDetailsById(task.id || task._id || task.taskId);
                     setTask(refreshedTask);
                     setShowEditModal(false);
-                    
+
                     let message = 'Task updated successfully!';
                     if (editValues.isIssue !== task.isIssue) {
                       message = editValues.isIssue 
@@ -1951,7 +1948,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         ? 'Issue marked as critical successfully!'
                         : 'Issue no longer marked as critical!';
                     }
-                    
+
                     Alert.alert('Success', message);
                   } catch (err) {
                     Alert.alert('Error', err.message || 'Failed to update task.');
