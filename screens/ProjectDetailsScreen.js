@@ -668,157 +668,157 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         )}
 
         {/* Pending Invites Section */}
-        {projectDetails.pendingInvites && 
-         Array.isArray(projectDetails.pendingInvites) && 
-         projectDetails.pendingInvites.length > 0 && (
-          <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
-            {/* Collapsible Header */}
-            <TouchableOpacity
-              onPress={() => setShowPendingInvites(!showPendingInvites)}
-              style={{
-                flexDirection: 'row', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                backgroundColor: theme.card,
-                borderColor: theme.border,
-                borderWidth: 1,
-                borderRadius: 12,
-                paddingHorizontal: 16,
-                paddingVertical: 12,
-                marginBottom: showPendingInvites ? 12 : 0
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <MaterialIcons 
-                  name="person-add" 
-                  size={20} 
-                  color={theme.primary} 
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={{ 
-                  fontSize: 16, 
-                  fontWeight: '600', 
-                  color: theme.text 
-                }}>
-                  Pending Invites ({projectDetails.pendingInvites.length})
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <View style={{
-                  backgroundColor: '#FF3B30',
-                  borderRadius: 8,
-                  paddingHorizontal: 6,
-                  paddingVertical: 2,
-                  marginRight: 8
-                }}>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>
-                    PENDING
+        {projectDetails.pendingInvites &&
+          Array.isArray(projectDetails.pendingInvites) &&
+          projectDetails.pendingInvites.length > 0 && (
+            <View style={{ marginHorizontal: 20, marginBottom: 12 }}>
+              {/* Collapsible Header */}
+              <TouchableOpacity
+                onPress={() => setShowPendingInvites(!showPendingInvites)}
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                  borderWidth: 1,
+                  borderRadius: 12,
+                  paddingHorizontal: 16,
+                  paddingVertical: 12,
+                  marginBottom: showPendingInvites ? 12 : 0
+                }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <MaterialIcons
+                    name="person-add"
+                    size={20}
+                    color={theme.primary}
+                    style={{ marginRight: 8 }}
+                  />
+                  <Text style={{
+                    fontSize: 16,
+                    fontWeight: '600',
+                    color: theme.text
+                  }}>
+                    Pending Invites ({projectDetails.pendingInvites.length})
                   </Text>
                 </View>
-                <MaterialIcons
-                  name={showPendingInvites ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                  size={20}
-                  color={theme.text}
-                />
-              </View>
-            </TouchableOpacity>
-            
-            {/* Collapsible Content */}
-            {showPendingInvites && (
-              <View>
-                {projectDetails.pendingInvites.map((invite, index) => {
-                  console.log('📨 Processing invite:', invite);
-                  
-                  // Handle the actual data structure from your API
-                  const userName = invite.recipientName || invite.name || 'Unknown User';
-                  const userEmail = invite.recipientEmail || invite.email;
-                  const profilePhoto = invite.profilePhoto || invite.avatar;
-                  const createdAt = invite.createdAt || invite.sentAt || invite.invitedAt;
-                  
-                  return (
-                    <View key={invite.inviteId || invite.id || index} style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      backgroundColor: theme.card,
-                      borderColor: theme.border,
-                      borderWidth: 1,
-                      borderRadius: 12,
-                      paddingHorizontal: 16,
-                      paddingVertical: 12,
-                      marginBottom: 8
-                    }}>
-                      {/* Avatar */}
-                      <View style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 20,
-                        backgroundColor: theme.primary + '20',
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={{
+                    backgroundColor: '#FF3B30',
+                    borderRadius: 8,
+                    paddingHorizontal: 6,
+                    paddingVertical: 2,
+                    marginRight: 8
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>
+                      PENDING
+                    </Text>
+                  </View>
+                  <MaterialIcons
+                    name={showPendingInvites ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+                    size={20}
+                    color={theme.text}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* Collapsible Content */}
+              {showPendingInvites && (
+                <View>
+                  {projectDetails.pendingInvites.map((invite, index) => {
+                    console.log('📨 Processing invite:', invite);
+
+                    // Handle the actual data structure from your API
+                    const userName = invite.recipientName || invite.name || 'Unknown User';
+                    const userEmail = invite.recipientEmail || invite.email;
+                    const profilePhoto = invite.profilePhoto || invite.avatar;
+                    const createdAt = invite.createdAt || invite.sentAt || invite.invitedAt;
+
+                    return (
+                      <View key={invite.inviteId || invite.id || index} style={{
+                        flexDirection: 'row',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: 12
+                        backgroundColor: theme.card,
+                        borderColor: theme.border,
+                        borderWidth: 1,
+                        borderRadius: 12,
+                        paddingHorizontal: 16,
+                        paddingVertical: 12,
+                        marginBottom: 8
                       }}>
-                        {profilePhoto ? (
-                          <Image 
-                            source={{ uri: profilePhoto }} 
-                            style={{ width: 40, height: 40, borderRadius: 20 }}
-                          />
-                        ) : (
-                          <Text style={{ 
-                            color: theme.primary, 
-                            fontWeight: '600', 
-                            fontSize: 16 
-                          }}>
-                            {userName?.charAt(0)?.toUpperCase() || '?'}
-                          </Text>
-                        )}
-                      </View>
-                      
-                      {/* User Info */}
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ 
-                          color: theme.text, 
-                          fontSize: 16, 
-                          fontWeight: '500' 
-                        }}>
-                          {userName || 'Unknown User'}
-                        </Text>
-                        {userName && userEmail && (
-                          <Text style={{ 
-                            color: theme.secondaryText, 
-                            fontSize: 12, 
-                            marginTop: 2 
-                          }}>
-                            {userEmail}
-                          </Text>
-                        )}
-                        <Text style={{ 
-                          color: theme.secondaryText, 
-                          fontSize: 11, 
-                          marginTop: 2 
-                        }}>
-                          Sent {createdAt ? new Date(createdAt).toLocaleDateString() : 'Recently'}
-                        </Text>
-                      </View>
-                      
-                      {/* Status Badge and Actions */}
-                      <View style={{ alignItems: 'flex-end' }}>
+                        {/* Avatar */}
                         <View style={{
-                          backgroundColor: invite.status === 'pending' ? '#FFF3CD' : '#D4EDDA',
-                          borderRadius: 8,
-                          paddingHorizontal: 8,
-                          paddingVertical: 4,
-                          marginBottom: 8
+                          width: 40,
+                          height: 40,
+                          borderRadius: 20,
+                          backgroundColor: theme.primary + '20',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          marginRight: 12
                         }}>
-                          <Text style={{ 
-                            color: invite.status === 'pending' ? '#856404' : '#155724', 
-                            fontSize: 11, 
-                            fontWeight: '500' 
+                          {profilePhoto ? (
+                            <Image
+                              source={{ uri: profilePhoto }}
+                              style={{ width: 40, height: 40, borderRadius: 20 }}
+                            />
+                          ) : (
+                            <Text style={{
+                              color: theme.primary,
+                              fontWeight: '600',
+                              fontSize: 16
+                            }}>
+                              {userName?.charAt(0)?.toUpperCase() || '?'}
+                            </Text>
+                          )}
+                        </View>
+
+                        {/* User Info */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{
+                            color: theme.text,
+                            fontSize: 16,
+                            fontWeight: '500'
                           }}>
-                            {invite.status?.toUpperCase() || 'PENDING'}
+                            {userName || 'Unknown User'}
+                          </Text>
+                          {userName && userEmail && (
+                            <Text style={{
+                              color: theme.secondaryText,
+                              fontSize: 12,
+                              marginTop: 2
+                            }}>
+                              {userEmail}
+                            </Text>
+                          )}
+                          <Text style={{
+                            color: theme.secondaryText,
+                            fontSize: 11,
+                            marginTop: 2
+                          }}>
+                            Sent {createdAt ? new Date(createdAt).toLocaleDateString() : 'Recently'}
                           </Text>
                         </View>
-                        
-                        {/* {invite.status === 'pending' && (
+
+                        {/* Status Badge and Actions */}
+                        <View style={{ alignItems: 'flex-end' }}>
+                          <View style={{
+                            backgroundColor: invite.status === 'pending' ? '#FFF3CD' : '#D4EDDA',
+                            borderRadius: 8,
+                            paddingHorizontal: 8,
+                            paddingVertical: 4,
+                            marginBottom: 8
+                          }}>
+                            <Text style={{
+                              color: invite.status === 'pending' ? '#856404' : '#155724',
+                              fontSize: 11,
+                              fontWeight: '500'
+                            }}>
+                              {invite.status?.toUpperCase() || 'PENDING'}
+                            </Text>
+                          </View>
+
+                          {/* {invite.status === 'pending' && (
                           <View style={{ flexDirection: 'row', gap: 8 }}>
                             <TouchableOpacity 
                               style={{
@@ -863,14 +863,14 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                             </TouchableOpacity>
                           </View>
                         )} */}
+                        </View>
                       </View>
-                    </View>
-                  );
-                })}
-              </View>
-            )}
-          </View>
-        )}
+                    );
+                  })}
+                </View>
+              )}
+            </View>
+          )}
 
         {/* Compact Worklist Section */}
         <View style={{ marginTop: 0 }}>
@@ -978,7 +978,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               </TouchableOpacity>
             </View>
           ) : (
-            <ScrollView 
+            <ScrollView
               style={{ maxHeight: 400 }}
               showsVerticalScrollIndicator={false}
               nestedScrollEnabled={true}
@@ -1005,7 +1005,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           zIndex: 10,
           elevation: 5,
         }}>
-        
+
       </View>
       {/* Create Worklist Modal */}
       <Modal
@@ -1245,6 +1245,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         onClose={() => setShowMaterialRequestPopup(false)}
         projectId={projectDetails?.id}
         theme={theme}
+        users={users}
       />
     </View>
   );

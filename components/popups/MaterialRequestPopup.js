@@ -1,57 +1,55 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import {
-  ActivityIndicator, Alert, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { materialRequestAPI } from '../../utils/materialRequests';
+import CustomPickerDrawer from '../popups/CustomPickerDrawer';
 
-export default function MaterialRequestPopup({ visible, onClose, taskId, projectId, theme }) {
-  const [activeTab, setActiveTab] = useState(taskId ? 'submit' : 'view'); // 'submit' or 'view
+export default function MaterialRequestPopup({
+  visible,
+  onClose,
+  taskId,
+  projectId,
+  theme,
+  users = [],
+}) {
+  const [activeTab, setActiveTab] = useState(taskId ? 'submit' : 'view');
   const [loading, setLoading] = useState(false);
   const [requests, setRequests] = useState([]);
   const [filteredRequests, setFilteredRequests] = useState([]);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  // Reference for scrolling to new items
-  const scrollViewRef = useRef(null);
-  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
-  // Form state for new request
+  const [showUserPicker, setShowUserPicker] = useState(false);
+
   const [formData, setFormData] = useState({
-    items: [
-      {
-        itemName: '',
-        quantityRequested: '',
-        unit: 'pcs',
-      },
-    ],
+    items: [{ itemName: '', quantityRequested: '', unit: 'pcs' }],
+    assignedUserIds: [],
+    remarks: '',
   });
-  const [editMode, setEditMode] = useState(false); // controls whether in edit
-  const [editRequestId, setEditRequestId] = useState(null); // which request to edit
+
+  const scrollViewRef = useRef(null);
   const units = ['pcs', 'kg', 'ltr', 'm', 'box', 'bag', 'ton', 'ft', 'sqm', 'cum'];
+  const [editMode, setEditMode] = useState(false);
+  const [editRequestId, setEditRequestId] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    if (visible && activeTab === 'view') {
-      fetchRequests();
-    }
-  }, [visible, activeTab, taskId, projectId]);
-  useEffect(() => {
-  }, [projectId, taskId]);
-
-  // Update activeTab when taskId changes
-  useEffect(() => {
-    setActiveTab(taskId ? 'submit' : 'view');
-  }, [taskId]);
-
-  // Smart Search logic with enhanced matching
+  // Smart Search and Filtering
   useEffect(() => {
     let filtered = [...requests];
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       const searchTerms = query.split(' ').filter((term) => term.length > 0);
       filtered = filtered.filter((request) => {
-        // Create searchable text from all relevant fields
         const searchableText = [
           request.id,
           request.Task?.name || '',
@@ -59,13 +57,9 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
           request.status,
           request.remarks || '',
           ...(request.requestedItems?.map((item) => item.itemName) || []),
-        ]
-          .join(' ')
-          .toLowerCase();
-        // Check if all search terms are found (AND logic)
+        ].join(' ').toLowerCase();
         return searchTerms.every((term) => searchableText.includes(term));
       });
-      // Sort results by relevance (exact matches first, then partial matches)
       filtered.sort((a, b) => {
         const aSearchableText = [
           a.id,
@@ -73,67 +67,112 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
           a.User?.name || '',
           a.status,
           ...(a.requestedItems?.map((item) => item.itemName) || []),
-        ]
-          .join(' ')
-          .toLowerCase();
+        ].join(' ').toLowerCase();
         const bSearchableText = [
           b.id,
           b.Task?.name || '',
           b.User?.name || '',
           b.status,
           ...(b.requestedItems?.map((item) => item.itemName) || []),
-        ]
-          .join(' ')
-          .toLowerCase();
-        // Prioritize exact matches at word boundaries
+        ].join(' ').toLowerCase();
         const aExactMatch = searchTerms.some((term) => aSearchableText.includes(term));
         const bExactMatch = searchTerms.some((term) => bSearchableText.includes(term));
         if (aExactMatch && !bExactMatch) return -1;
         if (!aExactMatch && bExactMatch) return 1;
-        // Then sort by creation date (newest first)
         return new Date(b.createdAt) - new Date(a.createdAt);
       });
     }
-
     setFilteredRequests(filtered);
   }, [requests, searchQuery]);
 
-  const clearSearch = () => {
-    setSearchQuery('');
-  };
+  useEffect(() => {
+    if (visible && activeTab === 'view') fetchRequests();
+  }, [visible, activeTab, taskId, projectId]);
 
+  useEffect(() => {
+    setActiveTab(taskId ? 'submit' : 'view');
+  }, [taskId]);
+
+  // Fetch requests
   const fetchRequests = async () => {
     if (!taskId && !projectId) return;
     setLoading(true);
     let result;
-    // If we have a taskId, fetch requests for that specific task
-    // If we have projectId but no taskId, fetch all requests for the project
-    if (taskId) {
-      result = await materialRequestAPI.getTaskRequests(taskId);
-    } else if (projectId) {
-      result = await materialRequestAPI.getProjectRequests(projectId);
-    }
-    if (result && result.success) {
-      setRequests(result.data);
-    } else {
-      Alert.alert('Error', result?.error || 'Failed to fetch requests');
-    }
+    if (taskId) result = await materialRequestAPI.getTaskRequests(taskId);
+    else if (projectId) result = await materialRequestAPI.getProjectRequests(projectId);
+    if (result && result.success) setRequests(result.data);
+    else Alert.alert('Error', result?.error || 'Failed to fetch requests');
     setLoading(false);
   };
 
+  // Assign users toggle function
+  const handleUserToggle = (userId) => {
+    setFormData((prev) => {
+      const current = prev.assignedUserIds ?? [];
+      if (current.includes(userId)) {
+        return { ...prev, assignedUserIds: current.filter((id) => id !== userId) };
+      } else {
+        return { ...prev, assignedUserIds: [...current, userId] };
+      }
+    });
+  };
+
+  // Add, duplicate, bulk add items
+  const addItem = () => {
+    setFormData((prev) => ({
+      ...prev,
+      items: [...(prev.items ?? []), { itemName: '', quantityRequested: '', unit: 'pcs' }],
+    }));
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const addMultipleItems = (count) => {
+    const newItems = Array(count)
+      .fill(null)
+      .map(() => ({ itemName: '', quantityRequested: '', unit: 'pcs' }));
+    setFormData((prev) => ({
+      ...prev,
+      items: [...(prev.items ?? []), ...newItems],
+    }));
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  const duplicateItem = (idx) => {
+    const items = [...(formData.items ?? [])];
+    const itemToDup = { ...items[idx] };
+    setFormData((prev) => ({
+      ...prev,
+      items: [...items.slice(0, idx + 1), itemToDup, ...items.slice(idx + 1)],
+    }));
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
+  };
+
+  // Submit new or edited material request
   const submitRequest = async () => {
-    const validItems = formData.items.filter(
-      item => item.itemName.trim() && item.quantityRequested.trim()
+    // Use nullish coalescing operator for safety
+    const validItems = (formData.items ?? []).filter(
+      (item) => typeof item.itemName === 'string' && item.itemName.trim() &&
+        typeof item.quantityRequested === 'string' && item.quantityRequested.trim()
     );
+
     if (validItems.length === 0) {
       Alert.alert('Error', 'Please add at least one item with name and quantity');
       return;
     }
+
     setLoading(true);
+
+    // Prepare payload same as old working one, with added safety for assignUserIds
     if (editMode && editRequestId) {
-      // EDIT REQUEST
+      // EDIT REQUEST payload - only requestedItems and remarks as per old code
       const updatePayload = {
-        requestedItems: validItems.map(item => ({
+        requestedItems: validItems.map((item) => ({
           itemName: item.itemName.trim(),
           quantityRequested: parseFloat(item.quantityRequested) || 0,
           unit: item.unit,
@@ -152,15 +191,16 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         Alert.alert('Error', result.error);
       }
     } else {
-      // CREATE REQUEST
+      // CREATE REQUEST payload with full fields
       const requestPayload = {
         projectId,
         ...(taskId ? { taskId } : {}),
-        requestedItems: validItems.map(item => ({
+        requestedItems: validItems.map((item) => ({
           itemName: item.itemName.trim(),
           quantityRequested: parseFloat(item.quantityRequested) || 0,
           unit: item.unit,
         })),
+        assignedUserIds: formData.assignedUserIds ?? [],  // safe fallback
         remarks: formData.remarks || '',
       };
       const result = await materialRequestAPI.createRequest(requestPayload);
@@ -173,81 +213,24 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
         Alert.alert('Error', result.error);
       }
     }
+
     setLoading(false);
   };
 
+
   const resetForm = () => {
     setFormData({
-      items: [
-        {
-          itemName: '',
-          quantityRequested: '',
-          unit: 'pcs',
-        },
-      ],
+      items: [{ itemName: '', quantityRequested: '', unit: 'pcs' }],
+      assignedUserIds: [],
+      remarks: '',
     });
   };
-
-  const addItem = () => {
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items,
-        {
-          itemName: '',
-          quantityRequested: '',
-          unit: 'pcs',
-        },
-      ],
-    }));
-    // Auto-scroll to the new item after a brief delay
-    setTimeout(() => {
-      if (scrollViewRef.current) {
-        scrollViewRef.current.scrollToEnd({ animated: true });
-      }
-    }, 100);
+  const clearSearch = () => {
+    setSearchQuery('');
   };
-
-  const addMultipleItems = (count) => {
-    const newItems = Array(count).fill(null).map(() => ({
-      itemName: '',
-      quantityRequested: '',
-      unit: 'pcs',
-    }));
-
-    setFormData((prev) => ({
-      ...prev,
-      items: [...prev.items, ...newItems],
-    }));
-    // Auto-scroll to the new items after a brief delay
-    setTimeout(() => {
-      if (scrollViewRef.current) {
-        scrollViewRef.current.scrollToEnd({ animated: true });
-      }
-    }, 100);
-  };
-
-  const duplicateItem = (index) => {
-    const itemToDuplicate = { ...formData.items[index] };
-    setFormData((prev) => ({
-      ...prev,
-      items: [
-        ...prev.items.slice(0, index + 1),
-        itemToDuplicate,
-        ...prev.items.slice(index + 1),
-      ],
-    }));
-    // Auto-scroll to show the duplicated item
-    setTimeout(() => {
-      if (scrollViewRef.current) {
-        scrollViewRef.current.scrollToEnd({ animated: true });
-      }
-    }, 100);
-  };
-
+  // Details modal for selected request
   const renderRequestDetails = () => {
     if (!selectedRequest) return null;
-
     return (
       <Modal
         visible={showDetails}
@@ -296,6 +279,24 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                     {selectedRequest.User?.name || 'Unknown User'}
                   </Text>
                 </View>
+                {/* Assigned Users Display */}
+                <View style={[styles.detailsRow, { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }]}>
+                  {selectedRequest.assignedUserIds && selectedRequest.assignedUserIds.length > 0 ? (
+                    selectedRequest.assignedUserIds.map((userId, index) => {
+                      const user = users.find(u => u.userId === userId);
+                      if (!user) return null;
+                      return (
+                        <View key={userId} style={styles.assignedUserBadge}>
+                          <Text style={{ color: theme.text }}>{user.name}</Text>
+                          {index !== selectedRequest.assignedUserIds.length - 1 && <Text>, </Text>}
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <Text style={{ color: theme.text }}>No users assigned</Text>
+                  )}
+                </View>
+
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>Date:</Text>
                   <Text style={[styles.detailsValue, { color: theme.text }]}>
@@ -461,6 +462,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
               quantityRequested: String(i.quantityRequested),
               unit: i.unit,
             })),
+            assignedUserIds: item.assignedUserIds || [],
             remarks: item.remarks || '',
           });
           setActiveTab('submit'); // Show the form tab
@@ -482,6 +484,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
             {item.User?.name || 'Unknown User'}
           </Text>
         </View>
+        
       </View>
       {/* Elegant Items Display */}
       <View style={styles.elegantItemsContainer}>
@@ -772,6 +775,40 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                           value={item.itemName}
                           onChangeText={(text) => updateItem(index, 'itemName', text)}
                         />
+                        <View style={[styles.inputGroup, { marginTop: 20 }]}>
+                          <Text style={[styles.itemLabel, { color: theme.text }]}>Assign To</Text>
+
+                          <TouchableOpacity
+                            style={[
+                              styles.dropdownContainer,
+                              { borderColor: theme.border, backgroundColor: theme.background, padding: 12 },
+                            ]}
+                            onPress={() => setShowUserPicker(true)}
+                          >
+                            <Text style={{ color: (formData.assignedUserIds ?? []).length ? theme.text : theme.secondaryText }}>
+                              {(formData.assignedUserIds ?? []).length > 0
+                                ? `Selected (${formData.assignedUserIds.length})`
+                                : 'Select users...'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          {/* Show user picker */}
+                          <CustomPickerDrawer
+                            visible={showUserPicker}
+                            onClose={() => setShowUserPicker(false)}
+                            data={users} // your array of user objects
+                            valueKey="userId"
+                            labelKey="name"
+                            imageKey="profilePhoto"
+                            selectedValue={formData.assignedUserIds ?? []}
+                            onSelect={handleUserToggle}
+                            multiSelect={true}
+                            theme={theme}
+                            placeholder="Search user..."
+                            showImage={true}
+                          />
+                        </View>
+
                       </View>
                       {/* Quantity & Unit Row */}
                       <View style={styles.row}>
@@ -810,7 +847,7 @@ export default function MaterialRequestPopup({ visible, onClose, taskId, project
                                     onPress: () => updateItem(index, 'unit', unit),
                                   }))
                                   .concat([{ text: 'Cancel', style: 'cancel' }]),
-                                  { cancelable: true }
+                                { cancelable: true }
                               );
                             }}>
                             <Text style={[styles.dropdownText, { color: theme.text }]}>
@@ -984,6 +1021,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
   },
+  assignedUserBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    backgroundColor: '#eee',
+    marginRight: 6,
+    marginBottom: 6,
+  }
+  ,
   container: {
     height: '90%',
     borderTopLeftRadius: 16,
@@ -1529,37 +1575,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    gap: 4,
-  },
-  statusText: {
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-  },
+  // statusBadge: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   paddingHorizontal: 8,
+  //   paddingVertical: 4,
+  //   borderRadius: 6,
+  //   gap: 4,
+  // },
+  // statusText: {
+  //   fontSize: 10,
+  //   fontWeight: '600',
+  //   letterSpacing: 0.5,
+  // },
   requirements: {
     fontSize: 12,
     marginBottom: 8,
     fontStyle: 'italic',
     lineHeight: 16,
   },
-  cardFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  // cardFooter: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   justifyContent: 'space-between',
+  // },
   approvedQty: {
     fontSize: 12,
     fontWeight: '500',
   },
-  requestDate: {
-    fontSize: 11,
-  },
+  // requestDate: {
+  //   fontSize: 11,
+  // },
   // Details Modal Styles
   detailsOverlay: {
     flex: 1,

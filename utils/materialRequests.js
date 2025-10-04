@@ -3,15 +3,20 @@ import { API_URL } from './config';
 
 export const materialRequestAPI = {
   // Submit a new material request
-  createRequest: async ({ projectId, taskId = null, requestedItems }) => {
+  createRequest: async ({ projectId, taskId = null, requestedItems, assignedUserIds = [], actionType = null }) => {
     try {
       const token = await AsyncStorage.getItem('token');
 
       const payload = {
         projectId,
-        taskId,           // can be null (optional)
-        requestedItems,   // [{ itemName, quantityRequested, unit }]
+        taskId,            // can be null (optional)
+        requestedItems,    // [{ itemName, quantityRequested, unit }]
+        assignedUserIds,   // optional array, default empty
       };
+
+      if (actionType) {
+        payload.actionType = actionType;
+      }
 
       const response = await fetch(`${API_URL}api/material-requests`, {
         method: 'POST',
@@ -28,7 +33,7 @@ export const materialRequestAPI = {
         data = JSON.parse(text);
       } catch (jsonError) {
         console.error('Failed to parse JSON:', jsonError);
-        console.error('Response text:', text);  // Log raw response to help debug HTML error pages
+        console.error('Response text:', text);
         throw new Error(`Invalid JSON response from server.`);
       }
 
@@ -42,6 +47,7 @@ export const materialRequestAPI = {
       return { success: false, error: error.message || 'Unknown error' };
     }
   },
+
 
   // Get all material requests for a project
   getProjectRequests: async (projectId) => {  // Renamed from getProjectTaskRequests for clarity
