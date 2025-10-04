@@ -824,12 +824,12 @@ export default function MyTasksScreen({ navigation }) {
       </View>
 
       {/* Legend for Issue Indicator */}
-      <View style={styles.legendContainer}>
+      {/* <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
           <View style={styles.legendRedDot} />
           <Text style={[styles.legendText, { color: theme.secondaryText }]}>Issue Task</Text>
         </View>
-      </View>
+      </View> */}
       {/* Tabs (pill design, with icons, like ProjectScreen) */}
       <View style={[styles.tabRow, { marginTop: 4 }]}>
         {[
