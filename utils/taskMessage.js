@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { API_URL } from './config';
+import { Platform } from 'react-native';
 
 export async function fetchTaskMessages(taskId) {
   const token = await AsyncStorage.getItem('token');
@@ -31,35 +32,46 @@ export async function sendTaskMessage({ taskId, message, attachments = [], menti
   const formData = new FormData();
   formData.append('taskId', taskId);
   formData.append('message', message);
-  
+
   // Add mentions if any
   if (mentions && mentions.length > 0) {
     mentions.forEach((mentionUserId) => {
       formData.append('mentions[]', mentionUserId);
     });
   }
-  
-  // Attach files if any
-  attachments.forEach((file, idx) => {
+
+  // Attach images/files for both Android & iOS
+  for (const file of attachments) {
+    if (!file.uri) continue;
+    // Convert content:// to file:// on Android
+    let fileUri = file.uri;
+    if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
+      fileUri = `file://${fileUri}`;
+    }
+    let mimeType = file.type || file.mimeType || 'application/octet-stream';
+    if (mimeType && !mimeType.includes('/')) {
+      if (mimeType === 'image') mimeType = 'image/jpeg';
+      else if (mimeType === 'video') mimeType = 'video/mp4';
+      else mimeType = 'application/octet-stream';
+    }
     formData.append('attachments', {
-      uri: file.uri,
-      name: file.name || `attachment_${idx}`,
-      type: file.type || 'application/octet-stream',
+      uri: fileUri,
+      type: mimeType,
+      name: file.name || fileUri.split('/').pop() || 'file',
     });
-  });
+  }
+
   try {
     const res = await fetch(`${API_URL}api/messages/send`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
+        // DO NOT set Content-Type!
       },
       body: formData,
     });
     const data = await res.json();
-    console.log('[sendTaskMessage] Response:', data);
     if (!res.ok) throw new Error(data.message || 'Failed to send message');
-    // Normalize for frontend
     const msg = data.taskMessage;
     return {
       id: msg.id,

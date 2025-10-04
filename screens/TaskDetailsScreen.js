@@ -1185,74 +1185,74 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
         {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
         {task.isIssue &&
-         Array.isArray(task.resolvedImages) &&
-         task.resolvedImages.length > 0 && (
-          <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 8,
-            }}>
-              <Text style={{
-                fontSize: 12,
-                fontWeight: '600',
-                textTransform: 'uppercase',
-                letterSpacing: 0.5,
-                color: theme.text,
-              }}>
-                {t('resolved_attachments') || 'Resolved Attachments'}
-              </Text>
-            </View>
-
-            <View style={{
-              borderRadius: 12,
-              borderWidth: 1,
-              padding: 16,
-              minHeight: 80,
-              justifyContent: 'center',
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            }}>
-              <Text style={{
-                fontSize: 14,
-                fontWeight: '500',
+          Array.isArray(task.resolvedImages) &&
+          task.resolvedImages.length > 0 && (
+            <View style={{ marginHorizontal: 20, marginBottom: 16 }}>
+              <View style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
                 marginBottom: 8,
-                color: theme.text,
               }}>
-                {`${task.resolvedImages.length} file${task.resolvedImages.length !== 1 ? 's' : ''} attached`}
-              </Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    paddingVertical: 8,
-                    paddingHorizontal: 12,
-                    borderRadius: 8,
-                    borderWidth: 1,
-                    alignSelf: 'flex-start',
-                    gap: 4,
-                    backgroundColor: theme.primary + '10',
-                    borderColor: theme.primary,
-                  }}
-                  onPress={() => {
-                    setDrawerAttachments(task.resolvedImages || []);
-                    setDrawerVisible(true);
-                  }}>
-                  <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                  <Text style={{
-                    fontSize: 14,
-                    fontWeight: '500',
-                    color: theme.primary,
-                  }}>
-                    {t('view_files') || 'View Files'}
-                  </Text>
-                </TouchableOpacity>
+                <Text style={{
+                  fontSize: 12,
+                  fontWeight: '600',
+                  textTransform: 'uppercase',
+                  letterSpacing: 0.5,
+                  color: theme.text,
+                }}>
+                  {t('resolved_attachments') || 'Resolved Attachments'}
+                </Text>
+              </View>
+
+              <View style={{
+                borderRadius: 12,
+                borderWidth: 1,
+                padding: 16,
+                minHeight: 80,
+                justifyContent: 'center',
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+              }}>
+                <Text style={{
+                  fontSize: 14,
+                  fontWeight: '500',
+                  marginBottom: 8,
+                  color: theme.text,
+                }}>
+                  {`${task.resolvedImages.length} file${task.resolvedImages.length !== 1 ? 's' : ''} attached`}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 8,
+                      paddingHorizontal: 12,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      alignSelf: 'flex-start',
+                      gap: 4,
+                      backgroundColor: theme.primary + '10',
+                      borderColor: theme.primary,
+                    }}
+                    onPress={() => {
+                      setDrawerAttachments(task.resolvedImages || []);
+                      setDrawerVisible(true);
+                    }}>
+                    <MaterialIcons name="folder-open" size={16} color={theme.primary} />
+                    <Text style={{
+                      fontSize: 14,
+                      fontWeight: '500',
+                      color: theme.primary,
+                    }}>
+                      {t('view_files') || 'View Files'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
-          </View>
-        )}
+          )}
 
         {/* Dependencies */}
         {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
@@ -1940,7 +1940,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
                     let message = 'Task updated successfully!';
                     if (editValues.isIssue !== task.isIssue) {
-                      message = editValues.isIssue 
+                      message = editValues.isIssue
                         ? 'Task converted to issue successfully!'
                         : 'Issue converted back to task successfully!';
                     } else if (editValues.isCritical !== task.isCritical) {

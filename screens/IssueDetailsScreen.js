@@ -6,18 +6,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -27,13 +27,16 @@ import useAudioRecorder from '../components/popups/useAudioRecorder';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth'; // import this
+import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import {
-    deleteIssue,
-    fetchIssueById,
-    resolveIssueByAssignedUser,
-    updateIssue,
+  deleteIssue,
+  fetchIssueById,
+  resolveIssueByAssignedUser,
+  updateIssue,
 } from '../utils/issues';
+import TaskChatPopup from '../components/popups/TaskChatPopup';
 import { deleteTask, getTaskDetailsById, resolveCriticalOrIssueTask, updateTask } from '../utils/task';
+
 function formatDate(dateString) {
   if (!dateString) return '';
   const date = new Date(dateString);
@@ -70,6 +73,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
   const [showIssueTitleModal, setShowIssueTitleModal] = useState(false);
   const [showAttachmentPreviewModal, setShowAttachmentPreviewModal] = useState(false);
   const [showIssueDetails, setShowIssueDetails] = useState(false);
+  const [showTaskChat, setShowTaskChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const [task, setTask] = useState(null);
+  const [currentUserId, setCurrentUserId] = useState(null);
+  const [users, setUsers] = useState([]);
   useEffect(() => {
     getUserNameFromToken().then(setUserName);
   }, []);
@@ -79,7 +88,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
     },
   });
   const userImg = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
-  
+
   // Helper function to refresh issue data
   const refreshIssueData = async () => {
     try {
@@ -94,16 +103,16 @@ export default function IssueDetailsScreen({ navigation, route }) {
       console.error('Failed to refresh issue data:', error.message);
     }
   };
-  
+
   useEffect(() => {
     if (!issueId) {
       console.log('No issueId provided');
       return;
     }
-    
+
     console.log('Starting to fetch issue with ID:', issueId);
     setLoading(true);
-    
+
     // Try to fetch as task-based issue first, then fall back to traditional issue
     const fetchIssueData = async () => {
       try {
@@ -111,7 +120,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         // First try to fetch as a task (for task-based issues)
         const taskData = await getTaskDetailsById(issueId);
         console.log('Task fetch result:', taskData);
-        
+
         if (taskData) {
           // We found a task, now check if it's marked as an issue
           if (taskData.isIssue) {
@@ -135,13 +144,13 @@ export default function IssueDetailsScreen({ navigation, route }) {
         }
       } catch (taskError) {
         console.log('❌ Task fetch failed, trying traditional issue:', taskError.message);
-        
+
         try {
           console.log('Attempting to fetch traditional issue with ID:', issueId);
           // Fall back to traditional issue fetching
           const issueData = await fetchIssueById(issueId);
           console.log('Traditional issue fetch result:', issueData);
-          
+
           if (issueData) {
             setIssue(issueData);
             console.log('✅ Successfully fetched Traditional Issue:', issueData);
@@ -159,17 +168,63 @@ export default function IssueDetailsScreen({ navigation, route }) {
           console.error('❌ Traditional issue fetch failed:', issueError.message);
         }
       }
-      
       // If we reach here, both attempts failed
       console.error('❌ Failed to fetch issue data from both sources');
       setIssue(null);
     };
-    
+
     fetchIssueData().finally(() => {
       console.log('Fetch complete, setting loading to false');
       setLoading(false);
     });
   }, [issueId]);
+
+  useEffect(() => {
+    if (issue && issue.isIssue && issue.taskId) {
+      setTask({
+        ...issue,
+        id: issue.taskId,       // Provide .id field for compatibility
+        taskId: issue.taskId,   // Provide .taskId as string
+        name: issue.taskName
+      });
+    } else {
+      setTask(null);
+    }
+  }, [issue]);
+
+  // Fetch chat messages when popup opens
+  useEffect(() => {
+    if (showTaskChat && task && (task.taskId || task.id || task._id)) {
+      setChatLoading(true);
+      fetchTaskMessages(task.taskId || task.id || task._id)
+        .then(setChatMessages)
+        .catch(() => setChatMessages([]))
+        .finally(() => setChatLoading(false));
+    }
+  }, [showTaskChat, task]);
+
+  // Send chat message
+  const handleSendChatMessage = async (msg, attachments = [], mentions = []) => {
+    const taskId = task?.taskId || task?.id || task?._id;
+    if (!taskId) {
+      Alert.alert('No task selected', 'Cannot send message: no task available.');
+      return;
+    }
+    try {
+      const safeMsg = msg && msg.trim() ? msg : attachments.length > 0 ? ' ' : '';
+      if (!safeMsg && attachments.length === 0) return;
+      const newMsg = await sendTaskMessage({
+        taskId,
+        message: safeMsg,
+        attachments,
+        mentions,
+      });
+      setChatMessages((prev) => [...prev, newMsg]);
+    } catch (err) {
+      Alert.alert('Error', err.message || 'Failed to send message');
+      throw err;
+    }
+  };
 
   const handleSubmit = async () => {
     if (!remark.trim() && attachments.length === 0) {
@@ -200,7 +255,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             };
           })
         };
-        
+
         // Use the dedicated resolve critical/issue task API
         await resolveCriticalOrIssueTask(issue.taskId, resolveData);
         Alert.alert('Success', 'Issue task completed successfully');
@@ -232,7 +287,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         });
         Alert.alert('Success', 'Issue completed successfully');
       }
-      
+
       navigation.goBack();
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to submit resolution');
@@ -328,7 +383,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   }
                   try {
                     setLoading(true);
-                    
                     // Check if this is a task-based issue
                     if (issue.isIssue) {
                       // Update task-based issue
@@ -337,19 +391,15 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         description: editFields.description.trim() || undefined,
                         endDate: editFields.dueDate || undefined,
                       };
-                      
                       // Remove undefined values
                       Object.keys(updatePayload).forEach(key => {
                         if (updatePayload[key] === undefined) {
                           delete updatePayload[key];
                         }
                       });
-                      
                       await updateTask(issue.taskId, updatePayload);
-                      
                       // Show appropriate success message
                       Alert.alert('Success', 'Issue updated successfully.');
-                      
                       // Refresh the task data
                       const updated = await getTaskDetailsById(issue.taskId);
                       setIssue(updated);
@@ -380,7 +430,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                         isCritical: editFields.isCritical,
                         ...(assignedUserId ? { assignTo: assignedUserId } : {}),
                       };
-                      
                       // Separate existing URLs and new files
                       let existingUnresolvedImages = [];
                       let newUnresolvedImages = [];
@@ -418,13 +467,11 @@ export default function IssueDetailsScreen({ navigation, route }) {
                       if (existingUnresolvedImages.length > 0) {
                         updatePayload.existingUnresolvedImages = existingUnresolvedImages;
                       }
-                      
                       await updateIssue(updatePayload);
                       Alert.alert('Success', 'Issue updated successfully.');
                       const updated = await fetchIssueById(issue.issueId);
                       setIssue(updated);
                     }
-                    
                     setIsEditing(false);
                     // Clear attachments after successful update
                     setAttachments([]);
@@ -593,21 +640,79 @@ export default function IssueDetailsScreen({ navigation, route }) {
         </LinearGradient>
 
         {/* Issue Details Toggle Section */}
-        <View style={styles.issueDetailsHeader}>
+        <View style={[styles.issueDetailsHeader, {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }]}>
           <Text style={[styles.attachmentLabel, { color: theme.text }]}>Issue Details</Text>
-          <TouchableOpacity
-            style={[styles.viewDetailsBtn, { backgroundColor: theme.primary + '15' }]}
-            onPress={() => setShowIssueDetails(!showIssueDetails)}>
-            <MaterialIcons 
-              name={showIssueDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"} 
-              size={20} 
-              color={theme.primary} 
-            />
-            <Text style={[styles.viewDetailsBtnText, { color: theme.primary }]}>
-              {showIssueDetails ? 'Hide Details' : 'Show Details'}
-            </Text>
-          </TouchableOpacity>
+
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            {/* Show/Hide Details Button */}
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: theme.card,
+                borderRadius: 18,
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderWidth: 1,
+                borderColor: theme.border,
+                marginRight: 6,
+              }}
+              onPress={() => setShowIssueDetails(!showIssueDetails)}
+              activeOpacity={0.8}
+            >
+              <MaterialIcons
+                name={showIssueDetails ? "keyboard-arrow-up" : "keyboard-arrow-down"}
+                size={18}
+                color={theme.primary}
+                style={{ marginRight: 6 }}
+              />
+              <Text style={{ color: theme.primary, fontWeight: '400', fontSize: 13 }}>
+                {showIssueDetails ? 'Hide Details' : 'Show Details'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Task Chat Button, with "Task Chat" label */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                if (task && (task.taskId || task.id || task._id)) {
+                  setShowTaskChat(true);
+                } else {
+                  Alert.alert('Chat unavailable', 'No task associated with this issue.');
+                }
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: theme.card,
+                borderRadius: 18,
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}
+            >
+              <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 6 }} />
+              <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Task Chat</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        <TaskChatPopup
+          visible={showTaskChat}
+          onClose={() => setShowTaskChat(false)}
+          messages={chatMessages}
+          onSend={handleSendChatMessage}
+          theme={theme}
+          currentUserId={currentUserId}
+          loading={chatLoading}
+          users={users}
+          task={task}
+        />
 
         {showIssueDetails && (
           <>
@@ -701,140 +806,140 @@ export default function IssueDetailsScreen({ navigation, route }) {
 
         {/* Added Attachments Section */}
         <View style={styles.attachmentSection}>
-              <View style={styles.attachmentHeader}>
-                <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('added_attachments')}</Text>
-                {isEditing && (
+          <View style={styles.attachmentHeader}>
+            <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('added_attachments')}</Text>
+            {isEditing && (
+              <TouchableOpacity
+                style={[styles.addButton, { backgroundColor: theme.primary + '15' }]}
+                onPress={() => setShowAttachmentSheet(true)}>
+                <MaterialIcons name="add" size={16} color={theme.primary} />
+                <Text style={[styles.addButtonText, { color: theme.primary }]}>{t('add_files')}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View
+            style={[
+              styles.attachmentCard,
+              { backgroundColor: theme.card, borderColor: theme.border },
+            ]}>
+            {attachments.length > 0 ||
+              ((issue?.isIssue ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
+              <>
+                <Text style={[styles.attachmentCount, { color: theme.text }]}>
+                  {isEditing
+                    ? `${attachments.length} attachment${attachments.length !== 1 ? 's' : ''} selected`
+                    : `${allAttachments.length} file${allAttachments.length !== 1 ? 's' : ''} attached`}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
-                    style={[styles.addButton, { backgroundColor: theme.primary + '15' }]}
-                    onPress={() => setShowAttachmentSheet(true)}>
-                    <MaterialIcons name="add" size={16} color={theme.primary} />
-                    <Text style={[styles.addButtonText, { color: theme.primary }]}>{t('add_files')}</Text>
+                    style={[
+                      styles.viewFilesButton,
+                      { backgroundColor: theme.primary + '10', borderColor: theme.primary },
+                    ]}
+                    onPress={() => {
+                      setDrawerVisible(true);
+                      setDrawerAttachments(isEditing ? attachments : allAttachments);
+                    }}>
+                    <MaterialIcons name="folder-open" size={16} color={theme.primary} />
+                    <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
                   </TouchableOpacity>
-                )}
-              </View>
 
-              <View
-                style={[
-                  styles.attachmentCard,
-                  { backgroundColor: theme.card, borderColor: theme.border },
-                ]}>
-                {attachments.length > 0 ||
-                  ((issue?.isIssue ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
-                  <>
-                    <Text style={[styles.attachmentCount, { color: theme.text }]}>
-                      {isEditing
-                        ? `${attachments.length} attachment${attachments.length !== 1 ? 's' : ''} selected`
-                        : `${allAttachments.length} file${allAttachments.length !== 1 ? 's' : ''} attached`}
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 8 }}>
-                      <TouchableOpacity
-                        style={[
-                          styles.viewFilesButton,
-                          { backgroundColor: theme.primary + '10', borderColor: theme.primary },
-                        ]}
-                        onPress={() => {
-                          setDrawerVisible(true);
-                          setDrawerAttachments(isEditing ? attachments : allAttachments);
-                        }}>
-                        <MaterialIcons name="folder-open" size={16} color={theme.primary} />
-                        <Text style={[styles.viewFilesText, { color: theme.primary }]}>{t('view_files')}</Text>
-                      </TouchableOpacity>
-                      
-                      {/* Preview Button for newly added attachments in editing mode */}
-                      {isEditing && attachments.length > 0 && (
-                        <TouchableOpacity
-                          style={[
-                            styles.viewFilesButton,
-                            { backgroundColor: theme.secondary + '10', borderColor: theme.secondary || theme.primary },
-                          ]}
-                          onPress={() => setShowAttachmentPreviewModal(true)}>
-                          <MaterialIcons name="preview" size={16} color={theme.secondary || theme.primary} />
-                          <Text style={[styles.viewFilesText, { color: theme.secondary || theme.primary }]}>Preview</Text>
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.noAttachmentContainer}>
-                    <MaterialCommunityIcons name="file-outline" size={40} color={theme.secondaryText} />
-                    <Text style={[styles.noAttachmentText, { color: theme.secondaryText }]}>{t('no_attachments_added')}</Text>
-                    {isEditing && (
-                      <Text style={[styles.tapToAddText, { color: theme.secondaryText }]}>
-                        {t('tap_to_add_files')}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </View>
-
-              {/* Show attachment previews in edit mode */}
-              {isEditing && attachments.length > 0 && (
-                <View style={styles.attachmentPreviewContainer}>
-                  {attachments.map((att, idx) => (
-                    <View
-                      key={att.uri || att.name || idx}
+                  {/* Preview Button for newly added attachments in editing mode */}
+                  {isEditing && attachments.length > 0 && (
+                    <TouchableOpacity
                       style={[
-                        styles.attachmentPreviewItem,
-                        { backgroundColor: theme.card, borderColor: theme.border },
-                      ]}>
-                      <View style={styles.attachmentPreviewContent}>
-                        {/* File type icon/preview */}
-                        {att.type && att.type.startsWith('image') ? (
-                          <Image source={{ uri: att.uri }} style={styles.attachmentPreviewImage} />
-                        ) : att.type && att.type.startsWith('audio') ? (
-                          <View style={[styles.attachmentIconContainer, { backgroundColor: theme.secCard }]}>
-                            <MaterialCommunityIcons name="music-note" size={20} color={theme.primary} />
-                          </View>
-                        ) : (
-                          <View style={[styles.attachmentIconContainer, { backgroundColor: theme.secCard }]}>
-                            <MaterialCommunityIcons
-                              name="file-document-outline"
-                              size={20}
-                              color={theme.secondaryText}
-                            />
-                          </View>
-                        )}
-
-                        {/* File name */}
-                        <Text
-                          style={[styles.attachmentPreviewName, { color: theme.text }]}
-                          numberOfLines={1}>
-                          {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 25
-                            ? (att.name || att.uri?.split('/').pop()).slice(0, 22) + '...'
-                            : att.name || att.uri?.split('/').pop()}
-                        </Text>
-                      </View>
-
-                      {/* Remove button */}
-                      <TouchableOpacity
-                        onPress={() => {
-                          setAttachments((prev) => prev.filter((_, i) => i !== idx));
-                        }}
-                        style={styles.removeAttachmentButton}>
-                        <MaterialCommunityIcons name="close-circle" size={18} color="#E53935" />
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+                        styles.viewFilesButton,
+                        { backgroundColor: theme.secondary + '10', borderColor: theme.secondary || theme.primary },
+                      ]}
+                      onPress={() => setShowAttachmentPreviewModal(true)}>
+                      <MaterialIcons name="preview" size={16} color={theme.secondary || theme.primary} />
+                      <Text style={[styles.viewFilesText, { color: theme.secondary || theme.primary }]}>Preview</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
-              )}
+              </>
+            ) : (
+              <View style={styles.noAttachmentContainer}>
+                <MaterialCommunityIcons name="file-outline" size={40} color={theme.secondaryText} />
+                <Text style={[styles.noAttachmentText, { color: theme.secondaryText }]}>{t('no_attachments_added')}</Text>
+                {isEditing && (
+                  <Text style={[styles.tapToAddText, { color: theme.secondaryText }]}>
+                    {t('tap_to_add_files')}
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
 
-              <AttachmentSheet
-                visible={showAttachmentSheet}
-                onClose={() => setShowAttachmentSheet(false)}
-                onPick={async (type) => {
-                  await pickAttachment(type);
-                  setShowAttachmentSheet(false);
-                }}
-              />
+          {/* Show attachment previews in edit mode */}
+          {isEditing && attachments.length > 0 && (
+            <View style={styles.attachmentPreviewContainer}>
+              {attachments.map((att, idx) => (
+                <View
+                  key={att.uri || att.name || idx}
+                  style={[
+                    styles.attachmentPreviewItem,
+                    { backgroundColor: theme.card, borderColor: theme.border },
+                  ]}>
+                  <View style={styles.attachmentPreviewContent}>
+                    {/* File type icon/preview */}
+                    {att.type && att.type.startsWith('image') ? (
+                      <Image source={{ uri: att.uri }} style={styles.attachmentPreviewImage} />
+                    ) : att.type && att.type.startsWith('audio') ? (
+                      <View style={[styles.attachmentIconContainer, { backgroundColor: theme.secCard }]}>
+                        <MaterialCommunityIcons name="music-note" size={20} color={theme.primary} />
+                      </View>
+                    ) : (
+                      <View style={[styles.attachmentIconContainer, { backgroundColor: theme.secCard }]}>
+                        <MaterialCommunityIcons
+                          name="file-document-outline"
+                          size={20}
+                          color={theme.secondaryText}
+                        />
+                      </View>
+                    )}
+
+                    {/* File name */}
+                    <Text
+                      style={[styles.attachmentPreviewName, { color: theme.text }]}
+                      numberOfLines={1}>
+                      {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 25
+                        ? (att.name || att.uri?.split('/').pop()).slice(0, 22) + '...'
+                        : att.name || att.uri?.split('/').pop()}
+                    </Text>
+                  </View>
+
+                  {/* Remove button */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      setAttachments((prev) => prev.filter((_, i) => i !== idx));
+                    }}
+                    style={styles.removeAttachmentButton}>
+                    <MaterialCommunityIcons name="close-circle" size={18} color="#E53935" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <AttachmentSheet
+            visible={showAttachmentSheet}
+            onClose={() => setShowAttachmentSheet(false)}
+            onPick={async (type) => {
+              await pickAttachment(type);
+              setShowAttachmentSheet(false);
+            }}
+          />
         </View>
 
         <FieldBox
           label={t('assigned_to')}
           value={
-            issue.isIssue 
-              ? (Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0 
-                  ? issue.assignedUserDetails.map(user => user.name).join(', ')
-                  : 'Not assigned')
+            issue.isIssue
+              ? (Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0
+                ? issue.assignedUserDetails.map(user => user.name).join(', ')
+                : 'Not assigned')
               : (issue.assignTo?.userName || '')
           }
           placeholder={t('assigned_to')}
@@ -879,7 +984,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
           }
           theme={theme}
         />
-
         <FieldBox
           label={t('due_date')}
           value={
@@ -912,8 +1016,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
             accentColor={theme.buttonText}
           />
         )}
-
-
 
         <View
           style={{ height: 1, backgroundColor: theme.border, marginTop: 18, marginHorizontal: 20 }}
@@ -954,11 +1056,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
               </View>
             </View>
 
-            
           </View>
         )}
         {issue.status !== 'Completed' &&
-          issue.issueStatus !== 'resolved' && 
+          issue.issueStatus !== 'resolved' &&
           issue.issueStatus !== 'completed' && (
             <View style={{ marginBottom: 24 }}>
               <View
@@ -1149,26 +1250,26 @@ export default function IssueDetailsScreen({ navigation, route }) {
             <TouchableOpacity
               style={{
                 flex: 1,
-                backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.secCard 
+                backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed')
+                  ? theme.secCard
                   : theme.primary + '15',
                 borderRadius: 16,
                 paddingVertical: 12,
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.border 
+                borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed')
+                  ? theme.border
                   : theme.primary,
                 opacity: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') ? 0.5 : 1,
               }}
               onPress={() => setShowReassignModal(true)}
               disabled={issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed'}>
-              <Text style={{ 
-                color: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.secondaryText 
-                  : theme.primary, 
-                fontWeight: '600', 
-                fontSize: 16 
+              <Text style={{
+                color: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed')
+                  ? theme.secondaryText
+                  : theme.primary,
+                fontWeight: '600',
+                fontSize: 16
               }}>
                 {t("Reassign") || "Reassign"}
               </Text>
@@ -1176,20 +1277,20 @@ export default function IssueDetailsScreen({ navigation, route }) {
             <TouchableOpacity
               style={{
                 flex: 1,
-                backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.secCard 
+                backgroundColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed')
+                  ? theme.secCard
                   : theme.primary,
                 borderRadius: 16,
                 paddingVertical: 12,
                 alignItems: 'center',
                 borderWidth: 1,
-                borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed') 
-                  ? theme.border 
+                borderColor: (issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed')
+                  ? theme.border
                   : theme.primary,
                 opacity: (() => {
                   const isResolved = issue.status === 'Completed' || issue.issueStatus === 'resolved' || issue.issueStatus === 'completed';
                   const hasNoContent = attachments.length === 0 && !remark;
-                  
+
                   if (isResolved) return 0.5;
                   if (hasNoContent) return 0.7;
                   return 1;
@@ -1199,18 +1300,18 @@ export default function IssueDetailsScreen({ navigation, route }) {
               disabled={(() => {
                 const isResolved = issue.status === 'Completed' || issue.issueStatus === 'resolved';
                 const hasNoContent = attachments.length === 0 && !remark;
-                
+
                 return isResolved || hasNoContent;
               })()}
             >
-              <Text style={{ 
-                color: (issue.status === 'Completed' || issue.issueStatus === 'resolved') 
-                  ? theme.secondaryText 
-                  : '#fff', 
-                fontWeight: '600', 
-                fontSize: 16 
+              <Text style={{
+                color: (issue.status === 'Completed' || issue.issueStatus === 'resolved')
+                  ? theme.secondaryText
+                  : '#fff',
+                fontWeight: '600',
+                fontSize: 16
               }}>
-                {(issue.status === 'Completed' || issue.issueStatus === 'resolved') 
+                {(issue.status === 'Completed' || issue.issueStatus === 'resolved')
                   ? (t('resolved') || 'Resolved')
                   : (t('submit_resolution') || 'Submit Resolution')}
               </Text>
@@ -1380,7 +1481,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     borderWidth: 1,
                     borderColor: theme.border,
                   }}>
-                  
+
                   {/* File Icon/Preview */}
                   <View style={{
                     width: 50,
