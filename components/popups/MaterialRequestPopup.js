@@ -280,15 +280,15 @@ export default function MaterialRequestPopup({
                   </Text>
                 </View>
                 {/* Assigned Users Display */}
-                <View style={[styles.detailsRow, { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 8 }]}>
+                <View style={[styles.detailsRow, { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }]}>
+                  <Text style={[styles.detailsLabel, { color: theme.secondaryText, marginRight: 8 }]}>Assigned to:</Text>
                   {selectedRequest.assignedUserIds && selectedRequest.assignedUserIds.length > 0 ? (
-                    selectedRequest.assignedUserIds.map((userId, index) => {
+                    selectedRequest.assignedUserIds.map((userId) => {
                       const user = users.find(u => u.userId === userId);
                       if (!user) return null;
                       return (
                         <View key={userId} style={styles.assignedUserBadge}>
                           <Text style={{ color: theme.text }}>{user.name}</Text>
-                          {index !== selectedRequest.assignedUserIds.length - 1 && <Text>, </Text>}
                         </View>
                       );
                     })
@@ -296,6 +296,9 @@ export default function MaterialRequestPopup({
                     <Text style={{ color: theme.text }}>No users assigned</Text>
                   )}
                 </View>
+
+
+
 
                 <View style={styles.detailsRow}>
                   <Text style={[styles.detailsLabel, { color: theme.secondaryText }]}>Date:</Text>
@@ -484,7 +487,7 @@ export default function MaterialRequestPopup({
             {item.User?.name || 'Unknown User'}
           </Text>
         </View>
-        
+
       </View>
       {/* Elegant Items Display */}
       <View style={styles.elegantItemsContainer}>
@@ -1022,14 +1025,15 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   assignedUserBadge: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: '#eee',
-    marginRight: 6,
-    marginBottom: 6,
-  }
-  ,
+    backgroundColor: '#f3f4f9',
+    marginRight: 8,
+    marginBottom: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     height: '90%',
     borderTopLeftRadius: 16,
