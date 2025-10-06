@@ -29,6 +29,7 @@ import FieldBox from '../components/project details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
+
 import { deleteProjectById, getProjectById } from '../utils/project';
 import { createWorklist, deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
 export default function ProjectDetailsScreen({ navigation, route }) {
@@ -211,7 +212,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   // WorklistCard component - Compact Design
   const WorklistCard = ({ worklist }) => {
     const progress = getWorklistProgress(worklist.id);
-
     return (
       <TouchableOpacity
         onPress={() => navigation.navigate('TaskListScreen', { worklist, project: projectDetails })}
@@ -242,7 +242,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             {worklist.name?.[0]?.toUpperCase() || '?'}
           </Text>
         </View>
-
         <View style={{ flex: 1 }}>
           <Text style={{ color: theme.text, fontSize: 16, fontWeight: '500' }} numberOfLines={1}>
             {worklist.name}
@@ -251,7 +250,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             {progress?.totalTasks || 0} {t('tasks')}
           </Text>
         </View>
-
         {/* Circular Progress Component */}
         <View style={{ marginLeft: 10 }}>
           <CustomCircularProgress
@@ -355,7 +353,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               <Text style={styles.creator}>
                 {t('project_creator')}: {projectDetails.creatorName || '-'}
               </Text>
-
             </View>
             {/* Compact Project Details Toggle Button */}
             <TouchableOpacity
@@ -380,9 +377,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 color="#fff"
                 style={{ marginLeft: 4 }}
               />
-
             </TouchableOpacity>
-
           </View>
         </LinearGradient>
         {/* Modern Pill-Style Tab Buttons */}
@@ -410,7 +405,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 {t('task_dependency')}
               </Text>
             </TouchableOpacity>
-
             {/* Discussion Tab */}
             <TouchableOpacity
               key="discussion"
@@ -435,7 +429,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 {t('discussion')}
               </Text>
             </TouchableOpacity>
-
             {/* Materials Tab */}
             <TouchableOpacity
               key="materials"
@@ -455,7 +448,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 {t('materials')}
               </Text>
             </TouchableOpacity>
-
             {/* Settings Tab - Only show for project owner */}
             {projectDetails?.userId === userId && (
               <TouchableOpacity
@@ -503,7 +495,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             ]}
           />
         </View>
-
         {/* Collapsible Project Details */}
         {showProjectDetails && (
           <View>
@@ -666,7 +657,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             </TouchableOpacity>
           </View>
         )}
-
         {/* Pending Invites Section */}
         {projectDetails.pendingInvites &&
           Array.isArray(projectDetails.pendingInvites) &&
@@ -722,7 +712,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   />
                 </View>
               </TouchableOpacity>
-
               {/* Collapsible Content */}
               {showPendingInvites && (
                 <View>
@@ -772,7 +761,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                             </Text>
                           )}
                         </View>
-
                         {/* User Info */}
                         <View style={{ flex: 1 }}>
                           <Text style={{
@@ -799,7 +787,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                             Sent {createdAt ? new Date(createdAt).toLocaleDateString() : 'Recently'}
                           </Text>
                         </View>
-
                         {/* Status Badge and Actions */}
                         <View style={{ alignItems: 'flex-end' }}>
                           <View style={{
@@ -817,10 +804,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                               {invite.status?.toUpperCase() || 'PENDING'}
                             </Text>
                           </View>
-
                           {/* {invite.status === 'pending' && (
                           <View style={{ flexDirection: 'row', gap: 8 }}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={{
                                 backgroundColor: theme.primary + '20',
                                 borderRadius: 6,
@@ -832,16 +818,15 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                                 console.log('Resending invite to:', userName);
                               }}
                             >
-                              <Text style={{ 
-                                color: theme.primary, 
-                                fontSize: 10, 
-                                fontWeight: '500' 
+                              <Text style={{
+                                color: theme.primary,
+                                fontSize: 10,
+                                fontWeight: '500'
                               }}>
                                 Resend
                               </Text>
                             </TouchableOpacity>
-                            
-                            <TouchableOpacity 
+                            <TouchableOpacity
                               style={{
                                 backgroundColor: '#FF3B3020',
                                 borderRadius: 6,
@@ -853,10 +838,10 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                                 console.log('Canceling invite for:', userName);
                               }}
                             >
-                              <Text style={{ 
-                                color: '#FF3B30', 
-                                fontSize: 10, 
-                                fontWeight: '500' 
+                              <Text style={{
+                                color: '#FF3B30',
+                                fontSize: 10,
+                                fontWeight: '500'
                               }}>
                                 Cancel
                               </Text>
@@ -871,7 +856,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               )}
             </View>
           )}
-
         {/* Compact Worklist Section */}
         <View style={{ marginTop: 0 }}>
           {/* Compact Worklist Header */}
@@ -884,6 +868,21 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               marginBottom: 8,
             }}>
             <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600' }}>{t('worklists')}</Text>
+            <TouchableOpacity
+              onPress={() => setCreateWorklistModal(true)}
+              style={{
+                backgroundColor: `${theme.primary}12`,
+                paddingHorizontal: 10,
+                paddingVertical: 4,
+                position: 'absolute',
+                right: 70,
+                borderRadius: 6,
+                flexDirection: 'row',      // Add this
+                alignItems: 'center',
+              }}>
+              <Text style={{ color: theme.primary, fontSize: 11, fontWeight: '500' }}>{t('create_worklist')}</Text>
+              <Feather name="plus" size={11} color={theme.primary} style={{ marginLeft: 4 }} />
+            </TouchableOpacity>
             <TouchableOpacity
               onPress={() => navigation.navigate('WorklistScreen', { project: projectDetails })}
               style={{
@@ -928,7 +927,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               onChangeText={setSearchWorklist}
             />
           </View>
-
           {/* Worklist List */}
           {loadingWorklists ? (
             <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 16 }} />
@@ -992,7 +990,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           )}
         </View>
       </ScrollView>
-
       {/* Compact Sticky Issue Buttons */}
       <View
         style={{
@@ -1050,7 +1047,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
-
       {/* Edit Worklist Modal */}
       <Modal
         visible={editModalVisible}
