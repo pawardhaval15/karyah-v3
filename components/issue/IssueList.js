@@ -93,20 +93,20 @@ export default function IssueList({
             count: issues.filter((i) => i.status === 'Pending').length,
             color: '#FFC107',
           },
-          {
-            key: 'in_progress',
-            label: t('in_progress') || 'In Progress',
-            icon: (
-              <Feather
-                name="play-circle"
-                size={13}
-                color={statusTab === 'in_progress' ? '#fff' : '#2563EB'}
-                style={{ marginRight: 2 }}
-              />
-            ),
-            count: issues.filter((i) => i.status === 'In Progress').length,
-            color: '#2563EB',
-          },
+          // {
+          //   key: 'in_progress',
+          //   label: t('in_progress') || 'In Progress',
+          //   icon: (
+          //     <Feather
+          //       name="play-circle"
+          //       size={13}
+          //       color={statusTab === 'in_progress' ? '#fff' : '#2563EB'}
+          //       style={{ marginRight: 2 }}
+          //     />
+          //   ),
+          //   count: issues.filter((i) => i.status === 'In Progress').length,
+          //   color: '#2563EB',
+          // },
           {
             key: 'completed',
             label: t('completed') || 'Completed',
