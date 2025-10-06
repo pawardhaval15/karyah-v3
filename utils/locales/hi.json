@@ -303,5 +303,6 @@
   "accounts": "खाता",
   "create_new_Subtask": "नया उपकार्य बनाएं",
   "created_by": "द्वारा बनाया गया",
-  "issue_details": "मुद्दा विवरण"
+  "issue_details": "मुद्दा विवरण",
+  "in_progress": "प्रगति पर"
 }

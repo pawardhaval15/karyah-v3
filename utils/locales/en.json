@@ -321,5 +321,6 @@
   "success": "Success",
   "error": "Error",
   "created_by": "Created By",
-  "issue_details": "Issue Details"
+  "issue_details": "Issue Details",
+  "in_progress": "In Progress"
 }
