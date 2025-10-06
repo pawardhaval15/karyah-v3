@@ -220,7 +220,7 @@
   "resolution_remark": "समाधान टिप्पणी",
   "no_resolution_remark": "कोणतीही समाधान टिप्पणी नाही",
   "describe_resolution": "तक्रार कशी सोडवली हे सांगा...",
-  "no_reassign": "नाही, पुन्हा सोपवा",
+  "no_reassign": "पुन्हा सोपवा",
   "approve_complete": "मंजूर करा व पूर्ण करा",
   "waiting_for_approval": "मंजुरीची वाट पाहत आहे",
   "submit_resolution": "समाधान सबमिट करा",
@@ -301,6 +301,8 @@
 "back_to_change_pin": "पिन बदलण्याकडे परत जा",
 "enter_otp_from_email": "ईमेलमधून ओटीपी प्रविष्ट करा",
 "accounts": "खाती",
-"create_new_Subtask": "नवीन उपकार्य तयार करा"
+"create_new_Subtask": "नवीन उपकार्य तयार करा",
+"created_by": "द्वारे तयार केले",
+"issue_details": "तक्रार तपशील"
 }
 

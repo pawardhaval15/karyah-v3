@@ -81,16 +81,16 @@ export default function HomeScreen({ navigation }) {
   usePushNotifications();
 
   useEffect(() => {
-  const unsubscribe = navigation.addListener('focus', () => {
-    if (navigation?.getState()?.routes?.find(r => r.name === 'HomeScreen')?.params?.refresh) {
-      fetchProjectsData();
-      setRefreshKey(prev => prev + 1);
-      // Optionally clear the param so it doesn't keep refreshing
-      navigation.setParams({ refresh: false });
-    }
-  });
-  return unsubscribe;
-}, [navigation]);
+    const unsubscribe = navigation.addListener('focus', () => {
+      if (navigation?.getState()?.routes?.find(r => r.name === 'HomeScreen')?.params?.refresh) {
+        fetchProjectsData();
+        setRefreshKey(prev => prev + 1);
+        // Optionally clear the param so it doesn't keep refreshing
+        navigation.setParams({ refresh: false });
+      }
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     const checkUnreadNotifications = async () => {
@@ -135,7 +135,7 @@ export default function HomeScreen({ navigation }) {
           }),
         ])
       );
-      
+
       const waveAnimation = Animated.loop(
         Animated.timing(waveAnim, {
           toValue: 1,
@@ -143,10 +143,10 @@ export default function HomeScreen({ navigation }) {
           useNativeDriver: true,
         })
       );
-      
+
       blinkAnimation.start();
       waveAnimation.start();
-      
+
       return () => {
         blinkAnimation.stop();
         waveAnimation.stop();
@@ -167,9 +167,9 @@ export default function HomeScreen({ navigation }) {
           useNativeDriver: true,
         })
       );
-      
+
       bellWaveAnimation.start();
-      
+
       return () => bellWaveAnimation.stop();
     } else {
       bellWaveAnim.setValue(0);
@@ -195,7 +195,7 @@ export default function HomeScreen({ navigation }) {
         project => project.status?.toLowerCase() !== 'completed'
       );
       setProjects(filtered);
-      
+
       // Also fetch pending invites
       await fetchPendingInvites();
     } catch (err) {
@@ -241,19 +241,19 @@ export default function HomeScreen({ navigation }) {
             {/* Modern Header */}
             <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
               <View style={styles.headerRow}>
-                <TouchableOpacity 
+                <TouchableOpacity
                   onPress={() => setDrawerOpen(true)}
                   style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
                 >
                   <Feather name="menu" size={22} color={theme.text} />
                 </TouchableOpacity>
-                
+
                 <View style={styles.titleContainer}>
                   <Text style={[styles.modernTitle, { color: theme.text }]}></Text>
                   <Text style={[styles.subtitle, { color: theme.secondaryText }]}></Text>
                 </View>
-                
-                <TouchableOpacity 
+
+                <TouchableOpacity
                   onPress={() => navigation.navigate('NotificationScreen')}
                   style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
                 >
@@ -334,8 +334,9 @@ export default function HomeScreen({ navigation }) {
                   <View style={styles.sectionRow}>
                     <View style={styles.sectionTitleContainer}>
                       <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                        {t('ongoing_projects')} <Text style={{ color: theme.text, fontWeight: '600', fontSize: 20, marginLeft: 12 }}>{projects.length}</Text>
+                        {t('ongoing_projects')} <Text style={{ color: theme.text }}>{projects.length}</Text>
                       </Text>
+
                     </View>
                   </View>
                   <ScrollView
@@ -404,7 +405,7 @@ export default function HomeScreen({ navigation }) {
             </View>
           )}
           {showSmartSearch && (
-            <SmartSearchBar 
+            <SmartSearchBar
               navigation={navigation}
               theme={theme}
               onClose={() => setShowSmartSearch(false)}

@@ -645,7 +645,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           alignItems: 'center',
           justifyContent: 'space-between',
         }]}>
-          <Text style={[styles.attachmentLabel, { color: theme.text }]}>Issue Details</Text>
+          <Text style={[styles.attachmentLabel, { color: theme.text }]}>{t('issue_details')}</Text>
 
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
             {/* Show/Hide Details Button */}
@@ -1271,7 +1271,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 fontWeight: '600',
                 fontSize: 16
               }}>
-                {t("Reassign") || "Reassign"}
+                {t("no_reassign") || "no_reassign"}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity

@@ -221,7 +221,7 @@
   "resolution_remark": "RESOLUTION REMARK",
   "no_resolution_remark": "No resolution remark",
   "describe_resolution": "Describe how the issue was resolved...",
-  "no_reassign": "No, Re-assign",
+  "no_reassign": "Re-assign",
   "approve_complete": "Approve & Complete",
   "waiting_for_approval": "Waiting for Approval",
   "submit_resolution": "Submit Resolution",
@@ -319,5 +319,7 @@
   "your_connections": "Your Connections",
   "no_users_found": "No users found",
   "success": "Success",
-  "error": "Error"
+  "error": "Error",
+  "created_by": "Created By",
+  "issue_details": "Issue Details"
 }

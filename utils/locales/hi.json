@@ -220,7 +220,7 @@
   "resolution_remark": "समाधान टिप्पणी",
   "no_resolution_remark": "कोई समाधान टिप्पणी नहीं",
   "describe_resolution": "बताएं कि समस्या कैसे हल हुई...",
-  "no_reassign": "नहीं, पुनः सौंपें",
+  "no_reassign": "पुनः असाइन करें",
   "approve_complete": "स्वीकृत करें और पूरा करें",
   "waiting_for_approval": "स्वीकृति का इंतजार है",
   "submit_resolution": "समाधान जमा करें",
@@ -301,5 +301,7 @@
   "back_to_change_pin": "पिन बदलने पर वापस जाएं",
   "enter_otp_from_email": "ईमेल से ओटीपी दर्ज करें",
   "accounts": "खाता",
-  "create_new_Subtask": "नया उपकार्य बनाएं"
+  "create_new_Subtask": "नया उपकार्य बनाएं",
+  "created_by": "द्वारा बनाया गया",
+  "issue_details": "मुद्दा विवरण"
 }

@@ -23,7 +23,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
         setTasks(tasksData || []);
         setIssues(issuesData || []);
         // console.log('Fetched tasks:', tasksData);
-        // console.log('Fetched issues:', issuesData);
+        console.log('Fetched issues:', issuesData);
       } catch (err) {
         console.error('Error fetching tasks/issues:', err);
       } finally {
@@ -47,14 +47,14 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     const searchText = search.toLowerCase();
     // For issues
     if (activeTab === 'issues') {
-      return (
-        (item.title || '').toLowerCase().includes(searchText) ||
-        (item.issueTitle || '').toLowerCase().includes(searchText) ||
-        (item.desc || item.description || '').toLowerCase().includes(searchText) ||
-        (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
-        (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
-      );
-    }
+  return (
+    (item.title || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
+    (item.desc || item.description || '').toLowerCase().includes(searchText) ||
+    (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
+    (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
+  );
+}
+
     // For tasks
     return (
       (item.title || '').toLowerCase().includes(searchText) ||
