@@ -75,20 +75,20 @@ export default function IssuesScreen({ navigation }) {
         return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
     };
     const currentIssues = issues;
-    
+
     // Generate filter options based on Task model structure
     const statuses = Array.from(new Set(
         currentIssues.map(issue => issue.status || issue.issueStatus).filter(Boolean)
     ));
-    
+
     const projectOptions = Array.from(new Set(
         currentIssues.map(issue => issue.project?.name || issue.projectName).filter(Boolean)
     ));
-    
+
     const creatorOptions = Array.from(new Set(
         currentIssues.map(issue => issue.creatorName || issue.creator?.name).filter(Boolean)
     ));
-    
+
     const locationOptions = Array.from(new Set(
         currentIssues.map(issue => issue.project?.location || issue.projectLocation).filter(Boolean)
     ));
@@ -102,9 +102,9 @@ export default function IssuesScreen({ navigation }) {
                 fetchProjectsByUser(),
                 fetchUserConnections()
             ]);
-            
+
             console.log(`Fetched issues: ${taskBasedIssues ? taskBasedIssues.length : 0}`);
-            
+
             setIssues(taskBasedIssues || []);
             setProjects(projects || []);
             setUsers(connections || []);
@@ -127,18 +127,18 @@ export default function IssuesScreen({ navigation }) {
                 isCritical,
                 isIssue: true // Ensure it remains as an issue
             };
-            
+
             await updateTask(taskId, updatePayload);
-            
+
             // Update the local state
-            setIssues(prev => 
-                prev.map(item => 
-                    item.id === taskId 
+            setIssues(prev =>
+                prev.map(item =>
+                    item.id === taskId
                         ? { ...item, isCritical }
                         : item
                 )
             );
-            
+
             Alert.alert('Success', `Issue ${isCritical ? 'marked as critical' : 'unmarked as critical'}`);
         } catch (error) {
             Alert.alert('Error', error.message || 'Failed to update critical status');
@@ -155,7 +155,7 @@ export default function IssuesScreen({ navigation }) {
                 console.error('Error fetching current user name:', error);
             }
         };
-        
+
         fetchCurrentUserName();
     }, []);
 
@@ -170,7 +170,7 @@ export default function IssuesScreen({ navigation }) {
                         fetchProjectsByUser(),
                         fetchUserConnections()
                     ]);
-                    
+
                     setIssues(taskBasedIssues || []);
                     setProjects(projects || []);
                     setUsers(connections || []);
@@ -192,7 +192,7 @@ export default function IssuesScreen({ navigation }) {
                 // Search match - check both task name and issue-specific title
                 const searchText = (item.name || item.issueTitle || '').toLowerCase();
                 const searchMatch = searchText.includes(search.toLowerCase());
-                
+
                 // Critical filter - check isCritical boolean flag
                 const activeTabMatch = activeTab === 'all' || (activeTab === 'critical' && item.isCritical === true);
 
@@ -212,7 +212,6 @@ export default function IssuesScreen({ navigation }) {
                         default: return false;
                     }
                 });
-
                 // Projects filter - handle Task model project association
                 const projectName = item.project?.name || item.projectName || '';
                 const projectMatch = filters.projects.length === 0 || filters.projects.includes(projectName);
@@ -231,19 +230,29 @@ export default function IssuesScreen({ navigation }) {
                 return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && creatorMatch && locationMatch;
             })
             .sort((a, b) => {
-                // Sort by completion status - incomplete tasks first
-                const aCompleted = (a.status === 'Completed') || (a.issueStatus === 'resolved') || (a.progress === 100);
-                const bCompleted = (b.status === 'Completed') || (b.issueStatus === 'resolved') || (b.progress === 100);
-                
-                if (aCompleted === bCompleted) {
-                    // If same completion status, sort critical items first
-                    if (a.isCritical !== b.isCritical) {
-                        return b.isCritical ? 1 : -1;
-                    }
-                    // Then sort by creation date (newest first)
-                    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
-                }
-                return aCompleted ? 1 : -1;
+                // Priority-based sorting
+                const getPriority = (issue) => {
+                    const isCritical = issue.isCritical === true;
+                    const status = issue.status || issue.issueStatus;
+                    // Priority order:
+                    // 0 - Pending Critical
+                    // 1 - Pending Normal
+                    // 2 - Completed Critical
+                    // 3 - Completed Normal
+                    // 4 - Others (In Progress, etc.)
+                    if (status === 'Pending') return isCritical ? 0 : 1;
+                    if (status === 'Completed') return isCritical ? 2 : 3;
+                    return 4;
+                };
+
+                const priorityA = getPriority(a);
+                const priorityB = getPriority(b);
+
+                if (priorityA < priorityB) return -1;
+                if (priorityA > priorityB) return 1;
+
+                // Within same group, sort by creation date (newest first)
+                return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
             });
     };
 
@@ -297,7 +306,6 @@ export default function IssuesScreen({ navigation }) {
                 <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
                 <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
             </TouchableOpacity>
-
             <LinearGradient
                 colors={['#011F53', '#366CD9']}
                 start={{ x: 0, y: 0 }}
@@ -313,7 +321,6 @@ export default function IssuesScreen({ navigation }) {
                     <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
                 </TouchableOpacity> */}
             </LinearGradient>
-
             {/* Search */}
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
                 <TextInput
@@ -345,7 +352,6 @@ export default function IssuesScreen({ navigation }) {
                         </View>
                     )}
                 </TouchableOpacity>
-
             </View>
             {showFilters && (
                 <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -415,7 +421,6 @@ export default function IssuesScreen({ navigation }) {
                                 </ScrollView>
                             </View>
                         )}
-
                         {/* Created By Filter */}
                         {creatorOptions.length > 0 && (
                             <View style={styles.compactFilterSection}>
@@ -499,7 +504,7 @@ export default function IssuesScreen({ navigation }) {
             ) : (
                 <IssueList
                     issues={filteredIssues}
-                    onPressIssue={issue => navigation.navigate('IssueDetails', { 
+                    onPressIssue={issue => navigation.navigate('IssueDetails', {
                         issueId: issue.id // Use Task model ID 
                     })}
                     styles={styles}

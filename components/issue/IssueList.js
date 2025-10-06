@@ -25,14 +25,18 @@ export default function IssueList({
   }
   // console.log(issues);
   filteredIssues = filteredIssues.slice().sort((a, b) => {
-    // Helper to classify priority for task-based issues
     const getPriority = (issue) => {
-      const isResolved = (issue.status === 'Completed' && issue.isApproved === true);
-      if (!isResolved) {
-        // Unresolved
-        return issue.isCritical ? 0 : 1; // critical first, then other unresolved
-      }
-      return 2; // resolved last
+      const isCritical = issue.isCritical === true;
+      const status = issue.status;
+      // Priority order:
+      // 0 - Pending Critical
+      // 1 - Pending Normal
+      // 2 - Completed Critical
+      // 3 - Completed Normal
+      // 4 - Others (like In Progress)
+      if (status === 'Pending') return isCritical ? 0 : 1;
+      if (status === 'Completed') return isCritical ? 2 : 3;
+      return 4; // In Progress or anything else
     };
 
     const priorityA = getPriority(a);
@@ -40,8 +44,11 @@ export default function IssueList({
 
     if (priorityA < priorityB) return -1;
     if (priorityA > priorityB) return 1;
-    return 0; // same priority, keep original order
+
+    // Optional: if same priority, latest first
+    return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
   });
+
   const { t } = useTranslation();
   return (
     <>
@@ -292,29 +299,29 @@ export default function IssueList({
                 </View>
 
                 {/* Critical Toggle Row - Show only for issues created by current user */}
-                {section === 'created' && 
-                 currentUserName && 
-                 (item.creatorName === currentUserName || item.creator?.name === currentUserName) && 
-                 onToggleCritical && (
-                  <View style={[styles.issueRow, { marginTop: 8, marginBottom: 4 }]}>
-                    <MaterialIcons 
-                      name="priority-high" 
-                      size={14} 
-                      color={item.isCritical ? '#FF2700' : theme.secondaryText} 
-                    />
-                    <Text style={[styles.issueInfo, { color: theme.secondaryText, flex: 1 }]}>
-                      Critical Priority
-                    </Text>
-                    <Switch
-                      value={item.isCritical || false}
-                      onValueChange={(value) => onToggleCritical(item, value)}
-                      trackColor={{ false: '#ddd', true: '#FF2700' }}
-                      thumbColor="#fff"
-                      style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-                    />
-                  </View>
-                )}
-                
+                {section === 'created' &&
+                  currentUserName &&
+                  (item.creatorName === currentUserName || item.creator?.name === currentUserName) &&
+                  onToggleCritical && (
+                    <View style={[styles.issueRow, { marginTop: 8, marginBottom: 4 }]}>
+                      <MaterialIcons
+                        name="priority-high"
+                        size={14}
+                        color={item.isCritical ? '#FF2700' : theme.secondaryText}
+                      />
+                      <Text style={[styles.issueInfo, { color: theme.secondaryText, flex: 1 }]}>
+                        Critical Priority
+                      </Text>
+                      <Switch
+                        value={item.isCritical || false}
+                        onValueChange={(value) => onToggleCritical(item, value)}
+                        trackColor={{ false: '#ddd', true: '#FF2700' }}
+                        thumbColor="#fff"
+                        style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
+                      />
+                    </View>
+                  )}
+
                 {/* User Info Row */}
                 <View style={styles.issueRow}>
                   <Feather name="user" size={14} color={theme.secondaryText} />
