@@ -1,251 +1,262 @@
-import React, { useEffect, useState } from 'react';
+import { MaterialIcons, Feather } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useState } from 'react';
 import {
-  View,
-  Text,
-  FlatList,
-  StyleSheet,
-  TouchableOpacity,
-  Dimensions,
   ActivityIndicator,
   Platform,
   ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Modal,
+  Dimensions,
+  Image,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons, Feather } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchCommunityDetail } from '../utils/community';
 import { useTranslation } from 'react-i18next';
 
-const screenWidth = Dimensions.get('window').width;
+const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
 
-export default function CommunityDetailsScreen({ route, navigation }) {
-  const { communityId } = route.params;
+function getInitials(name) {
+  if (!name) return '';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}
+
+export default function CommunityDetailsScreen({ navigation, route }) {
+  const { communityId } = route.params || {};
   const theme = useTheme();
   const { t } = useTranslation();
-
-  const [community, setCommunity] = useState(null);
+  const [communityDetails, setCommunityDetails] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
 
   useEffect(() => {
-    const loadCommunityDetail = async () => {
+    const fetchDetails = async () => {
       try {
-        setLoading(true);
-        const data = await fetchCommunityDetail(communityId);
-        setCommunity(data);
-        setError('');
+        if (!communityId) throw new Error('No communityId provided');
+        const res = await fetchCommunityDetail(communityId);
+        setCommunityDetails(res);
       } catch (err) {
-        setError(err.message);
+        setCommunityDetails(null);
       } finally {
         setLoading(false);
       }
     };
-    loadCommunityDetail();
+    fetchDetails();
   }, [communityId]);
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
         <ActivityIndicator size="large" color={theme.primary} />
       </View>
     );
   }
 
-  if (error || !community) {
+  if (!communityDetails) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ color: 'red' }}>{error || t('community_not_found')}</Text>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }}>
+        <Text style={{ color: theme.text }}>Community not found</Text>
       </View>
     );
   }
 
-  // Calculate overall projects' progress (if available)
-  const progressPercent = Math.round(
-    (community.communityProjects?.reduce((acc, p) => acc + (p.progress || 0), 0) || 0) /
-      (community.communityProjects?.length || 1)
-  );
-
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 80 }}
-        bounces
-      >
-        {/* Header (Name only in gradient card) */}
-        <View style={{ marginHorizontal: isTablet ? 40 : 20, marginTop: Platform.OS === 'ios' ? 60 : 20, marginBottom: 0 }}>
-          <LinearGradient
-            colors={['#011F53', '#366CD9']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={[styles.headerCard, { borderRadius: isTablet ? 20 : 16, minHeight: isTablet ? 130 : 110 }]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text style={styles.headerTitle} numberOfLines={2}>
-                {community.name}
-              </Text>
-            </View>
-            <TouchableOpacity>
-              <Feather name="more-vertical" size={22} color="#fff" />
-            </TouchableOpacity>
-          </LinearGradient>
-        </View>
-
-        {/* Description card below header */}
-        <View
-          style={[
-            styles.descriptionCard,
-            {
-              marginHorizontal: isTablet ? 40 : 20,
-              marginBottom: 12,
-              backgroundColor: theme.card,
-              borderColor: theme.border,
-            },
-          ]}
-        >
-          <Text style={styles.descriptionLabel}>{t('description')}</Text>
-          <Text
-            style={[
-              styles.descriptionText,
-              { color: theme.text }
-            ]}
-            numberOfLines={5}
-            ellipsizeMode="tail"
-          >
-            {community.description?.trim()
-              ? community.description
-              : t('no_description')}
-          </Text>
-        </View>
-
-        {/* Tabs (optional: non-functional here for reference look) */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.tabButtonsWrapper}
-          style={styles.tabButtonsContainer}
-        >
-          <TouchableOpacity style={styles.tabButton}>
-            <MaterialIcons name="group" size={16} color={theme.primary} />
-            <Text style={styles.tabButtonText}>{t('Members')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabButton}>
-            <Feather name="folder" size={16} color={theme.primary} />
-            <Text style={styles.tabButtonText}>{t('Projects')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.tabButton}>
-            <Feather name="bell" size={16} color={theme.primary} />
-            <Text style={styles.tabButtonText}>{t('Announcements')}</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Members List */}
-        <View style={{ marginTop: 24 }}>
-          <Text style={styles.sectionTitle}>{t('Members')}</Text>
-          <FlatList
-            data={community.communityMembers || []}
-            keyExtractor={(item) => item.user.userId.toString()}
-            renderItem={({ item }) => (
-              <Text style={{ color: theme.text, marginLeft: 20, marginBottom: 8 }}>
-                {item.user.name || item.user.email} - {item.role}
-              </Text>
-            )}
-            ListEmptyComponent={<Text style={{ color: theme.secondaryText, textAlign: 'center' }}>{t('no_members')}</Text>}
-            scrollEnabled={false}
-          />
-        </View>
-
-        {/* Projects (Worklists style) */}
-        <View style={{ marginTop: 28 }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: isTablet ? 40 : 20, marginBottom: 8 }}>
-            <Text style={styles.sectionTitle}>{t('Projects')}</Text>
-            <TouchableOpacity>
-              <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 14 }}>{t('View All')}</Text>
-            </TouchableOpacity>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
+        {/* Back */}
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
+          <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
+        </TouchableOpacity>
+        {/* Header */}
+        <LinearGradient colors={[theme.secondary, theme.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerCard}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.projectName}>{communityDetails.name || '-'}</Text>
+            <Text style={styles.dueDate}>Created Date : {communityDetails.createdAt?.split('T')[0] || '-'}</Text>
+            <Text style={styles.creator}>Created By: {communityDetails.createdBy || '-'}</Text>
           </View>
-          <FlatList
-            data={community.communityProjects || []}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={styles.projectCard}>
-                <Text style={styles.projectCardName}>{item.projectName}</Text>
-                <Text style={styles.projectCardTasks}>{(item.tasksCount || 0) + ' ' + t('Tasks')}</Text>
-                <View style={styles.projectCardProgressBg}>
-                  <View style={[styles.projectCardProgress, { width: `${item.progress || 0}%` }]} />
-                  <Text style={styles.projectCardProgressText}>{item.progress || 0}%</Text>
+          <TouchableOpacity
+            style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 8 }}
+            onPress={() =>
+              navigation.navigate('UpdateCommunityScreen', {
+                communityId: communityDetails.communityId || communityId,
+              })
+            }
+          >
+            <MaterialIcons name="edit" size={22} color="#fff" />
+          </TouchableOpacity>
+        </LinearGradient>
+        {/* Tabs */}
+        <View style={[styles.tabButtonsContainer, { backgroundColor: theme.background }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabButtonsWrapper}>
+            <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <MaterialIcons name="device-hub" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text }]}>{t('task_dependency')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <Feather name="message-circle" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text }]}>{t('discussion')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <Feather name="package" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text }]}>{t('materials')}</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+        {/* Visibility */}
+        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingVertical: 8 }]}>
+          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 2 }]}>VISIBILITY</Text>
+          <Text style={[styles.inputValue, { color: theme.text, fontWeight: '500', fontSize: 16 }]}>{communityDetails.visibility || '-'}</Text>
+        </View>
+        {/* Members grid */}
+        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingVertical: 10 }]}>
+          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>MEMBERS</Text>
+          <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
+            {communityDetails.communityMembers && communityDetails.communityMembers.length > 0 ? (
+              communityDetails.communityMembers.slice(0, 9).map((member, idx) => (
+                <View key={idx} style={styles.memberItem}>
+                  {member.user.profilePhoto ? (
+                    <Image source={{ uri: member.user.profilePhoto }} style={styles.memberAvatar} />
+                  ) : (
+                    <View style={styles.memberInitialsCircle}>
+                      <Text style={styles.memberInitials}>{getInitials(member.user.name)}</Text>
+                    </View>
+                  )}
+                  <Text numberOfLines={1} style={styles.memberName}>{member.user.name}</Text>
+                  <Text numberOfLines={1} style={styles.memberRole}>{member.role}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={{ color: theme.secondaryText }}>No members found</Text>
+            )}
+          </View>
+        </View>
+        {/* Description preview/modal */}
+        <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
+          <View style={[
+            styles.fieldBox,
+            { backgroundColor: theme.card, borderColor: theme.border, maxHeight: 140, flexDirection: 'column', alignItems: 'flex-start' }
+          ]}>
+            <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 6 }]}>{t('description')}</Text>
+            <Text numberOfLines={5} ellipsizeMode="tail" style={[styles.inputValue, { color: theme.text, width: '100%' }]}>
+              {communityDetails.description && communityDetails.description.trim() !== '' ? communityDetails.description : 'No description available'}
+            </Text>
+            <Text style={{ color: theme.primary, marginTop: 4 }}>{t('read_more')}</Text>
+          </View>
+        </TouchableOpacity>
+        {/* Projects Vertical List */}
+        <Text style={[styles.sectionTitle, { color: theme.text }]}>Projects</Text>
+        {communityDetails.communityProjects && communityDetails.communityProjects.length > 0 ? (
+          <View>
+            {communityDetails.communityProjects.map((proj, idx) => (
+              <View key={proj.id || idx} style={styles.worklistCard}>
+                <View style={styles.worklistIcon}>
+                  <Text style={{ color: '#366CD9', fontWeight: '700', fontSize: 18 }}>
+                    {proj.projectName?.[0]?.toUpperCase() || 'P'}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.worklistName}>{proj.projectName || '-'}</Text>
+                  <Text style={styles.worklistTasks}>{(proj.tasksCount || 0) + ' Tasks'}</Text>
+                </View>
+                <View style={styles.worklistProgressContainer}>
+                  <Text style={styles.worklistProgressText}>{proj.progress || 0}%</Text>
                 </View>
               </View>
-            )}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ paddingLeft: isTablet ? 40 : 20, paddingRight: isTablet ? 40 : 20 }}
-            ListEmptyComponent={<Text style={{ color: theme.secondaryText, textAlign: 'center' }}>{t('no_projects')}</Text>}
-          />
-        </View>
-
-        {/* Announcements */}
-        <View style={{ marginTop: 28 }}>
-          <Text style={styles.sectionTitle}>{t('Announcements')}</Text>
-          <FlatList
-            data={community.announcements || []}
-            keyExtractor={(item) => item.id.toString()}
-            renderItem={({ item }) => (
-              <View style={{ marginHorizontal: isTablet ? 40 : 20, marginBottom: 10 }}>
-                <Text style={{ fontWeight: 'bold', color: theme.text }}>{item.announcementCreator.name}:</Text>
-                <Text style={{ color: theme.text }}>{item.content}</Text>
-              </View>
-            )}
-            ListEmptyComponent={<Text style={{ color: theme.secondaryText, textAlign: 'center' }}>{t('no_announcements')}</Text>}
-            scrollEnabled={false}
-          />
-        </View>
+            ))}
+          </View>
+        ) : (
+          <Text style={{ color: theme.secondaryText, textAlign: 'center', marginHorizontal: 20 }}>
+            No projects available
+          </Text>
+        )}
+        {/* Description full modal */}
+        <Modal
+          visible={showDescriptionModal}
+          animationType="slide"
+          transparent={true}
+          onRequestClose={() => setShowDescriptionModal(false)}
+        >
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: theme.card, borderRadius: 12, padding: 20, maxHeight: '80%' }}>
+              <ScrollView>
+                <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 12, fontSize: 18 }]}>
+                  {t('description')}
+                </Text>
+                <Text style={[styles.inputValue, { color: theme.text, fontSize: 16 }]}>
+                  {communityDetails.description && communityDetails.description.trim() !== ''
+                    ? communityDetails.description
+                    : 'No description available'}
+                </Text>
+              </ScrollView>
+              <TouchableOpacity
+                onPress={() => setShowDescriptionModal(false)}
+                style={{ marginTop: 20, alignSelf: 'center', paddingVertical: 10, paddingHorizontal: 30, backgroundColor: theme.primary, borderRadius: 25 }}
+              >
+                <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>{t('close')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  headerCard: {
+  backBtn: {
+    marginTop: Platform.OS === 'ios' ? 70 : 25,
+    marginLeft: 16,
+    marginBottom: 0,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 6,
+  },
+  backText: {
+    fontSize: 18,
+    color: '#222',
+    fontWeight: '400',
+    marginLeft: 0,
+  },
+  headerCard: {
+    marginHorizontal: isTablet ? 40 : 20,
+    borderRadius: isTablet ? 20 : 16,
     padding: isTablet ? 24 : 20,
     marginTop: 0,
     marginBottom: 0,
-    minHeight: 110,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: isTablet ? 130 : 110,
   },
-  headerTitle: {
+  projectName: {
     color: '#fff',
     fontSize: isTablet ? 24 : 20,
     fontWeight: '600',
     marginBottom: isTablet ? 8 : 6,
   },
-  descriptionCard: {
-    borderRadius: isTablet ? 14 : 10,
-    borderWidth: 1,
-    paddingHorizontal: isTablet ? 18 : 14,
-    minHeight: isTablet ? 64 : 54,
-    paddingVertical: isTablet ? 12 : 8,
-    elevation: 2,
-    marginTop: isTablet ? 16 : 10,
-    marginBottom: isTablet ? 16 : 10,
+  dueDate: {
+    color: '#fff',
+    fontSize: isTablet ? 15 : 13,
+    opacity: 0.85,
+    fontWeight: '400',
   },
-  descriptionLabel: {
-    fontSize: 12,
-    color: '#666',
-    fontWeight: '500',
-    marginBottom: 6,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  descriptionText: {
-    fontSize: isTablet ? 16 : 14,
+  creator: {
+    color: '#fff',
+    fontSize: isTablet ? 15 : 13,
+    opacity: 0.85,
     fontWeight: '400',
   },
   tabButtonsContainer: {
-    marginTop: isTablet ? 4 : 2,
+    marginHorizontal: 0,
+    marginTop: isTablet ? 20 : 16,
+    marginBottom: isTablet ? 20 : 16,
   },
   tabButtonsWrapper: {
     flexDirection: 'row',
@@ -261,7 +272,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
     gap: 6,
     marginRight: 12,
   },
@@ -270,87 +280,127 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     letterSpacing: 0.2,
-    color: '#222',
   },
-  progressSection: {
+  fieldBox: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: isTablet ? 14 : 10,
+    borderWidth: 1,
     marginHorizontal: isTablet ? 40 : 20,
-    marginTop: isTablet ? 12 : 8,
-    marginBottom: isTablet ? 8 : 4,
-    justifyContent: 'space-between',
+    marginBottom: isTablet ? 16 : 12,
+    paddingHorizontal: isTablet ? 18 : 14,
+    minHeight: isTablet ? 64 : 54,
+    paddingVertical: isTablet ? 12 : 8,
   },
-  progressLabel: {
+  inputLabel: {
+    fontSize: isTablet ? 12 : 10,
     fontWeight: '400',
-    fontSize: isTablet ? 18 : 16,
+    color: '#222',
+    marginBottom: isTablet ? 8 : 6,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    lineHeight: isTablet ? 16 : 14,
+    textAlign: 'left',
   },
-  statusRow: { flexDirection: 'row', alignItems: 'center' },
-  statusDot: { width: 10, height: 10, borderRadius: 5, marginRight: 6 },
-  statusText: { fontWeight: '400', fontSize: isTablet ? 16 : 14 },
-  progressBarBg: {
-    width: '90%',
-    height: 6,
-    backgroundColor: '#ECF0FF',
-    borderRadius: 6,
-    marginHorizontal: isTablet ? 40 : 20,
-    marginBottom: 8,
+  inputValue: {
+    color: '#444',
+    fontSize: isTablet ? 16 : 14,
+    fontWeight: '400',
   },
-  progressBar: {
-    height: 6,
-    backgroundColor: '#366CD9',
-    borderRadius: 6,
+  memberItem: {
+    width: (screenWidth - (isTablet ? 80 : 40)) / 3 - 6,
+    alignItems: 'center',
+    marginBottom: 18,
+    marginRight: 12,
+  },
+  memberAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#366CD9',
+    backgroundColor: '#F8F9FB',
+  },
+  memberInitialsCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EDF2FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: '#366CD9',
+  },
+  memberInitials: {
+    color: '#366CD9',
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  memberName: {
+    fontSize: 12,
+    color: '#222',
+    textAlign: 'center',
+    width: '100%',
+    fontWeight: '600',
+  },
+  memberRole: {
+    fontSize: 11,
+    color: '#888',
+    textAlign: 'center',
+    width: '100%',
   },
   sectionTitle: {
-    fontSize: isTablet ? 18 : 16,
+    fontSize: 17,
     fontWeight: '600',
     marginHorizontal: isTablet ? 40 : 20,
     marginTop: 0,
     marginBottom: 10,
   },
-  projectCard: {
+  worklistCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    paddingHorizontal: 18,
-    paddingVertical: 14,
-    marginRight: 16,
-    width: 210,
+    padding: 12,
+    marginHorizontal: isTablet ? 40 : 20,
+    marginBottom: 12,
+    minHeight: 58,
   },
-  projectCardName: {
+  worklistIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EDF2FA',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 14,
+  },
+  worklistName: {
     fontWeight: '600',
-    fontSize: 16,
-    marginBottom: 4,
+    fontSize: 17,
+    color: '#222',
+    marginBottom: 3,
   },
-  projectCardTasks: {
+  worklistTasks: {
     fontSize: 13,
     color: '#888',
-    marginBottom: 8,
-  },
-  projectCardProgressBg: {
-    height: 4,
-    backgroundColor: '#ECF0FF',
-    borderRadius: 5,
     marginBottom: 0,
-    marginTop: 8,
-    position: 'relative',
+  },
+  worklistProgressContainer: {
+    alignItems: 'center',
     justifyContent: 'center',
-    width: '100%',
+    minWidth: 42,
+    minHeight: 42,
   },
-  projectCardProgress: {
-    height: 4,
-    backgroundColor: '#366CD9',
-    borderRadius: 5,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-  },
-  projectCardProgressText: {
-    fontSize: 12,
+  worklistProgressText: {
+    fontSize: 14,
     color: '#366CD9',
-    fontWeight: '500',
-    position: 'absolute',
-    right: 4,
-    top: -14,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
