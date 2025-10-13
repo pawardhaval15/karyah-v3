@@ -200,6 +200,16 @@ export default function CustomDrawer({ onClose, theme }) {
               }}
               theme={theme}
             />
+            <DrawerItem
+              onPress={() => {
+                navigation.navigate('CommunityScreen');
+                onClose && onClose();
+              }}
+              icon={<Octicons name="project" size={20} color={theme.primary} />}
+              label={t('community')}
+              theme={theme}
+              showBorder={true}
+            />
           </View>
 
           <View style={styles.menuSection}>

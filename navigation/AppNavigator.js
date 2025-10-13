@@ -27,6 +27,8 @@ import UpdateProjectScreen from '../screens/UpdateProjectScreen';
 import WorklistScreen from '../screens/WorklistScreen';
 import { navigationRef } from './navigationRef';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
+import CommunityScreen from '../screens/CommunityScreen';
+import CommunityDetailsScreen from '../screens/CommunityScreenDetails'
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -59,6 +61,8 @@ export default function AppNavigator() {
         <Stack.Screen name="UpdateTaskScreen" component={UpdateTaskScreen} options={{ title: 'Update Task' }} />
         <Stack.Screen name="ProjectDiscussionScreen" component={ProjectDiscussionScreen} />
         <Stack.Screen name="ProjectAccessScreen" component={ProjectAccessScreen} />
+        <Stack.Screen name="CommunityScreen" component={CommunityScreen} />
+        <Stack.Screen name="CommunityDetailsScreen" component={CommunityDetailsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
