@@ -1,8 +1,13 @@
 {
   "expo": {
     "name": "Karyah:",
+<<<<<<< HEAD
     "slug": "karyahapp",
     "version": "2.0.11",
+=======
+    "slug": "karyah",
+    "version": "2.0.13",
+>>>>>>> be8aed92d5bfb7d4f60b04ca8262565f2b179464
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",

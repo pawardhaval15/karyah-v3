@@ -140,21 +140,6 @@ export default function CommunityDetailsScreen({ route, navigation }) {
           </TouchableOpacity>
         </ScrollView>
 
-        {/* Progress Section */}
-        <View style={styles.progressSection}>
-          <Text style={[styles.progressLabel, { color: theme.text }]}>{t('Progress')}</Text>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: '#366CD9' }]} />
-            <Text style={[styles.statusText, { color: '#366CD9' }]}>{t('active')}</Text>
-          </View>
-        </View>
-        <View style={styles.progressBarBg}>
-          <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
-        </View>
-        <Text style={{ color: theme.text, alignSelf: 'flex-end', marginRight: isTablet ? 40 : 20, fontSize: 12 }}>
-          {progressPercent}% {t('complete')}
-        </Text>
-
         {/* Members List */}
         <View style={{ marginTop: 24 }}>
           <Text style={styles.sectionTitle}>{t('Members')}</Text>
