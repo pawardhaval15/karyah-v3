@@ -214,10 +214,10 @@ export default function CommunityDetailsScreen({ navigation, route }) {
         {/* Tabs */}
         <View style={[styles.tabButtonsContainer, { backgroundColor: theme.background }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabButtonsWrapper}>
-            <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            {/* <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
               <MaterialIcons name="device-hub" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text }]}>{t('task_dependency')}</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             <TouchableOpacity
               activeOpacity={0.7}
               style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}
@@ -232,7 +232,7 @@ export default function CommunityDetailsScreen({ navigation, route }) {
             >
               <Feather name="message-circle" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text }]}>
-                {t('discussion')}
+                {t('announcements')}
               </Text>
             </TouchableOpacity>
 

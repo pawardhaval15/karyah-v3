@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
-import { createAnnouncement, fetchAnnouncements } from '../utils/community';
+import { createAnnouncement, fetchAnnouncements, fetchUserDetails, } from '../utils/community';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -29,6 +29,8 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
     const inputRef = useRef(null);
     const intervalRef = useRef(null);
     const [currentUserId, setCurrentUserId] = useState(null);
+    const [userRole, setUserRole] = useState('Member');
+
     const fetchAndSetAnnouncements = async () => {
         try {
             const token = await AsyncStorage.getItem('token');
@@ -40,6 +42,39 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
             setLoading(false);
         }
     };
+    useEffect(() => {
+        const fetchUserData = async () => {
+            const userId = await AsyncStorage.getItem('userId');
+            setCurrentUserId(userId);
+
+            // Always get fresh user details for accuracy
+            let userDetailsJson = await AsyncStorage.getItem('userDetails');
+            if (!userDetailsJson) {
+                // Optionally, call your fetchUserDetails() utility and save to AsyncStorage
+                const freshUser = await fetchUserDetails(); // must be implemented to fetch from backend
+                userDetailsJson = JSON.stringify(freshUser);
+                await AsyncStorage.setItem('userDetails', userDetailsJson);
+            }
+
+            const userDetails = JSON.parse(userDetailsJson);
+            let role = 'Member';
+            if (
+                userDetails.OrganizationUsers &&
+                Array.isArray(userDetails.OrganizationUsers) &&
+                userDetails.OrganizationUsers.length > 0
+            ) {
+                // Choose organization context (normally 1, but could be more)
+                const activeOrgUser = userDetails.OrganizationUsers.find(
+                    (ou) => ou.status === 'Active'
+                );
+                if (activeOrgUser) {
+                    role = activeOrgUser.role || 'Member';
+                }
+            }
+            setUserRole(role);
+        };
+        fetchUserData();
+    }, []);
     useEffect(() => {
         // Load user ID from AsyncStorage (adjust if you use another method)
         AsyncStorage.getItem('userId').then(setCurrentUserId);
@@ -120,7 +155,7 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
                 keyboardVerticalOffset={90}
             >
                 <FlatList
-                    data={announcements}
+                    data={[...announcements].reverse()} // latest messages at bottom
                     keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                     refreshing={loading}
                     onRefresh={fetchAndSetAnnouncements}
@@ -134,25 +169,34 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
                     renderItem={renderItem}
                     contentContainerStyle={{ paddingBottom: 80, paddingHorizontal: isTablet ? 24 : 14 }}
                 />
-                <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
-                    <TextInput
-                        ref={inputRef}
-                        style={[styles.textInput, { backgroundColor: theme.background, color: theme.text, fontSize: isTablet ? 18 : 16 }]}
-                        placeholder="Type your announcement..."
-                        placeholderTextColor={theme.secondaryText}
-                        value={newAnnouncement}
-                        onChangeText={setNewAnnouncement}
-                        multiline
-                        maxLength={500}
-                    />
-                    <TouchableOpacity
-                        style={[styles.sendButton, { backgroundColor: theme.primary, opacity: newAnnouncement.trim() && !sending ? 1 : 0.5 }]}
-                        disabled={!newAnnouncement.trim() || sending}
-                        onPress={handleSendAnnouncement}
-                    >
-                        {sending ? <ActivityIndicator color="#fff" /> : <Feather name="send" size={20} color="#fff" />}
-                    </TouchableOpacity>
-                </View>
+
+                {userRole === "Owner" ? (
+                    <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
+                        <TextInput
+                            ref={inputRef}
+                            style={[styles.textInput, { backgroundColor: theme.background, color: theme.text, fontSize: isTablet ? 18 : 16 }]}
+                            placeholder="Type your announcement..."
+                            placeholderTextColor={theme.secondaryText}
+                            value={newAnnouncement}
+                            onChangeText={setNewAnnouncement}
+                            multiline
+                            maxLength={500}
+                        />
+                        <TouchableOpacity
+                            style={[styles.sendButton, { backgroundColor: theme.primary, opacity: newAnnouncement.trim() && !sending ? 1 : 0.5 }]}
+                            disabled={!newAnnouncement.trim() || sending}
+                            onPress={handleSendAnnouncement}
+                        >
+                            {sending ? <ActivityIndicator color="#fff" /> : <Feather name="send" size={20} color="#fff" />}
+                        </TouchableOpacity>
+                    </View>
+                ) : (
+                    <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border, opacity: 0.5 }]}>
+                        <Text style={{ color: theme.secondaryText, textAlign: 'center', fontSize: isTablet ? 17 : 15 }}>
+                            Only organization owners can send announcements.
+                        </Text>
+                    </View>
+                )}
             </KeyboardAvoidingView>
         </View>
     );

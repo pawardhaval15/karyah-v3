@@ -30,6 +30,7 @@ export default function CommunityScreen({ navigation, route }) {
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState('User');
     const [refreshing, setRefreshing] = useState(false);
+    const [userRole, setUserRole] = useState('Member');
     const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
         try {
@@ -53,51 +54,57 @@ export default function CommunityScreen({ navigation, route }) {
     );
 
     useEffect(() => {
-        const fetchUserAndCommunities = async () => {
-            try {
-                const user = await fetchUserDetails();
+  const fetchUserAndCommunities = async () => {
+    try {
+      const user = await fetchUserDetails();
+      if (user && (user.name || user.userId || user.email)) {
+        setUserName(String(user.name || user.userId || user.email));
+      } else {
+        setUserName('User');
+      }
+      let orgId = null;
+      let role = 'Member'; // Default role
+      
+      if (
+        user.OrganizationUsers &&
+        Array.isArray(user.OrganizationUsers) &&
+        user.OrganizationUsers.length > 0
+      ) {
+        const activeOrgUser = user.OrganizationUsers.find(
+          (ou) => ou.status === 'Active' && ou.Organization && ou.Organization.id,
+        );
+        if (activeOrgUser) {
+          orgId = activeOrgUser.Organization.id;
+          role = activeOrgUser.role || 'Member'; // Capture role for button check
+        }
+      }
+      setUserRole(role); // Save to state
+      
+      if (orgId) {
+        console.log(`Fetching communities for organizationId: ${orgId}...`);
+        setOrganizationId(orgId);
+        const data = await fetchCommunitiesByOrganization(orgId);
+        console.log('Communities fetched from API:', data);
+        setCommunities(data || []);
+        console.log('Communities set in state:', data);
+      } else {
+        console.warn('User does not belong to any active organization');
+        setCommunities([]);
+      }
+      // Log full user object with nested details expanded
+      console.log('User details:', JSON.stringify(user, null, 2));
+    } catch (error) {
+      console.error('Failed to fetch user or communities:', error.message);
+      setUserName('User');
+      setCommunities([]);
+      setUserRole('Member');
+    } finally {
+      setLoading(false);
+    }
+  };
+  fetchUserAndCommunities();
+}, []);
 
-                if (user && (user.name || user.userId || user.email)) {
-                    setUserName(String(user.name || user.userId || user.email));
-                } else {
-                    setUserName('User');
-                }
-                let orgId = null;
-                if (
-                    user.OrganizationUsers &&
-                    Array.isArray(user.OrganizationUsers) &&
-                    user.OrganizationUsers.length > 0
-                ) {
-                    const activeOrgUser = user.OrganizationUsers.find(
-                        (ou) => ou.status === 'Active' && ou.Organization && ou.Organization.id,
-                    );
-                    if (activeOrgUser) {
-                        orgId = activeOrgUser.Organization.id;
-                    }
-                }
-                if (orgId) {
-                    console.log(`Fetching communities for organizationId: ${orgId}...`);
-                    setOrganizationId(orgId);
-                    const data = await fetchCommunitiesByOrganization(orgId);
-                    console.log('Communities fetched from API:', data);
-                    setCommunities(data || []);
-                    console.log('Communities set in state:', data);
-                } else {
-                    console.warn('User does not belong to any active organization');
-                    setCommunities([]);
-                }
-                // Log full user object with nested details expanded
-                console.log('User details:', JSON.stringify(user, null, 2));
-            } catch (error) {
-                console.error('Failed to fetch user or communities:', error.message);
-                setUserName('User');
-                setCommunities([]);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchUserAndCommunities();
-    }, []);
 
     const filteredCommunities = communities.filter((comm) =>
         comm.name.toLowerCase().includes(search.toLowerCase()),
@@ -155,24 +162,27 @@ export default function CommunityScreen({ navigation, route }) {
                         {`${t('all_your_communities')}, ${userName}`}
                     </Text>
                 </View>
-                <TouchableOpacity
-                    style={[
-                        styles.bannerAction,
-                        {
-                            borderRadius: isTablet ? 14 : 12,
-                            paddingHorizontal: isTablet ? 20 : 16,
-                            paddingVertical: isTablet ? 12 : 8,
-                        },
-                    ]}
-                    onPress={() => setCreateModalVisible(true)}>
-                    <Text style={[styles.bannerActionText, { fontSize: isTablet ? 16 : 15 }]}>{t('add')}</Text>
-                    <Feather
-                        name="users"
-                        size={isTablet ? 20 : 18}
-                        color="#fff"
-                        style={{ marginLeft: isTablet ? 6 : 4 }}
-                    />
-                </TouchableOpacity>
+{userRole === "Owner" && (
+  <TouchableOpacity
+    style={[
+      styles.bannerAction,
+      {
+        borderRadius: isTablet ? 14 : 12,
+        paddingHorizontal: isTablet ? 20 : 16,
+        paddingVertical: isTablet ? 12 : 8,
+      },
+    ]}
+    onPress={() => setCreateModalVisible(true)}>
+    <Text style={[styles.bannerActionText, { fontSize: isTablet ? 16 : 15 }]}>{t('add')}</Text>
+    <Feather
+      name="users"
+      size={isTablet ? 20 : 18}
+      color="#fff"
+      style={{ marginLeft: isTablet ? 6 : 4 }}
+    />
+  </TouchableOpacity>
+)}
+
             </LinearGradient>
             <View
                 style={[
