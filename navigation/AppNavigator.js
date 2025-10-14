@@ -29,6 +29,7 @@ import { navigationRef } from './navigationRef';
 import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import CommunityScreen from '../screens/CommunityScreen';
 import CommunityDetailsScreen from '../screens/CommunityScreenDetails'
+import CommunityAnnouncementScreen from "../screens/CommunityAnnouncementScreen"
 const Stack = createNativeStackNavigator();
 
 export default function AppNavigator() {
@@ -63,6 +64,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ProjectAccessScreen" component={ProjectAccessScreen} />
         <Stack.Screen name="CommunityScreen" component={CommunityScreen} />
         <Stack.Screen name="CommunityDetailsScreen" component={CommunityDetailsScreen} />
+        <Stack.Screen name="CommunityAnnouncementScreen" component={CommunityAnnouncementScreen}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

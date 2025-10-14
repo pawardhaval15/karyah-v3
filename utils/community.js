@@ -250,3 +250,39 @@ export const deleteCommunityById = async (communityId) => {
     throw error;
   }
 };
+
+// Create announcement
+export async function createAnnouncement(communityId, message, token) {
+  try {
+    const res = await fetch(`${API_URL}api/communities/${communityId}/announcements`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ message }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to create announcement');
+    return data.announcement;
+  } catch (error) {
+    console.error('❌ Error creating announcement:', error);
+    throw error;
+  }
+}
+// Get announcements
+export async function fetchAnnouncements(communityId, token) {
+  try {
+    const res = await fetch(`${API_URL}api/communities/${communityId}/announcements`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to fetch announcements');
+    return data.announcements;
+  } catch (error) {
+    console.error('❌ Error fetching announcements:', error);
+    throw error;
+  }
+}
