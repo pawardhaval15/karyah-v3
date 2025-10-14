@@ -219,27 +219,27 @@ export default function CommunityDetailsScreen({ navigation, route }) {
               <Text style={[styles.tabButtonText, { color: theme.text }]}>{t('task_dependency')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-  activeOpacity={0.7}
-  style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}
-  onPress={() => {
-    if (communityDetails?.communityId) {
-      navigation.navigate('CommunityAnnouncementScreen', {
-        communityId: communityDetails.communityId,
-        communityName: communityDetails.name,
-      });
-    }
-  }}
->
-  <Feather name="message-circle" size={16} color={theme.primary} />
-  <Text style={[styles.tabButtonText, { color: theme.text }]}>
-    {t('discussion')}
-  </Text>
-</TouchableOpacity>
+              activeOpacity={0.7}
+              style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}
+              onPress={() => {
+                if (communityDetails?.communityId) {
+                  navigation.navigate('CommunityAnnouncementScreen', {
+                    communityId: communityDetails.communityId,
+                    communityName: communityDetails.name,
+                  });
+                }
+              }}
+            >
+              <Feather name="message-circle" size={16} color={theme.primary} />
+              <Text style={[styles.tabButtonText, { color: theme.text }]}>
+                {t('discussion')}
+              </Text>
+            </TouchableOpacity>
 
-            <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
+            {/* <TouchableOpacity activeOpacity={0.7} style={[styles.tabButton, { backgroundColor: theme.background, borderColor: theme.border }]}>
               <Feather name="package" size={16} color={theme.primary} />
               <Text style={[styles.tabButtonText, { color: theme.text }]}>{t('materials')}</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </ScrollView>
         </View>
         {/* Visibility */}

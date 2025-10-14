@@ -1,9 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, TextInput, ActivityIndicator, StyleSheet, Platform, KeyboardAvoidingView } from 'react-native';
+import {
+    View,
+    Text,
+    FlatList,
+    TouchableOpacity,
+    TextInput,
+    ActivityIndicator,
+    StyleSheet,
+    Platform,
+    KeyboardAvoidingView,
+    Dimensions,
+} from 'react-native';
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTheme } from '../theme/ThemeContext';
 import { createAnnouncement, fetchAnnouncements } from '../utils/community';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const { width: screenWidth } = Dimensions.get('window');
+const isTablet = screenWidth >= 768;
 
 export default function CommunityAnnouncementScreen({ navigation, route }) {
     const { communityId, communityName } = route.params;
@@ -13,21 +27,33 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
     const [sending, setSending] = useState(false);
     const [newAnnouncement, setNewAnnouncement] = useState('');
     const inputRef = useRef(null);
-
+    const intervalRef = useRef(null);
+    const [currentUserId, setCurrentUserId] = useState(null);
+    const fetchAndSetAnnouncements = async () => {
+        try {
+            const token = await AsyncStorage.getItem('token');
+            const data = await fetchAnnouncements(communityId, token);
+            setAnnouncements(data);
+        } catch (err) {
+            // Optional error handling
+        } finally {
+            setLoading(false);
+        }
+    };
     useEffect(() => {
-        const getAnnouncements = async () => {
-            setLoading(true);
-            try {
-                const token = await AsyncStorage.getItem('token');
-                const data = await fetchAnnouncements(communityId, token);
-                setAnnouncements(data);
-            } catch (err) {
-                // handle fetch error
-            } finally {
-                setLoading(false);
-            }
+        // Load user ID from AsyncStorage (adjust if you use another method)
+        AsyncStorage.getItem('userId').then(setCurrentUserId);
+    }, []);
+    useEffect(() => {
+        setLoading(true);
+        fetchAndSetAnnouncements();
+
+        // Auto-refresh announcements every 30 seconds
+        intervalRef.current = setInterval(fetchAndSetAnnouncements, 30000);
+
+        return () => {
+            clearInterval(intervalRef.current);
         };
-        getAnnouncements();
     }, [communityId]);
 
     const handleSendAnnouncement = async () => {
@@ -36,64 +62,95 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
         try {
             const token = await AsyncStorage.getItem('token');
             const announcement = await createAnnouncement(communityId, newAnnouncement.trim(), token);
-            setAnnouncements(prev => [{ ...announcement }, ...prev]);
+            setAnnouncements(prev => [announcement, ...prev]);
             setNewAnnouncement('');
             inputRef.current && inputRef.current.blur();
         } catch (err) {
-            // handle error
+            // Optional error handling
         } finally {
             setSending(false);
         }
     };
 
+    const renderItem = ({ item }) => {
+        const { announcementCreator, message, createdAt, createdBy } = item;
+        const isSender = currentUserId && (createdBy === Number(currentUserId)); // Matches your own
+        const senderName = isSender ? 'You' : (announcementCreator?.name || 'Unknown');
+        const bubbleColor = isSender ? '#dcf8c6' : theme.card;
+        const align = isSender ? 'flex-end' : 'flex-start';
+        const borderRadii = isSender
+            ? { borderTopLeftRadius: 18, borderTopRightRadius: 6 }
+            : { borderTopRightRadius: 18, borderTopLeftRadius: 6 };
+        const dateObj = new Date(createdAt);
+        const formattedTime = `${dateObj.toLocaleDateString()} ${dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+        return (
+            <View style={{ flexDirection: 'row', justifyContent: align, marginVertical: 2 }}>
+                <View style={[
+                    styles.bubble,
+                    {
+                        backgroundColor: bubbleColor,
+                        alignSelf: align,
+                        ...borderRadii,
+                    },
+                ]}>
+                    {!isSender && (
+                        <Text style={{ color: theme.primary, fontWeight: 'bold', fontSize: 13, marginBottom: 3 }}>{senderName}</Text>
+                    )}
+                    <Text style={{ color: theme.text, fontSize: 16 }}>{message}</Text>
+                    <Text style={{ color: theme.secondaryText, fontSize: 11, marginTop: 4, alignSelf: 'flex-end' }}>{formattedTime}</Text>
+                </View>
+            </View>
+        );
+    };
+
     return (
-        <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
             <View style={styles.header}>
                 <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
-                    <Text style={[styles.headerTitle, { color: theme.text }]}>{communityName || 'Announcement'}</Text>
+                    <MaterialIcons name="arrow-back-ios" size={22} color={theme.text} />
+                    <Text style={[styles.headerTitle, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
+                        {communityName || 'Announcements'}
+                    </Text>
                 </TouchableOpacity>
             </View>
-            <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+            <KeyboardAvoidingView
+                style={styles.flexGrow}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+                keyboardVerticalOffset={90}
+            >
                 <FlatList
                     data={announcements}
-                    keyExtractor={(item) => item.id?.toString()}
+                    keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
                     refreshing={loading}
-                    onRefresh={async () => {
-                        const token = await AsyncStorage.getItem('token');
-                        const data = await fetchAnnouncements(communityId, token);
-                        setAnnouncements(data);
-                    }}
+                    onRefresh={fetchAndSetAnnouncements}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
-                            <Text style={{ color: theme.secondaryText, textAlign: 'center' }}>No announcements yet</Text>
+                            <Text style={{ color: theme.secondaryText, fontSize: isTablet ? 16 : 14, textAlign: 'center' }}>
+                                No announcements yet
+                            </Text>
                         </View>
                     }
-                    renderItem={({ item }) => (
-                        <View style={[styles.announcementCard, { backgroundColor: theme.card }]}>
-                            <Text style={{ color: theme.text, fontSize: 15 }}>{item.message}</Text>
-                            <Text style={{ color: theme.secondaryText, fontSize: 11 }}>{item.createdAt?.split('T')[0]}</Text>
-                        </View>
-                    )}
+                    renderItem={renderItem}
+                    contentContainerStyle={{ paddingBottom: 80, paddingHorizontal: isTablet ? 24 : 14 }}
                 />
-                <View style={[styles.inputContainer, { backgroundColor: theme.card }]}>
+                <View style={[styles.inputContainer, { backgroundColor: theme.card, borderTopColor: theme.border }]}>
                     <TextInput
                         ref={inputRef}
-                        style={[styles.textInput, { backgroundColor: theme.background, color: theme.text }]}
+                        style={[styles.textInput, { backgroundColor: theme.background, color: theme.text, fontSize: isTablet ? 18 : 16 }]}
                         placeholder="Type your announcement..."
                         placeholderTextColor={theme.secondaryText}
                         value={newAnnouncement}
                         onChangeText={setNewAnnouncement}
                         multiline
+                        maxLength={500}
                     />
                     <TouchableOpacity
                         style={[styles.sendButton, { backgroundColor: theme.primary, opacity: newAnnouncement.trim() && !sending ? 1 : 0.5 }]}
                         disabled={!newAnnouncement.trim() || sending}
                         onPress={handleSendAnnouncement}
                     >
-                        {sending
-                            ? <ActivityIndicator color="#fff" />
-                            : <Feather name="send" size={18} color="#fff" />}
+                        {sending ? <ActivityIndicator color="#fff" /> : <Feather name="send" size={20} color="#fff" />}
                     </TouchableOpacity>
                 </View>
             </KeyboardAvoidingView>
@@ -102,12 +159,89 @@ export default function CommunityAnnouncementScreen({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-    header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: Platform.OS === 'ios' ? 60 : 20, paddingBottom: 16 },
-    backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-    headerTitle: { fontSize: 18, fontWeight: '600', marginLeft: 8 },
-    announcementCard: { borderRadius: 12, padding: 16, marginBottom: 10, borderWidth: 1, borderColor: '#eee' },
-    emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 60 },
-    inputContainer: { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, borderColor: '#eee' },
-    textInput: { flex: 1, borderWidth: 1, borderRadius: 16, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15, marginRight: 12 },
-    sendButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center' }
+    container: {
+        flex: 1,
+    },
+    flexGrow: {
+        flexGrow: 1,
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: isTablet ? 24 : 16,
+        paddingTop: Platform.OS === 'ios' ? 60 : 24,
+        paddingBottom: 16,
+        borderBottomWidth: 1,
+    },
+    bubble: {
+        maxWidth: '85%',
+        paddingVertical: 10,
+        paddingHorizontal: 16,
+        borderRadius: 18,
+        marginHorizontal: 6,
+        marginBottom: 2,
+        elevation: 1,
+    },
+
+    backBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        flexShrink: 1,
+    },
+    headerTitle: {
+        fontWeight: '700',
+        fontSize: isTablet ? 22 : 18,
+        marginLeft: 8,
+        maxWidth: '80%',
+    },
+    announcementCard: {
+        borderRadius: 12,
+        padding: isTablet ? 24 : 16,
+        marginVertical: 6,
+        borderWidth: 1,
+    },
+    senderName: {
+        fontWeight: '700',
+        fontSize: 15,
+        marginBottom: 4,
+    },
+    announcementText: {
+        fontWeight: '500',
+        marginBottom: 6,
+    },
+    announcementDate: {
+        fontWeight: '400',
+        fontSize: 12,
+    },
+    emptyContainer: {
+        flex: 1,
+        marginTop: 60,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    inputContainer: {
+        flexDirection: 'row',
+        alignItems: 'flex-end',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
+    },
+    textInput: {
+        flex: 1,
+        borderWidth: 1,
+        borderRadius: 20,
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        marginRight: 12,
+        maxHeight: 140,
+        textAlignVertical: 'top',
+    },
+    sendButton: {
+        width: 46,
+        height: 46,
+        borderRadius: 23,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
 });
