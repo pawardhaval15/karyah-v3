@@ -304,6 +304,12 @@
 "create_new_Subtask": "नवीन उपकार्य तयार करा",
 "created_by": "द्वारे तयार केले",
 "issue_details": "तक्रार तपशील",
-"in_progress": "प्रगतीत आहे"
+"in_progress": "प्रगतीत आहे",
+"communities": "समुदाय",
+  "all_your_communities": "आपके सभी समुदाय",
+  "search_community": "समुदाय खोजें",
+  "no_communities_found": "कोई समुदाय नहीं मिला",
+  "members": "सदस्य",
+  "assign_project": "परियोजनाएँ असाइन करें"
 }
 

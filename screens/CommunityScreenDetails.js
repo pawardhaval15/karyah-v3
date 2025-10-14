@@ -12,11 +12,14 @@ import {
   Modal,
   Dimensions,
   Image,
+  Alert,
 } from 'react-native';
+import FieldBox from '../components/task details/FieldBox';
+import CustomPickerDrawer from '../components/popups/CustomPickerDrawer';
 import { useTheme } from '../theme/ThemeContext';
-import { fetchCommunityDetail } from '../utils/community';
+import { assignProjectsToCommunity, getProjectsByUserId, fetchCommunityDetail, deleteCommunityById } from '../utils/community';
 import { useTranslation } from 'react-i18next';
-
+import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
 
@@ -34,20 +37,46 @@ export default function CommunityDetailsScreen({ navigation, route }) {
   const [communityDetails, setCommunityDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [showMembersPopup, setShowMembersPopup] = useState(false);
+
+  // Project picker states
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
+  const [selectedProjectIds, setSelectedProjectIds] = useState([]); // array of selected project IDs
+  const [projectsWithAddNew, setProjectsWithAddNew] = useState([]);
+
+  // Fetch all assignable projects and make sure each has projectName
+  useEffect(() => {
+    const fetchProjects = async () => {
+      const projects = await getProjectsByUserId();
+      const safeProjects = projects.map(p => ({
+        ...p,
+        projectName: p.projectName || p.name || '-'
+      }));
+      setProjectsWithAddNew([
+        ...safeProjects,
+        { id: '__add_new__', projectName: t('addNewProject') }
+      ]);
+    };
+    fetchProjects();
+  }, []);
+
+  // Get community details
+  const fetchDetails = async () => {
+    try {
+      if (!communityId) throw new Error('No communityId provided');
+      const res = await fetchCommunityDetail(communityId);
+      setCommunityDetails(res);
+    } catch (err) {
+      setCommunityDetails(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchDetails = async () => {
-      try {
-        if (!communityId) throw new Error('No communityId provided');
-        const res = await fetchCommunityDetail(communityId);
-        setCommunityDetails(res);
-      } catch (err) {
-        setCommunityDetails(null);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchDetails();
+    // eslint-disable-next-line
   }, [communityId]);
 
   if (loading) {
@@ -69,11 +98,113 @@ export default function CommunityDetailsScreen({ navigation, route }) {
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
       <ScrollView contentContainerStyle={{ paddingBottom: 90 }}>
-        {/* Back */}
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
-          <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
-        </TouchableOpacity>
+        {/* Back + Menu */}
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 20,
+            paddingTop: Platform.OS === 'ios' ? 60 : 20,
+            paddingBottom: 16
+          }}
+        >
+          <TouchableOpacity
+            style={{ flexDirection: 'row', alignItems: 'center', padding: 4 }}
+            onPress={() => navigation.goBack()}
+          >
+            <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
+            <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 8 }}>
+            <Feather name="more-vertical" size={22} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+        {/* Menu Modal */}
+        <Modal
+          visible={menuVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMenuVisible(false)}
+        >
+          <TouchableOpacity
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }}
+            activeOpacity={1}
+            onPress={() => setMenuVisible(false)}
+          >
+            <View
+              style={{
+                position: 'absolute',
+                top: Platform.OS === 'ios' ? 75 : 35,
+                right: 20,
+                backgroundColor: theme.card,
+                borderRadius: 10,
+                paddingVertical: 8,
+                shadowColor: '#000',
+                shadowOpacity: 0.10,
+                shadowOffset: { width: 0, height: 1 },
+                shadowRadius: 6,
+                elevation: 6,
+                minWidth: 150,
+              }}
+            >
+              {/* Edit Option */}
+              {/* <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => {
+                  setMenuVisible(false);
+                  navigation.navigate('UpdateCommunityScreen', { communityId: communityDetails.communityId });
+                }}>
+                <Feather name="edit" size={18} color={theme.primary} style={{ marginRight: 8 }} />
+                <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 15 }}>{t('edit')}</Text>
+              </TouchableOpacity> */}
+              {/* Delete Option */}
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => {
+                  setMenuVisible(false);
+                  Alert.alert(
+                    t('delete_community'), t('delete_community_confirm'), [
+                    { text: t('cancel'), style: 'cancel' },
+                    {
+                      text: t('delete'),
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await deleteCommunityById(communityDetails.communityId);
+                          Alert.alert(t('deleted'), t('community_deleted_successfully'), [
+                            {
+                              text: 'OK',
+                              onPress: () => {
+                                navigation.navigate('CommunityScreen', { refresh: true });
+                              }
+                            }
+                          ]);
+                        } catch (err) {
+                          Alert.alert(t('delete_failed'), err.message || t('could_not_delete_community'));
+                        }
+                      }
+                    }
+                  ]
+                  );
+                }}
+              >
+                <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>{t('delete')}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
         {/* Header */}
         <LinearGradient colors={[theme.secondary, theme.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.headerCard}>
           <View style={{ flex: 1 }}>
@@ -81,16 +212,6 @@ export default function CommunityDetailsScreen({ navigation, route }) {
             <Text style={styles.dueDate}>Created Date : {communityDetails.createdAt?.split('T')[0] || '-'}</Text>
             <Text style={styles.creator}>Created By: {communityDetails.createdBy || '-'}</Text>
           </View>
-          <TouchableOpacity
-            style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.10)', borderRadius: 8 }}
-            onPress={() =>
-              navigation.navigate('UpdateCommunityScreen', {
-                communityId: communityDetails.communityId || communityId,
-              })
-            }
-          >
-            <MaterialIcons name="edit" size={22} color="#fff" />
-          </TouchableOpacity>
         </LinearGradient>
         {/* Tabs */}
         <View style={[styles.tabButtonsContainer, { backgroundColor: theme.background }]}>
@@ -112,30 +233,58 @@ export default function CommunityDetailsScreen({ navigation, route }) {
         {/* Visibility */}
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingVertical: 8 }]}>
           <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 2 }]}>VISIBILITY</Text>
-          <Text style={[styles.inputValue, { color: theme.text, fontWeight: '500', fontSize: 16 }]}>{communityDetails.visibility || '-'}</Text>
+          <Text style={[styles.inputValue, { color: theme.text, fontWeight: '500', fontSize: 16 }]}>
+            {communityDetails.visibility
+              ? communityDetails.visibility.charAt(0).toUpperCase() + communityDetails.visibility.slice(1)
+              : '-'}
+          </Text>
         </View>
         {/* Members grid */}
-        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border, flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', paddingVertical: 10 }]}>
-          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>MEMBERS</Text>
-          <View style={{ width: '100%', flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-start' }}>
-            {communityDetails.communityMembers && communityDetails.communityMembers.length > 0 ? (
-              communityDetails.communityMembers.slice(0, 9).map((member, idx) => (
-                <View key={idx} style={styles.memberItem}>
-                  {member.user.profilePhoto ? (
-                    <Image source={{ uri: member.user.profilePhoto }} style={styles.memberAvatar} />
-                  ) : (
-                    <View style={styles.memberInitialsCircle}>
-                      <Text style={styles.memberInitials}>{getInitials(member.user.name)}</Text>
-                    </View>
-                  )}
-                  <Text numberOfLines={1} style={styles.memberName}>{member.user.name}</Text>
-                  <Text numberOfLines={1} style={styles.memberRole}>{member.role}</Text>
-                </View>
-              ))
-            ) : (
-              <Text style={{ color: theme.secondaryText }}>No members found</Text>
+        <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>{t('members')}</Text>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setShowMembersPopup(true)}
+            style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 8 }}>
+            {communityDetails.communityMembers?.slice(0, 5).map((member, index) => (
+              <View key={index} style={{
+                marginLeft: index === 0 ? 0 : -8,
+                zIndex: 10 - index,
+              }}>
+                <Image
+                  source={{
+                    uri: member.user.profilePhoto || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(member.user.name),
+                  }}
+                  style={{
+                    width: 32,
+                    height: 32,
+                    borderRadius: 16,
+                    borderWidth: 2,
+                    borderColor: theme.primary,
+                    backgroundColor: theme.mode === 'dark' ? '#23272f' : '#F8F9FB',
+                  }}
+                />
+              </View>
+            ))}
+            {communityDetails.communityMembers?.length > 5 && (
+              <View style={{
+                marginLeft: -8,
+                zIndex: 0,
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: theme.buttonBg,
+                borderWidth: 2,
+                borderColor: theme.primary,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Text style={{ color: theme.buttonText, fontWeight: '600', fontSize: 14 }}>
+                  +{communityDetails.communityMembers.length - 5}
+                </Text>
+              </View>
             )}
-          </View>
+          </TouchableOpacity>
         </View>
         {/* Description preview/modal */}
         <TouchableOpacity onPress={() => setShowDescriptionModal(true)} activeOpacity={0.7}>
@@ -151,7 +300,48 @@ export default function CommunityDetailsScreen({ navigation, route }) {
           </View>
         </TouchableOpacity>
         {/* Projects Vertical List */}
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Projects</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: isTablet ? 40 : 20, marginBottom: 10 }}>
+          {/* Left: Projects label with dropdown-style button */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: theme.card,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: theme.border,
+              paddingHorizontal: 14,
+              paddingVertical: 6,
+              minWidth: 140,
+            }}
+            onPress={() => {/* show the "View Projects" or open a dropdown if you want */ }}
+            activeOpacity={0.8}
+          >
+            <Feather name="chevron-down" size={18} color={theme.secondaryText} style={{ marginRight: 8 }} />
+            <Text style={{ color: theme.text, fontWeight: '500', fontSize: 15 }}>
+              {t('projects')} ({communityDetails?.communityProjects?.length ?? 0})
+            </Text>
+          </TouchableOpacity>
+
+          {/* Right: Project select modal trigger (styled as blue button) */}
+          <TouchableOpacity
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#366CD9',
+              borderRadius: 8,
+              paddingHorizontal: 18,
+              paddingVertical: 8,
+            }}
+            onPress={() => setShowProjectPicker(true)}
+            activeOpacity={0.8}
+          >
+            <Feather name="plus" size={18} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
+              {t('assign_project')}
+            </Text>
+          </TouchableOpacity>
+        </View>
         {communityDetails.communityProjects && communityDetails.communityProjects.length > 0 ? (
           <View>
             {communityDetails.communityProjects.map((proj, idx) => (
@@ -162,8 +352,8 @@ export default function CommunityDetailsScreen({ navigation, route }) {
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.worklistName}>{proj.projectName || '-'}</Text>
-                  <Text style={styles.worklistTasks}>{(proj.tasksCount || 0) + ' Tasks'}</Text>
+                  <Text style={styles.worklistName}>{proj.projectName || proj.name || '-'}</Text>
+                  {/* <Text style={styles.worklistTasks}>{(proj.tasksCount || 0) + ' Tasks'}</Text> */}
                 </View>
                 <View style={styles.worklistProgressContainer}>
                   <Text style={styles.worklistProgressText}>{proj.progress || 0}%</Text>
@@ -176,7 +366,118 @@ export default function CommunityDetailsScreen({ navigation, route }) {
             No projects available
           </Text>
         )}
-        {/* Description full modal */}
+        {/* Assign project box and picker */}
+        <Modal
+          visible={showProjectPicker}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setShowProjectPicker(false)}
+        >
+          <View style={{
+            flex: 1,
+            justifyContent: 'flex-end',
+            backgroundColor: 'rgba(0,0,0,0.15)'
+          }}>
+            <View style={{
+              backgroundColor: theme.card,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 20,
+              minHeight: 340,
+              maxHeight: '65%'
+            }}>
+              <Text style={{
+                color: theme.text,
+                fontWeight: 'bold',
+                fontSize: 16,
+                marginBottom: 12,
+              }}>
+                {t('select_projects')}
+              </Text>
+              <ScrollView style={{ marginBottom: 14 }}>
+                {projectsWithAddNew.map((proj, idx) => (
+                  <TouchableOpacity
+                    key={proj.id}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 10,
+                      borderBottomWidth: idx < projectsWithAddNew.length - 1 ? 0.5 : 0,
+                      borderColor: theme.border,
+                    }}
+                    onPress={() => {
+                      setSelectedProjectIds(prev =>
+                        prev.includes(proj.id)
+                          ? prev.filter(id => id !== proj.id)
+                          : [...prev, proj.id]
+                      );
+                    }}
+                  >
+                    <View style={{
+                      width: 22, height: 22, borderRadius: 5, borderWidth: 2,
+                      borderColor: theme.primary,
+                      backgroundColor: selectedProjectIds.includes(proj.id) ? theme.primary : '#fff',
+                      marginRight: 12,
+                      alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {selectedProjectIds.includes(proj.id) && (
+                        <Feather name="check" size={14} color="#fff" />
+                      )}
+                    </View>
+                    <Text style={{
+                      color: theme.text,
+                      fontWeight: selectedProjectIds.includes(proj.id) ? 'bold' : '400'
+                    }}>
+                      {proj.projectName}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity
+                disabled={selectedProjectIds.length === 0}
+                style={{
+                  marginTop: 8,
+                  backgroundColor: theme.primary,
+                  borderRadius: 10,
+                  paddingVertical: 12,
+                  paddingHorizontal: 40,
+                  alignSelf: 'center',
+                  opacity: selectedProjectIds.length === 0 ? 0.45 : 1
+                }}
+                onPress={async () => {
+                  try {
+                    await assignProjectsToCommunity(communityDetails.communityId, selectedProjectIds);
+                    setShowProjectPicker(false);
+                    setSelectedProjectIds([]);
+                    fetchDetails(); // Refresh assigned projects
+                    Alert.alert(t('success'), t('projectAssigned'));
+                  } catch (err) {
+                    Alert.alert(t('error'), err.message || t('failedAssignProject'));
+                  }
+                }}
+              >
+                <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>{t('assign')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ marginTop: 9, alignSelf: 'center' }}
+                onPress={() => setShowProjectPicker(false)}
+              >
+                <Text style={{ color: theme.primary, fontWeight: 'bold', fontSize: 16 }}>{t('done')}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+        <CoAdminListPopup
+          visible={showMembersPopup}
+          onClose={() => setShowMembersPopup(false)}
+          data={communityDetails.communityMembers.map(mem => ({
+            name: mem.user.name,
+            profilePhoto: mem.user.profilePhoto
+          }))}
+          theme={theme}
+          title={`Members (${communityDetails.communityMembers?.length || 0})`}
+        />
+        {/* Description Modal */}
         <Modal
           visible={showDescriptionModal}
           animationType="slide"

@@ -199,3 +199,54 @@ export const assignProjectsToCommunity = async (communityId, projectIds) => {
     throw error;
   }
 };
+export const getProjectsByUserId = async () => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_URL}api/projects`, {
+        method: 'GET',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+        },
+    });
+    const data = await response.json();
+
+    if (!response.ok) throw new Error(data.message || 'Failed to fetch projects');
+    
+    // Ensure we return an array even if data.projects is undefined/null
+    const projects = data && data.projects ? data.projects : [];
+    if (!Array.isArray(projects)) {
+        console.warn('API returned non-array for projects:', projects);
+        return [];
+    }
+    
+    return projects;
+};
+
+export const deleteCommunityById = async (communityId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) throw new Error('User not authenticated');
+
+    const response = await fetch(`${API_URL}api/communities/${communityId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      }
+    });
+
+    const data = await response.json();
+    console.log('Delete Community Response:', data);
+
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to delete community');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Delete Community Error:', error.message);
+    throw error;
+  }
+};

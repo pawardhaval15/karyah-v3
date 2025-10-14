@@ -1,6 +1,8 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
 import { useEffect, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import {
     Dimensions,
     FlatList,
@@ -16,7 +18,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { fetchCommunitiesByOrganization, fetchUserDetails, createCommunity } from '../utils/community';
 import { useTranslation } from 'react-i18next';
 
-export default function CommunityScreen({ navigation }) {
+export default function CommunityScreen({ navigation, route }) {
     const theme = useTheme();
     const screenWidth = Dimensions.get('window').width;
     const isTablet = screenWidth >= 768;
@@ -28,18 +30,28 @@ export default function CommunityScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
     const [userName, setUserName] = useState('User');
     const [refreshing, setRefreshing] = useState(false);
-    const onRefresh = async () => {
+    const onRefresh = React.useCallback(async () => {
         setRefreshing(true);
         try {
             if (organizationId) {
                 const updated = await fetchCommunitiesByOrganization(organizationId);
                 setCommunities(updated);
             }
-        } catch (err) {
-            // handle, or ignore
+        } catch (_err) {
+            // intentionally unused
         }
         setRefreshing(false);
-    };
+    }, [organizationId]);
+
+    useFocusEffect(
+        React.useCallback(() => {
+            if (route.params && route.params.refresh) {
+                onRefresh();
+                navigation.setParams({ refresh: false });
+            }
+        }, [navigation, onRefresh, route.params])
+    );
+
     useEffect(() => {
         const fetchUserAndCommunities = async () => {
             try {
@@ -50,7 +62,6 @@ export default function CommunityScreen({ navigation }) {
                 } else {
                     setUserName('User');
                 }
-
                 let orgId = null;
                 if (
                     user.OrganizationUsers &&
@@ -63,9 +74,7 @@ export default function CommunityScreen({ navigation }) {
                     if (activeOrgUser) {
                         orgId = activeOrgUser.Organization.id;
                     }
-
                 }
-
                 if (orgId) {
                     console.log(`Fetching communities for organizationId: ${orgId}...`);
                     setOrganizationId(orgId);
@@ -77,7 +86,6 @@ export default function CommunityScreen({ navigation }) {
                     console.warn('User does not belong to any active organization');
                     setCommunities([]);
                 }
-
                 // Log full user object with nested details expanded
                 console.log('User details:', JSON.stringify(user, null, 2));
             } catch (error) {
@@ -88,7 +96,6 @@ export default function CommunityScreen({ navigation }) {
                 setLoading(false);
             }
         };
-
         fetchUserAndCommunities();
     }, []);
 
@@ -166,7 +173,6 @@ export default function CommunityScreen({ navigation }) {
                         style={{ marginLeft: isTablet ? 6 : 4 }}
                     />
                 </TouchableOpacity>
-
             </LinearGradient>
             <View
                 style={[
@@ -264,7 +270,6 @@ export default function CommunityScreen({ navigation }) {
                     setCommunities(newCommunities);
                 }}
             />
-
         </View>
     );
 }

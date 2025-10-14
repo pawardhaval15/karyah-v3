@@ -322,5 +322,11 @@
   "error": "Error",
   "created_by": "Created By",
   "issue_details": "Issue Details",
-  "in_progress": "In Progress"
+  "in_progress": "In Progress",
+  "communities": "Communities",
+  "all_your_communities": "All Your Communities",
+  "search_community": "Search Community",
+  "no_communities_found": "No Community Found",
+  "members": "Members",
+  "assign_project": "Assigne Projects"
 }
