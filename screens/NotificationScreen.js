@@ -22,9 +22,10 @@ import {
   markNotificationAsRead,
 } from '../utils/notifications';
 import { useTranslation } from 'react-i18next';
+
 const NotificationScreen = ({ navigation, route }) => {
   const { defaultTab } = route.params || {};
-  const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'CRITICAL');
+  const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'ALL');
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
   const [pendingRequests, setPendingRequests] = useState([]);
@@ -36,7 +37,58 @@ const NotificationScreen = ({ navigation, route }) => {
   const screenWidth = Dimensions.get('window').width;
   const isTablet = screenWidth >= 768;
 
-  const tabs = ['Critical', 'Task', 'Connections', 'All'];
+  // Tab configuration
+  const tabFilters = [
+    {
+      key: 'ALL',
+      label: t('all') || 'All',
+      count: (notifications, pendingRequests) => notifications.length,
+      filter: (notifications) => notifications,
+    },
+    {
+      key: 'CRITICAL',
+      label: t('critical') || 'Critical',
+      count: (notifications) => notifications.filter((n) => n.type?.toLowerCase() === 'issue').length,
+      filter: (notifications) => notifications.filter((n) => n.type?.toLowerCase() === 'issue'),
+    },
+    {
+      key: 'TASK',
+      label: t('task') || 'Task',
+      count: (notifications) => notifications.filter((n) => n.type === 'task' || n.type === 'task_message').length,
+      filter: (notifications) => notifications.filter((n) => n.type === 'task' || n.type === 'task_message'),
+    },
+    {
+      key: 'PROJECT',
+      label: t('project') || 'Project',
+      count: (notifications) =>
+        notifications.filter(
+          (n) => n.type === 'coadmin_added' || n.type === 'project_updated' || n.type === 'discussion'
+        ).length,
+      filter: (notifications) =>
+        notifications.filter(
+          (n) => n.type === 'coadmin_added' || n.type === 'project_updated' || n.type === 'discussion'
+        ),
+    },
+    {
+      key: 'CONNECTIONS',
+      label: t('connections') || 'Connections',
+      count: (_, pendingRequests) => pendingRequests.length,
+      filter: () => [], // Handled separately below
+    },
+  ];
+
+  // Show only tabs with notifications or requests
+  const activeTabs = tabFilters.filter((tab) =>
+    tab.key === 'CONNECTIONS' ? pendingRequests.length > 0 : tab.count(notifications, pendingRequests) > 0
+  );
+
+  // Ensure activeTab is always valid
+  useEffect(() => {
+    if (!activeTabs.some((tab) => tab.key === activeTab)) {
+      setActiveTab(activeTabs.length ? activeTabs[0].key : 'ALL');
+    }
+    // eslint-disable-next-line
+  }, [notifications, pendingRequests]);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -53,13 +105,8 @@ const NotificationScreen = ({ navigation, route }) => {
     try {
       const data = await getPendingRequests();
       setPendingRequests(Array.isArray(data) ? data : []);
-      console.log('Loaded pending requests:', data);
-      // Only log if we actually got some data
-      if (data && data.length > 0) {
-        // console.log('Loaded pending requests:', data.length);
-      }
+      // console.log('Loaded pending requests:', data);
     } catch (err) {
-      // console.log('Pending Requests Error (gracefully handled):', err.message);
       setPendingRequests([]); // Set to empty array on error
     }
   }, []);
@@ -69,7 +116,6 @@ const NotificationScreen = ({ navigation, route }) => {
     loadPendingRequests();
   }, [loadNotifications, loadPendingRequests]);
 
-  // Auto-refresh notifications when screen is focused
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadNotifications();
@@ -80,8 +126,6 @@ const NotificationScreen = ({ navigation, route }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-
-    // Play refresh sound
     try {
       const { sound } = await Audio.Sound.createAsync(require('../assets/sounds/refresh.wav'));
       await sound.playAsync();
@@ -89,9 +133,8 @@ const NotificationScreen = ({ navigation, route }) => {
         if (status.didJustFinish) sound.unloadAsync();
       });
     } catch (err) {
-      console.error('Refresh sound error:', err.message);
+      // console.error('Refresh sound error:', err.message);
     }
-
     await loadNotifications();
     await loadPendingRequests();
     setRefreshing(false);
@@ -99,7 +142,6 @@ const NotificationScreen = ({ navigation, route }) => {
   };
 
   const handleAccept = async (connectionId) => {
-    console.log('Accepting connectionId:', connectionId);
     try {
       await acceptConnectionRequest(connectionId);
       showMessage('Connection request accepted');
@@ -111,7 +153,6 @@ const NotificationScreen = ({ navigation, route }) => {
   };
 
   const handleReject = async (connectionId) => {
-    console.log('Rejecting connectionId:', connectionId);
     try {
       await rejectConnectionRequest(connectionId);
       showMessage('Connection request rejected');
@@ -133,21 +174,14 @@ const NotificationScreen = ({ navigation, route }) => {
   };
 
   const getFilteredNotifications = () => {
-    switch (activeTab) {
-      case 'CRITICAL':
-        return notifications.filter((n) => n.type?.toLowerCase() === 'issue');
-
-      case 'TASK':
-        return notifications.filter((n) => n.type?.toLowerCase() === 'task');
-      case 'CONNECTIONS':
-        return notifications.filter((n) => n.type?.toLowerCase() === 'connection');
-      default:
-        return notifications;
-    }
+    const found = tabFilters.find((f) => f.key === activeTab);
+    if (!found) return notifications;
+    if (activeTab === 'CONNECTIONS') return []; // Handled below for pendingRequests
+    return found.filter(notifications);
   };
 
   const filteredNotifications = getFilteredNotifications();
-  // Helper to show a message in the drawer
+
   const showMessage = (msg) => {
     setMessage(msg);
     Animated.timing(messageAnim, {
@@ -172,13 +206,10 @@ const NotificationScreen = ({ navigation, route }) => {
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-
-    // For older dates, show actual date
     return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
@@ -259,24 +290,12 @@ const NotificationScreen = ({ navigation, route }) => {
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[styles.tabRow, { gap: isTablet ? 0 : 0 }]}>
-          {tabs.map((tab) => {
-            const isActive = activeTab.toLowerCase() === tab.toLowerCase();
-
-            // Determine count based on tab
-            const count =
-              tab.toLowerCase() === 'all'
-                ? notifications.length
-                : tab.toLowerCase() === 'connections'
-                  ? pendingRequests.length
-                  : tab.toLowerCase() === 'critical'
-                    ? notifications.filter((n) => n.type?.toLowerCase() === 'issue').length
-                    : tab.toLowerCase() === 'task'
-                      ? notifications.filter((n) => n.type?.toLowerCase() === 'task').length
-                      : 0;
-
+          {activeTabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            const count = tab.count(notifications, pendingRequests);
             return (
               <TouchableOpacity
-                key={tab}
+                key={tab.key}
                 style={[
                   styles.tabButton,
                   {
@@ -289,7 +308,7 @@ const NotificationScreen = ({ navigation, route }) => {
                     ? { backgroundColor: theme.primary, borderColor: theme.primary }
                     : { backgroundColor: theme.card, borderColor: theme.border },
                 ]}
-                onPress={() => setActiveTab(tab.toUpperCase())}>
+                onPress={() => setActiveTab(tab.key)}>
                 <View
                   style={{
                     flexDirection: 'row',
@@ -306,7 +325,7 @@ const NotificationScreen = ({ navigation, route }) => {
                         ? { color: '#fff', fontWeight: '600' }
                         : { color: theme.text, fontWeight: '400' },
                     ]}>
-                    {tab}
+                    {tab.label}
                   </Text>
                   {count > 0 && (
                     <View
@@ -314,7 +333,9 @@ const NotificationScreen = ({ navigation, route }) => {
                         minWidth: isTablet ? 24 : 20,
                         height: isTablet ? 24 : 20,
                         borderRadius: isTablet ? 12 : 10,
-                        backgroundColor: isActive ? 'rgba(255,255,255,0.3)' : theme.primary + '33', // semi-transparent primary
+                        backgroundColor: isActive
+                          ? 'rgba(255,255,255,0.3)'
+                          : theme.primary + '33',
                         justifyContent: 'center',
                         alignItems: 'center',
                         paddingHorizontal: isTablet ? 8 : 6,
@@ -494,8 +515,7 @@ const NotificationScreen = ({ navigation, route }) => {
             })}
           </>
         )}
-        {/* <Text style={[styles.sectionTitle, { color: theme.text }]}>Recent Notifications</Text> */}
-        {filteredNotifications.length === 0 ? (
+        {activeTab !== 'CONNECTIONS' && filteredNotifications.length === 0 ? (
           <View style={styles.emptyContainer}>
             <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_notifications_yet')}</Text>
             <Text style={[styles.emptySub, { color: theme.text }]}>
@@ -516,15 +536,11 @@ const NotificationScreen = ({ navigation, route }) => {
                 key={n.id}
                 onPress={async () => {
                   try {
-                    // Mark notification as read
                     await markNotificationAsRead(n.id);
-                    // Refresh notifications to update UI
                     await loadNotifications();
                   } catch (error) {
-                    console.error('Failed to mark notification as read:', error.message);
                     showMessage('Failed to mark notification as read');
                   }
-                  // Navigate after marking as read
                   if (targetScreen) {
                     navigation.navigate(targetScreen, n.params || {});
                   }
@@ -532,7 +548,7 @@ const NotificationScreen = ({ navigation, route }) => {
                 style={[
                   styles.card,
                   {
-                    backgroundColor: n.read ? theme.card : `${theme.card}`, // Slightly different shade if unread
+                    backgroundColor: n.read ? theme.card : `${theme.card}`,
                     borderColor: theme.border || '#e0e0e0',
                     borderRadius: isTablet ? 20 : 16,
                     padding: isTablet ? 20 : 16,

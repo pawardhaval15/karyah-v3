@@ -200,7 +200,7 @@ export default function CustomDrawer({ onClose, theme }) {
               }}
               theme={theme}
             />
-            <DrawerItem
+            {/* <DrawerItem
               onPress={() => {
                 navigation.navigate('CommunityScreen');
                 onClose && onClose();
@@ -209,7 +209,7 @@ export default function CustomDrawer({ onClose, theme }) {
               label={t('community')}
               theme={theme}
               showBorder={true}
-            />
+            /> */}
           </View>
 
           <View style={styles.menuSection}>
@@ -259,19 +259,19 @@ export default function CustomDrawer({ onClose, theme }) {
               }}
               theme={theme}
               showBorder={true}
-              rightComponent={
-                <View style={styles.themeToggleSmall}>
-                  <TouchableOpacity
-                    onPress={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
-                    style={[styles.themeBadge, { backgroundColor: theme.primary + '15' }]}>
-                    <Feather
-                      name={colorMode === 'dark' ? 'moon' : 'sun'}
-                      size={12}
-                      color={theme.primary}
-                    />
-                  </TouchableOpacity>
-                </View>
-              }
+            // rightComponent={
+            //   <View style={styles.themeToggleSmall}>
+            //     <TouchableOpacity
+            //       onPress={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
+            //       style={[styles.themeBadge, { backgroundColor: theme.primary + '15' }]}>
+            //       <Feather
+            //         name={colorMode === 'dark' ? 'moon' : 'sun'}
+            //         size={12}
+            //         color={theme.primary}
+            //       />
+            //     </TouchableOpacity>
+            //   </View>
+            // }
             />
             <DrawerItem
               icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
@@ -306,7 +306,6 @@ export default function CustomDrawer({ onClose, theme }) {
               theme={theme}
             />
           </View>
-
 
         </ScrollView>
         {showLanguageModal && (
