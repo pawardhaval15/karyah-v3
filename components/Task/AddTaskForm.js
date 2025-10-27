@@ -493,22 +493,22 @@ export default function AddTaskForm({
 
 
             {/* Issue Toggle */}
-            <View style={[styles.toggleRow, { 
-                backgroundColor: values.isIssue ? theme.criticalBg : theme.normalBg, 
-                borderColor: values.isIssue ? theme.criticalBorder : theme.normalBorder 
+            <View style={[styles.toggleRow, {
+                backgroundColor: values.isIssue ? theme.criticalBg : theme.normalBg,
+                borderColor: values.isIssue ? theme.criticalBorder : theme.normalBorder
             }]}>
                 <View style={[styles.toggleIconBox, {
                     backgroundColor: values.isIssue ? theme.criticalIconBg : theme.normalIconBg
                 }]}>
-                    <MaterialIcons 
-                        name="priority-high" 
-                        size={16} 
-                        color={values.isIssue ? theme.criticalText : theme.normalText} 
+                    <MaterialIcons
+                        name="priority-high"
+                        size={16}
+                        color={values.isIssue ? theme.criticalText : theme.normalText}
                     />
                 </View>
                 <View style={{ flex: 1 }}>
-                    <Text style={[styles.toggleLabel, { 
-                        color: values.isIssue ? theme.criticalText : theme.normalText 
+                    <Text style={[styles.toggleLabel, {
+                        color: values.isIssue ? theme.criticalText : theme.normalText
                     }]}>
                         Issue
                     </Text>
@@ -522,9 +522,9 @@ export default function AddTaskForm({
                             onChange('isCritical', false);
                         }
                     }}
-                    trackColor={{ 
-                        false: '#ddd', 
-                        true: values.isIssue ? theme.criticalText : theme.primary 
+                    trackColor={{
+                        false: '#ddd',
+                        true: values.isIssue ? theme.criticalText : theme.primary
                     }}
                     thumbColor="#fff"
                 />
@@ -532,7 +532,7 @@ export default function AddTaskForm({
 
             {/* Critical Toggle - Only show when task is an issue */}
             {values.isIssue && (
-                <View style={[styles.toggleRow, { 
+                <View style={[styles.toggleRow, {
                     backgroundColor: values.isCritical ? theme.criticalBg : theme.normalIssueBg,
                     borderColor: values.isCritical ? theme.criticalBorder : theme.normalIssueBorder,
                     marginTop: 6
@@ -540,15 +540,15 @@ export default function AddTaskForm({
                     <View style={[styles.toggleIconBox, {
                         backgroundColor: values.isCritical ? theme.criticalIconBg : theme.normalIssueIconBg
                     }]}>
-                        <MaterialIcons 
-                            name="warning" 
-                            size={16} 
-                            color={values.isCritical ? theme.criticalText : theme.normalIssueText} 
+                        <MaterialIcons
+                            name="warning"
+                            size={16}
+                            color={values.isCritical ? theme.criticalText : theme.normalIssueText}
                         />
                     </View>
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.toggleLabel, { 
-                            color: values.isCritical ? theme.criticalText : theme.normalIssueText 
+                        <Text style={[styles.toggleLabel, {
+                            color: values.isCritical ? theme.criticalText : theme.normalIssueText
                         }]}>
                             Critical
                         </Text>
@@ -556,8 +556,8 @@ export default function AddTaskForm({
                     <Switch
                         value={values.isCritical || false}
                         onValueChange={v => onChange('isCritical', v)}
-                        trackColor={{ 
-                            false: '#ddd', 
+                        trackColor={{
+                            false: '#ddd',
                             true: theme.criticalText
                         }}
                         thumbColor="#fff"

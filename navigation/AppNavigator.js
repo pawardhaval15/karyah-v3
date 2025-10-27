@@ -22,6 +22,7 @@ import ProjectIssuesScreen from '../screens/ProjectIssuesScreen';
 import ProjectScreen from '../screens/ProjectScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import TaskDetailsScreen from '../screens/TaskDetailsScreen';
+import SubTaskDetailsScreen from '../screens/SubTaskDetailsScreen';
 import TaskListScreen from '../screens/TaskListScreen';
 import UpdateProjectScreen from '../screens/UpdateProjectScreen';
 import WorklistScreen from '../screens/WorklistScreen';
@@ -43,6 +44,7 @@ export default function AppNavigator() {
         <Stack.Screen name="PinLogin" component={PinLoginScreen} />
         <Stack.Screen name="RegistrationForm" component={RegistrationForm} />
         <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} />
+        <Stack.Screen name="SubTaskDetails" component={SubTaskDetailsScreen} />
         <Stack.Screen name="ProfessionalDashboard" component={ProfessionalDashboard} />
         <Stack.Screen name="ProjectScreen" component={ProjectScreen} />
         <Stack.Screen name="ProjectDetailsScreen" component={ProjectDetailsScreen} />

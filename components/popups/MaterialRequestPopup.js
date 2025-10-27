@@ -30,6 +30,7 @@ export default function MaterialRequestPopup({
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
   const [showUserPicker, setShowUserPicker] = useState(false);
+const [showScrollIndicator, setShowScrollIndicator] = useState(false);
 
   const [formData, setFormData] = useState({
     items: [{ itemName: '', quantityRequested: '', unit: 'pcs' }],
@@ -165,7 +166,6 @@ export default function MaterialRequestPopup({
       Alert.alert('Error', 'Please add at least one item with name and quantity');
       return;
     }
-
     setLoading(true);
 
     // Prepare payload same as old working one, with added safety for assignUserIds
@@ -213,10 +213,8 @@ export default function MaterialRequestPopup({
         Alert.alert('Error', result.error);
       }
     }
-
     setLoading(false);
   };
-
 
   const resetForm = () => {
     setFormData({

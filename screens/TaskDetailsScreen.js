@@ -5,7 +5,7 @@ import AttachmentSheet from 'components/popups/AttachmentSheet';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import { LinearGradient } from 'expo-linear-gradient';
 import { jwtDecode } from 'jwt-decode';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -20,7 +20,7 @@ import {
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
-  View,
+  View, RefreshControl,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -44,6 +44,7 @@ import {
   updateTaskFlags,
   updateTaskProgress,
 } from '../utils/task';
+import { useFocusEffect } from '@react-navigation/native';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
 export default function TaskDetailsScreen({ route, navigation }) {
@@ -147,6 +148,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [subtaskSearch, setSubtaskSearch] = useState('');
   const [showTaskNameModal, setShowTaskNameModal] = useState(false);
   const [showTaskDetails, setShowTaskDetails] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const {
     attachments: newAttachments,
     pickAttachment,
@@ -274,7 +276,22 @@ export default function TaskDetailsScreen({ route, navigation }) {
     setShowSave(false);
     // Optionally, show a toast or feedback
   };
-
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([
+      getTaskDetailsById(taskId),
+    ]);
+    setRefreshing(false);
+  };
+  useFocusEffect(
+    React.useCallback(() => {
+      const fetchTaskData = async () => {
+        const data = await getTaskDetailsById(taskId);
+        setTask(data);
+      };
+      fetchTaskData();
+    }, [taskId]),
+  );
   useEffect(() => {
     const fetchTask = async () => {
       try {
@@ -480,8 +497,17 @@ export default function TaskDetailsScreen({ route, navigation }) {
         backgroundColor: theme.background,
         paddingTop: Platform.OS === 'ios' ? 70 : 25,
       }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: showSubtasks ? 60 : 80 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: showSubtasks ? 60 : 80 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }>
         {/* Top Navigation */}
+
         <View
           style={{
             flexDirection: 'row',
@@ -1574,10 +1600,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     // Reset subtask search when navigating
                     setSubtaskSearch('');
                     // Navigate to subtask details
-                    navigation.push('TaskDetails', {
+                    navigation.push('SubTaskDetails', {
                       taskId: sub.id || sub.taskId || sub._id,
+                      parentTaskId: task.id || task.taskId,
                       refreshedAt: Date.now(),
                     });
+
                   }}
                   activeOpacity={0.85}>
                   <View style={[styles.subtaskIcon, { backgroundColor: theme.avatarBg }]}>
@@ -1609,7 +1637,9 @@ export default function TaskDetailsScreen({ route, navigation }) {
             )}
           </View>
         )}
+
       </ScrollView>
+
       <Modal
         visible={menuVisible}
         transparent
