@@ -75,13 +75,13 @@ export default function ProjectScreen({ navigation }) {
   const fetchProjects = async () => {
     try {
       const result = await getProjectsByUserId();
-      
+
       // Ensure each project has a tags field (empty array if not present)
       const projectsWithTags = (result || []).map(project => ({
         ...project,
         tags: project.tags || [] // Default to empty array if tags is missing
       }));
-      
+
       setProjects(projectsWithTags);
     } catch (err) {
       console.error('❌ Error fetching projects:', err.message);
@@ -97,17 +97,17 @@ export default function ProjectScreen({ navigation }) {
       const userData = await AsyncStorage.getItem('user');
       let user = null;
       let userIdFromStorage = null;
-      
+
       if (userData) {
         user = JSON.parse(userData);
         userIdFromStorage = user.id || user.userId || user._id;
       }
-      
+
       // Also decode JWT token to get user ID
       const token = await AsyncStorage.getItem('token');
       let userIdFromToken = null;
       let decodedToken = null;
-      
+
       if (token) {
         try {
           decodedToken = jwtDecode(token);
@@ -116,12 +116,12 @@ export default function ProjectScreen({ navigation }) {
           console.error('❌ Error decoding token:', tokenError);
         }
       }
-      
-      
+
+
       // Use token ID if available, otherwise fall back to storage ID
       const finalUserId = userIdFromToken || userIdFromStorage;
       setCurrentUserId(finalUserId);
-      
+
     } catch (error) {
       console.error('❌ Error getting current user:', error);
     }
@@ -138,7 +138,7 @@ export default function ProjectScreen({ navigation }) {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    
+
     // Store current tags before refresh to preserve them
     const currentTags = {};
     projects.forEach(project => {
@@ -146,19 +146,19 @@ export default function ProjectScreen({ navigation }) {
         currentTags[project.id] = project.tags;
       }
     });
-    
+
     await fetchProjects();
-    
+
     // Restore tags after refresh since API doesn't return them
     if (Object.keys(currentTags).length > 0) {
-      setProjects(prevProjects => 
+      setProjects(prevProjects =>
         prevProjects.map(project => ({
           ...project,
           tags: currentTags[project.id] || project.tags || []
         }))
       );
     }
-    
+
     setRefreshing(false);
   };
 
@@ -168,41 +168,28 @@ export default function ProjectScreen({ navigation }) {
       projectUserId: project.userId,
       projectCreatedBy: project.createdBy,
       projectCreatorId: project.creatorId,
-      projectCreator: project.creator
+      projectCreator: project.creator,
+      projectCoAdmins: project.coAdmins,
     });
-    
-    // Check if current user is the creator of the project
-    // Based on API response, the creator is identified by userId field
-    // Handle both string and number comparisons
-    const isCreator = currentUserId && (
-      String(project.userId) === String(currentUserId) || 
-      String(project.createdBy) === String(currentUserId) || 
-      String(project.creatorId) === String(currentUserId) ||
-      String(project.creator) === String(currentUserId)
-    );
-    
-    console.log('🔍 Is Creator:', isCreator);
-    
-    if (!isCreator) {
-      Alert.alert(
-        "Permission Denied", 
-        "Only the project creator can manage tags.",
-        [{ text: "OK" }]
-      );
-      return;
-    }
-    
+
+    // Remove creator check so anyone can manage tags
+    // Remove this block:
+    // const isCreator = ...
+    // if (!isCreator) { Alert ... return; }
+
+    // Directly set project and show modal
     setSelectedProjectForTags(project);
     setShowTagsModal(true);
   };
 
+
   const handleSaveTags = async (projectId, newTags) => {
     try {
       console.log('🏷️ Saving project tags:', { projectId, newTags });
-      
+
       const updatedProject = await updateProjectTags(projectId, newTags);
       console.log('🔄 API returned updated project:', updatedProject);
-      
+
       // Update the local projects state
       setProjects(prevProjects => {
         const newProjects = prevProjects.map(project => {
@@ -220,7 +207,7 @@ export default function ProjectScreen({ navigation }) {
         console.log('🔄 Updated projects state:', newProjects.map(p => ({ id: p.id, name: p.projectName, tags: p.tags })));
         return newProjects;
       });
-      
+
       console.log('✅ Project tags saved successfully');
       return Promise.resolve();
     } catch (error) {
@@ -265,28 +252,28 @@ export default function ProjectScreen({ navigation }) {
   let filtered = projects.filter(p => {
     // Search in project name
     const nameMatch = p?.projectName?.toLowerCase().includes(search.toLowerCase());
-    
+
     // Search in project description
     const descMatch = p?.description?.toLowerCase().includes(search.toLowerCase());
-    
+
     // Search in tags
-    const tagsMatch = p?.tags && Array.isArray(p.tags) && 
+    const tagsMatch = p?.tags && Array.isArray(p.tags) &&
       p.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
-    
+
     // Search in location  
     const locationMatch = p?.location?.toLowerCase().includes(search.toLowerCase());
-    
+
     // Search in project category
     const categoryMatch = p?.projectCategory?.toLowerCase().includes(search.toLowerCase());
-    
+
     // Return true if any search criteria matches
     return nameMatch || descMatch || tagsMatch || locationMatch || categoryMatch;
   });
 
   // Apply tags filter
   if (filters.tags.length > 0) {
-    filtered = filtered.filter(project => 
-      project.tags && Array.isArray(project.tags) && 
+    filtered = filtered.filter(project =>
+      project.tags && Array.isArray(project.tags) &&
       filters.tags.some(filterTag => project.tags.includes(filterTag))
     );
   }
@@ -324,10 +311,10 @@ export default function ProjectScreen({ navigation }) {
       </TouchableOpacity>
       <ProjectBanner onAdd={() => setShowProjectPopup(true)} theme={theme} />
       <ProjectSearchBar value={search} onChange={setSearch} theme={theme} />
-      
+
       {/* Project Invites Section */}
-      <ProjectInvitesSection 
-        theme={theme} 
+      <ProjectInvitesSection
+        theme={theme}
         onInviteResponse={(action) => {
           // Refresh projects list when invite is accepted
           if (action === 'accept') {
@@ -411,7 +398,7 @@ export default function ProjectScreen({ navigation }) {
               const diffTime = now - end;
               delayedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
             }
-          
+
             return (
               <View style={isTablet ? styles.cardContainer : null}>
                 <ProjectCard
@@ -455,7 +442,7 @@ export default function ProjectScreen({ navigation }) {
         onSubmit={handleProjectSubmit}
         theme={theme}
       />
-      
+
       {/* Project Tags Management Modal */}
       <ProjectTagsManagementModal
         visible={showTagsModal}

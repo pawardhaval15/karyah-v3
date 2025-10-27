@@ -1,7 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import CustomCircularProgress from 'components/task details/CustomCircularProgress';
-import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, Text, TouchableOpacity, View, } from 'react-native';
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
@@ -21,7 +21,7 @@ export default function ProjectCard({ project = {}, theme, onTagsManagement, cur
 
   // Check if current user is the creator of the project
   const isCreator = currentUserId && (
-    project.createdBy === currentUserId || 
+    project.createdBy === currentUserId ||
     project.creatorId === currentUserId ||
     project.userId === currentUserId ||
     project.creator === currentUserId
@@ -127,24 +127,19 @@ export default function ProjectCard({ project = {}, theme, onTagsManagement, cur
           </View>
         )}
       </View>
-
       {/* Container for End Date above progress */}
       <View style={styles.endDateProgressContainer}>
         <View style={styles.projectRow}>
           <Text style={[styles.projectInfo, { color: statusColor }]}>{remainingText}</Text>
         </View>
-        
         {/* Tags Management Button and Progress */}
         <View style={styles.rightActions}>
-          {onTagsManagement && isCreator && (
+          {onTagsManagement && (
             <TouchableOpacity
-              style={[
-                styles.tagsButton,
-                {
-                  backgroundColor: theme.primary + '10',
-                  borderColor: theme.primary + '20'
-                }
-              ]}
+              style={[styles.tagsButton, {
+                backgroundColor: theme.primary + '10',
+                borderColor: theme.primary + '20'
+              }]}
               onPress={() => onTagsManagement(project)}>
               <MaterialIcons name="local-offer" size={16} color={theme.primary} />
             </TouchableOpacity>

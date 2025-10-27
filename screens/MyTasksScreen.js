@@ -16,6 +16,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
 import TagsManagementModal from '../components/popups/TagsManagementModal';
@@ -241,10 +242,10 @@ export default function MyTasksScreen({ navigation }) {
       filters.projects.length === 0 ||
       filters.projects.includes(
         task.projectName ||
-          (task.project && task.project.projectName) ||
-          (task.project && task.project.name) ||
-          task.projectTitle ||
-          (typeof task.project === 'string' ? task.project : null)
+        (task.project && task.project.projectName) ||
+        (task.project && task.project.name) ||
+        task.projectTitle ||
+        (typeof task.project === 'string' ? task.project : null)
       );
 
     // Assigned to filter
@@ -520,7 +521,7 @@ export default function MyTasksScreen({ navigation }) {
       activeTab === 'mytasks'
         ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
         : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
-          'Unassigned';
+        'Unassigned';
 
     return (
       <>
@@ -598,11 +599,10 @@ export default function MyTasksScreen({ navigation }) {
                     {taskName}
                   </Text>
                 </View>
-                <View style={styles.compactProgressContainer}>
-                  <Text style={[styles.compactProgressText, { color: theme.secondaryText }]}>
-                    {item.progress || 0}%
-                  </Text>
+                <View style={styles.progressContainer}>
+                  <CustomCircularProgress percentage={item.progress || 0} />
                 </View>
+
               </View>
 
               {/* Project and Location Info */}
@@ -1440,6 +1440,10 @@ export default function MyTasksScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  progressContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: { flex: 1 },
   backBtn: {
     marginTop: Platform.OS === 'ios' ? 70 : 25,
