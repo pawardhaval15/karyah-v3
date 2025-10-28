@@ -8,19 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+    ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -61,14 +49,14 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
         }
     };
     const handleGoBack = () => {
-        if (navigation.canGoBack()) {
-            navigation.goBack();
-        } else if (route.params?.parentTaskId) {
+        // Instead of goBack(), always navigate to TaskDetails with refreshedAt param to force refresh
+        if (route.params?.parentTaskId) {
             navigation.navigate('TaskDetails', {
                 taskId: route.params.parentTaskId,
-                refreshedAt: Date.now(),
+                refreshedAt: Date.now(), // unique param forces effect refresh
             });
         } else {
+            // Fallback: navigate to MyTasksScreen
             navigation.navigate('MyTasksScreen');
         }
     };
@@ -79,7 +67,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
             refreshedAt: Date.now(),
         });
     };
-
 
     const theme = useTheme();
     const [task, setTask] = useState(null);
@@ -1482,8 +1469,8 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                 paddingVertical: 10,
                                 paddingHorizontal: 16,
                                 flexDirection: 'row',
-                                alignItems: 'center',
                                 borderWidth: 1,
+                                alignItems: 'center',
                                 borderColor: theme.border,
                             },
                         ]}
@@ -2330,14 +2317,14 @@ const styles = StyleSheet.create({
         borderRadius: 18,
         marginLeft: 10,
     },
-    subTaskHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        marginHorizontal: 20,
-        marginTop: 9,
-        marginBottom: 18,
-    },
+    // subTaskHeader: {
+    //     flexDirection: 'row',
+    //     alignItems: 'center',
+    //     justifyContent: 'space-between',
+    //     marginHorizontal: 20,
+    //     marginTop: 9,
+    //     marginBottom: 18,
+    // },
     subTaskTitle: {
         fontWeight: '500',
         fontSize: 16,

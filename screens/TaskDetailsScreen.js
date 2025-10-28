@@ -8,19 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  Modal,
-  Platform,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  TouchableWithoutFeedback,
-  View, RefreshControl,
+  ActivityIndicator, Alert, Platform, ScrollView, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, RefreshControl,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -36,13 +24,7 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import {
-  deleteTask,
-  getTaskDetailsById,
-  getTasksByProjectId,
-  updateTask,
-  updateTaskDetails,
-  updateTaskFlags,
-  updateTaskProgress,
+  deleteTask, getTaskDetailsById, getTasksByProjectId, updateTask, updateTaskDetails, updateTaskFlags, updateTaskProgress,
 } from '../utils/task';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
@@ -109,7 +91,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
       isInitialProgressSet.current = true;
     }
   }, [task]);
-
   // Reset flag when taskId changes (new screen)
   useEffect(() => {
     isInitialProgressSet.current = false;
@@ -292,6 +273,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
       fetchTaskData();
     }, [taskId]),
   );
+
   useEffect(() => {
     const fetchTask = async () => {
       try {
@@ -340,7 +322,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
         setProjectTasks([]);
       }
     };
-
     fetchData();
   }, [addSubTask.projectId]);
 
@@ -353,7 +334,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
         console.error('Error fetching users:', err.message);
       }
     };
-
     fetchConnections();
   }, []);
   const handleTaskChange = (field, value) => {
@@ -371,7 +351,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
       isIssue: false,
     });
     setShowAddSubTaskPopup(false);
-
     // Refresh task data to show new subtask immediately
     try {
       const refreshedTask = await getTaskDetailsById(taskId);
@@ -444,7 +423,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
     userName && creatorName && userName.trim().toLowerCase() === creatorName.trim().toLowerCase();
   // console.log('[TaskDetailsScreen] Matching userName:', userName, 'with creatorName:', creatorName, '| isCreator:', isCreator);
   //   console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
-
   // Filter subtasks based on search
   const filteredSubtasks = (task?.subTasks || []).filter((sub) => {
     if (!subtaskSearch.trim()) return true;
@@ -1016,7 +994,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
             )}
           </View>
         )}
-
         <FieldBox
           label={t("added_attachments")}
           value=""
@@ -1208,7 +1185,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
           multiline={true}
           theme={theme}
         />
-
         {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
         {task.isIssue &&
           Array.isArray(task.resolvedImages) &&
@@ -1230,7 +1206,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   {t('resolved_attachments') || 'Resolved Attachments'}
                 </Text>
               </View>
-
               <View style={{
                 borderRadius: 12,
                 borderWidth: 1,
@@ -1363,7 +1338,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   const statusColor = progress < 70 ? '#f59e42' : theme.success || '#2e7d32';
                   const avatarText = name ? name[0].toUpperCase() : '?';
                   const taskId = typeof t === 'object' ? t.id || t.taskId || t._id : null;
-
                   return (
                     <TouchableOpacity
                       key={idx}
@@ -1517,7 +1491,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
               {subtaskSearch && showSubtasks && ` • ${t('found_subtasks', { count: filteredSubtasks.length })}`}
             </Text>
-
           </TouchableOpacity>
           <TouchableOpacity
             style={{
@@ -1551,7 +1524,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <Text style={[styles.subtasksTitle, { color: theme.text, marginBottom: 16 }]}>
               {t("subtasks")} ({task.subTasks?.length || 0})
             </Text>
-
             {/* Search Bar */}
             {(task.subTasks?.length || 0) > 0 && (
               <View
@@ -1605,7 +1577,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                       parentTaskId: task.id || task.taskId,
                       refreshedAt: Date.now(),
                     });
-
                   }}
                   activeOpacity={0.85}>
                   <View style={[styles.subtaskIcon, { backgroundColor: theme.avatarBg }]}>
@@ -1637,7 +1608,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
             )}
           </View>
         )}
-
       </ScrollView>
 
       <Modal
@@ -1990,7 +1960,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
-
       {/* Task Name Modal */}
       <Modal
         visible={showTaskNameModal}
@@ -2339,14 +2308,14 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     marginLeft: 10,
   },
-  subTaskHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: 20,
-    marginTop: 9,
-    marginBottom: 18,
-  },
+  // subTaskHeader: {
+  //   flexDirection: 'row',
+  //   alignItems: 'center',
+  //   justifyContent: 'space-between',
+  //   marginHorizontal: 20,
+  //   marginTop: 9,
+  //   marginBottom: 18,
+  // },
   subTaskTitle: {
     fontWeight: '500',
     fontSize: 16,
