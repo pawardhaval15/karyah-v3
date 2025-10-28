@@ -335,7 +335,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 }}
                 onBlur={() => {
                   // Delay hiding suggestions to allow selection
-                  setTimeout(() => setShowCategorySuggestions(false), 200);
+                  // setTimeout(() => setShowCategorySuggestions(false), 200);
                 }}
               />
             </View>
