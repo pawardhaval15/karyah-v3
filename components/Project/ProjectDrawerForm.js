@@ -26,7 +26,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const { t } = useTranslation();
-  
+
   // Category suggestions state
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState([]);
@@ -47,7 +47,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
 
     const suggestions = [];
     const lowercaseSearch = searchText.toLowerCase();
-
     categoriesData.categories.forEach((category) => {
       // Check if main category name matches
       if (category.name.toLowerCase().includes(lowercaseSearch)) {
@@ -76,14 +75,13 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
         });
       }
     });
-
     return suggestions.slice(0, 15); // Increase limit to show more suggestions
   };
 
   // Handle category input change
   const handleCategoryChange = (text) => {
     onChange('projectCategory', text);
-    
+
     const suggestions = filterCategories(text);
     setCategorySuggestions(suggestions);
     setShowCategorySuggestions(true); // Always show suggestions when typing
@@ -92,7 +90,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   // Handle category suggestion selection
   const handleCategorySuggestionSelect = (suggestion) => {
     onChange('projectCategory', suggestion.text);
-    
+
     // If a main category is selected, show its subcategories
     if (suggestion.type === 'category') {
       const category = categoriesData.categories.find(cat => cat.name === suggestion.text);
@@ -107,7 +105,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
         return;
       }
     }
-    
+
     setShowCategorySuggestions(false);
     setCategorySuggestions([]);
   };
@@ -166,14 +164,12 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
         setShowingAllUsers(false);
         return;
       }
-
       try {
         // First, search in connections
         const filtered = connections.filter((user) =>
           user.name.toLowerCase().includes(searchText.toLowerCase())
         );
         setFilteredConnections(filtered);
-
         // Then search all users if we want to show more options
         if (searchText.length >= 2) {
           try {
@@ -314,7 +310,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               theme={theme}
             />
           </View>
-          
           {/* Custom Category Input with Suggestions */}
           <View style={[styles.categoryInputContainer, { zIndex: 1000 }]}>
             <View style={[
@@ -344,18 +339,17 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 }}
               />
             </View>
-            
             {/* Category Suggestions Dropdown */}
             {showCategorySuggestions && categorySuggestions.length > 0 && (
               <View style={[
                 styles.suggestionsContainer,
-                { 
-                  backgroundColor: theme.card, 
+                {
+                  backgroundColor: theme.card,
                   borderColor: theme.border,
                   shadowColor: '#000'
                 }
               ]}>
-                <ScrollView 
+                <ScrollView
                   style={{ maxHeight: 250 }}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
@@ -366,7 +360,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                       key={`${item.text}-${index}`}
                       style={[
                         styles.suggestionItem,
-                        { 
+                        {
                           borderBottomColor: theme.border,
                           borderBottomWidth: index === categorySuggestions.length - 1 ? 0 : 0.5
                         }
@@ -376,8 +370,8 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                     >
                       <View style={{ flex: 1 }}>
                         <Text style={[
-                          styles.suggestionText, 
-                          { 
+                          styles.suggestionText,
+                          {
                             color: theme.text,
                             fontWeight: item.type === 'category' ? '600' : '500',
                             marginLeft: item.type === 'subcategory' ? 20 : 0
@@ -387,8 +381,8 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                         </Text>
                         {item.type === 'subcategory' && (
                           <Text style={[
-                            styles.suggestionSubtext, 
-                            { 
+                            styles.suggestionSubtext,
+                            {
                               color: theme.secondaryText,
                               marginLeft: 20
                             }
@@ -425,7 +419,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               </View>
             )}
           </View>
-          
           <FieldBox
             value={values?.location || ''}
             placeholder={t('location')}
@@ -517,7 +510,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                         theme={theme}
                       />
                     </View>
-                    
                     {/* Custom Category Input with Suggestions */}
                     <View style={[styles.categoryInputContainer, { zIndex: 1000, marginHorizontal: 24, marginBottom: 14 }]}>
                       <View style={[
@@ -547,18 +539,17 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                           }}
                         />
                       </View>
-                      
                       {/* Category Suggestions Dropdown */}
                       {showCategorySuggestions && categorySuggestions.length > 0 && (
                         <View style={[
                           styles.suggestionsContainer,
-                          { 
-                            backgroundColor: theme.card, 
+                          {
+                            backgroundColor: theme.card,
                             borderColor: theme.border,
                             shadowColor: '#000'
                           }
                         ]}>
-                          <ScrollView 
+                          <ScrollView
                             style={{ maxHeight: 250 }}
                             showsVerticalScrollIndicator={false}
                             keyboardShouldPersistTaps="handled"
@@ -569,7 +560,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                                 key={`${item.text}-${index}`}
                                 style={[
                                   styles.suggestionItem,
-                                  { 
+                                  {
                                     borderBottomColor: theme.border,
                                     borderBottomWidth: index === categorySuggestions.length - 1 ? 0 : 0.5
                                   }
@@ -579,8 +570,8 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               >
                                 <View style={{ flex: 1 }}>
                                   <Text style={[
-                                    styles.suggestionText, 
-                                    { 
+                                    styles.suggestionText,
+                                    {
                                       color: theme.text,
                                       fontWeight: item.type === 'category' ? '600' : '500',
                                       marginLeft: item.type === 'subcategory' ? 20 : 0
@@ -590,8 +581,8 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                                   </Text>
                                   {item.type === 'subcategory' && (
                                     <Text style={[
-                                      styles.suggestionSubtext, 
-                                      { 
+                                      styles.suggestionSubtext,
+                                      {
                                         color: theme.secondaryText,
                                         marginLeft: 20
                                       }
@@ -628,7 +619,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                         </View>
                       )}
                     </View>
-                    
                     <FieldBox
                       value={values?.location || ''}
                       placeholder={t('location')}
@@ -703,12 +693,12 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                           {/* Show Connections First */}
                           {filteredConnections.length > 0 && (
                             <>
-                              <Text style={{ 
-                                color: theme.text, 
-                                fontWeight: '600', 
-                                fontSize: 14, 
+                              <Text style={{
+                                color: theme.text,
+                                fontWeight: '600',
+                                fontSize: 14,
                                 marginBottom: 8,
-                                marginTop: 8 
+                                marginTop: 8
                               }}>
                                 Your Connections
                               </Text>
@@ -766,12 +756,12 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                           {/* Show All Users */}
                           {showingAllUsers && allUsers.length > 0 && (
                             <>
-                              <Text style={{ 
-                                color: theme.text, 
-                                fontWeight: '600', 
-                                fontSize: 14, 
+                              <Text style={{
+                                color: theme.text,
+                                fontWeight: '600',
+                                fontSize: 14,
                                 marginBottom: 8,
-                                marginTop: 12 
+                                marginTop: 12
                               }}>
                                 All Users
                               </Text>
@@ -813,18 +803,18 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                                           {t('phone')}: {item.phone}
                                         </Text>
                                       )}
-                                      <Text style={{ 
-                                        fontSize: 10, 
-                                        color: item.connectionStatus === 'accepted' 
-                                          ? theme.primary 
-                                          : item.connectionStatus === 'pending' 
-                                            ? '#FFA500' 
-                                            : theme.secondaryText 
+                                      <Text style={{
+                                        fontSize: 10,
+                                        color: item.connectionStatus === 'accepted'
+                                          ? theme.primary
+                                          : item.connectionStatus === 'pending'
+                                            ? '#FFA500'
+                                            : theme.secondaryText
                                       }}>
-                                        {item.connectionStatus === 'accepted' 
-                                          ? 'Connected' 
-                                          : item.connectionStatus === 'pending' 
-                                            ? 'Request Pending' 
+                                        {item.connectionStatus === 'accepted'
+                                          ? 'Connected'
+                                          : item.connectionStatus === 'pending'
+                                            ? 'Request Pending'
                                             : 'Not Connected'}
                                       </Text>
                                     </View>
@@ -833,10 +823,10 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                                         <Feather name="check-circle" size={20} color={theme.primary} />
                                       )}
                                       {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
-                                        <Text style={{ 
-                                          fontSize: 10, 
+                                        <Text style={{
+                                          fontSize: 10,
                                           color: theme.secondaryText,
-                                          textAlign: 'center' 
+                                          textAlign: 'center'
                                         }}>
                                           Tap to send{'\n'}connection request
                                         </Text>
@@ -847,7 +837,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               />
                             </>
                           )}
-                          
+
                           {/* Show message when no results found */}
                           {searchText.trim() !== '' && filteredConnections.length === 0 && allUsers.length === 0 && (
                             <Text
@@ -920,6 +910,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
         </Modal>
       )}
       {/* Co-Admin Picker Modal (shared between embedded and full modal) */}
+      {/* Co-Admin Picker Modal (Unified List) */}
       <Modal
         visible={showCoAdminPicker}
         animationType="slide"
@@ -973,156 +964,100 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 marginBottom: 10,
               }}
             />
-            {/* Show Connections First */}
-            {filteredConnections.length > 0 && (
-              <>
-                <Text style={{ 
-                  color: theme.text, 
-                  fontWeight: '600', 
-                  fontSize: 14, 
-                  marginBottom: 8,
-                  marginTop: 8 
-                }}>
-                  Your Connections
-                </Text>
-                <FlatList
-                  keyboardShouldPersistTaps="always"
-                  data={filteredConnections.slice(0, 5)}
-                  keyExtractor={(item) => `connection-${item.userId}`}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      onPress={() => handleUserSelection({ ...item, connectionStatus: 'accepted' })}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: 10,
-                        borderBottomWidth: 0.5,
-                        borderColor: theme.border,
-                      }}>
-                      <Image
-                        source={{
-                          uri:
-                            item.profilePhoto ||
-                            'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                        }}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          marginRight: 10,
-                          borderWidth: 1,
-                          borderColor: theme.border,
-                        }}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: theme.text, fontWeight: '500' }}>
-                          {item.name}
-                        </Text>
-                        <Text style={{ fontSize: 10, color: theme.primary }}>
-                          Connected
-                        </Text>
-                      </View>
-                      {selectedCoAdmins.includes(item.userId) && (
-                        <Feather name="check-circle" size={20} color={theme.primary} />
-                      )}
-                    </TouchableOpacity>
-                  )}
-                />
-              </>
-            )}
-
-            {/* Show All Users */}
-            {showingAllUsers && allUsers.length > 0 && (
-              <>
-                <Text style={{ 
-                  color: theme.text, 
-                  fontWeight: '600', 
-                  fontSize: 14, 
-                  marginBottom: 8,
-                  marginTop: 12 
-                }}>
-                  All Users
-                </Text>
-                <FlatList
-                  keyboardShouldPersistTaps="always"
-                  data={allUsers.slice(0, 8)}
-                  keyExtractor={(item) => `user-${item.userId}`}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      onPress={() => handleUserSelection(item)}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: 10,
-                        borderBottomWidth: 0.5,
-                        borderColor: theme.border,
-                      }}>
-                      <Image
-                        source={{
-                          uri:
-                            item.profilePhoto ||
-                            'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                        }}
-                        style={{
-                          width: 36,
-                          height: 36,
-                          borderRadius: 18,
-                          marginRight: 10,
-                          borderWidth: 1,
-                          borderColor: theme.border,
-                        }}
-                      />
-                      <View style={{ flex: 1 }}>
-                        <Text style={{ color: theme.text, fontWeight: '500' }}>
-                          {item.name}
-                        </Text>
-
-                        <Text style={{ 
-                          fontSize: 10, 
-                          color: item.connectionStatus === 'accepted' 
-                            ? theme.primary 
-                            : item.connectionStatus === 'pending' 
-                              ? '#FFA500' 
-                              : theme.secondaryText 
-                        }}>
-                          {item.connectionStatus === 'accepted' 
-                            ? 'Connected' 
-                            : item.connectionStatus === 'pending' 
-                              ? 'Request Pending' 
-                              : 'Not Connected'}
-                        </Text>
-                      </View>
-                      <View style={{ alignItems: 'center' }}>
-                        {selectedCoAdmins.includes(item.userId) && (
-                          <Feather name="check-circle" size={20} color={theme.primary} />
-                        )}
-                        {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
-                          <Text style={{ 
-                            fontSize: 10, 
-                            color: theme.secondaryText,
-                            textAlign: 'center' 
+            {/* Unified List - Merge filteredConnections and allUsers */}
+            {(() => {
+              // Merge logic: connections (accepted) come first. No duplicate userIds.
+              const userMap = new Map();
+              filteredConnections.forEach(conn => userMap.set(conn.userId, { ...conn, connectionStatus: 'accepted' }));
+              allUsers.forEach(user => {
+                if (!userMap.has(user.userId)) userMap.set(user.userId, user);
+              });
+              const mergedUsers = Array.from(userMap.values());
+              return (
+                <>
+                  {mergedUsers.length > 0 && (
+                    <FlatList
+                      keyboardShouldPersistTaps="always"
+                      data={mergedUsers}
+                      keyExtractor={(item) => `user-${item.userId}`}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          onPress={() => handleUserSelection(item)}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingVertical: 10,
+                            borderBottomWidth: 0.5,
+                            borderColor: theme.border,
                           }}>
-                            Tap to send{'\n'}connection request
-                          </Text>
-                        )}
-                      </View>
-                    </TouchableOpacity>
+                          <Image
+                            source={{
+                              uri: item.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                            }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 18,
+                              marginRight: 10,
+                              borderWidth: 1,
+                              borderColor: theme.border,
+                            }}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: theme.text, fontWeight: '500' }}>
+                              {item.name}
+                            </Text>
+                            {item.phone && (
+                              <Text style={{ fontSize: 12, color: theme.secondaryText }}>
+                                {t('phone')}: {item.phone}
+                              </Text>
+                            )}
+                            <Text style={{
+                              fontSize: 10,
+                              color: item.connectionStatus === 'accepted'
+                                ? theme.primary
+                                : item.connectionStatus === 'pending'
+                                  ? '#FFA500'
+                                  : theme.secondaryText
+                            }}>
+                              {item.connectionStatus === 'accepted'
+                                ? 'Connected'
+                                : item.connectionStatus === 'pending'
+                                  ? 'Request Pending'
+                                  : 'Not Connected'}
+                            </Text>
+                          </View>
+                          <View style={{ alignItems: 'center' }}>
+                            {selectedCoAdmins.includes(item.userId) && (
+                              <Feather name="check-circle" size={20} color={theme.primary} />
+                            )}
+                            {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
+                              <Text style={{
+                                fontSize: 10,
+                                color: theme.secondaryText,
+                                textAlign: 'center'
+                              }}>
+                                Tap to send{'\n'}connection request
+                              </Text>
+                            )}
+                          </View>
+                        </TouchableOpacity>
+                      )}
+                    />
                   )}
-                />
-              </>
-            )}
-            
-            {/* Show message when no results found */}
-            {searchText.trim() !== '' && filteredConnections.length === 0 && allUsers.length === 0 && (
-              <Text
-                style={{
-                  color: theme.secondaryText,
-                  textAlign: 'center',
-                  marginTop: 20,
-                }}>
-                No users found. Try a different search term.
-              </Text>
-            )}
+                  {searchText.trim() !== '' && mergedUsers.length === 0 && (
+                    <Text
+                      style={{
+                        color: theme.secondaryText,
+                        textAlign: 'center',
+                        marginTop: 20,
+                      }}>
+                      No users found. Try a different search term.
+                    </Text>
+                  )}
+                </>
+              );
+            })()}
             <TouchableOpacity
               style={{
                 marginTop: 18,
@@ -1140,10 +1075,10 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
           </View>
         </View>
       </Modal>
+
     </>
   );
 }
-
 const styles = StyleSheet.create({
   bottomModalContainer: {
     flex: 1,

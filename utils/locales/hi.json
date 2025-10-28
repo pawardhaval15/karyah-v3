@@ -311,5 +311,9 @@
   "no_communities_found": "कोई समुदाय नहीं मिला",
   "members": "सदस्य",
   "assign_project": "परियोजनाएँ असाइन करें",
-  "announcements": "घोषणाएं"
+  "announcements": "घोषणाएं",
+  "reassign": "पुनः असाइन करें",
+  "show_details": "विवरण दिखाएं",
+  "hide_details": "विवरण छिपाएं"
+
 }

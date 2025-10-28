@@ -671,7 +671,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 style={{ marginRight: 6 }}
               />
               <Text style={{ color: theme.primary, fontWeight: '400', fontSize: 13 }}>
-                {showIssueDetails ? 'Hide Details' : 'Show Details'}
+                {showIssueDetails ? t('hide_details') : t('show_details')}
               </Text>
             </TouchableOpacity>
 
@@ -697,7 +697,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               }}
             >
               <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 6 }} />
-              <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>Task Chat</Text>
+              <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('chat')}</Text>
             </TouchableOpacity>
           </View>
         </View>

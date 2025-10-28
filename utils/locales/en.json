@@ -329,5 +329,8 @@
   "no_communities_found": "No Community Found",
   "members": "Members",
   "assign_project": "Assigne Projects",
-  "announcements": "Announcements"
+  "announcements": "Announcements",
+  "reassign": "Re-assign",
+  "show_details": "Show Details",
+  "hide_details": "Hide Details"
 }
