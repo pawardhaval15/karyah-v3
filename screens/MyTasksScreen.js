@@ -535,7 +535,6 @@ export default function MyTasksScreen({ navigation }) {
               {isSelected && <MaterialIcons name="check" size={12} color="#fff" />}
             </View>
           )}
-
           {/* Compact Row Layout */}
           <View style={styles.compactCardRow}>
             {/* Avatar */}
@@ -551,7 +550,6 @@ export default function MyTasksScreen({ navigation }) {
                 {(taskName.charAt(0) || '?').toUpperCase()}
               </Text>
             </View>
-
             {/* Main Content */}
             <View style={styles.compactContent}>
               {/* Title and Progress Row */}
@@ -581,69 +579,45 @@ export default function MyTasksScreen({ navigation }) {
                   <CustomCircularProgress percentage={item.progress || 0} />
                 </View>
               </View>
-
-              {/* Project and Location Info */}
-              <View style={styles.compactInfoRow}>
-                <MaterialIcons
-                  name="folder"
-                  size={13}
-                  color={theme.primary}
-                  style={{ marginRight: 4 }}
-                />
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={[styles.compactProject, { color: theme.secondaryText }]}>
-                  {item.projectName ||
-                    (item.project && item.project.projectName) ||
-                    (item.project && item.project.name) ||
-                    item.projectTitle ||
-                    item.project ||
-                    'No Project'}
-                </Text>
-                {((item.project && item.project.location) || '').length > 0 && (
-                  <>
-                    <Text style={[styles.compactSeparator, { color: theme.secondaryText }]}>
-                      {' '}
-                      •{' '}
+              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+                {/* Project and Location Group */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flexGrow: 1, marginRight: 12 }}>
+                  <MaterialIcons name="folder" size={13} color={theme.primary} style={{ marginRight: 4 }} />
+                  <Text
+                    style={{ color: theme.secondaryText, fontSize: 12 }}
+                  >
+                    {item.projectName ||
+                      item.project?.projectName ||
+                      item.project?.name ||
+                      item.projectTitle ||
+                      item.project ||
+                      'No Project'}
+                  </Text>
+                  {((item.project && item.project.location) || '').length > 0 && (
+                    <>
+                      <Text style={{ color: theme.secondaryText, fontSize: 12, marginHorizontal: 2 }}>{'•'}</Text>
+                      <MaterialIcons name="location-on" size={13} color={theme.secondaryText} style={{ marginRight: 2 }} />
+                      <Text
+                        style={{ color: theme.secondaryText, fontSize: 12 }}
+                      >
+                        {item.project.location}
+                      </Text>
+                    </>
+                  )}
+                </View>
+                {/* Assigned Info Group (unchanged): */}
+                {/* <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0, maxWidth: '40%' }}>
+                    <MaterialIcons name={activeTab === 'mytasks' ? 'person' : 'group'} size={13} color={theme.primary} style={{ marginLeft: 8, marginRight: 3 }} />
+                    <Text style={{ color: theme.secondaryText, fontSize: 12, flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
+                      {assignedInfoLabel}
                     </Text>
-                    <MaterialIcons
-                      name="location-on"
-                      size={13}
-                      color={theme.secondaryText}
-                      style={{ marginRight: 3 }}
-                    />
-                    <Text
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                      style={[styles.compactLocation, { color: theme.secondaryText }]}>
-                      {item.project.location}
+                    <Text style={{ color: theme.text, fontSize: 12, marginLeft: 2, flexShrink: 1, maxWidth: 60 }} numberOfLines={1} ellipsizeMode="tail">
+                      {assignedInfoValue}
                     </Text>
-                  </>
-                )}
+                  </View> */}
               </View>
-
-              {/* Assignment Info */}
-              <View style={styles.compactAssignmentRow}>
-                <MaterialIcons
-                  name={activeTab === 'mytasks' ? 'person' : 'group'}
-                  size={13}
-                  color={theme.primary}
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={[styles.compactAssignLabel, { color: theme.secondaryText }]}>
-                  {assignedInfoLabel}
-                </Text>
-                <Text
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                  style={[styles.compactAssignValue, { color: theme.text }]}>
-                  {assignedInfoValue}
-                </Text>
-              </View>
-
               {/* Compact Tags */}
-              {item.tags && Array.isArray(item.tags) && item.tags.length > 0 && (
+              {/* {item.tags && Array.isArray(item.tags) && item.tags.length > 0 && (
                 <View style={styles.compactTagsContainer}>
                   <ScrollView
                     horizontal
@@ -678,7 +652,7 @@ export default function MyTasksScreen({ navigation }) {
                     )}
                   </ScrollView>
                 </View>
-              )}
+              )} */}
             </View>
             <TouchableOpacity
               style={[
@@ -1644,27 +1618,30 @@ const styles = StyleSheet.create({
   // Compact Task Card styles
   taskCard: {
     borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 8,
-    padding: 14,
+    marginHorizontal: 12,
+    marginBottom: 4,
+    paddingTop: 6,
+    paddingBottom: 8,
+    paddingHorizontal: 8,
     position: 'relative',
   },
   compactCardRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
   },
   compactAvatar: {
     width: 42,
     height: 42,
-    borderRadius: 11,
+    borderRadius: 8,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    marginRight: 8,
+    // marginTop: 0,    
   },
   compactAvatarText: {
     fontWeight: '700',
-    fontSize: 18,
+    fontSize: 14,
   },
   compactContent: {
     flex: 1,
@@ -1674,14 +1651,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 0,
   },
   compactTitle: {
     fontWeight: '600',
-    fontSize: 16,
+    fontSize: 14,
     flex: 1,
-    marginRight: 8,
-    lineHeight: 20,
+    marginRight: 6,
+    lineHeight: 14,
+    marginTop: 0,
+    marginBottom: 0,
   },
   compactProgressContainer: {
     alignItems: 'center',
@@ -1692,23 +1671,24 @@ const styles = StyleSheet.create({
   },
   compactInfoRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    flexWrap: 'wrap',
+    alignItems: 'flex-start', 
+    marginTop: 4, 
+    flexWrap: 'wrap', 
   },
+
   compactProject: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '500',
-    maxWidth: 140,
+    maxWidth: 100,
   },
   compactSeparator: {
     fontSize: 13,
     fontWeight: '500',
   },
   compactLocation: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '400',
-    maxWidth: 90,
+    maxWidth: 70,
   },
   compactAssignmentRow: {
     flexDirection: 'row',
@@ -1716,23 +1696,23 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   compactAssignLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '500',
     marginRight: 4,
   },
   compactAssignValue: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '600',
     flex: 1,
   },
   compactActionButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
     borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
+    marginLeft: 4,
   },
   // Compact Tags styles
   compactTagsContainer: {
@@ -1742,17 +1722,17 @@ const styles = StyleSheet.create({
     flexGrow: 0,
   },
   compactTagChip: {
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     paddingVertical: 2,
-    borderRadius: 6,
+    borderRadius: 4,
     borderWidth: 0,
-    marginRight: 4,
+    marginRight: 2,
     minHeight: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   compactTagText: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -1771,12 +1751,12 @@ const styles = StyleSheet.create({
   },
   selectionCircle: {
     position: 'absolute',
-    top: 10,
-    left: 10,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
+    top: 6,
+    left: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,

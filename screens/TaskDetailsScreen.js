@@ -497,7 +497,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
           />
         }>
         {/* Top Navigation */}
-
         <View
           style={{
             flexDirection: 'row',
@@ -574,7 +573,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </TouchableOpacity>
           </View>
         </LinearGradient>
-
         {/* Task Action Buttons */}
         <View
           style={{
