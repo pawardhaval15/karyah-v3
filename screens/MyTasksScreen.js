@@ -36,7 +36,6 @@ export default function MyTasksScreen({ navigation }) {
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [worklists, setWorklists] = useState([]);
-
   const { t } = useTranslation();
   const [projectTasks, setProjectTasks] = useState([]);
   const [addTaskForm, setAddTaskForm] = useState({
@@ -60,7 +59,6 @@ export default function MyTasksScreen({ navigation }) {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showTagsModal, setShowTagsModal] = useState(false);
   const [selectedTaskForTags, setSelectedTaskForTags] = useState(null);
-
   // Filter states
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
@@ -80,7 +78,6 @@ export default function MyTasksScreen({ navigation }) {
     await loadTasks(); // This already fetches based on activeTab
     setRefreshing(false);
   };
-
   // Fetch tasks whenever tab changes
   useFocusEffect(
     React.useCallback(() => {
@@ -95,7 +92,6 @@ export default function MyTasksScreen({ navigation }) {
       setShowFilters(false);
     }, [activeTab])
   );
-
   // Load task counts for both tabs
   const loadTaskCounts = async () => {
     try {
@@ -112,7 +108,6 @@ export default function MyTasksScreen({ navigation }) {
       console.error('Error loading task counts:', error);
     }
   };
-
   // Load tasks from API
   const loadTasks = async () => {
     setLoading(true);
@@ -126,7 +121,7 @@ export default function MyTasksScreen({ navigation }) {
         data = await fetchTasksCreatedByMe();
         setTaskCounts((prev) => ({ ...prev, createdby: data.length }));
       }
-      // 👇 SORT HERE: Move completed (100%) tasks to the end
+      // SORT HERE: Move completed (100%) tasks to the end
       data.sort((a, b) => {
         const aProgress = a.progress || 0;
         const bProgress = b.progress || 0;
@@ -160,7 +155,6 @@ export default function MyTasksScreen({ navigation }) {
           const { getWorklistsByProjectId } = await import('../utils/worklist');
           const worklistData = await getWorklistsByProjectId(addTaskForm.projectId, token);
           setWorklists(worklistData || []);
-
           // Fetch tasks by projectId
           const tasks = await getTasksByProjectId(addTaskForm.projectId);
           setProjectTasks(tasks || []);
@@ -177,7 +171,6 @@ export default function MyTasksScreen({ navigation }) {
         setLoading(false);
       }
     };
-
     fetchData();
   }, [addTaskForm.projectId]);
 
@@ -186,10 +179,8 @@ export default function MyTasksScreen({ navigation }) {
     const nameMatch = (task.name || task.taskName || '')
       .toLowerCase()
       .includes(search.toLowerCase());
-
     // Search in task description
     const descMatch = (task.description || '').toLowerCase().includes(search.toLowerCase());
-
     // Search in project name
     const projectMatch = (
       task.projectName ||
@@ -201,24 +192,19 @@ export default function MyTasksScreen({ navigation }) {
     )
       .toLowerCase()
       .includes(search.toLowerCase());
-
     // Search in tags
     const tagsMatch =
       task.tags &&
       Array.isArray(task.tags) &&
       task.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()));
-
     // Search in location
     const locationMatch = ((task.project && task.project.location) || '')
       .toLowerCase()
       .includes(search.toLowerCase());
-
     // Combine all search matches
     const searchMatch = nameMatch || descMatch || projectMatch || tagsMatch || locationMatch;
-
     // Status filter
     const statusMatch = filters.status.length === 0 || filters.status.includes(task.status);
-
     // Progress filter
     let progressMatch = true;
     if (filters.progress.length > 0) {
@@ -236,7 +222,6 @@ export default function MyTasksScreen({ navigation }) {
         }
       });
     }
-
     // Project filter
     const projectFilterMatch =
       filters.projects.length === 0 ||
@@ -247,7 +232,6 @@ export default function MyTasksScreen({ navigation }) {
         task.projectTitle ||
         (typeof task.project === 'string' ? task.project : null)
       );
-
     // Assigned to filter
     let assignedMatch = true;
     if (filters.assignedTo.length > 0) {
@@ -267,11 +251,9 @@ export default function MyTasksScreen({ navigation }) {
         }
       }
     }
-
     const locationFilterMatch =
       filters.locations.length === 0 ||
       filters.locations.includes((task.project && task.project.location) || '');
-
     // Tags filter
     const tagsFilterMatch =
       filters.tags.length === 0 ||
@@ -297,7 +279,6 @@ export default function MyTasksScreen({ navigation }) {
       (user.name || '').toLowerCase().includes(userSearchQuery.toLowerCase()) ||
       (user.email || '').toLowerCase().includes(userSearchQuery.toLowerCase());
     const isNotSelected = !bulkAssignUsers.includes(userKey);
-
     return matchesSearch && isNotSelected;
   });
   const handleTaskChange = (field, value) => {
@@ -363,13 +344,10 @@ export default function MyTasksScreen({ navigation }) {
 
     try {
       setLoading(true);
-
       // Call the bulk assign API
       const result = await bulkAssignTasks(selectedTasks, bulkAssignUsers);
-
       // Refresh the tasks list
       await loadTasks();
-
       // Reset selection state
       setIsSelectionMode(false);
       setSelectedTasks([]);
@@ -393,29 +371,29 @@ export default function MyTasksScreen({ navigation }) {
 
   const handleSaveTags = async (taskId, newTags) => {
     try {
-      console.log('🏷️ Saving tags:', { taskId, newTags });
+      console.log(' Saving tags:', { taskId, newTags });
 
       // Get current task to see existing tags
       const currentTask = tasks.find((task) => task.id === taskId || task.taskId === taskId);
       const currentTags = currentTask?.tags || [];
 
-      console.log('🏷️ Current tags:', currentTags);
-      console.log('🏷️ New tags:', newTags);
+      console.log(' Current tags:', currentTags);
+      console.log(' New tags:', newTags);
 
       // Clean newTags to remove any empty strings or invalid tags
       const cleanedTags = newTags.filter(
         (tag) => tag && typeof tag === 'string' && tag.trim().length > 0
       );
-      console.log('🏷️ Cleaned tags:', cleanedTags);
+      console.log(' Cleaned tags:', cleanedTags);
 
       // If tags are the same, no need to update
       if (JSON.stringify(currentTags.sort()) === JSON.stringify(cleanedTags.sort())) {
-        console.log('🏷️ Tags unchanged, skipping update');
+        console.log(' Tags unchanged, skipping update');
         return Promise.resolve();
       }
 
       // Use updateTaskDetails for both adding and clearing tags (now that it sends JSON properly)
-      console.log('🏷️ Updating tags via updateTaskDetails...');
+      console.log(' Updating tags via updateTaskDetails...');
       const result = await updateTaskDetails(taskId, { tags: cleanedTags });
 
       // Update local state with the exact tags we set
@@ -425,10 +403,10 @@ export default function MyTasksScreen({ navigation }) {
         )
       );
 
-      console.log('✅ Tags saved successfully');
+      console.log('Tags saved successfully');
       return Promise.resolve();
     } catch (error) {
-      console.error('❌ Failed to save tags:', error);
+      console.error(' Failed to save tags:', error);
       throw error;
     }
   };
