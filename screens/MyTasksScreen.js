@@ -580,7 +580,6 @@ export default function MyTasksScreen({ navigation }) {
                 <View style={styles.progressContainer}>
                   <CustomCircularProgress percentage={item.progress || 0} />
                 </View>
-
               </View>
 
               {/* Project and Location Info */}
@@ -602,7 +601,6 @@ export default function MyTasksScreen({ navigation }) {
                     item.project ||
                     'No Project'}
                 </Text>
-
                 {((item.project && item.project.location) || '').length > 0 && (
                   <>
                     <Text style={[styles.compactSeparator, { color: theme.secondaryText }]}>
@@ -732,7 +730,6 @@ export default function MyTasksScreen({ navigation }) {
               : t('all_tasks_assigned_to_you_or_created_by_you_are_listed_here')}
           </Text>
         </View>
-
         {isSelectionMode ? (
           <View style={styles.selectionActions}>
             <TouchableOpacity
@@ -800,7 +797,6 @@ export default function MyTasksScreen({ navigation }) {
           )}
         </TouchableOpacity>
       </View>
-
       {/* Legend for Issue Indicator */}
       {/* <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
@@ -883,7 +879,6 @@ export default function MyTasksScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
-
       {/* Filters Panel */}
       {showFilters && (
         <View
@@ -901,7 +896,6 @@ export default function MyTasksScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-
           <ScrollView
             style={styles.filtersScrollView}
             showsVerticalScrollIndicator={false}
@@ -1401,7 +1395,6 @@ export default function MyTasksScreen({ navigation }) {
           </View>
         </View>
       )}
-
       {/* Tags Management Modal */}
       <TagsManagementModal
         visible={showTagsModal}
