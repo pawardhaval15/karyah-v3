@@ -463,7 +463,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     marginTop: 4,
     marginHorizontal: -20,
-    paddingHorizontal: 20,
+    // paddingHorizontal: 20,
   },
   themeLabel: {
     fontSize: 14,
