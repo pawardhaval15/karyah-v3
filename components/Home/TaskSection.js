@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
   },
   tabButton: {
     paddingVertical: isTablet ? 10 : 8,
-    paddingHorizontal: isTablet ? 20 : 20,
+    paddingHorizontal: isTablet ? 20 : 10,
     borderRadius: isTablet ? 20 : 20,
     marginRight: isTablet ? 0 : 6,
     borderWidth: 1,
@@ -359,7 +359,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#366CD9',
   },
   tabText: {
-    fontSize: isTablet ? 16 : 15,
+    fontSize: isTablet ? 16 : 14,
     fontWeight: '400',
     color: '#666',
   },

@@ -74,9 +74,9 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
           screen: 'ConnectionsScreen',
         },
       ];
-      
+
       setStatData(newStatData);
-      
+
       // Find the first card with non-zero value and scroll to it
       setTimeout(() => {
         const firstNonZeroIndex = newStatData.findIndex(item => item.value > 0);
@@ -124,7 +124,7 @@ function StatCard({ title, value, total, percent, gradientColors, screen, naviga
   };
 
   // Combine extras into one line, filter out falsy values
-  const extrasLine = [extra, extra2].filter(Boolean).join(' • ');
+  const extrasLine = [extra].filter(Boolean).join(' • ');
 
   return (
     <TouchableOpacity activeOpacity={0.85} onPress={handlePress}>
@@ -138,15 +138,14 @@ function StatCard({ title, value, total, percent, gradientColors, screen, naviga
           end={{ x: 1, y: 0 }}
           style={styles.gradientSection}
         >
-          <Text style={styles.cardTitle}>{title}</Text>
           <View style={styles.cardSubTitleRow}>
-            <Text style={styles.cardSubTitle}>
+            <Text style={styles.cardSubTitleLabel}>
+              {title}
+            </Text>
+            <Text style={styles.cardSubTitleValue}>
               {value}
               <Text style={{ color: '#fff', opacity: 0.7 }}> / {total}</Text>
             </Text>
-            {extrasLine ? (
-              <Text style={styles.cardExtra}>{extrasLine}</Text>
-            ) : null}
           </View>
         </LinearGradient>
         <View style={[
@@ -156,7 +155,23 @@ function StatCard({ title, value, total, percent, gradientColors, screen, naviga
             borderColor: theme.border,
           }
         ]}>
-          <Text style={[styles.progressLabel, { color: theme.text }]}>{percent}%</Text>
+          <View style={styles.row}>
+            <Text style={[styles.progressLabel, { color: theme.text }]}>
+              {percent}%
+            </Text>
+            {extrasLine ? (
+              <Text
+                style={[
+                  styles.cardExtra,
+                  { marginLeft: 80 }
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {extrasLine}
+              </Text>
+            ) : null}
+          </View>
           <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
             <View style={[styles.progressBar, { width: `${percent}%`, backgroundColor: theme.primary }]} />
           </View>
@@ -169,12 +184,39 @@ function StatCard({ title, value, total, percent, gradientColors, screen, naviga
 const styles = StyleSheet.create({
   card: {
     width: 180,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: '#fff',
     marginBottom: 12,
     marginRight: 0,
     overflow: 'hidden',
   },
+  cardSubTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // justifyContent: 'space-between',
+    gap: 6,
+  },
+  cardSubTitleLabel: {
+    fontSize: 16,
+    color: '#fff',
+    // opacity: 0.7,
+    marginRight: 8,
+    fontWeight: '500',
+  },
+  cardSubTitleValue: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '500',
+    marginLeft: 'auto',
+  },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    width: '100%',
+  },
+
   gradientSection: {
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
@@ -183,16 +225,16 @@ const styles = StyleSheet.create({
   },
   cardTitle: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '500',
     marginBottom: 2,
   },
-  cardSubTitleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 0,
-  },
+  // cardSubTitleRow: {
+  //   flexDirection: 'row',
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  //   marginBottom: 0,
+  // },
   cardSubTitle: {
     color: '#fff',
     fontSize: 14,
@@ -200,7 +242,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   cardExtra: {
-    color: '#fff',
+    color: '#000000',
     fontSize: 12,
     opacity: 0.85,
     marginTop: 2,
@@ -209,8 +251,8 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     backgroundColor: '#fff',
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
     paddingHorizontal: 16,
     paddingTop: 6,
     paddingBottom: 12,
@@ -221,19 +263,19 @@ const styles = StyleSheet.create({
   progressLabel: {
     color: '#222',
     fontWeight: '400',
-    fontSize: 14,
+    fontSize: 12,
     marginBottom: 2,
   },
   progressBarBg: {
     width: '100%',
     height: 4,
     backgroundColor: '#e5e7eb',
-    borderRadius: 2,
+    borderRadius: 12,
     marginTop: 2,
   },
   progressBar: {
     height: 4,
     backgroundColor: '#366CD9',
-    borderRadius: 2,
+    borderRadius: 12,
   },
 });

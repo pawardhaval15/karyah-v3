@@ -48,13 +48,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
   // Safe navigation function to handle cases where there's no previous screen
   const safeGoBack = () => {
-    if (navigation.canGoBack()) {
-      navigation.navigate('MyTasksScreen');
-    } else {
-      // Fallback to MyTasks screen if no previous screen exists
-      navigation.navigate('MyTasksScreen');
-    }
-  };
+  navigation.goBack();
+};
   const theme = useTheme();
   const [task, setTask] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);

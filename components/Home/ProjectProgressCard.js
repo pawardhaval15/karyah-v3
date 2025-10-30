@@ -36,9 +36,32 @@ export default function ProjectProgressCard({
       ]}
       activeOpacity={0.85}
     >
-      <Text style={[styles.title, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">
-        {title}
-      </Text>
+      <View style={styles.titleTimelineRow}>
+        <Text
+          style={[styles.title, { color: theme.text, flex: 1 }]}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {title}
+        </Text>
+
+        <View style={styles.locationRow}>
+          <Feather
+            name="map-pin"
+            size={13}
+            color={theme.text}
+            style={{ marginRight: 4 }}
+          />
+          <Text
+            numberOfLines={1}
+            ellipsizeMode="tail"
+            style={[styles.locationText, { color: theme.text }]}
+          >
+            {location || "N/A"}
+          </Text>
+        </View>
+      </View>
+
       <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
         <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: theme.primary }]} />
       </View>
@@ -46,7 +69,7 @@ export default function ProjectProgressCard({
         <View style={styles.avatarGroup}>
           {avatars
             .filter(uri => typeof uri === 'string' && uri.trim().length > 0)
-            .slice(0, 3)
+            .slice(0, 4)
             .map((uri, idx) => (
               <Image
                 key={idx}
@@ -62,13 +85,16 @@ export default function ProjectProgressCard({
               />
             ))}
         </View>
-        <View>
-          <Text ellipsizeMode="tail" style={[styles.timeline, { color: theme.text }]}>{formatShortDateRange(timeline)}</Text>
-        </View>
+        <Text
+          ellipsizeMode="tail"
+          style={[styles.timeline, { color: theme.text, marginLeft: 10, flexShrink: 1 }]}
+          numberOfLines={1}
+        >
+          {formatShortDateRange(timeline)}
+        </Text>
       </View>
-      <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.assigned, { color: theme.text }]}>
-        Location: <Text style={[styles.assignedBy, { color: theme.text }]}>{location || "N/A"}</Text>
-      </Text>
+
+
     </TouchableOpacity>
   );
 }
@@ -82,24 +108,32 @@ const styles = StyleSheet.create({
     minHeight: 18,
   },
   locationText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     flexShrink: 1,
     maxWidth: 120, // adjust as needed for your card width
   },
+  titleTimelineRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4, // or your preferred spacing
+    width: '100%',
+  },
+
   card: {
     borderWidth: 1,
     borderRadius: 12,
     padding: 16,
     marginRight: 10,
     width: 240,
-    minHeight: 110,
+    minHeight: 80,
     justifyContent: 'center',
   },
   title: {
     fontWeight: '500',
-    fontSize: 14,
-    marginBottom: 6,
+    fontSize: 16,
+    marginBottom: 4,
     lineHeight: 18,
   },
   progressBarBg: {
@@ -122,7 +156,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   timeline: {
-    fontSize: 11,
+    fontSize: 10,
     marginLeft: 0,
     flex: 1,
     color: '#888',
@@ -132,8 +166,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     position: 'relative',
-    width: 70,
-    height: 20,
+    width: 60,
+    height: 15,
     overflow: 'visible',
   },
   avatar: {

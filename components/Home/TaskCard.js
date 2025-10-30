@@ -32,39 +32,43 @@ export default function TaskCard({
 
   // Calculate due date status
   const getDueDateStatus = () => {
-    if (!date) return null;
+  if (!date) return null;
 
-    const dueDate = new Date(date);
-    const today = new Date();
-    const timeDiff = dueDate.getTime() - today.getTime();
-    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+  const dueDate = new Date(date);
+  const today = new Date();
+  const timeDiff = dueDate.getTime() - today.getTime();
+  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-    if (daysDiff < 0) {
-      return {
-        text: `Overdue by ${Math.abs(daysDiff)} day${Math.abs(daysDiff) !== 1 ? 's' : ''}`,
-        color: '#FF5252',
-        isOverdue: true,
-      };
-    } else if (daysDiff === 0) {
-      return {
-        text: 'Due Today',
-        color: '#FF6F3C',
-        isOverdue: false,
-      };
-    } else if (daysDiff <= 3) {
-      return {
-        text: `Due in ${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
-        color: '#FFC107',
-        isOverdue: false,
-      };
-    } else {
-      return {
-        text: `Due in ${daysDiff} days`,
-        color: theme.secondaryText,
-        isOverdue: false,
-      };
-    }
-  };
+  // Format the due date as needed, e.g., 'MMM DD, YYYY'
+  const formattedDate = dueDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+
+  if (daysDiff < 0) {
+    return {
+      text: formattedDate,
+      color: '#FF5252',
+      isOverdue: true,
+    };
+  } else if (daysDiff === 0) {
+    return {
+      text: 'Due Today',
+      color: '#FF6F3C',
+      isOverdue: false,
+    };
+  } else if (daysDiff <= 3) {
+    return {
+      text: `Due in ${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
+      color: '#FFC107',
+      isOverdue: false,
+    };
+  } else {
+    return {
+      text: `Due in ${daysDiff} days`,
+      color: theme.secondaryText,
+      isOverdue: false,
+    };
+  }
+};
+
 
   const dueDateStatus = getDueDateStatus();
 
