@@ -99,6 +99,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         const updated = await fetchIssueById(issue?.issueId || issueId);
         setIssue(updated);
       }
+
     } catch (error) {
       console.error('Failed to refresh issue data:', error.message);
     }
@@ -725,7 +726,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             />
             <FieldBox
               label={t('location')}
-              value={issue.isIssue ? (issue.project?.location || '') : (issue.projectLocation || '')}
+              value={issue.isIssue ? (issue.location || '') : (issue.location || '')}
               placeholder={t('location')}
               theme={theme}
               editable={false}

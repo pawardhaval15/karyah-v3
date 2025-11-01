@@ -185,10 +185,29 @@ export default function IssueList({
             <View
               style={[
                 styles.issueCard,
-                { backgroundColor: theme.card, borderColor: theme.border, padding: 10 },
+                {
+                  backgroundColor: '#fff',
+                  borderRadius: 10,
+                  borderWidth: 1,
+                  borderColor: '#eee',
+                  padding: 6,             // Reduced from 10
+                  marginBottom: 8,        // Reduced from 12/16
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                },
               ]}>
-              <View style={[styles.issueIcon, { backgroundColor: theme.avatarBg }]}>
-                <Text style={[styles.issueIconText, { color: theme.primary }]}>
+              <View style={[styles.issueIcon, {
+                backgroundColor: theme.avatarBg, width: 28,              // Reduced from ~36+
+                height: 28,
+                borderRadius: 14,
+                justifyContent: 'center',
+                alignItems: 'center',
+                marginRight: 8,
+              }]}>
+                <Text style={[styles.issueIconText, {
+                  color: theme.primary, fontSize: 16,           // Reduced from 20+
+                  fontWeight: 'bold',
+                }]}>
                   {/* Display first letter of task name */}
                   {item.name && item.name.trim().length > 0
                     ? item.name.trim()[0].toUpperCase()
@@ -203,98 +222,108 @@ export default function IssueList({
                       style={{
                         flexDirection: 'row',
                         alignItems: 'center',
-                        flexWrap: 'nowrap',
                         minHeight: 22,
+                        justifyContent: 'space-between',
+                        width: '100%',
                       }}>
+                      {/* Left: Name */}
                       <Text
                         style={[
                           styles.issueName,
-                          { color: theme.text, flexShrink: 1, maxWidth: '60%' },
+                          {
+                            color: theme.text,
+                            fontSize: 13,
+                            fontWeight: '600',
+                            flexShrink: 1,
+                            maxWidth: '60%', // or 65%
+                          },
                         ]}
                         numberOfLines={1}
                         ellipsizeMode="tail">
-                        {/* Display task name */}
                         {item.name || 'Untitled Task'}
                       </Text>
-                      {item.isCritical && (
-                        <View
-                          style={[
-                            styles.criticalTag,
-                            {
-                              backgroundColor: '#FF2700',
-                              paddingVertical: 1,
-                              paddingHorizontal: 6,
-                              borderRadius: 5,
-                              marginLeft: 6,
-                            },
-                          ]}>
-                          <Text
+
+                      {/* Right: Tag Group */}
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                        {item.isCritical && (
+                          <View
                             style={[
-                              styles.criticalTagText,
+                              styles.criticalTag,
                               {
-                                color: '#FFF',
-                                fontWeight: '500',
-                                fontSize: 10,
-                                letterSpacing: 0.2,
+                                backgroundColor: '#FF2700',
+                                paddingHorizontal: 6,
+                                paddingVertical: 1,
+                                borderRadius: 4,
+                                marginRight: 8,
                               },
                             ]}>
-                            {t('critical')}
-                          </Text>
-                        </View>
-                      )}
-                      {/* Issue Status Tag */}
-                      {item.status && (
-                        <View
-                          style={{
-                            backgroundColor:
-                              (item.status === 'Completed' && item.isApproved === true)
-                                ? 'rgba(57, 201, 133, 0.13)'
-                                : (item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false)
-                                  ? 'rgba(255, 193, 7, 0.18)'
-                                  : 'rgba(230, 117, 20, 0.08)',
-                            borderRadius: 5,
-                            paddingHorizontal: 6,
-                            paddingVertical: 1,
-                            marginLeft: 6,
-                            alignSelf: 'center',
-                            borderWidth: 0.5,
-                            borderColor:
-                              (item.status === 'Completed' && item.isApproved === true)
-                                ? '#039855'
-                                : (item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false)
-                                  ? '#FFC107'
-                                  : '#E67514',
-                            maxWidth: 90,
-                          }}>
-                          <Text
+                            <Text
+                              style={[
+                                styles.criticalTagText,
+                                {
+                                  color: '#FFF',
+                                  fontWeight: '500',
+                                  fontSize: 10,
+                                  letterSpacing: 0.2,
+                                },
+                              ]}>
+                              {t('critical')}
+                            </Text>
+                          </View>
+                        )}
+                        {item.status && (
+                          <View
                             style={{
-                              color:
-                                (item.status === 'Completed' && item.isApproved === true)
-                                  ? '#039855'
-                                  : (item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false)
-                                    ? '#FFC107'
-                                    : '#E67514',
-                              fontWeight: '500',
-                              fontSize: 10,
-                              textTransform: 'capitalize',
-                              letterSpacing: 0.2,
-                              flexShrink: 1,
-                            }}
-                            numberOfLines={1}
-                            ellipsizeMode="tail">
-                            {/* Display appropriate status text */}
-                            {item.status === 'Completed' && item.isApproved === true
-                              ? 'resolved'
-                              : item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false
-                                ? 'pending approval'
-                                : item.status === 'In Progress'
-                                  ? 'in progress'
-                                  : item.status?.toLowerCase() || 'pending'
-                            }
-                          </Text>
-                        </View>
-                      )}
+                              backgroundColor:
+                                item.status === 'Completed'
+                                  ? 'rgba(57, 201, 133, 0.13)' // subtle green background
+                                  : item.status === 'Pending'
+                                    ? 'rgba(230, 117, 20, 0.08)'
+                                    : '#FFC10720',
+                              borderRadius: 5,
+                              paddingHorizontal: 6,
+                              paddingVertical: 1,
+                              alignSelf: 'center',
+                              borderWidth: 1, // slightly thicker border for emphasis
+                              borderColor:
+                                item.status === 'Completed'
+                                  ? '#39C985' // Use explicit green color
+                                  : item.status === 'Pending'
+                                    ? '#E67514'
+                                    : '#FFC107',
+                              maxWidth: 90,
+                            }}>
+                            <Text
+                              style={{
+                                color:
+                                  item.status === 'Completed'
+                                    ? '#039855' // Strong green for text
+                                    : item.status === 'Pending'
+                                      ? '#E67514'
+                                      : '#FFC107',
+                                fontWeight: '500',
+                                fontSize: 10,
+                                textTransform: 'capitalize',
+                                letterSpacing: 0.2,
+                                flexShrink: 1,
+                              }}
+                              numberOfLines={1}
+                              ellipsizeMode="tail">
+                              {item.status === 'Completed' && item.isApproved === true
+                                ? 'completed'
+                                : item.status === 'Completed' && item.isApprovalNeeded === true && item.isApproved === false
+                                  ? 'pending approval'
+                                  : item.status === 'In Progress'
+                                    ? 'in progress'
+                                    : item.status?.toLowerCase() || 'pending'}
+                            </Text>
+                          </View>
+                        )}
+
+                      </View>
                     </View>
+
+
                   </View>
                 </View>
 
@@ -309,7 +338,10 @@ export default function IssueList({
                         size={14}
                         color={item.isCritical ? '#FF2700' : theme.secondaryText}
                       />
-                      <Text style={[styles.issueInfo, { color: theme.secondaryText, flex: 1 }]}>
+                      <Text style={[styles.issueInfo, {
+                        color: theme.secondaryText, flex: 1, fontSize: 11.5,         // Down from 13/14
+                        marginLeft: 4,
+                      }]}>
                         Critical Priority
                       </Text>
                       <Switch
@@ -323,27 +355,31 @@ export default function IssueList({
                   )}
 
                 {/* User Info Row */}
-                <View style={styles.issueRow}>
+                {/* <View style={styles.issueRow}>
                   <Feather name="user" size={14} color={theme.secondaryText} />
                   <Text
                     numberOfLines={1}
                     ellipsizeMode="tail"
                     style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                    {`Assigned by ${item.creatorName || item.creator?.name || 'N/A'}`}
+                    {` Creator : ${item.creatorName || item.creator?.name || 'N/A'}`}
                   </Text>
-                </View>
+                </View> */}
 
                 {/* Location Row */}
                 <View style={styles.issueRow}>
-                  <Feather name="file" size={14} color={theme.secondaryText} />
+                  <MaterialIcons name="folder" size={13} color={theme.primary} style={{ marginRight: 4 }} />
                   <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
                     {item.project?.projectName || 'No Project'}
                   </Text>
+                  <MaterialIcons name="location-on" size={13} color={theme.secondaryText} style={{ marginRight: 2 }} />
+                  <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
+                    {item.project?.location || 'No Project'}
+                  </Text>
                 </View>
               </View>
-              <View style={styles.chevronBox}>
+              {/* <View style={styles.chevronBox}>
                 <Feather name="chevron-right" size={24} color={theme.text} />
-              </View>
+              </View> */}
             </View>
           </TouchableOpacity>
         ))}

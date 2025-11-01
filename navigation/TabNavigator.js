@@ -33,7 +33,7 @@ export default function TabNavigator() {
           fontSize: 12,
           fontWeight: '500',
           marginBottom: 0,
-          paddingBottom
+          // paddingBottom
         },
         tabBarActiveTintColor: '#366CD9',
         tabBarInactiveTintColor: '#B0B3B8',
