@@ -227,7 +227,7 @@ const NotificationScreen = ({ navigation, route }) => {
             marginBottom: isTablet ? 24 : 18,
           },
         ]}
-        onPress={() => navigation.goBack()}>
+        onPress={() => navigation.navigate('Home', {refreshing: true})}>
         <MaterialIcons name="arrow-back-ios" size={isTablet ? 18 : 16} color={theme.text} />
         <Text
           style={[
