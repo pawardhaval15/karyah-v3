@@ -314,6 +314,9 @@
   "announcements": "घोषणा",
   "reassign": "पुन्हा नियुक्त करा",
   "show_details": "तपशील दाखवा",
-  "hide_details": "तपशील लपवा"
+  "hide_details": "तपशील लपवा",
+  "leave_project": "प्रकल्प सोडा",
+  "hand_over_project": "हस्तांतरण प्रकल्प",
+  "select_new_manager": "नवीन व्यवस्थापक निवडा"
 }
 

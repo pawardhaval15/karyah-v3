@@ -332,5 +332,8 @@
   "announcements": "Announcements",
   "reassign": "Re-assign",
   "show_details": "Show Details",
-  "hide_details": "Hide Details"
+  "hide_details": "Hide Details",
+  "leave_project": "Leave Project",
+  "hand_over_project": "Hand Over",
+  "select_new_manager": "Select new Manager"
 }

@@ -205,3 +205,46 @@ export const updateProjectTags = async (projectId, tags) => {
     throw error;
   }
 };
+
+export const transferProjectOwnership = async (projectId, newOwnerId) => {
+  const token = await AsyncStorage.getItem('token');
+  if (!token) throw new Error('User not authenticated');
+
+  const response = await fetch(`${API_URL}api/projects/${projectId}/transfer-ownership`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ newOwnerId }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to transfer ownership');
+  }
+
+  return data;
+};
+
+export const leaveProject = async (projectId) => {
+  const token = await AsyncStorage.getItem('token');
+  if (!token) throw new Error('User not authenticated');
+
+  const response = await fetch(`${API_URL}api/projects/${projectId}/leave`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.message || 'Failed to leave project');
+  }
+
+  return data; // Returns { message: "...", coAdmins: [...] }
+};

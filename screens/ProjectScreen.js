@@ -12,7 +12,6 @@ import {
   View
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
-
 import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
 import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
@@ -97,17 +96,14 @@ export default function ProjectScreen({ navigation }) {
       const userData = await AsyncStorage.getItem('user');
       let user = null;
       let userIdFromStorage = null;
-
       if (userData) {
         user = JSON.parse(userData);
         userIdFromStorage = user.id || user.userId || user._id;
       }
-
       // Also decode JWT token to get user ID
       const token = await AsyncStorage.getItem('token');
       let userIdFromToken = null;
       let decodedToken = null;
-
       if (token) {
         try {
           decodedToken = jwtDecode(token);
@@ -116,8 +112,6 @@ export default function ProjectScreen({ navigation }) {
           console.error('❌ Error decoding token:', tokenError);
         }
       }
-
-
       // Use token ID if available, otherwise fall back to storage ID
       const finalUserId = userIdFromToken || userIdFromStorage;
       setCurrentUserId(finalUserId);
@@ -138,7 +132,6 @@ export default function ProjectScreen({ navigation }) {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-
     // Store current tags before refresh to preserve them
     const currentTags = {};
     projects.forEach(project => {
@@ -146,9 +139,7 @@ export default function ProjectScreen({ navigation }) {
         currentTags[project.id] = project.tags;
       }
     });
-
     await fetchProjects();
-
     // Restore tags after refresh since API doesn't return them
     if (Object.keys(currentTags).length > 0) {
       setProjects(prevProjects =>
@@ -161,7 +152,6 @@ export default function ProjectScreen({ navigation }) {
 
     setRefreshing(false);
   };
-
   const handleTagsManagement = (project) => {
     console.log('🔍 Debug Tags Management:', {
       currentUserId,
@@ -302,16 +292,14 @@ export default function ProjectScreen({ navigation }) {
   } else if (activeTab === 'completed') {
     tabData = completed;
   }
-
   return (
     <View style={[styles.container, { backgroundColor: theme.background, paddingBottom: 70 }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home', { refresh: true })}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
         <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
       </TouchableOpacity>
       <ProjectBanner onAdd={() => setShowProjectPopup(true)} theme={theme} />
       <ProjectSearchBar value={search} onChange={setSearch} theme={theme} />
-
       {/* Project Invites Section */}
       <ProjectInvitesSection
         theme={theme}
@@ -322,7 +310,6 @@ export default function ProjectScreen({ navigation }) {
           }
         }}
       />
-
       <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginTop: 12, marginBottom: 12, gap: 2, flexWrap: 'wrap', rowGap: 10, maxWidth: "95%" }}>
         {[
           {
@@ -380,7 +367,6 @@ export default function ProjectScreen({ navigation }) {
           </TouchableOpacity>
         ))}
       </View>
-
       {loading ? (
         <ActivityIndicator size="large" color={theme.text} style={{ marginTop: 20 }} />
       ) : (
@@ -442,7 +428,6 @@ export default function ProjectScreen({ navigation }) {
         onSubmit={handleProjectSubmit}
         theme={theme}
       />
-
       {/* Project Tags Management Modal */}
       <ProjectTagsManagementModal
         visible={showTagsModal}

@@ -256,7 +256,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
             };
           })
         };
-
         // Use the dedicated resolve critical/issue task API
         await resolveCriticalOrIssueTask(issue.taskId, resolveData);
         Alert.alert('Success', 'Issue task completed successfully');

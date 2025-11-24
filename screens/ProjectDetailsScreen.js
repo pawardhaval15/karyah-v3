@@ -30,7 +30,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 
-import { deleteProjectById, getProjectById } from '../utils/project';
+import { deleteProjectById, getProjectById, transferProjectOwnership, leaveProject } from '../utils/project';
 import { createWorklist, deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
@@ -68,6 +68,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const [createWorklistModal, setCreateWorklistModal] = useState(false);
   const [newWorklistName, setNewWorklistName] = useState('');
   const [showPendingInvites, setShowPendingInvites] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [selectedNewOwner, setSelectedNewOwner] = useState(null);
+
 
   useEffect(() => {
     const fetchUserId = async () => {
@@ -83,9 +86,10 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         const id = projectId || (project && project.id);
         if (!id) throw new Error('No projectId provided');
         const res = await getProjectById(id);
-        console.log('📨 Full project details:', JSON.stringify(res, null, 2));
-        console.log('📨 Pending invites array:', res.pendingInvites);
+        // console.log('📨 Full project details:', JSON.stringify(res, null, 2));
+        // console.log('📨 Pending invites array:', res.pendingInvites);
         setProjectDetails(res);
+        // console.log('📨 Project details fetched:', res);
       } catch (err) {
         console.error('Failed to fetch project details:', err.message);
         setProjectDetails(null);
@@ -716,14 +720,12 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               {showPendingInvites && (
                 <View>
                   {projectDetails.pendingInvites.map((invite, index) => {
-                    console.log('📨 Processing invite:', invite);
-
+                    // console.log('📨 Processing invite:', invite);
                     // Handle the actual data structure from your API
                     const userName = invite.recipientName || invite.name || 'Unknown User';
                     const userEmail = invite.recipientEmail || invite.email;
                     const profilePhoto = invite.profilePhoto || invite.avatar;
                     const createdAt = invite.createdAt || invite.sentAt || invite.invitedAt;
-
                     return (
                       <View key={invite.inviteId || invite.id || index} style={{
                         flexDirection: 'row',
@@ -1065,7 +1067,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
             <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
               {t('edit_worklist')}
             </Text>
-
             <TextInput
               placeholder={t('worklist_name')}
               placeholderTextColor={theme.secondaryText}
@@ -1085,7 +1086,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
-
               <TouchableOpacity onPress={handleUpdateWorklist}>
                 <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save')}</Text>
               </TouchableOpacity>
@@ -1093,7 +1093,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
-
       <ProjectIssuePopup
         visible={showProjectIssuePopup}
         onClose={() => setShowProjectIssuePopup(false)}
@@ -1159,6 +1158,20 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>{t('edit')}</Text>
             </TouchableOpacity>
             {/* Delete Option */}
+
+            {userId === projectDetails.userId && (
+              <TouchableOpacity
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  paddingVertical: 12,
+                  paddingHorizontal: 16,
+                }}
+                onPress={() => setShowTransferModal(true)}
+              ><Feather name="repeat" size={18} color="#366CD9" style={{ marginRight: 8 }} />
+                <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>{t('hand_over_project')}</Text>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={{
                 flexDirection: 'row',
@@ -1194,10 +1207,116 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
               <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>{t('delete')}</Text>
             </TouchableOpacity>
+            <TouchableOpacity
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingVertical: 12,
+                paddingHorizontal: 16,
+              }}
+              onPress={() => {
+                setMenuVisible(false);
+                Alert.alert(
+                  'Leave Project',
+                  'Are you sure you want to leave this project?',
+                  [
+                    { text: 'Cancel', style: 'cancel' },
+                    {
+                      text: 'Leave',
+                      style: 'destructive',
+                      onPress: async () => {
+                        try {
+                          await leaveProject(projectDetails.id);
+                          Alert.alert('Success', 'You have left the project.');
+                          navigation.navigate('ProjectScreen', { refresh: true });
+                        } catch (err) {
+                          Alert.alert('Error', err.message || 'Failed to leave project.');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <Feather name="log-out" size={18} color="#E53935" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>Leave Project</Text>
+            </TouchableOpacity>
           </View>
         </TouchableOpacity>
       </Modal>
+      {/* Ownership Transfer Modal */}
+      <Modal
+        visible={showTransferModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowTransferModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center' }}>
+          <View style={{ backgroundColor: '#fff', marginHorizontal: 30, borderRadius: 10, padding: 20 }}>
+            <Text style={{ fontWeight: 'bold', marginBottom: 10 }}>{t('select_new_manager')}:</Text>
+            {projectDetails.coAdmins && projectDetails.coAdmins.length > 0 ? (
+              projectDetails.coAdmins.map(coAdmin => (
+                <TouchableOpacity
+                  key={coAdmin.userId}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    padding: 10,
+                    backgroundColor: selectedNewOwner === coAdmin.userId ? theme.primary : '#eee',
+                    marginVertical: 4,
+                    borderRadius: 6,
+                  }}
+                  onPress={() => setSelectedNewOwner(coAdmin.userId)}
+                >
+                  <Text style={{
+                    color: selectedNewOwner === coAdmin.userId ? '#fff' : '#000',
+                    flex: 1,
+                    fontSize: 16
+                  }}>
+                    {coAdmin.name}
+                  </Text>
+                  {coAdmin.profilePhoto ? (
+                    <Image
+                      source={{ uri: coAdmin.profilePhoto }}
+                      style={{ width: 30, height: 30, borderRadius: 15 }}
+                    />
+                  ) : null}
+                </TouchableOpacity>
+              ))
+            ) : (
+              <Text>No co-admins available</Text>
+            )}
 
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 20 }}>
+              <TouchableOpacity onPress={() => setShowTransferModal(false)} style={{ padding: 10 }}>
+                <Text style={{ color: theme.primary }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                disabled={!selectedNewOwner}
+                onPress={async () => {
+                  if (!selectedNewOwner) return;
+                  try {
+                    await transferProjectOwnership(projectDetails.id, selectedNewOwner);
+                    Alert.alert('Success', 'Ownership transferred successfully');
+                    setShowTransferModal(false);
+                    // Optionally refresh project details here
+                    // console.log('Ownership transferred to user ID:', selectedNewOwner);
+                  } catch (error) {
+                    Alert.alert('Error', error.message || 'Something went wrong');
+                  }
+                }}
+                style={{
+                  padding: 10,
+                  backgroundColor: selectedNewOwner ? theme.primary : '#bbb',
+                  borderRadius: 6,
+                }}
+              >
+                <Text style={{ color: '#fff' }}>Transfer</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
       {/* Project Name Modal */}
       <Modal
         visible={showProjectNameModal}
