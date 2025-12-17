@@ -216,7 +216,6 @@ export const createTask = async (taskData) => {
 //   }
 // };
 
-
 export const fetchMyTasks = async () => {
   try {
     const token = await AsyncStorage.getItem('token');
@@ -803,6 +802,147 @@ export const reassignTask = async (taskId, newAssignedUserIds) => {
     }
   } catch (error) {
     console.error('[reassignTask] Error:', error);
+    throw error;
+  }
+};
+
+// GET: Get counts of task statuses for a specific project
+export const getTaskStatusCountsByProjectId = async (projectId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${projectId}/status-counts`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch status counts');
+    }
+
+    const data = await response.json();
+    return data; // Returns { total, completed, inProgress, pending }
+  } catch (error) {
+    console.error('Error fetching status counts:', error);
+    throw error;
+  }
+};
+
+// PATCH: Move a workflow task to the next stage
+export const moveTaskToNextStage = async (taskId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/move-next-stage`;
+
+    console.log('[moveTaskToNextStage] Moving task:', taskId);
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to move task stage');
+    }
+
+    console.log('[moveTaskToNextStage] Success:', data);
+    return data.task;
+  } catch (error) {
+    console.error('[moveTaskToNextStage] Error:', error);
+    throw error;
+  }
+};
+
+// PATCH: Approve or Reject a task
+export const approveTask = async (taskId, isApproved) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/approve`;
+
+    console.log('[approveTask]', { taskId, isApproved });
+
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify({ isApproved }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to update approval status');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[approveTask] Error:', error);
+    throw error;
+  }
+};
+
+// PUT: Put a task on hold
+export const holdTask = async (taskId, holdReason) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/hold`;
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: JSON.stringify({ holdReason }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to put task on hold');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[holdTask] Error:', error);
+    throw error;
+  }
+};
+
+// PUT: Reopen a task (from Hold or Completed)
+export const reopenTask = async (taskId) => {
+  try {
+    const token = await AsyncStorage.getItem('token');
+    const url = `${API_URL}api/tasks/${taskId}/reopen`;
+
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(data.message || 'Failed to reopen task');
+    }
+
+    return data;
+  } catch (error) {
+    console.error('[reopenTask] Error:', error);
     throw error;
   }
 };

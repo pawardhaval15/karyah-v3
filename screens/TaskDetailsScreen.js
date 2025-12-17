@@ -286,6 +286,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
       try {
         const data = await getTaskDetailsById(taskId);
         setTask(data);
+        console.log('Fetched task details:', data);
       } catch (err) {
         console.error('Failed to fetch task:', err);
       } finally {
@@ -1259,7 +1260,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
               </View>
             </View>
           )}
-
         {/* Dependencies */}
         {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
           <TouchableOpacity activeOpacity={0.7} onPress={() => setShowDependentPopup(true)}>
@@ -1293,7 +1293,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
             />
           </TouchableOpacity>
         )}
-
         <Modal
           visible={showDependentPopup}
           transparent
@@ -1556,7 +1555,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 )}
               </View>
             )}
-
             {!task.subTasks || task.subTasks.length === 0 ? (
               <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
                 {t("no_subtasks_available")}
@@ -1614,7 +1612,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         )}
       </ScrollView>
-
       <Modal
         visible={menuVisible}
         transparent
@@ -1866,7 +1863,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 ios_backgroundColor="#ddd"
               />
             </View>
-
             {/* Critical Toggle - Only show when isIssue is true */}
             {editValues.isIssue && (
               <View style={{
@@ -1907,7 +1903,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 />
               </View>
             )}
-
             <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
               <TouchableOpacity style={{ marginRight: 16 }} onPress={() => setShowEditModal(false)}>
                 <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t("cancel")}</Text>

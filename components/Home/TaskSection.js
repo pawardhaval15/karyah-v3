@@ -4,8 +4,9 @@ import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TextInput,
 import Feather from 'react-native-vector-icons/Feather';
 import { useTheme } from '../../theme/ThemeContext';
 import { fetchIssuesByUser } from '../../utils/issues';
-import { fetchMyTasks } from '../../utils/task'; // <-- im
+import { fetchMyTasks } from '../../utils/task';
 import TaskCard from './TaskCard';
+
 export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
   const theme = useTheme();
 
@@ -15,6 +16,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation();
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -22,8 +24,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
         const [tasksData, issuesData] = await Promise.all([fetchMyTasks(), fetchIssuesByUser()]);
         setTasks(tasksData || []);
         setIssues(issuesData || []);
-        // console.log('Fetched tasks:', tasksData);
-        console.log('Fetched issues:', issuesData);
+        console.log('Fetched tasks:', tasksData);
       } catch (err) {
         console.error('Error fetching tasks/issues:', err);
       } finally {
@@ -32,6 +33,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     };
     fetchData();
   }, [refreshKey]);
+
   // Filter issues to unresolved only (exclude resolved)
   const unresolvedIssues = issues.filter(issue => issue.issueStatus !== 'resolved');
 
@@ -43,20 +45,23 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
   });
 
   const data = activeTab === 'tasks' ? tasks : issues;
+  
   const filtered = data.filter((item) => {
     const searchText = search.toLowerCase();
+    
     // For issues
     if (activeTab === 'issues') {
-  return (
-    (item.title || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
-    (item.desc || item.description || '').toLowerCase().includes(searchText) ||
-    (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
-    (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
-  );
-}
+      return (
+        (item.title || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
+        (item.desc || item.description || '').toLowerCase().includes(searchText) ||
+        (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
+        (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
+      );
+    }
 
-    // For tasks
+    // For tasks - ADDED item.taskName here
     return (
+      (item.taskName || '').toLowerCase().includes(searchText) || 
       (item.title || '').toLowerCase().includes(searchText) ||
       (item.name || '').toLowerCase().includes(searchText) ||
       (item.desc || item.description || '').toLowerCase().includes(searchText) ||
@@ -121,10 +126,6 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     <View style={{ marginBottom: 120 }}>
       {/* Section Heading */}
       <View style={styles.sectionRow}>
-        {/* <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          {activeTab === 'tasks' ? 'My Tasks' : 'My Issues'}
-          <Text style={[styles.count, { color: theme.text }]}> {sortedData.length}</Text>
-        </Text> */}
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
           <Text >{t('my_issues_and_task')}</Text>
         </Text>
@@ -259,10 +260,10 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
               const isMarkedAsIssue = item.isIssue === true;
               return !isCompletedByPercent && !isCompletedByStatus && !isMarkedAsIssue;
             }
-          }) // <-- filter out resolved issues and items marked as issues!
+          })
           .map((item, idx) => (
             <TouchableOpacity
-              key={(item.title || item.issueTitle || '') + idx}
+              key={(item.taskName || item.title || item.issueTitle || '') + idx}
               style={styles.cardWrapper}
               activeOpacity={0.8}
               onPress={() =>
@@ -273,7 +274,8 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
             >
               <View style={{ position: 'relative' }}>
                 <TaskCard
-                  title={item.title || item.issueTitle || item.name || t('untitled')}
+                  // UPDATED: Added item.taskName to the priority list
+                  title={item.taskName || item.title || item.issueTitle || item.name || t('untitled')}
                   project={item.project?.projectName || item.project || item.projectName}
                   percent={item.percent || item.progress || 0}
                   desc={item.desc || item.description}
