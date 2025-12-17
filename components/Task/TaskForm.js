@@ -3,7 +3,7 @@ import DateBox from 'components/task details/DateBox';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, } from 'react-native';
+import { Alert, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
 import AttachmentSheet from '../popups/AttachmentSheet';
@@ -11,6 +11,11 @@ import CustomPickerDrawer from '../popups/CustomPickerDrawer';
 import FilePreviewModal from '../popups/FilePreviewModal';
 import useAttachmentPicker from '../popups/useAttachmentPicker';
 import useAudioRecorder from '../popups/useAudioRecorder';
+
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 // --- DATA CONSTANTS ---
 
@@ -67,6 +72,9 @@ export default function TaskForm({
 }) {
   const [projectName, setProjectName] = useState('');
   
+  // UI State
+  const [showAdditionalOptions, setShowAdditionalOptions] = useState(false);
+
   // Pickers State
   const [showUserPicker, setShowUserPicker] = useState(false);
   const [showDepPicker, setShowDepPicker] = useState(false);
@@ -142,6 +150,11 @@ export default function TaskForm({
   const selectedStageName = values.currentStage 
     ? availableStages.find(s => s.id === values.currentStage)?.name 
     : null;
+
+  const toggleAdditionalOptions = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setShowAdditionalOptions(!showAdditionalOptions);
+  };
 
   const isValidDate = (date) => {
     return date && !isNaN(new Date(date).getTime());
@@ -250,6 +263,10 @@ export default function TaskForm({
 
   return (
     <>
+      {/* =================================================================================== */}
+      {/* 🟢 CORE FIELDS (Always Visible) */}
+      {/* =================================================================================== */}
+
       {/* --- Task Name --- */}
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TextInput
@@ -278,38 +295,6 @@ export default function TaskForm({
           editable={false}
         />
       </View>
-
-      {/* --- Dependencies --- */}
-      <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <TouchableOpacity
-          style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
-          onPress={() => setShowDepPicker(true)}
-          activeOpacity={0.8}
-        >
-          <Text style={{
-            color: selectedDeps.length ? theme.text : theme.secondaryText,
-            fontWeight: '400',
-            fontSize: 16,
-          }}>
-            {selectedDeps.length
-              ? selectedDeps.map(t => t.name || t.taskName || `Task ${t[taskValueKey]}`).join(', ')
-              : t("select_dependencies")}
-          </Text>
-        </TouchableOpacity>
-        <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
-      </View>
-      <CustomPickerDrawer
-        visible={showDepPicker}
-        onClose={() => setShowDepPicker(false)}
-        data={projectTasks}
-        valueKey={taskValueKey}
-        labelKey="name"
-        selectedValue={selectedDepIds}
-        onSelect={handleDepToggle}
-        multiSelect={true}
-        theme={theme}
-        placeholder={t("search_task")}
-      />
 
       {/* --- Dates --- */}
       <View style={styles.dateRow}>
@@ -361,120 +346,6 @@ export default function TaskForm({
         placeholder="Search user..."
         showImage={true}
       />
-
-      {/* =================================================================================== */}
-      {/* 🚀 NEW WORKFLOW SECTION START */}
-      {/* =================================================================================== */}
-
-      {/* 1. Task Mode Selector */}
-      <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
-        <TouchableOpacity
-          style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
-          onPress={() => setShowModePicker(true)}
-          activeOpacity={0.8}
-        >
-          <View>
-            <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Task Mode</Text>
-            <Text style={{ color: theme.text, fontWeight: '500', fontSize: 16 }}>
-              {TASK_MODES.find(m => m.id === taskMode)?.name}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
-      </View>
-      <CustomPickerDrawer
-        visible={showModePicker}
-        onClose={() => setShowModePicker(false)}
-        data={TASK_MODES}
-        valueKey="id"
-        labelKey="name"
-        selectedValue={taskMode}
-        onSelect={(modeId) => {
-          setTaskMode(modeId);
-          // If switching back to Legacy, clear category stuff
-          if (modeId === 'LEGACY') {
-            onChange('category', null);
-            onChange('currentStage', null);
-          }
-          setShowModePicker(false);
-        }}
-        multiSelect={false}
-        theme={theme}
-        placeholder="Select Task Mode"
-      />
-
-      {/* 2. Category Selector (Only if Workflow) */}
-      {taskMode === 'WORKFLOW' && (
-        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
-            onPress={() => setShowCategoryPicker(true)}
-            activeOpacity={0.8}
-          >
-            <View>
-              <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Category <Text style={{color: 'red'}}>*</Text></Text>
-              <Text style={{ color: values.category ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
-                {selectedCategoryName || "Select Category"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-          <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
-        </View>
-      )}
-      <CustomPickerDrawer
-        visible={showCategoryPicker}
-        onClose={() => setShowCategoryPicker(false)}
-        data={CATEGORY_OPTIONS}
-        valueKey="id"
-        labelKey="name"
-        selectedValue={values.category}
-        onSelect={(id) => {
-          onChange('category', id);
-          onChange('currentStage', null); // Reset stage when category changes
-          setShowCategoryPicker(false);
-        }}
-        multiSelect={false}
-        theme={theme}
-        placeholder="Select Category"
-      />
-
-      {/* 3. Initial Stage Selector (Only if Category Selected) */}
-      {taskMode === 'WORKFLOW' && values.category && (
-        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <TouchableOpacity
-            style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
-            onPress={() => setShowStagePicker(true)}
-            activeOpacity={0.8}
-          >
-            <View>
-              <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Initial Stage (Optional)</Text>
-              <Text style={{ color: values.currentStage ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
-                {selectedStageName || "Select initial stage"}
-              </Text>
-            </View>
-          </TouchableOpacity>
-          <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
-        </View>
-      )}
-      <CustomPickerDrawer
-        visible={showStagePicker}
-        onClose={() => setShowStagePicker(false)}
-        data={availableStages}
-        valueKey="id"
-        labelKey="name"
-        selectedValue={values.currentStage}
-        onSelect={(id) => {
-          onChange('currentStage', id);
-          setShowStagePicker(false);
-        }}
-        multiSelect={false}
-        theme={theme}
-        placeholder="Select Initial Stage"
-      />
-
-      {/* =================================================================================== */}
-      {/* 🚀 NEW WORKFLOW SECTION END */}
-      {/* =================================================================================== */}
 
       {/* --- Attachments --- */}
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
@@ -533,37 +404,6 @@ export default function TaskForm({
 
       <AttachmentSheet visible={showAttachmentSheet} onClose={() => setShowAttachmentSheet(false)} onPick={async (type) => { await pickAttachment(type); setShowAttachmentSheet(false); }} />
 
-      {/* --- Flags (Issue, Critical, Approval) --- */}
-      <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-        <View style={styles.toggleIconBox}><Feather name="alert-triangle" size={24} color="#FF6B35" /></View>
-        <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text></View>
-        <Switch value={values.isIssue || false} onValueChange={v => onChange('isIssue', v)} trackColor={{ false: '#ddd', true: '#FF6B35' }} thumbColor="#fff" />
-      </View>
-
-      <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
-        <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(229, 57, 53, 0.1)' }]}><Feather name="zap" size={24} color="#E53935" /></View>
-        <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsCritical') || "Mark as Critical"}</Text></View>
-        <Switch value={values.isCritical || false} onValueChange={v => onChange('isCritical', v)} trackColor={{ false: '#ddd', true: '#E53935' }} thumbColor="#fff" />
-      </View>
-
-      <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
-        <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(54, 108, 217, 0.1)' }]}><Feather name="check-circle" size={24} color={theme.primary} /></View>
-        <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('approvalRequired') || "Approval Required"}</Text></View>
-        <Switch value={values.isApprovalNeeded || false} onValueChange={v => onChange('isApprovalNeeded', v)} trackColor={{ false: '#ddd', true: theme.primary }} thumbColor="#fff" />
-      </View>
-
-      {values.isApprovalNeeded && (
-        <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
-          <TouchableOpacity style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }} onPress={() => setShowApproverPicker(true)} activeOpacity={0.8}>
-            <Text style={{ color: selectedApprover ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
-              {selectedApprover ? `Approver: ${selectedApprover.name}` : "Select Approver"}
-            </Text>
-          </TouchableOpacity>
-          <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
-        </View>
-      )}
-      <CustomPickerDrawer visible={showApproverPicker} onClose={() => setShowApproverPicker(false)} data={users} valueKey="userId" labelKey="name" imageKey="profilePhoto" selectedValue={values.approvalRequiredBy} onSelect={(id) => { onChange('approvalRequiredBy', id); setShowApproverPicker(false); }} multiSelect={false} theme={theme} placeholder="Select Approver" showImage={true} />
-
       {/* --- Description --- */}
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 14 }]}>
         <TextInput
@@ -575,6 +415,199 @@ export default function TaskForm({
           multiline
         />
       </View>
+
+      {/* =================================================================================== */}
+      {/* 🔘 ADDITIONAL OPTIONS TOGGLE */}
+      {/* =================================================================================== */}
+      
+      <TouchableOpacity 
+        style={styles.additionalOptionsBtn} 
+        onPress={toggleAdditionalOptions}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.additionalOptionsText, { color: theme.primary }]}>
+          {showAdditionalOptions ? "- Hide Additional Options" : "+ Show Additional Options"}
+        </Text>
+      </TouchableOpacity>
+
+      {/* =================================================================================== */}
+      {/* 🟡 EXPANDABLE SECTION (Dependencies, Mode, Flags, Approval) */}
+      {/* =================================================================================== */}
+      
+      {showAdditionalOptions && (
+        <View style={styles.additionalSection}>
+          
+          {/* --- Dependencies --- */}
+          <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity
+              style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
+              onPress={() => setShowDepPicker(true)}
+              activeOpacity={0.8}
+            >
+              <Text style={{
+                color: selectedDeps.length ? theme.text : theme.secondaryText,
+                fontWeight: '400',
+                fontSize: 16,
+              }}>
+                {selectedDeps.length
+                  ? selectedDeps.map(t => t.name || t.taskName || `Task ${t[taskValueKey]}`).join(', ')
+                  : t("select_dependencies")}
+              </Text>
+            </TouchableOpacity>
+            <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
+          </View>
+          <CustomPickerDrawer
+            visible={showDepPicker}
+            onClose={() => setShowDepPicker(false)}
+            data={projectTasks}
+            valueKey={taskValueKey}
+            labelKey="name"
+            selectedValue={selectedDepIds}
+            onSelect={handleDepToggle}
+            multiSelect={true}
+            theme={theme}
+            placeholder={t("search_task")}
+          />
+
+          {/* 1. Task Mode Selector */}
+          <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
+            <TouchableOpacity
+              style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
+              onPress={() => setShowModePicker(true)}
+              activeOpacity={0.8}
+            >
+              <View>
+                <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Task Mode</Text>
+                <Text style={{ color: theme.text, fontWeight: '500', fontSize: 16 }}>
+                  {TASK_MODES.find(m => m.id === taskMode)?.name}
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
+          </View>
+          <CustomPickerDrawer
+            visible={showModePicker}
+            onClose={() => setShowModePicker(false)}
+            data={TASK_MODES}
+            valueKey="id"
+            labelKey="name"
+            selectedValue={taskMode}
+            onSelect={(modeId) => {
+              setTaskMode(modeId);
+              // If switching back to Legacy, clear category stuff
+              if (modeId === 'LEGACY') {
+                onChange('category', null);
+                onChange('currentStage', null);
+              }
+              setShowModePicker(false);
+            }}
+            multiSelect={false}
+            theme={theme}
+            placeholder="Select Task Mode"
+          />
+
+          {/* 2. Category Selector (Only if Workflow) */}
+          {taskMode === 'WORKFLOW' && (
+            <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <TouchableOpacity
+                style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
+                onPress={() => setShowCategoryPicker(true)}
+                activeOpacity={0.8}
+              >
+                <View>
+                  <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Category <Text style={{color: 'red'}}>*</Text></Text>
+                  <Text style={{ color: values.category ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
+                    {selectedCategoryName || "Select Category"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
+            </View>
+          )}
+          <CustomPickerDrawer
+            visible={showCategoryPicker}
+            onClose={() => setShowCategoryPicker(false)}
+            data={CATEGORY_OPTIONS}
+            valueKey="id"
+            labelKey="name"
+            selectedValue={values.category}
+            onSelect={(id) => {
+              onChange('category', id);
+              onChange('currentStage', null); // Reset stage when category changes
+              setShowCategoryPicker(false);
+            }}
+            multiSelect={false}
+            theme={theme}
+            placeholder="Select Category"
+          />
+
+          {/* 3. Initial Stage Selector (Only if Category Selected) */}
+          {taskMode === 'WORKFLOW' && values.category && (
+            <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+              <TouchableOpacity
+                style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }}
+                onPress={() => setShowStagePicker(true)}
+                activeOpacity={0.8}
+              >
+                <View>
+                  <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Initial Stage (Optional)</Text>
+                  <Text style={{ color: values.currentStage ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
+                    {selectedStageName || "Select initial stage"}
+                  </Text>
+                </View>
+              </TouchableOpacity>
+              <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
+            </View>
+          )}
+          <CustomPickerDrawer
+            visible={showStagePicker}
+            onClose={() => setShowStagePicker(false)}
+            data={availableStages}
+            valueKey="id"
+            labelKey="name"
+            selectedValue={values.currentStage}
+            onSelect={(id) => {
+              onChange('currentStage', id);
+              setShowStagePicker(false);
+            }}
+            multiSelect={false}
+            theme={theme}
+            placeholder="Select Initial Stage"
+          />
+
+          {/* --- Flags (Issue, Critical, Approval) --- */}
+          <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.toggleIconBox}><Feather name="alert-triangle" size={24} color="#FF6B35" /></View>
+            <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text></View>
+            <Switch value={values.isIssue || false} onValueChange={v => onChange('isIssue', v)} trackColor={{ false: '#ddd', true: '#FF6B35' }} thumbColor="#fff" />
+          </View>
+
+          <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
+            <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(229, 57, 53, 0.1)' }]}><Feather name="zap" size={24} color="#E53935" /></View>
+            <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsCritical') || "Mark as Critical"}</Text></View>
+            <Switch value={values.isCritical || false} onValueChange={v => onChange('isCritical', v)} trackColor={{ false: '#ddd', true: '#E53935' }} thumbColor="#fff" />
+          </View>
+
+          <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
+            <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(54, 108, 217, 0.1)' }]}><Feather name="check-circle" size={24} color={theme.primary} /></View>
+            <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('approvalRequired') || "Approval Required"}</Text></View>
+            <Switch value={values.isApprovalNeeded || false} onValueChange={v => onChange('isApprovalNeeded', v)} trackColor={{ false: '#ddd', true: theme.primary }} thumbColor="#fff" />
+          </View>
+
+          {values.isApprovalNeeded && (
+            <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 10 }]}>
+              <TouchableOpacity style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }} onPress={() => setShowApproverPicker(true)} activeOpacity={0.8}>
+                <Text style={{ color: selectedApprover ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
+                  {selectedApprover ? `Approver: ${selectedApprover.name}` : "Select Approver"}
+                </Text>
+              </TouchableOpacity>
+              <Feather name="chevron-down" size={20} color="#bbb" style={styles.inputIcon} />
+            </View>
+          )}
+          <CustomPickerDrawer visible={showApproverPicker} onClose={() => setShowApproverPicker(false)} data={users} valueKey="userId" labelKey="name" imageKey="profilePhoto" selectedValue={values.approvalRequiredBy} onSelect={(id) => { onChange('approvalRequiredBy', id); setShowApproverPicker(false); }} multiSelect={false} theme={theme} placeholder="Select Approver" showImage={true} />
+
+        </View>
+      )}
 
       {/* --- Submit Button --- */}
       <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate}>
@@ -621,7 +654,7 @@ const styles = StyleSheet.create({
   },
   drawerBtn: {
     marginHorizontal: 22,
-    marginTop: 10,
+    marginTop: 20,
     marginBottom: 40,
     borderRadius: 16,
     overflow: 'hidden',
@@ -661,4 +694,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 2,
   },
+  additionalOptionsBtn: {
+    alignItems: 'center',
+    paddingVertical: 10,
+    marginTop: 5,
+    marginBottom: 5,
+  },
+  additionalOptionsText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  additionalSection: {
+    marginTop: 10,
+  }
 });
