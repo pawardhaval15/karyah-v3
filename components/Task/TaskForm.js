@@ -295,6 +295,17 @@ export default function TaskForm({
           editable={false}
         />
       </View>
+      {/* --- Description --- */}
+      <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 14 }]}>
+        <TextInput
+          style={[styles.input, { color: theme.text, height: 70 }]}
+          placeholder={t("description")}
+          placeholderTextColor="#bbb"
+          value={values.taskDesc}
+          onChangeText={(t) => onChange('taskDesc', t)}
+          multiline
+        />
+      </View>
 
       {/* --- Dates --- */}
       <View style={styles.dateRow}>
@@ -404,22 +415,10 @@ export default function TaskForm({
 
       <AttachmentSheet visible={showAttachmentSheet} onClose={() => setShowAttachmentSheet(false)} onPick={async (type) => { await pickAttachment(type); setShowAttachmentSheet(false); }} />
 
-      {/* --- Description --- */}
-      <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, marginTop: 14 }]}>
-        <TextInput
-          style={[styles.input, { color: theme.text, height: 70 }]}
-          placeholder={t("description")}
-          placeholderTextColor="#bbb"
-          value={values.taskDesc}
-          onChangeText={(t) => onChange('taskDesc', t)}
-          multiline
-        />
-      </View>
-
       {/* =================================================================================== */}
       {/* 🔘 ADDITIONAL OPTIONS TOGGLE */}
       {/* =================================================================================== */}
-      
+
       <TouchableOpacity 
         style={styles.additionalOptionsBtn} 
         onPress={toggleAdditionalOptions}
@@ -433,10 +432,10 @@ export default function TaskForm({
       {/* =================================================================================== */}
       {/* 🟡 EXPANDABLE SECTION (Dependencies, Mode, Flags, Approval) */}
       {/* =================================================================================== */}
-      
+
       {showAdditionalOptions && (
         <View style={styles.additionalSection}>
-          
+
           {/* --- Dependencies --- */}
           <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <TouchableOpacity
