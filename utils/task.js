@@ -255,7 +255,7 @@ export const getTaskDetailsById = async (taskId) => {
     const data = await response.json();
     return data.task;
   } catch (error) {
-    console.error('❌ Error fetching task details:', error.message);
+    console.error(' Error fetching task details:', error.message);
     throw error;
   }
 };
@@ -315,7 +315,7 @@ export const updateTask = async (taskId, updateData) => {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/${taskId}`;
     
-    console.log('🔄 Updating task:', { taskId, updateData, url });
+    console.log('Updating task:', { taskId, updateData, url });
     
     // Map frontend field names to backend field names
     const mappedData = {
@@ -338,32 +338,32 @@ export const updateTask = async (taskId, updateData) => {
       body: JSON.stringify(mappedData),
     });
     
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
+    console.log('Response status:', response.status);
+    console.log('Response headers:', Object.fromEntries(response.headers.entries()));
     
     // Get the raw response text first
     const responseText = await response.text();
-    console.log('📄 Raw response:', responseText);
+    console.log('Raw response:', responseText);
     
     // Try to parse as JSON
     let data;
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ JSON Parse Error:', parseError);
-      console.error('❌ Response was not JSON:', responseText);
+      console.error(' JSON Parse Error:', parseError);
+      console.error(' Response was not JSON:', responseText);
       throw new Error(`Server returned non-JSON response: ${responseText.substring(0, 200)}`);
     }
     
     if (!response.ok) {
-      console.error('❌ API Error Response:', data);
+      console.error('API Error Response:', data);
       throw new Error(data.message || 'Failed to update task');
     }
     
-    console.log('✅ Task update success:', data);
+    console.log('Task update success:', data);
     return data.task;
   } catch (error) {
-    console.error('❌ Error updating task:', error.message);
+    console.error('Error updating task:', error.message);
     throw error;
   }
 };
@@ -374,7 +374,7 @@ export const updateTaskTags = async (taskId, tags) => {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/${taskId}/tags`;
     
-    console.log('🔄 Updating task tags with PATCH:', { taskId, tags, url });
+    console.log(' Updating task tags with PATCH:', { taskId, tags, url });
     
     const response = await fetch(url, {
       method: 'PATCH',
@@ -385,10 +385,10 @@ export const updateTaskTags = async (taskId, tags) => {
       body: JSON.stringify({ tags }),
     });
     
-    console.log('📡 Response status:', response.status);
+    console.log(' Response status:', response.status);
     
     const responseText = await response.text();
-    console.log('📄 Raw response:', responseText);
+    console.log(' Raw response:', responseText);
     
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}: ${responseText}`);
@@ -398,14 +398,14 @@ export const updateTaskTags = async (taskId, tags) => {
     try {
       data = JSON.parse(responseText);
     } catch (parseError) {
-      console.error('❌ Failed to parse response JSON:', parseError);
+      console.error('Failed to parse response JSON:', parseError);
       throw new Error('Invalid JSON response from server');
     }
     
-    console.log('✅ Task tags updated successfully:', data);
+    console.log('Task tags updated successfully:', data);
     return { ...data, tags: data.tags }; // Return the merged tags
   } catch (error) {
-    console.error('❌ Failed to update task tags:', error);
+    console.error('Failed to update task tags:', error);
     throw error;
   }
 };
@@ -447,7 +447,7 @@ export const updateTaskDetails = async (taskId, data) => {
     const token = await AsyncStorage.getItem('token');
     const formData = new FormData();
 
-    // ✅ Append basic fields (matching backend schema)
+    // Append basic fields (matching backend schema)
     formData.append('name', data.taskName || data.name || '');
     formData.append('description', data.description || '');
     formData.append('startDate', data.startDate || '');
@@ -455,41 +455,41 @@ export const updateTaskDetails = async (taskId, data) => {
     formData.append('isIssue', String(data.isIssue || false));
     formData.append('isCritical', String(data.isCritical || false));
     
-    // ✅ Progress field
+    // Progress field
     if (typeof data.progress === 'number') {
       formData.append('progress', String(data.progress));
     }
     
-    // ✅ Status field
+    // Status field
     if (data.status) {
       formData.append('status', data.status);
     }
     
-    // ✅ Approval fields
+    // Approval fields
     if (typeof data.isApproved === 'boolean') {
       formData.append('isApproved', String(data.isApproved));
     }
     
-    // ✅ Tags field - send as JSON array as expected by backend
+    // Tags field - send as JSON array as expected by backend
     if (Array.isArray(data.tags)) {
       formData.append('tags', JSON.stringify(data.tags));
     }
 
-    // ✅ Assigned user IDs
+    // Assigned user IDs
     if (Array.isArray(data.assignedUserIds)) {
       data.assignedUserIds.forEach(id => {
         formData.append('assignedUserIds', String(id));
       });
     }
 
-    // ✅ Images to remove
+    // Images to remove
     if (Array.isArray(data.imagesToRemove)) {
       data.imagesToRemove.forEach(index => {
         formData.append('imagesToRemove', String(index));
       });
     }
 
-    // ✅ Append new files
+    // Append new files
     if (Array.isArray(data.attachments)) {
   data.attachments.forEach(att => {
     if (att && att.uri) {
@@ -512,14 +512,14 @@ export const updateTaskDetails = async (taskId, data) => {
   });
 }
 
-    // ✅ Dependent task IDs
+    // Dependent task IDs
     if (Array.isArray(data.dependentTaskIds)) {
       data.dependentTaskIds.forEach(id => {
         formData.append('dependentTaskIds', String(id));
       });
     }
     
-    // ✅ Resolved images for issue resolution (when task is marked as issue)
+    // Resolved images for issue resolution (when task is marked as issue)
     if (Array.isArray(data.resolvedImages)) {
       data.resolvedImages.forEach(resolvedImg => {
         if (resolvedImg && resolvedImg.uri) {
@@ -542,7 +542,7 @@ export const updateTaskDetails = async (taskId, data) => {
       });
     }
 
-    // ✅ Debug log
+    // Debug log
     console.log('[updateTaskDetails] Final FormData:');
     for (let [key, value] of formData.entries()) {
       console.log(`${key}:`, value);
@@ -608,7 +608,7 @@ export const bulkAssignTasks = async (taskIds, assignedUserIds) => {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/bulk-assign`;
     
-    console.log('🔄 Bulk assign API call:', {
+    console.log('Bulk assign API call:', {
       url,
       taskIds,
       assignedUserIds,
@@ -630,22 +630,22 @@ export const bulkAssignTasks = async (taskIds, assignedUserIds) => {
       }),
     });
 
-    console.log('📡 Response status:', response.status);
-    console.log('📡 Response headers:', response.headers);
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
 
     const data = await response.json();
-    console.log('📊 Response data:', data);
+    console.log('Response data:', data);
 
     if (!response.ok) {
-      console.error('❌ API Error Response:', data);
+      console.error('API Error Response:', data);
       throw new Error(data.message || 'Failed to bulk assign tasks');
     }
 
-    console.log('✅ Bulk assign API success:', data);
+    console.log('Bulk assign API success:', data);
     return data;
   } catch (error) {
-    console.error('❌ Error bulk assigning tasks:', error.message);
-    console.error('❌ Full error:', error);
+    console.error('Error bulk assigning tasks:', error.message);
+    console.error('Full error:', error);
     throw error;
   }
 };
@@ -655,7 +655,7 @@ export const resolveCriticalOrIssueTask = async (taskId, resolveData) => {
     const token = await AsyncStorage.getItem('token');
     const url = `${API_URL}api/tasks/${taskId}/resolve`;
     
-    console.log('🔄 Resolving critical/issue task:', { taskId, resolveData, url });
+    console.log('Resolving critical/issue task:', { taskId, resolveData, url });
     
     const formData = new FormData();
     

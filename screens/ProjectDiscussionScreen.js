@@ -298,7 +298,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       });
 
       socketInstance.on('connect', () => {
-        console.log('✅ Socket connected:', socketInstance.id);
+        console.log('Socket connected:', socketInstance.id);
         setIsConnected(true);
         
         // Join project room for real-time updates
@@ -307,7 +307,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
       });
 
       socketInstance.on('disconnect', () => {
-        console.log('❌ Socket disconnected');
+        console.log('Socket disconnected');
         setIsConnected(false);
       });
 
@@ -318,7 +318,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
       // Listen for new messages
       socketInstance.on('newMessage', (message) => {
-        console.log('📨 New message received:', message);
+        console.log('New message received:', message);
         setMessages(prevMessages => {
           // Check if message already exists to avoid duplicates
           const messageExists = prevMessages.some(msg => msg.id === message.id);
@@ -336,7 +336,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
       // Listen for message reactions
       socketInstance.on('messageReaction', (data) => {
-        console.log('👍 Message reaction received:', data);
+        console.log(' Message reaction received:', data);
         setMessages(prevMessages =>
           prevMessages.map(msg =>
             msg.id === data.messageId
@@ -348,7 +348,7 @@ export default function ProjectDiscussionScreen({ route, navigation }) {
 
       // Listen for message pin/unpin updates
       socketInstance.on('messagePinned', (data) => {
-        console.log('📌 Message pin update received:', data);
+        console.log('Message pin update received:', data);
         setMessages(prevMessages =>
           prevMessages.map(msg =>
             msg.id === data.messageId

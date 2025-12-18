@@ -20,7 +20,7 @@ export const fetchAssignedIssues = async () => {
         // console.log('Assigned Issues Data:', data.issues);
         return data.issues;
     } catch (error) {
-        console.error('❌ Error fetching assigned issues:', error.message);
+        console.error(' Error fetching assigned issues:', error.message);
         throw error;
     }
 };
@@ -41,7 +41,7 @@ export const fetchIssuesByUser = async () => {
         if (!response.ok) throw new Error(data.message || 'Failed to fetch issues by user');
         return data.issues;
     } catch (error) {
-        console.error('❌ Error fetching issues by user:', error.message);
+        console.error(' Error fetching issues by user:', error.message);
         throw error;
     }
 };
@@ -217,7 +217,7 @@ export const resolveIssueByAssignedUser = async ({ issueId, issueStatus, resolve
 
         return data;
     } catch (error) {
-        console.error('❌ Error resolving issue:', error.message);
+        console.error(' Error resolving issue:', error.message);
         throw error;
     }
 };
@@ -287,7 +287,7 @@ export const fetchIssueById = async (issueId) => {
         if (!response.ok) throw new Error(data.message || 'Failed to fetch issue');
         return data.issue;
     } catch (error) {
-        console.error('❌ Error fetching issue by id:', error.message);
+        console.error(' Error fetching issue by id:', error.message);
         throw error;
     }
 };
@@ -307,7 +307,7 @@ export const fetchCreatedByMeIssues = async () => {
         // console.log("Created by me issues fetched successfully:", data.issues);
         return data.issues;
     } catch (error) {
-        console.error('❌ Error fetching created by me issues:', error.message);
+        console.error(' Error fetching created by me issues:', error.message);
         throw error;
     }
 };

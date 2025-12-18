@@ -4,7 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import messaging from '@react-native-firebase/messaging';
 
 messaging().setBackgroundMessageHandler(async remoteMessage => {
-  console.log('🔄 FCM Background Message received:', remoteMessage);
+  console.log('FCM Background Message received:', remoteMessage);
   
   // You can perform background processing here
   // For example, update local storage, sync data, etc.
@@ -26,8 +26,8 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
     
     await AsyncStorage.setItem('background_notifications', JSON.stringify(parsedNotifications));
     
-    console.log('✅ Background notification processed and stored');
+    console.log(' Background notification processed and stored');
   } catch (error) {
-    console.error('❌ Error processing background notification:', error);
+    console.error(' Error processing background notification:', error);
   }
 });

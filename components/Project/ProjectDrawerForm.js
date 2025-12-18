@@ -136,7 +136,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
       setShowFullForm(false);
       if (onSubmit) onSubmit();
     } catch (err) {
-      console.error('❌ Create Project Error:', err);
+      console.error(' Create Project Error:', err);
       Alert.alert('Error', err.message || 'Failed to create project');
     }
   };

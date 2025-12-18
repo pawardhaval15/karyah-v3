@@ -83,7 +83,7 @@ export default function ProjectScreen({ navigation }) {
 
       setProjects(projectsWithTags);
     } catch (err) {
-      console.error('❌ Error fetching projects:', err.message);
+      console.error(' Error fetching projects:', err.message);
       Alert.alert("Error", err.message);
     } finally {
       setLoading(false);
@@ -109,7 +109,7 @@ export default function ProjectScreen({ navigation }) {
           decodedToken = jwtDecode(token);
           userIdFromToken = decodedToken.userId || decodedToken.id || decodedToken.sub;
         } catch (tokenError) {
-          console.error('❌ Error decoding token:', tokenError);
+          console.error(' Error decoding token:', tokenError);
         }
       }
       // Use token ID if available, otherwise fall back to storage ID
@@ -117,7 +117,7 @@ export default function ProjectScreen({ navigation }) {
       setCurrentUserId(finalUserId);
 
     } catch (error) {
-      console.error('❌ Error getting current user:', error);
+      console.error(' Error getting current user:', error);
     }
   };
 
@@ -175,17 +175,17 @@ export default function ProjectScreen({ navigation }) {
 
   const handleSaveTags = async (projectId, newTags) => {
     try {
-      console.log('🏷️ Saving project tags:', { projectId, newTags });
+      console.log('Saving project tags:', { projectId, newTags });
 
       const updatedProject = await updateProjectTags(projectId, newTags);
-      console.log('🔄 API returned updated project:', updatedProject);
+      console.log('API returned updated project:', updatedProject);
 
       // Update the local projects state
       setProjects(prevProjects => {
         const newProjects = prevProjects.map(project => {
           const isMatch = project.id === projectId || project.projectId === projectId;
           if (isMatch) {
-            console.log('🔄 Updating project in state:', {
+            console.log('Updating project in state:', {
               projectId: project.id,
               oldTags: project.tags,
               newTags: newTags
@@ -194,14 +194,14 @@ export default function ProjectScreen({ navigation }) {
           }
           return project;
         });
-        console.log('🔄 Updated projects state:', newProjects.map(p => ({ id: p.id, name: p.projectName, tags: p.tags })));
+        console.log('Updated projects state:', newProjects.map(p => ({ id: p.id, name: p.projectName, tags: p.tags })));
         return newProjects;
       });
 
-      console.log('✅ Project tags saved successfully');
+      console.log('Project tags saved successfully');
       return Promise.resolve();
     } catch (error) {
-      console.error('❌ Failed to save project tags:', error);
+      console.error('Failed to save project tags:', error);
       throw error;
     }
   };
@@ -416,8 +416,8 @@ export default function ProjectScreen({ navigation }) {
         />
       )}
       <ProjectFabDrawer
-        onTaskSubmit={(task) => console.log('🛠️ New Task:', task)}
-        onProjectSubmit={(project) => console.log('📁 New Project:', project)}
+        onTaskSubmit={(task) => console.log('New Task:', task)}
+        onProjectSubmit={(project) => console.log('New Project:', project)}
         theme={theme}
       />
       <ProjectPopup

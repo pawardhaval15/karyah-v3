@@ -357,7 +357,7 @@ export default function MyTasksScreen({ navigation }) {
 
       alert('Tasks assigned successfully!');
     } catch (error) {
-      console.error('❌ Bulk assign failed:', error);
+      console.error(' Bulk assign failed:', error);
       alert('Failed to assign tasks: ' + error.message);
     } finally {
       setLoading(false);

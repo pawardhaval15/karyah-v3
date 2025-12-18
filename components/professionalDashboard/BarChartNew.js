@@ -183,13 +183,13 @@ export default function ProjectsSnagLineChart({ theme, refreshKey }) {
     // console.log('🔍 Available projects:', displayProjects.length);
 
     if (index >= 0 && index < displayProjects.length && displayProjects[index]) {
-      console.log('✅ Selected project:', displayProjects[index]);
+      console.log('Selected project:', displayProjects[index]);
       setSelectedBar({ ...displayProjects[index], index });
     } else {
-      console.log('❌ Failed to find project at index:', index);
+      console.log('Failed to find project at index:', index);
       // Fallback: show first project for testing
       if (displayProjects.length > 0) {
-        console.log('🔄 Fallback: showing first project');
+        console.log('Fallback: showing first project');
         setSelectedBar({ ...displayProjects[0], index: 0 });
       }
     }

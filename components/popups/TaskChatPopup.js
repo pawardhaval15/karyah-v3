@@ -345,7 +345,7 @@ export default function TaskChatPopup({
       const mentionString = `@${match[1]}`;
 
       if (mentionMap[mentionString]) {
-        // ✅ Use ID from map if available
+        // Use ID from map if available
         foundIds.push(mentionMap[mentionString]);
       } else {
         // Fallback: match by name from mentionable users

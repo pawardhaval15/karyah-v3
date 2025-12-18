@@ -31,14 +31,15 @@ import {
     updateTaskDetails,
     updateTaskFlags,
     updateTaskProgress,
+    moveTaskToNextStage,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
+
 export default function SubTaskDetailsScreen({ route, navigation }) {
     // Store decoded token globally for this component
     const decodedRef = useRef(null);
     const { taskId, refreshedAt } = route.params;
-
     // Safe navigation function to handle cases where there's no previous screen
     const safeGoBack = () => {
         if (navigation.canGoBack()) {
@@ -74,6 +75,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
     const [userName, setUserName] = useState(null);
     const [loading, setLoading] = useState(true);
     const [showSubtasks, setShowSubtasks] = useState(false);
+    const [stageLoading, setStageLoading] = useState(false);
     const [showAddSubTaskPopup, setShowAddSubTaskPopup] = useState(false);
     const [showTaskChat, setShowTaskChat] = useState(false);
     const [showMaterialRequest, setShowMaterialRequest] = useState(false);
@@ -235,6 +237,52 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
         }
     };
 
+    // New Function to handle Stage Movement
+    const handleNextStage = async () => {
+        if (!task) return;
+
+        const stages = task.workflowStages || [];
+        const totalStages = stages.length;
+        const isLastStage = task.currentStageIndex >= totalStages - 1;
+
+        if (isLastStage) {
+            Alert.alert('Completed', 'This task is already in the final stage.');
+            return;
+        }
+
+        try {
+            setStageLoading(true);
+            const updatedTaskData = await moveTaskToNextStage(task.id || task.taskId);
+
+            let newProgress = updatedTaskData.progress;
+            if (newProgress === undefined && totalStages > 1) {
+                const newIndex = updatedTaskData.currentStageIndex !== undefined
+                    ? updatedTaskData.currentStageIndex
+                    : task.currentStageIndex + 1;
+                newProgress = Math.round((newIndex / (totalStages - 1)) * 100);
+            }
+
+            // Update Progress in Backend
+            await updateTaskProgress(task.id || task.taskId, newProgress);
+
+            setTask((prev) => ({
+                ...prev,
+                ...updatedTaskData,
+                progress: newProgress,
+                status: newProgress === 100 ? 'Completed' : 'In Progress'
+            }));
+
+            setEditableProgress(newProgress);
+            lastProgressRef.current = newProgress;
+
+            Alert.alert('Success', `Moved to next stage! Progress updated to ${newProgress}%`);
+        } catch (error) {
+            Alert.alert('Error', error.message || 'Failed to move stage');
+        } finally {
+            setStageLoading(false);
+        }
+    };
+
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
@@ -331,7 +379,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                 setProjectTasks([]);
             }
         };
-
         fetchData();
     }, [addSubTask.projectId]);
 
@@ -445,7 +492,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
         const assignedUsers = (sub.assignedUserDetails || [])
             .map((u) => (u.name || '').toLowerCase())
             .join(' ');
-
         return (
             taskName.includes(searchLower) ||
             description.includes(searchLower) ||
@@ -480,6 +526,14 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
             </View>
         );
     }
+    // Workflow Helper Variables
+    const isWorkflowTask = !!task.category;
+    const workflowStages = task.workflowStages || [];
+    const currentStageIndex = task.currentStageIndex || 0;
+    const currentStageLabel = workflowStages[currentStageIndex]?.label || task.currentStage || 'Unknown';
+    const isTaskCompleted = isWorkflowTask
+        ? currentStageIndex >= (workflowStages.length - 1)
+        : task.progress === 100;
 
     return (
         <View
@@ -566,7 +620,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         </TouchableOpacity>
                     </View>
                 </LinearGradient>
-
                 {/* Task Action Buttons */}
                 <View
                     style={{
@@ -593,7 +646,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 7 }} />
                         <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('chat')}</Text>
                     </TouchableOpacity>
-
                     {/* Reassign Task button */}
                     <TouchableOpacity
                         activeOpacity={0.8}
@@ -612,22 +664,22 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('reassign')}</Text>
                     </TouchableOpacity>
 
-                    {/* <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setShowMaterialRequest(true)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              backgroundColor: theme.card,
-              borderRadius: 18,
-              paddingHorizontal: 14,
-              paddingVertical: 7,
-              borderWidth: 1,
-              borderColor: theme.border,
-            }}>
-            <MaterialIcons name="inventory" size={18} color="#FF9800" style={{ marginRight: 7 }} />
-            <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('requirements')}</Text>
-          </TouchableOpacity> */}
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => setShowMaterialRequest(true)}
+                        style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            backgroundColor: theme.card,
+                            borderRadius: 18,
+                            paddingHorizontal: 14,
+                            paddingVertical: 7,
+                            borderWidth: 1,
+                            borderColor: theme.border,
+                        }}>
+                        <MaterialIcons name="inventory" size={18} color="#FF9800" style={{ marginRight: 7 }} />
+                        <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('requirements')}</Text>
+                    </TouchableOpacity>
                 </View>
                 <TaskChatPopup
                     visible={showTaskChat}
@@ -640,7 +692,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     users={users}
                     task={task}
                 />
-
                 <MaterialRequestPopup
                     visible={showMaterialRequest}
                     onClose={() => setShowMaterialRequest(false)}
@@ -648,7 +699,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     projectId={task.projectId}
                     theme={theme}
                 />
-
                 <TaskReassignPopup
                     visible={showReassignModal}
                     onClose={(wasReassigned) => {
@@ -663,62 +713,82 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     currentAssignees={task?.assignedUserDetails || []}
                     isCreator={isCreator}
                 />
-                {task && typeof editableProgress === 'number' && (
-                    <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>
-                        <Text
-                            style={{
-                                color: theme.text,
-                                fontWeight: '500',
-                                fontSize: 16,
-                                marginBottom: 8,
-                            }}>
-                            {t('progress')}: {editableProgress}%
-                        </Text>
-                        <Slider
-                            style={{ width: '100%', height: 18 }}
-                            minimumValue={0}
-                            maximumValue={100}
-                            step={1}
-                            minimumTrackTintColor={theme.primary}
-                            maximumTrackTintColor={theme.secCard}
-                            thumbTintColor={theme.primary}
-                            value={editableProgress ?? 0}
-                            onValueChange={(value) => {
-                                isSlidingRef.current = true;
-                                setEditableProgress(value);
-                            }}
-                            onSlidingComplete={async (value) => {
-                                isSlidingRef.current = false;
-                                // Save previous progress before change
-                                const prevProgress = lastProgressRef.current;
-                                // If user sets progress to 100, ask for confirmation
-                                if (value === 100) {
-                                    Alert.alert(
-                                        'Complete Task?',
-                                        'Are you sure you want to mark this task as 100% complete?',
-                                        [
-                                            {
-                                                text: 'No',
-                                                style: 'cancel',
-                                                onPress: () => {
-                                                    setEditableProgress(prevProgress);
-                                                },
-                                            },
-                                            {
-                                                text: 'Yes',
-                                                style: 'default',
-                                                onPress: async () => {
-                                                    await handleUpdateProgress(value, prevProgress);
-                                                },
-                                            },
-                                        ]
+
+                {isWorkflowTask ? (
+                    //WORKFLOW MODE VIEW
+                    <View style={[styles.workflowCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <View style={styles.workflowHeader}>
+                            <MaterialCommunityIcons name="transit-connection-variant" size={20} color={theme.primary} />
+                            <Text style={[styles.workflowTitle, { color: theme.text }]}>WORKFLOW STAGE</Text>
+                            <View style={[styles.stageBadge, { backgroundColor: theme.primary + '20' }]}>
+                                <Text style={[styles.stageBadgeText, { color: theme.primary }]}>{task.category?.replace('_', ' ')}</Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.stepperContainer}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingVertical: 10 }}>
+                                {workflowStages.map((stage, index) => {
+                                    const isCompleted = index < currentStageIndex;
+                                    const isCurrent = index === currentStageIndex;
+                                    return (
+                                        <View key={stage.key} style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                            <View style={{ alignItems: 'center' }}>
+                                                <View style={[styles.stepNode, isCompleted ? { backgroundColor: '#21B573', borderColor: '#21B573' } : isCurrent ? { backgroundColor: theme.primary, borderColor: theme.primary } : { backgroundColor: theme.card, borderColor: theme.border }]}>
+                                                    {isCompleted ? <Feather name="check" size={12} color="#fff" /> : <Text style={[styles.stepNumber, { color: isCurrent ? '#fff' : theme.secondaryText }]}>{index + 1}</Text>}
+                                                </View>
+                                                {isCurrent && <Text style={[styles.stepLabelActive, { color: theme.primary }]} numberOfLines={1}>{stage.label}</Text>}
+                                            </View>
+                                            {index < workflowStages.length - 1 && <View style={[styles.stepLine, (index < currentStageIndex) ? { backgroundColor: '#21B573' } : { backgroundColor: theme.border }]} />}
+                                        </View>
                                     );
-                                } else {
-                                    await handleUpdateProgress(value, prevProgress);
-                                }
-                            }}
-                        />
+                                })}
+                            </ScrollView>
+                        </View>
+
+                        <View style={styles.currentStageBox}>
+                            <Text style={[styles.currentStageLabel, { color: theme.secondaryText }]}>CURRENT STAGE</Text>
+                            <Text style={[styles.currentStageValue, { color: theme.text }]}>{currentStageLabel}</Text>
+                        </View>
+
+                        {!isTaskCompleted && (
+                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.primary }]} onPress={handleNextStage} disabled={stageLoading}>
+                                {stageLoading ? <ActivityIndicator color="#fff" size="small" /> : <><Feather name="check-circle" size={18} color="#fff" style={{ marginRight: 8 }} /><Text style={styles.actionBtnText}>Mark as Complete</Text></>}
+                            </TouchableOpacity>
+                        )}
+
+                        {isTaskCompleted && (
+                            <View style={[styles.completedBanner, { backgroundColor: '#21B57320' }]}>
+                                <Feather name="check" size={16} color="#21B573" />
+                                <Text style={{ color: '#21B573', fontWeight: '600', marginLeft: 6 }}>Workflow Completed</Text>
+                            </View>
+                        )}
                     </View>
+                ) : (
+                    // LEGACY MODE VIEW
+                    task && typeof editableProgress === 'number' && (
+                        <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>
+                            <Text style={{ color: theme.text, fontWeight: '500', fontSize: 16, marginBottom: 8 }}>{t('progress')}: {editableProgress}%</Text>
+                            <Slider
+                                style={{ width: '100%', height: 18 }}
+                                minimumValue={0} maximumValue={100} step={1}
+                                minimumTrackTintColor={theme.primary} maximumTrackTintColor={theme.secCard} thumbTintColor={theme.primary}
+                                value={editableProgress ?? 0}
+                                onValueChange={(value) => { isSlidingRef.current = true; setEditableProgress(value); }}
+                                onSlidingComplete={async (value) => {
+                                    isSlidingRef.current = false;
+                                    const prevProgress = lastProgressRef.current;
+                                    if (value === 100) {
+                                        Alert.alert('Complete Task?', 'Mark as 100% complete?', [
+                                            { text: 'No', style: 'cancel', onPress: () => setEditableProgress(prevProgress) },
+                                            { text: 'Yes', onPress: async () => await handleUpdateProgress(value, prevProgress) },
+                                        ]);
+                                    } else {
+                                        await handleUpdateProgress(value, prevProgress);
+                                    }
+                                }}
+                            />
+                        </View>
+                    )
                 )}
                 {showTaskDetails && (
                     <>
@@ -947,7 +1017,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                 onValueChange={async (value) => {
                                     try {
                                         setLoading(true);
-                                        console.log('🔄 Updating task isCritical:', { taskId, value });
+                                        console.log('Updating task isCritical:', { taskId, value });
 
                                         // Use updateTaskFlags to preserve assigned users
                                         const flags = {
@@ -959,7 +1029,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                         const updatedTask = await getTaskDetailsById(taskId);
                                         setTask(updatedTask);
 
-                                        console.log('✅ Task critical status updated successfully:', { taskId, isCritical: value });
+                                        console.log('Task critical status updated successfully:', { taskId, isCritical: value });
                                         Alert.alert(
                                             'Success',
                                             value
@@ -967,7 +1037,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                                 : 'Issue no longer marked as critical.'
                                         );
                                     } catch (err) {
-                                        console.error('❌ Error updating task critical status:', err);
+                                        console.error('Error updating task critical status:', err);
                                         Alert.alert('Error', err.message || 'Failed to update critical status');
                                     } finally {
                                         setLoading(false);
@@ -998,7 +1068,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         )}
                     </View>
                 )}
-
                 <FieldBox
                     label={t("added_attachments")}
                     value=""
@@ -1190,7 +1259,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     multiline={true}
                     theme={theme}
                 />
-
                 {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
                 {task.isIssue &&
                     Array.isArray(task.resolvedImages) &&
@@ -1212,7 +1280,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                     {t('resolved_attachments') || 'Resolved Attachments'}
                                 </Text>
                             </View>
-
                             <View style={{
                                 borderRadius: 12,
                                 borderWidth: 1,
@@ -1261,41 +1328,73 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                             </View>
                         </View>
                     )}
-
                 {/* Dependencies */}
+                {/* Dependencies Section with Icons */}
                 {Array.isArray(task.dependentTasks) && task.dependentTasks.length > 0 && (
                     <TouchableOpacity activeOpacity={0.7} onPress={() => setShowDependentPopup(true)}>
-                        <FieldBox
-                            label={t("dependent_tasks")}
-                            value={
-                                (() => {
-                                    // Prepare first 2 tasks for preview
-                                    const previewLines = task.dependentTasks.slice(0, 2).map((t) => {
-                                        const name = typeof t === 'string' ? t : t.taskName || t.name || '';
-                                        const progress =
-                                            typeof t === 'object' && t.progress != null ? t.progress : null;
-                                        let statusText = '';
-                                        if (progress !== null) {
-                                            statusText = progress < 70 ? ' 🟠 In Progress' : ' ✅ Ready to Proceed';
-                                        }
-                                        return name
-                                            ? `• ${name} (${progress !== null ? progress + '%' : 'N/A'})${statusText}`
-                                            : '';
-                                    });
-                                    let displayText = previewLines.filter(Boolean).join('\n');
-                                    // Add "+X more" if more than 2
-                                    if (task.dependentTasks.length > 2) {
-                                        displayText += `\n+${task.dependentTasks.length - 2} more...`;
-                                    }
-                                    return displayText;
-                                })() // <-- immediately invoke so value is a string
+                        <View style={[
+                            styles.fieldBox,
+                            {
+                                backgroundColor: theme.card,
+                                borderColor: theme.border,
+                                alignItems: 'center', // Align chevron vertically center
+                                height: 'auto',       // Allow height to grow (Responsive)
+                                paddingVertical: 12   // Add padding for multiline content
                             }
-                            rightComponent={<Feather name="chevron-right" size={18} color={theme.text} />}
-                            theme={theme}
-                        />
+                        ]}>
+                            <View style={{ flex: 1 }}>
+                                {/* Label */}
+                                <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
+                                    {t("dependent_tasks")}
+                                </Text>
+                                {/* List Items */}
+                                <View>
+                                    {task.dependentTasks.slice(0, 2).map((t, index) => {
+                                        const name = typeof t === 'string' ? t : t.taskName || t.name || '';
+                                        const progress = typeof t === 'object' && t.progress != null ? t.progress : null;
+                                        // Logic for Status
+                                        const isInProgress = progress !== null && progress < 70;
+                                        const isReady = progress !== null && progress >= 70;
+
+                                        return (
+                                            <View key={index} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4, flexWrap: 'wrap' }}>
+                                                <Text style={{ color: theme.text, fontSize: 14, lineHeight: 20 }}>
+                                                    • {name} {progress !== null ? `(${progress}%)` : ''}
+                                                </Text>
+                                                {/* Status Icon & Text */}
+                                                {progress !== null && (
+                                                    <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
+                                                        {isInProgress ? (
+                                                            <Feather name="loader" size={14} color="#f59e42" />
+                                                        ) : (
+                                                            <Feather name="check-circle" size={14} color={theme.success || '#2e7d32'} />
+                                                        )}
+                                                        <Text style={{
+                                                            fontSize: 13,
+                                                            color: isInProgress ? '#f59e42' : (theme.success || '#2e7d32'),
+                                                            marginLeft: 4,
+                                                            fontWeight: '500'
+                                                        }}>
+                                                            {isInProgress ? 'In Progress' : 'Ready'}
+                                                        </Text>
+                                                    </View>
+                                                )}
+                                            </View>
+                                        );
+                                    })}
+                                    {/* "Show More" Text */}
+                                    {task.dependentTasks.length > 2 && (
+                                        <Text style={{ color: theme.secondaryText, fontSize: 13, marginTop: 2, fontStyle: 'italic' }}>
+                                            + {task.dependentTasks.length - 2} more...
+                                        </Text>
+                                    )}
+                                </View>
+                            </View>
+                            {/* Right Chevron */}
+                            <Feather name="chevron-right" size={18} color={theme.text} />
+                        </View>
                     </TouchableOpacity>
                 )}
-
                 <Modal
                     visible={showDependentPopup}
                     transparent
@@ -1345,7 +1444,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                     const statusColor = progress < 70 ? '#f59e42' : theme.success || '#2e7d32';
                                     const avatarText = name ? name[0].toUpperCase() : '?';
                                     const taskId = typeof t === 'object' ? t.id || t.taskId || t._id : null;
-
                                     return (
                                         <TouchableOpacity
                                             key={idx}
@@ -1499,7 +1597,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
 
                             {subtaskSearch && showSubtasks && ` • ${t('found_subtasks', { count: filteredSubtasks.length })}`}
                         </Text>
-
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={{
@@ -1533,7 +1630,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         <Text style={[styles.subtasksTitle, { color: theme.text, marginBottom: 16 }]}>
                             {t("subtasks")} ({task.subTasks?.length || 0})
                         </Text>
-
                         {/* Search Bar */}
                         {(task.subTasks?.length || 0) > 0 && (
                             <View
@@ -1561,7 +1657,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                 )}
                             </View>
                         )}
-
                         {!task.subTasks || task.subTasks.length === 0 ? (
                             <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
                                 {t("no_subtasks_available")}
@@ -1869,7 +1964,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                 ios_backgroundColor="#ddd"
                             />
                         </View>
-
                         {/* Critical Toggle - Only show when isIssue is true */}
                         {editValues.isIssue && (
                             <View style={{
@@ -1910,7 +2004,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                 />
                             </View>
                         )}
-
                         <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 12 }}>
                             <TouchableOpacity style={{ marginRight: 16 }} onPress={() => setShowEditModal(false)}>
                                 <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t("cancel")}</Text>
@@ -1968,7 +2061,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     </View>
                 </View>
             </Modal>
-
             {/* Task Name Modal */}
             <Modal
                 visible={showTaskNameModal}
@@ -2007,6 +2099,22 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: '#E5E7EB',
     },
+    workflowCard: { marginHorizontal: 20, marginTop: 10, marginBottom: 20, borderRadius: 16, padding: 16, borderWidth: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowOffset: { width: 0, height: 2 }, shadowRadius: 4, elevation: 2 },
+    workflowHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+    workflowTitle: { fontSize: 14, fontWeight: '700', marginLeft: 8, flex: 1, letterSpacing: 0.5 },
+    stageBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+    stageBadgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+    stepperContainer: { marginBottom: 20, height: 60 },
+    stepNode: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, alignItems: 'center', justifyContent: 'center', zIndex: 2 },
+    stepNumber: { fontSize: 10, fontWeight: '700' },
+    stepLine: { width: 30, height: 2, marginHorizontal: -2, zIndex: 1 },
+    stepLabelActive: { position: 'absolute', top: 28, fontSize: 10, fontWeight: '600', width: 80, textAlign: 'center' },
+    currentStageBox: { alignItems: 'center', marginBottom: 16, paddingVertical: 10, backgroundColor: '#F8F9FA', borderRadius: 12 },
+    currentStageLabel: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
+    currentStageValue: { fontSize: 18, fontWeight: '700' },
+    actionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
+    actionBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
+    completedBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12 },
     subtasksTitle: {
         fontWeight: '500',
         fontSize: 16,

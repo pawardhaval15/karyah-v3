@@ -778,7 +778,6 @@ export default function AddTaskForm({
                     }}
                 />
             )}
-            
             {showAddProjectPopup && (
                 <ProjectPopup
                     visible={showAddProjectPopup}

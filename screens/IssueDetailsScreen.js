@@ -127,7 +127,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           if (taskData.isIssue) {
             // This is a task marked as an issue
             setIssue(taskData);
-            console.log('✅ Successfully fetched Task-based Issue:', taskData);
+            console.log(' Successfully fetched Task-based Issue:', taskData);
             setEditFields({
               issueTitle: taskData.taskName || '',
               description: taskData.description || '',
@@ -144,7 +144,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           throw new Error('No task data found');
         }
       } catch (taskError) {
-        console.log('❌ Task fetch failed, trying traditional issue:', taskError.message);
+        console.log(' Task fetch failed, trying traditional issue:', taskError.message);
 
         try {
           console.log('Attempting to fetch traditional issue with ID:', issueId);
@@ -154,7 +154,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
 
           if (issueData) {
             setIssue(issueData);
-            console.log('✅ Successfully fetched Traditional Issue:', issueData);
+            console.log(' Successfully fetched Traditional Issue:', issueData);
             setEditFields({
               issueTitle: issueData.issueTitle || '',
               description: issueData.description || '',
@@ -166,11 +166,11 @@ export default function IssueDetailsScreen({ navigation, route }) {
             throw new Error('No traditional issue data found');
           }
         } catch (issueError) {
-          console.error('❌ Traditional issue fetch failed:', issueError.message);
+          console.error(' Traditional issue fetch failed:', issueError.message);
         }
       }
       // If we reach here, both attempts failed
-      console.error('❌ Failed to fetch issue data from both sources');
+      console.error(' Failed to fetch issue data from both sources');
       setIssue(null);
     };
 

@@ -266,7 +266,7 @@ export async function createAnnouncement(communityId, message, token) {
     if (!res.ok) throw new Error(data.error || 'Failed to create announcement');
     return data.announcement;
   } catch (error) {
-    console.error('❌ Error creating announcement:', error);
+    console.error(' Error creating announcement:', error);
     throw error;
   }
 }
@@ -282,7 +282,7 @@ export async function fetchAnnouncements(communityId, token) {
     if (!res.ok) throw new Error(data.error || 'Failed to fetch announcements');
     return data.announcements;
   } catch (error) {
-    console.error('❌ Error fetching announcements:', error);
+    console.error(' Error fetching announcements:', error);
     throw error;
   }
 }

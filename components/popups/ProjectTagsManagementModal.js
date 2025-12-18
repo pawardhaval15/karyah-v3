@@ -39,7 +39,7 @@ export default function ProjectTagsManagementModal({
       Alert.alert('Success', 'Project tags updated successfully!');
       onClose();
     } catch (error) {
-      console.error('❌ Error saving project tags:', error);
+      console.error(' Error saving project tags:', error);
       Alert.alert('Error', 'Failed to update project tags. Please try again.');
     } finally {
       setLoading(false);

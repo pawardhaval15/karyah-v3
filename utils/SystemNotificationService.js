@@ -64,14 +64,14 @@ class SystemNotificationService {
   // Handle notification navigation
   static handleNotificationNavigation(data) {
     if (!data || !data.type) {
-      console.log('📬 System notification received without navigation data');
+      console.log('System notification received without navigation data');
       return;
     }
 
-    console.log('🔄 System notification navigation:', data);
+    console.log('System notification navigation:', data);
 
     if (!navigationRef.isReady()) {
-      console.warn('🔄 Navigation not ready, waiting...');
+      console.warn('Navigation not ready, waiting...');
       setTimeout(() => {
         SystemNotificationService.handleNotificationNavigation(data);
       }, 1000);
@@ -107,7 +107,7 @@ class SystemNotificationService {
         break;
 
       default:
-        console.warn('📬 Unknown notification type:', data.type);
+        console.warn('Unknown notification type:', data.type);
     }
   }
 
@@ -115,13 +115,13 @@ class SystemNotificationService {
   static setupFCMListeners() {
     // Foreground notifications
     const unsubscribeForeground = messaging().onMessage(async remoteMessage => {
-      console.log('📥 FCM foreground message:', remoteMessage);
+      console.log('FCM foreground message:', remoteMessage);
       SystemNotificationService.showForegroundNotification(remoteMessage);
     });
 
     // Background app opened
     const unsubscribeBackgroundOpen = messaging().onNotificationOpenedApp(remoteMessage => {
-      console.log('🔄 FCM background app opened:', remoteMessage);
+      console.log('FCM background app opened:', remoteMessage);
       if (remoteMessage?.data) {
         setTimeout(() => {
           SystemNotificationService.handleNotificationNavigation(remoteMessage.data);
@@ -134,7 +134,7 @@ class SystemNotificationService {
       .getInitialNotification()
       .then(remoteMessage => {
         if (remoteMessage) {
-          console.log('📲 FCM app opened from quit state:', remoteMessage);
+          console.log('FCM app opened from quit state:', remoteMessage);
           if (remoteMessage?.data) {
             setTimeout(() => {
               SystemNotificationService.handleNotificationNavigation(remoteMessage.data);
@@ -145,7 +145,7 @@ class SystemNotificationService {
 
     // Token refresh
     const unsubscribeTokenRefresh = messaging().onTokenRefresh(async token => {
-      console.log('🔄 FCM token refreshed:', token);
+      console.log('FCM token refreshed:', token);
       await SystemNotificationService.registerToken(token);
     });
 
@@ -164,13 +164,13 @@ class SystemNotificationService {
       }
 
       if (!token) {
-        console.warn('⚠️ No FCM token available');
+        console.warn('No FCM token available');
         return;
       }
 
       const userToken = await AsyncStorage.getItem('token');
       if (!userToken) {
-        console.warn('⚠️ No user auth token found');
+        console.warn('No user auth token found');
         return;
       }
 
@@ -190,13 +190,13 @@ class SystemNotificationService {
       });
 
       const data = await response.json();
-      console.log(`✅ ${platformName} FCM token registered:`, data);
+      console.log(`${platformName} FCM token registered:`, data);
 
       // Store locally
       await AsyncStorage.setItem(`fcm_token_${Platform.OS}`, token);
 
     } catch (error) {
-      console.error('❌ Error registering FCM token:', error);
+      console.error('Error registering FCM token:', error);
     }
   }
 }

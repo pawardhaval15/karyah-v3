@@ -15,7 +15,7 @@ export default function TaskCard({ task, onSubtaskPress, theme }) {
           borderColor: theme.border,
         }
       ]}
-      onPress={() => onSubtaskPress(task.taskId || task.id)} // ✅ Send taskId
+      onPress={() => onSubtaskPress(task.taskId || task.id)} // Send taskId
       activeOpacity={0.85}
     >
       <View style={[styles.taskIcon, { backgroundColor: theme.avatarBg }]}>

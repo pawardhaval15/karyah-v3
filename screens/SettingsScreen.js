@@ -260,11 +260,11 @@ export default function SettingsScreen({ navigation }) {
                 });
               }
 
-              // 🧹 Remove tokens from storage
+              // Remove tokens from storage
               await AsyncStorage.removeItem(`fcm_token_${Platform.OS}`);
               await AsyncStorage.removeItem('token');
 
-              // 🔄 Navigate to login screen
+              // Navigate to login screen
               navigation.reset({ index: 0, routes: [{ name: 'Login' }] });
 
             } catch (err) {

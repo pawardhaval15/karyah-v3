@@ -139,11 +139,11 @@ export default function CustomNotificationPopup({
   ).current;
 
   if (!visible || (!showNotifications && !forceShow)) {
-    console.log('🚫 CustomNotificationPopup not showing:', { visible, showNotifications, forceShow });
+    console.log('CustomNotificationPopup not showing:', { visible, showNotifications, forceShow });
     return null;
   }
 
-  console.log('✅ CustomNotificationPopup rendering with:', { title, message, data });
+  console.log('CustomNotificationPopup rendering with:', { title, message, data });
 
   return (
     <View style={[

@@ -20,15 +20,15 @@ export const testCustomNotification = () => {
         timestamp: new Date().toISOString(),
       },
     });
-    console.log('✅ Task notification triggered successfully');
+    console.log(' Task notification triggered successfully');
   } catch (error) {
-    console.error('❌ Error showing task notification:', error);
+    console.error(' Error showing task notification:', error);
     Alert.alert('Error', 'Failed to show notification: ' + error.message);
   }
 };
 
 export const testProjectNotification = () => {
-  console.log('🧪 Testing custom notification (Project)...');
+  console.log(' Testing custom notification (Project)...');
   try {
     // Show a fallback alert to confirm the button is working
     Alert.alert('Test', 'Project notification button pressed! Check console for details.');
@@ -45,15 +45,15 @@ export const testProjectNotification = () => {
         timestamp: new Date().toISOString(),
       },
     });
-    console.log('✅ Project notification triggered successfully');
+    console.log(' Project notification triggered successfully');
   } catch (error) {
-    console.error('❌ Error showing project notification:', error);
+    console.error(' Error showing project notification:', error);
     Alert.alert('Error', 'Failed to show notification: ' + error.message);
   }
 };
 
 export const testIssueNotification = () => {
-  console.log('🧪 Testing custom notification (Issue)...');
+  console.log(' Testing custom notification (Issue)...');
   try {
     // Show a fallback alert to confirm the button is working
     Alert.alert('Test', 'Issue notification button pressed! Check console for details.');
@@ -70,15 +70,15 @@ export const testIssueNotification = () => {
         timestamp: new Date().toISOString(),
       },
     });
-    console.log('✅ Issue notification triggered successfully');
+    console.log(' Issue notification triggered successfully');
   } catch (error) {
-    console.error('❌ Error showing issue notification:', error);
+    console.error('Error showing issue notification:', error);
     Alert.alert('Error', 'Failed to show notification: ' + error.message);
   }
 };
 
 export const testMultipleNotifications = () => {
-  console.log('🧪 Testing multiple notifications...');
+  console.log('Testing multiple notifications...');
   try {
     Alert.alert('Test', 'Multiple notifications will be shown! Check for queue and Clear All button.');
     
@@ -107,9 +107,9 @@ export const testMultipleNotifications = () => {
       });
     }, 2000);
     
-    console.log('✅ Multiple notifications triggered successfully');
+    console.log(' Multiple notifications triggered successfully');
   } catch (error) {
-    console.error('❌ Error showing multiple notifications:', error);
+    console.error(' Error showing multiple notifications:', error);
     Alert.alert('Error', 'Failed to show notifications: ' + error.message);
   }
 };

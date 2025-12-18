@@ -8,7 +8,7 @@ export function DirectNotificationTest({ theme }) {
   const [notificationData, setNotificationData] = useState(null);
 
   const testDirectNotification = () => {
-    console.log('🧪 Direct notification test triggered');
+    console.log('Direct notification test triggered');
     setNotificationData({
       title: 'Direct Test Notification',
       message: 'This is a direct test to verify the notification popup is working correctly.',
@@ -24,18 +24,18 @@ export function DirectNotificationTest({ theme }) {
   };
 
   const handleCancel = () => {
-    console.log('❌ Direct notification cancelled');
+    console.log('Direct notification cancelled');
     setShowNotification(false);
     setNotificationData(null);
   };
 
   const handleEnlarge = (notification) => {
-    console.log('🔍 Direct notification enlarged:', notification);
+    console.log('Direct notification enlarged:', notification);
     alert('Enlarge functionality working! ' + JSON.stringify(notification, null, 2));
   };
 
   const handleNavigate = (data) => {
-    console.log('🔄 Direct notification navigation:', data);
+    console.log('Direct notification navigation:', data);
     alert('Navigation functionality working! ' + JSON.stringify(data, null, 2));
   };
 

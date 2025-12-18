@@ -49,7 +49,7 @@ async function requestUserPermission() {
 
     return true;
   } catch (error) {
-    console.error('❌ Error requesting FCM permission:', error);
+    console.error(' Error requesting FCM permission:', error);
     return false;
   }
 }

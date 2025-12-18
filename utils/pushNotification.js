@@ -33,9 +33,9 @@
 //         });
 
 //         const data = await res.json();
-//         console.log('✅ Raw APNs token registered:', data);
+//         console.log(' Raw APNs token registered:', data);
 //       } catch (err) {
-//         console.error('❌ Error sending APNs token:', err);
+//         console.error(' Error sending APNs token:', err);
 //       }
 //     },
 

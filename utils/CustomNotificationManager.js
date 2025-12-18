@@ -16,12 +16,12 @@ class CustomNotificationManager {
   }
 
   static addListener(listener) {
-    console.log('📝 Adding notification listener, total listeners:', this.listeners.length + 1);
+    console.log('Adding notification listener, total listeners:', this.listeners.length + 1);
     this.listeners.push(listener);
 
     // Send current queue to new listener asynchronously
     if (this.notificationQueue.length > 0) {
-      console.log('📬 Sending current queue to new listener:', this.notificationQueue);
+      console.log('Sending current queue to new listener:', this.notificationQueue);
       setTimeout(() => {
         listener({ type: 'QUEUE_UPDATE', queue: [...this.notificationQueue] });
       }, 0);
@@ -30,18 +30,18 @@ class CustomNotificationManager {
 
   static removeListener(listener) {
     this.listeners = this.listeners.filter(l => l !== listener);
-    console.log('📝 Removing notification listener, remaining listeners:', this.listeners.length);
+    console.log(' Removing notification listener, remaining listeners:', this.listeners.length);
   }
 
   static showNotification(notification) {
-    console.log('📢 Attempting to add notification:', notification);
+    console.log('Attempting to add notification:', notification);
 
     // Create a unique key for this notification
     const notificationKey = `${notification.title}-${notification.data?.type}-${notification.data?.issueId}-${notification.data?.projectId}-${notification.data?.taskId}`;
 
     // Check if this exact notification is already pending (debounce within 500ms)
     if (this.pendingNotifications.has(notificationKey)) {
-      console.log('🚫 Notification already pending, ignoring duplicate:', notificationKey);
+      console.log(' Notification already pending, ignoring duplicate:', notificationKey);
       return;
     }
 
@@ -84,7 +84,7 @@ class CustomNotificationManager {
     });
 
     if (isDuplicate) {
-      console.log('🚫 Duplicate notification detected and blocked:', {
+      console.log(' Duplicate notification detected and blocked:', {
         title: notification.title,
         data: notification.data
       });
@@ -102,7 +102,7 @@ class CustomNotificationManager {
 
     // Add to queue
     this.notificationQueue.push(notification);
-    console.log('✅ Notification added to queue:', {
+    console.log(' Notification added to queue:', {
       id: notification.id,
       title: notification.title,
       queueLength: this.notificationQueue.length
@@ -117,9 +117,9 @@ class CustomNotificationManager {
   }
 
   static removeNotification(notificationId) {
-    console.log('🗑️ Removing notification:', notificationId);
+    console.log(' Removing notification:', notificationId);
     this.notificationQueue = this.notificationQueue.filter(n => n.id !== notificationId);
-    console.log('📬 Queue length after removal:', this.notificationQueue.length);
+    console.log('Queue length after removal:', this.notificationQueue.length);
 
     // Broadcast queue update asynchronously
     setTimeout(() => {
@@ -130,7 +130,7 @@ class CustomNotificationManager {
   }
 
   static clearAllNotifications() {
-    console.log('🧹 Clearing all notifications');
+    console.log(' Clearing all notifications');
     this.notificationQueue = [];
 
     // Broadcast queue update asynchronously
@@ -143,7 +143,7 @@ class CustomNotificationManager {
 
   static handleNotificationNavigation(rawData) {
     if (!rawData) {
-      console.log('📬 Custom notification received without navigation data');
+      console.log(' Custom notification received without navigation data');
       return;
     }
 
@@ -151,15 +151,15 @@ class CustomNotificationManager {
     const data = rawData.data ? rawData.data : rawData; // If data.data exists, use it
     const type = data.type;
 
-    console.log('🔄 Custom notification navigation:', data);
+    console.log(' Custom notification navigation:', data);
 
     if (!type) {
-      console.warn('📬 Notification missing type field:', data);
+      console.warn(' Notification missing type field:', data);
       return;
     }
 
     if (!navigationRef.isReady()) {
-      console.warn('🔄 Navigation not ready, waiting...');
+      console.warn(' Navigation not ready, waiting...');
       setTimeout(() => {
         CustomNotificationManager.handleNotificationNavigation(rawData);
       }, 1000);
@@ -198,7 +198,7 @@ class CustomNotificationManager {
 
 
       default:
-        console.warn('📬 Unknown notification type:', type);
+        console.warn(' Unknown notification type:', type);
     }
   }
 }
@@ -208,18 +208,18 @@ export function CustomNotificationProvider({ children, theme }) {
 
   useEffect(() => {
     const handleNotificationUpdate = (update) => {
-      console.log('🎯 CustomNotificationProvider received update:', update);
+      console.log('CustomNotificationProvider received update:', update);
 
       if (update.type === 'QUEUE_UPDATE') {
         setNotifications(update.queue);
       }
     };
 
-    console.log('🚀 CustomNotificationProvider mounting, adding listener...');
+    console.log('CustomNotificationProvider mounting, adding listener...');
     CustomNotificationManager.addListener(handleNotificationUpdate);
 
     return () => {
-      console.log('🔥 CustomNotificationProvider unmounting, removing listener...');
+      console.log('CustomNotificationProvider unmounting, removing listener...');
       CustomNotificationManager.removeListener(handleNotificationUpdate);
     };
   }, []);
