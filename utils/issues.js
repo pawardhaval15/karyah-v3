@@ -37,7 +37,7 @@ export const fetchIssuesByUser = async () => {
             },
         });
         const data = await response.json();
-        console.log('Issues by User Data:', data.issues);
+        // console.log('Issues by User Data:', data.issues);
         if (!response.ok) throw new Error(data.message || 'Failed to fetch issues by user');
         return data.issues;
     } catch (error) {

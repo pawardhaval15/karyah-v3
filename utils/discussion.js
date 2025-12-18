@@ -21,7 +21,7 @@ export const getMessagesByProject = async (projectId) => {
     });
 
     const data = await response.json();
-    console.log('Discussion Messages Data:', data);
+    // console.log('Discussion Messages Data:', data);
     if (!response.ok) {
       // Handle restriction-based access denial
       if (response.status === 403) {
@@ -182,8 +182,8 @@ export const checkUserDiscussionRestrictions = async (projectId) => {
       },
     });
     const data = await response.json();
-    console.log('Discussion Restrictions Data:', data);
-    console.log('Current userId:', userId);
+    // console.log('Discussion Restrictions Data:', data);
+    // console.log('Current userId:', userId);
     
     if (!response.ok) {
       throw new Error(data.error || 'Failed to check restrictions');
@@ -194,11 +194,11 @@ export const checkUserDiscussionRestrictions = async (projectId) => {
       restriction.userId === userId && restriction.module === 'discussion'
     );
 
-    console.log('Found restrictions for user:', userRestrictions);
+    // console.log('Found restrictions for user:', userRestrictions);
 
     // If no restrictions found, user has full access
     if (!userRestrictions) {
-      console.log('No restrictions found - granting full access');
+      // console.log('No restrictions found - granting full access');
       return {
         canView: true,
         canReply: true,
@@ -214,7 +214,7 @@ export const checkUserDiscussionRestrictions = async (projectId) => {
       canEdit: userRestrictions.canEdit,    // If canEdit is true, user can edit
     };
 
-    console.log('Calculated permissions:', permissions);
+    // console.log('Calculated permissions:', permissions);
     return permissions;
 
   } catch (error) {

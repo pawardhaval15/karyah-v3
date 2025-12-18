@@ -39,7 +39,7 @@ export const getProjectById = async (id) => {
   });
 
   const data = await response.json();
-  console.log('Fetched project data:', data);
+  // console.log('Fetched project data:', data);
   if (!response.ok) {
     throw new Error(data.message || 'Failed to fetch project details');
   }

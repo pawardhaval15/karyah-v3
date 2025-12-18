@@ -15,7 +15,7 @@ export const getUserConnections = async () => {
     });
 
     const data = await response.json();
-    console.log('[getUserConnections] Response data:', data);
+    // console.log('[getUserConnections] Response data:', data);
     if (!response.ok) {
       throw new Error(data.message || 'Failed to fetch connections');
     }
@@ -41,7 +41,7 @@ export const searchUsers = async (query) => {
     });
 
     const data = await response.json();
-    console.log('[searchUsers] Response data:', data);
+    // console.log('[searchUsers] Response data:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to search users');
@@ -190,7 +190,7 @@ export const getPendingRequests = async () => {
 
     if (!response.ok) {
       console.log('HTTP Error:', response.status, response.statusText);
-      console.log('Response data:', data);
+      // console.log('Response data:', data);
       
       // Handle specific HTTP errors
       if (response.status === 404) {

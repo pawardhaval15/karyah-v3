@@ -61,7 +61,7 @@ export default function CustomNotificationPopup({
   useEffect(() => {
     console.log('🎭 CustomNotificationPopup animation effect:', { visible, showNotifications, title, message, forceShow });
     if (visible && (showNotifications || forceShow)) {
-      console.log('▶️ Starting slide-in animation...');
+      console.log('Starting slide-in animation...');
       // Slide in from right
       Animated.parallel([
         Animated.timing(slideAnim, {
@@ -75,10 +75,10 @@ export default function CustomNotificationPopup({
           useNativeDriver: true,
         }),
       ]).start(() => {
-        console.log('✅ Slide-in animation completed');
+        console.log('Slide-in animation completed');
       });
     } else {
-      console.log('◀️ Hiding notification...');
+      console.log('Hiding notification...');
       hideNotification();
     }
   }, [visible, showNotifications, forceShow, disablePositioning]);

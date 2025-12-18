@@ -107,14 +107,14 @@ export default function TaskChatPopup({
   const getMentionableUsers = () => {
     const chatUsers = new Map();
 
-    console.log('[TaskChatPopup] DEBUG - Task object:', JSON.stringify(task, null, 2));
+    // console.log('[TaskChatPopup] DEBUG - Task object:', JSON.stringify(task, null, 2));
 
     // ALWAYS add task creator (including current user - they might want to mention themselves in some cases)
     if (task?.creator) {
       const creatorId = task.creator.userId || task.creator.id || task.creator._id;
       const creatorName = task.creator.name || task.creator.username || task.creator.fullName || 'Task Creator';
       
-      console.log('[TaskChatPopup] DEBUG - Found creator in task.creator:', { creatorId, creatorName, creator: task.creator });
+      // console.log('[TaskChatPopup] DEBUG - Found creator in task.creator:', { creatorId, creatorName, creator: task.creator });
       
       if (creatorId) {
         chatUsers.set(creatorId, {
@@ -131,7 +131,7 @@ export default function TaskChatPopup({
       const creatorId = task.createdBy.userId || task.createdBy.id || task.createdBy._id;
       const creatorName = task.createdBy.name || task.createdBy.username || task.createdBy.fullName || 'Task Creator';
       
-      console.log('[TaskChatPopup] DEBUG - Found creator in task.createdBy:', { creatorId, creatorName, createdBy: task.createdBy });
+      // console.log('[TaskChatPopup] DEBUG - Found creator in task.createdBy:', { creatorId, creatorName, createdBy: task.createdBy });
       
       if (creatorId) {
         chatUsers.set(creatorId, {
@@ -145,7 +145,7 @@ export default function TaskChatPopup({
 
     // Check if task has a direct creatorId and creatorName fields
     if (task?.creatorId && task?.creatorName && !chatUsers.has(task.creatorId)) {
-      console.log('[TaskChatPopup] DEBUG - Found creator in direct fields:', { creatorId: task.creatorId, creatorName: task.creatorName });
+      // console.log('[TaskChatPopup] DEBUG - Found creator in direct fields:', { creatorId: task.creatorId, creatorName: task.creatorName });
       
       chatUsers.set(task.creatorId, {
         id: task.creatorId,
@@ -157,7 +157,7 @@ export default function TaskChatPopup({
 
     // Check if task has creatorUserId and creatorName fields (THIS IS THE FIX!)
     if (task?.creatorUserId && task?.creatorName && !chatUsers.has(task.creatorUserId)) {
-      console.log('[TaskChatPopup] DEBUG - Found creator in creatorUserId fields:', { creatorUserId: task.creatorUserId, creatorName: task.creatorName });
+      // console.log('[TaskChatPopup] DEBUG - Found creator in creatorUserId fields:', { creatorUserId: task.creatorUserId, creatorName: task.creatorName });
       
       chatUsers.set(task.creatorUserId, {
         id: task.creatorUserId,
@@ -172,7 +172,7 @@ export default function TaskChatPopup({
       const creatorId = task.createdByUser.userId || task.createdByUser.id || task.createdByUser._id;
       const creatorName = task.createdByUser.name || task.createdByUser.username || task.createdByUser.fullName || 'Task Creator';
       
-      console.log('[TaskChatPopup] DEBUG - Found creator in task.createdByUser:', { creatorId, creatorName, createdByUser: task.createdByUser });
+      // console.log('[TaskChatPopup] DEBUG - Found creator in task.createdByUser:', { creatorId, creatorName, createdByUser: task.createdByUser });
       
       if (creatorId) {
         chatUsers.set(creatorId, {
@@ -190,7 +190,7 @@ export default function TaskChatPopup({
         const userId = user.userId || user.id || user._id;
         const userName = user.name || user.username || user.fullName || 'Assigned User';
         
-        console.log('[TaskChatPopup] DEBUG - Found assigned user in assignedUserDetails:', { userId, userName, user });
+        // console.log('[TaskChatPopup] DEBUG - Found assigned user in assignedUserDetails:', { userId, userName, user });
         
         if (userId && !chatUsers.has(userId)) {
           chatUsers.set(userId, {
@@ -209,7 +209,7 @@ export default function TaskChatPopup({
         const userId = user.userId || user.id || user._id;
         const userName = user.name || user.username || user.fullName || 'Assigned User';
         
-        console.log('[TaskChatPopup] DEBUG - Found assigned user in assignedUsers:', { userId, userName, user });
+        // console.log('[TaskChatPopup] DEBUG - Found assigned user in assignedUsers:', { userId, userName, user });
         
         if (userId && !chatUsers.has(userId)) {
           chatUsers.set(userId, {
@@ -229,7 +229,7 @@ export default function TaskChatPopup({
         const userId = msg.senderId || msg.userId || msg.sender.userId || msg.sender.id || msg.sender._id;
         const userName = msg.sender.name || msg.sender.username || msg.sender.fullName || 'Chat Participant';
         
-        console.log('[TaskChatPopup] DEBUG - Found message sender:', { userId, userName, sender: msg.sender });
+        // console.log('[TaskChatPopup] DEBUG - Found message sender:', { userId, userName, sender: msg.sender });
         
         if (userId && !chatUsers.has(userId)) {
           chatUsers.set(userId, {

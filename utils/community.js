@@ -22,7 +22,7 @@ export const createCommunity = async (organizationId, name, description, visibil
     });
 
     const data = await response.json();
-    console.log('Community Create Response:', data);
+    // console.log('Community Create Response:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to create community');
@@ -50,7 +50,7 @@ export const fetchCommunitiesByOrganization = async (orgId) => {
     });
 
     const data = await response.json();
-    console.log('Fetched Communities Response:', data);
+    // console.log('Fetched Communities Response:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to fetch communities');
@@ -78,7 +78,7 @@ export const fetchProjectsByOrganization = async (organizationId) => {
     });
 
     const data = await response.json();
-    console.log('Fetched Projects Response:', data);
+    // console.log('Fetched Projects Response:', data);
 
     if (!response.ok) {
       throw new Error(data.message || 'Failed to fetch projects'); // use message from backend
@@ -129,7 +129,7 @@ export const fetchCommunityDetail = async (communityId) => {
     });
 
     const data = await response.json();
-    console.log('Fetched Community Detail:', data);
+    // console.log('Fetched Community Detail:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to fetch community detail');
@@ -158,7 +158,7 @@ export const updateCommunity = async (communityId, { name, description, visibili
     });
 
     const data = await response.json();
-    console.log('Community Update Response:', data);
+    // console.log('Community Update Response:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to update community');
@@ -187,7 +187,7 @@ export const assignProjectsToCommunity = async (communityId, projectIds) => {
     });
 
     const data = await response.json();
-    console.log('Assign Projects Response:', data);
+    // console.log('Assign Projects Response:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to assign projects to community');
@@ -238,7 +238,7 @@ export const deleteCommunityById = async (communityId) => {
     });
 
     const data = await response.json();
-    console.log('Delete Community Response:', data);
+    // console.log('Delete Community Response:', data);
 
     if (!response.ok) {
       throw new Error(data.error || 'Failed to delete community');

@@ -10,9 +10,9 @@ export async function fetchTaskMessages(taskId) {
       headers: { Authorization: `Bearer ${token}` }
     });
     const data = await res.json();
-    console.log('[fetchTaskMessages] Response:', data);
+    // console.log('[fetchTaskMessages] Response:', data);
     if (!res.ok) throw new Error(data.message || 'Failed to fetch messages');
-    console.log('[fetchTaskMessages] Messages:', data.messages);
+    // console.log('[fetchTaskMessages] Messages:', data.messages);
     return (data.messages || []).map(msg => ({
       id: msg.id,
       text: msg.message,

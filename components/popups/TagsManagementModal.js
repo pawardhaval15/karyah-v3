@@ -30,7 +30,7 @@ export default function TagsManagementModal({
   const handleSave = async () => {
     setSaving(true);
     try {
-      console.log('🏷️ [TagsManagementModal] Saving tags:', { 
+      console.log('[TagsManagementModal] Saving tags:', { 
         taskId: task.id || task.taskId, 
         tags,
         originalTags: task?.tags 

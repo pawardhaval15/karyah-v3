@@ -62,7 +62,7 @@ export const materialRequestAPI = {
       });
 
       const data = await response.json();
-      console.log('Project Requests:', data);
+      // console.log('Project Requests:', data);
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch requests');
@@ -86,7 +86,7 @@ export const materialRequestAPI = {
         },
       });
       const data = await response.json();
-      console.log(data)
+      // console.log(data)
       if (!response.ok) {
         throw new Error(data.message || 'Failed to fetch requests');
       }

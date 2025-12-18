@@ -31,7 +31,7 @@ export default function ProjectsSnagLineChart({ theme, refreshKey }) {
           fetchedProjects.map(async (proj) => {
             try {
               const details = await getProjectById(proj.id);
-              console.log(`Project details for ID ${proj.id}:`, details);
+              // console.log(`Project details for ID ${proj.id}:`, details);
 
               // 1. Only UNRESOLVED issues
               const issuesCount = Array.isArray(details.issues)
@@ -392,14 +392,14 @@ export default function ProjectsSnagLineChart({ theme, refreshKey }) {
                 ]}>
                 <Text style={[styles.statusText, { color: theme.secondaryText }]}>
                   {selectedBar?.count >= 15
-                    ? '🚨 Critical: Immediate attention required'
+                    ? 'Critical: Immediate attention required'
                     : selectedBar?.count >= 8
                       ? '⚠️ High: Active monitoring needed'
                       : selectedBar?.count >= 3
                         ? '📈 Medium: Progressing well'
                         : selectedBar?.count > 0
-                          ? '✅ Low: Nearly complete'
-                          : '🎉 Complete: Project on track!'}
+                          ? 'Low: Nearly complete'
+                          : 'Complete: Project on track!'}
                 </Text>
               </View>
 

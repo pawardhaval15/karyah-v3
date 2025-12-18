@@ -36,11 +36,11 @@ export default function AssignedIssuesBarChart({ theme, refreshKey }) {
 
                 // Fetch all tasks for the user and filter for issues
                 const allTasks = await fetchMyTasks();
-                console.log('Fetched all tasks:', allTasks);
+                // console.log('Fetched all tasks:', allTasks);
 
                 // Filter tasks that are issues (isIssue: true)
                 const issueTasks = allTasks?.filter(task => task.isIssue === true) || [];
-                console.log('Filtered issue tasks:', issueTasks);
+                // console.log('Filtered issue tasks:', issueTasks);
 
                 // Separate assigned and created issues based on Task model structure
                 const assignedIssues = issueTasks.filter(task => {
@@ -54,8 +54,8 @@ export default function AssignedIssuesBarChart({ theme, refreshKey }) {
                     return task.creatorUserId === loggedInUserId;
                 });
 
-                console.log('Assigned issues:', assignedIssues);
-                console.log('Created issues:', createdIssues);
+                // console.log('Assigned issues:', assignedIssues);
+                // console.log('Created issues:', createdIssues);
 
                 const normalizeTaskIssues = (tasks, isCreatedByMe = false) =>
                     tasks.map(task => ({

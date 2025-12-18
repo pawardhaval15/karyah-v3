@@ -71,7 +71,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           setSearchResults([]);
         })
         .finally(() => {
-          console.log('[TaskReassignPopup] Finished loading connections');
+          // console.log('[TaskReassignPopup] Finished loading connections');
           setLoading(false);
         });
     } else {
@@ -186,17 +186,17 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
       );
       
       if (actuallyRemoved.includes(currentUserId)) {
-        messageParts.push("✅ You have been removed from this task");
+        messageParts.push("You have been removed from this task");
       }
       
       if (actuallyAdded.length > 0) {
         const addedUserNames = selectedUsers.map(u => u.userName || u.name).join(', ');
-        messageParts.push(`✅ ${actuallyAdded.length} new user(s) added: ${addedUserNames}`);
+        messageParts.push(` ${actuallyAdded.length} new user(s) added: ${addedUserNames}`);
       }
       
       if (removedUsers.length > 0 && !actuallyRemoved.includes(currentUserId)) {
         const removedUserNames = removedUsers.map(u => u.userName || u.name).join(', ');
-        messageParts.push(`✅ ${removedUsers.length} user(s) removed: ${removedUserNames}`);
+        messageParts.push(`${removedUsers.length} user(s) removed: ${removedUserNames}`);
       }
       
       if (retained.length > 0) {
@@ -204,7 +204,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           .filter(assignee => retained.includes(assignee.userId || assignee.id))
           .map(assignee => assignee.userName || assignee.name)
           .join(', ');
-        messageParts.push(`✅ ${retained.length} assignee(s) retained: ${retainedAssignees}`);
+        messageParts.push(`${retained.length} assignee(s) retained: ${retainedAssignees}`);
       }
       
       const message = messageParts.length > 0 

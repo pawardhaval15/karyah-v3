@@ -149,7 +149,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
         const result = await getUserConnections();
         setConnections(result || []);
       } catch (err) {
-        console.log('Error fetching connections:', err.message);
+        // console.log('Error fetching connections:', err.message);
         setConnections([]);
       }
     };
@@ -180,7 +180,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
             setAllUsers(filteredUsers);
             setShowingAllUsers(true);
           } catch (searchError) {
-            console.log('SearchUsers API error:', searchError.message);
+            // console.log('SearchUsers API error:', searchError.message);
             // Don't show error for API failures, just don't show additional users
             setAllUsers([]);
             setShowingAllUsers(false);

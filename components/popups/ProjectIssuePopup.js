@@ -95,7 +95,7 @@ export default function ProjectIssuePopup({
     //     }
     // };
     const handleSubmit = async () => {
-        console.log('Creating issue with values:', values);
+        // console.log('Creating issue with values:', values);
         if (!values.projectId) {
             alert('Please select a project.');
             return;
