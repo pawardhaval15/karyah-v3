@@ -1,7 +1,8 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons'; // Already imported as Icon, but for clarity
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { Audio } from 'expo-av';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator, // Ensure this is imported
   Animated,
   Dimensions,
   Image,
@@ -28,6 +29,7 @@ const NotificationScreen = ({ navigation, route }) => {
   const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'ALL');
   const [notifications, setNotifications] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // <--- Added Loading State
   const [pendingRequests, setPendingRequests] = useState([]);
   const [message, setMessage] = useState(null);
   const messageTimeout = useRef(null);
@@ -107,15 +109,21 @@ const NotificationScreen = ({ navigation, route }) => {
       setPendingRequests(Array.isArray(data) ? data : []);
       // console.log('Loaded pending requests:', data);
     } catch (err) {
-      setPendingRequests([]); // Set to empty array on error
+      setPendingRequests([]); 
     }
   }, []);
 
+  // Combined Initial Load
   useEffect(() => {
-    loadNotifications();
-    loadPendingRequests();
-  }, [loadNotifications, loadPendingRequests]);
+    const initLoad = async () => {
+      setIsLoading(true);
+      await Promise.all([loadNotifications(), loadPendingRequests()]);
+      setIsLoading(false);
+    };
+    initLoad();
+  }, []); // Run only on mount
 
+  // Focus listener (Silent update, no loading spinner)
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadNotifications();
@@ -176,7 +184,7 @@ const NotificationScreen = ({ navigation, route }) => {
   const getFilteredNotifications = () => {
     const found = tabFilters.find((f) => f.key === activeTab);
     if (!found) return notifications;
-    if (activeTab === 'CONNECTIONS') return []; // Handled below for pendingRequests
+    if (activeTab === 'CONNECTIONS') return [];
     return found.filter(notifications);
   };
 
@@ -227,7 +235,7 @@ const NotificationScreen = ({ navigation, route }) => {
             marginBottom: isTablet ? 24 : 18,
           },
         ]}
-        onPress={() => navigation.navigate('Home', {refreshing: true})}>
+        onPress={() => navigation.navigate('Home', { refreshing: true })}>
         <MaterialIcons name="arrow-back-ios" size={isTablet ? 18 : 16} color={theme.text} />
         <Text
           style={[
@@ -356,271 +364,280 @@ const NotificationScreen = ({ navigation, route }) => {
           })}
         </ScrollView>
       </View>
+
       {/* Body */}
-      <ScrollView
-        contentContainerStyle={{
-          padding: isTablet ? 24 : 16,
-          paddingBottom: isTablet ? 60 : 50,
-        }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-        showsVerticalScrollIndicator={false}>
-        {activeTab === 'CONNECTIONS' && pendingRequests.length > 0 && (
-          <>
-            <Text
-              style={[
-                styles.sectionTitle,
-                {
-                  color: theme.text,
-                  fontSize: isTablet ? 18 : 16,
-                  marginBottom: isTablet ? 12 : 8,
-                },
-              ]}>
-              {t('connection_requests')}
-            </Text>
-            {pendingRequests.map((req) => {
-              const initials = req.requester?.name
-                ? req.requester.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .toUpperCase()
-                  .slice(0, 2)
-                : 'U';
-              return (
-                <View
-                  key={req.id}
-                  style={[
-                    styles.card,
-                    {
-                      backgroundColor: theme.card,
-                      borderColor: theme.DrawerBorder || '#e0e0e0',
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      paddingVertical: isTablet ? 18 : 14,
-                      paddingHorizontal: isTablet ? 20 : 14,
-                      borderRadius: isTablet ? 20 : 16,
-                      marginBottom: isTablet ? 16 : 12,
-                    },
-                  ]}>
-                  {/* Avatar */}
+      {/* ADDED: Loader Conditional Rendering */}
+      {isLoading ? (
+        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={{ marginTop: 10, color: theme.secondaryText }}>{t('Loading Notifications...')}</Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{
+            padding: isTablet ? 24 : 16,
+            paddingBottom: isTablet ? 60 : 50,
+            flexGrow: 1, // Ensures empty state centers vertically if needed
+          }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          showsVerticalScrollIndicator={false}>
+          {activeTab === 'CONNECTIONS' && pendingRequests.length > 0 && (
+            <>
+              <Text
+                style={[
+                  styles.sectionTitle,
+                  {
+                    color: theme.text,
+                    fontSize: isTablet ? 18 : 16,
+                    marginBottom: isTablet ? 12 : 8,
+                  },
+                ]}>
+                {t('connection_requests')}
+              </Text>
+              {pendingRequests.map((req) => {
+                const initials = req.requester?.name
+                  ? req.requester.name
+                    .split(' ')
+                    .map((n) => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .slice(0, 2)
+                  : 'U';
+                return (
                   <View
-                    style={{
-                      width: isTablet ? 64 : 54,
-                      height: isTablet ? 64 : 54,
-                      borderRadius: isTablet ? 32 : 27,
-                      borderWidth: 2,
-                      borderColor: theme.primary,
-                      backgroundColor: theme.avatarBg,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: isTablet ? 18 : 14,
-                      overflow: 'hidden',
-                    }}>
-                    {req.requester?.profilePhoto ? (
-                      <Image
-                        source={{ uri: req.requester.profilePhoto }}
-                        style={{
-                          width: isTablet ? 60 : 50,
-                          height: isTablet ? 60 : 50,
-                          borderRadius: isTablet ? 30 : 25,
-                        }}
-                        resizeMode="cover"
-                      />
-                    ) : (
-                      <Text
-                        style={{
-                          color: theme.primary,
-                          fontWeight: '700',
-                          fontSize: isTablet ? 24 : 20,
-                        }}>
-                        {initials}
-                      </Text>
-                    )}
-                  </View>
-                  {/* Info and actions */}
-                  <View style={{ flex: 1, justifyContent: 'center' }}>
-                    <Text
-                      style={[
-                        styles.name,
-                        {
-                          color: theme.text,
-                          fontWeight: '500',
-                          fontSize: isTablet ? 18 : 16,
-                        },
-                      ]}>
-                      {req.requester?.name || 'User'}
-                    </Text>
-                    <Text
+                    key={req.id}
+                    style={[
+                      styles.card,
+                      {
+                        backgroundColor: theme.card,
+                        borderColor: theme.DrawerBorder || '#e0e0e0',
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        paddingVertical: isTablet ? 18 : 14,
+                        paddingHorizontal: isTablet ? 20 : 14,
+                        borderRadius: isTablet ? 20 : 16,
+                        marginBottom: isTablet ? 16 : 12,
+                      },
+                    ]}>
+                    <View
                       style={{
-                        color: theme.secondaryText,
-                        fontSize: isTablet ? 15 : 13,
-                        marginBottom: isTablet ? 10 : 8,
-                        fontWeight: '300',
+                        width: isTablet ? 64 : 54,
+                        height: isTablet ? 64 : 54,
+                        borderRadius: isTablet ? 32 : 27,
+                        borderWidth: 2,
+                        borderColor: theme.primary,
+                        backgroundColor: theme.avatarBg,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: isTablet ? 18 : 14,
+                        overflow: 'hidden',
                       }}>
-                      wants to connect
-                    </Text>
-                    <Text
-                      style={{
-                        color: theme.secondaryText,
-                        fontSize: isTablet ? 13 : 11,
-                        marginBottom: isTablet ? 12 : 8,
-                        fontWeight: '300',
-                      }}>
-                      {formatDateTime(req.createdAt)}
-                    </Text>
-                    <View style={{ flexDirection: 'row', gap: 0 }}>
-                      <TouchableOpacity
-                        onPress={() => handleAccept(req.id)}
-                        style={{
-                          backgroundColor: '#366CD91A',
-                          borderRadius: isTablet ? 24 : 20,
-                          paddingVertical: isTablet ? 10 : 6,
-                          paddingHorizontal: isTablet ? 24 : 18,
-                          marginRight: isTablet ? 12 : 8,
-                          borderWidth: 1,
-                          borderColor: theme.primary,
-                        }}>
+                      {req.requester?.profilePhoto ? (
+                        <Image
+                          source={{ uri: req.requester.profilePhoto }}
+                          style={{
+                            width: isTablet ? 60 : 50,
+                            height: isTablet ? 60 : 50,
+                            borderRadius: isTablet ? 30 : 25,
+                          }}
+                          resizeMode="cover"
+                        />
+                      ) : (
                         <Text
                           style={{
                             color: theme.primary,
-                            fontWeight: '500',
-                            fontSize: isTablet ? 16 : 14,
+                            fontWeight: '700',
+                            fontSize: isTablet ? 24 : 20,
                           }}>
-                          {t('accept')}
+                          {initials}
                         </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        onPress={() => handleReject(req.id)}
-                        style={{
-                          backgroundColor: theme.danger,
-                          borderRadius: isTablet ? 24 : 20,
-                          paddingVertical: isTablet ? 10 : 6,
-                          paddingHorizontal: isTablet ? 24 : 18,
-                          borderWidth: 1,
-                          borderColor: theme.dangerText,
-                        }}>
-                        <Text
-                          style={{
-                            color: theme.dangerText,
-                            fontWeight: '500',
-                            fontSize: isTablet ? 16 : 14,
-                          }}>
-                          {t('reject')}
-                        </Text>
-                      </TouchableOpacity>
+                      )}
                     </View>
-                  </View>
-                </View>
-              );
-            })}
-          </>
-        )}
-        {activeTab !== 'CONNECTIONS' && filteredNotifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_notifications_yet')}</Text>
-            <Text style={[styles.emptySub, { color: theme.text }]}>
-              {t('notifications_updates')}
-            </Text>
-          </View>
-        ) : (
-          filteredNotifications.map((n) => {
-            const screenMap = {
-              task: 'MyTasksScreen',
-              issue: 'IssuesScreen',
-              project: 'ProjectScreen',
-              connection: 'ConnectionsScreen',
-            };
-            const targetScreen = screenMap[n.type?.toLowerCase()] || null;
-            return (
-              <TouchableOpacity
-                key={n.id}
-                onPress={async () => {
-                  try {
-                    await markNotificationAsRead(n.id);
-                    await loadNotifications();
-                  } catch (error) {
-                    showMessage('Failed to mark notification as read');
-                  }
-                  if (targetScreen) {
-                    navigation.navigate(targetScreen, n.params || {});
-                  }
-                }}
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: n.read ? theme.card : `${theme.card}`,
-                    borderColor: theme.border || '#e0e0e0',
-                    borderRadius: isTablet ? 20 : 16,
-                    padding: isTablet ? 20 : 16,
-                    marginBottom: isTablet ? 16 : 12,
-                  },
-                ]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View
-                    style={[
-                      styles.iconCircle,
-                      {
-                        backgroundColor: theme.avatarBg,
-                        width: isTablet ? 50 : 42,
-                        height: isTablet ? 50 : 42,
-                        borderRadius: isTablet ? 16 : 12,
-                        marginRight: isTablet ? 16 : 12,
-                      },
-                    ]}>
-                    <Text
-                      style={{
-                        color: theme.primary,
-                        fontWeight: '500',
-                        fontSize: isTablet ? 24 : 20,
-                      }}>
-                      {n.type?.charAt(0)?.toUpperCase() || 'N'}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <View
-                      style={{
-                        flexDirection: 'row',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        marginBottom: isTablet ? 4 : 2,
-                      }}>
+                    <View style={{ flex: 1, justifyContent: 'center' }}>
                       <Text
                         style={[
                           styles.name,
                           {
                             color: theme.text,
-                            flex: 1,
-                            fontSize: isTablet ? 16 : 14,
-                            fontWeight: '600',
-                            marginBottom: isTablet ? 6 : 5,
+                            fontWeight: '500',
+                            fontSize: isTablet ? 18 : 16,
                           },
                         ]}>
-                        {n.type}
+                        {req.requester?.name || 'User'}
+                      </Text>
+                      <Text
+                        style={{
+                          color: theme.secondaryText,
+                          fontSize: isTablet ? 15 : 13,
+                          marginBottom: isTablet ? 10 : 8,
+                          fontWeight: '300',
+                        }}>
+                        wants to connect
                       </Text>
                       <Text
                         style={{
                           color: theme.secondaryText,
                           fontSize: isTablet ? 13 : 11,
+                          marginBottom: isTablet ? 12 : 8,
                           fontWeight: '300',
                         }}>
-                        {formatDateTime(n.createdAt)}
+                        {formatDateTime(req.createdAt)}
+                      </Text>
+                      <View style={{ flexDirection: 'row', gap: 0 }}>
+                        <TouchableOpacity
+                          onPress={() => handleAccept(req.id)}
+                          style={{
+                            backgroundColor: '#366CD91A',
+                            borderRadius: isTablet ? 24 : 20,
+                            paddingVertical: isTablet ? 10 : 6,
+                            paddingHorizontal: isTablet ? 24 : 18,
+                            marginRight: isTablet ? 12 : 8,
+                            borderWidth: 1,
+                            borderColor: theme.primary,
+                          }}>
+                          <Text
+                            style={{
+                              color: theme.primary,
+                              fontWeight: '500',
+                              fontSize: isTablet ? 16 : 14,
+                            }}>
+                            {t('accept')}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleReject(req.id)}
+                          style={{
+                            backgroundColor: theme.danger,
+                            borderRadius: isTablet ? 24 : 20,
+                            paddingVertical: isTablet ? 10 : 6,
+                            paddingHorizontal: isTablet ? 24 : 18,
+                            borderWidth: 1,
+                            borderColor: theme.dangerText,
+                          }}>
+                          <Text
+                            style={{
+                              color: theme.dangerText,
+                              fontWeight: '500',
+                              fontSize: isTablet ? 16 : 14,
+                            }}>
+                            {t('reject')}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </>
+          )}
+          {activeTab !== 'CONNECTIONS' && filteredNotifications.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_notifications_yet')}</Text>
+              <Text style={[styles.emptySub, { color: theme.text }]}>
+                {t('notifications_updates')}
+              </Text>
+            </View>
+          ) : (
+            filteredNotifications.map((n) => {
+              const screenMap = {
+                task: 'MyTasksScreen',
+                issue: 'IssuesScreen',
+                project: 'ProjectScreen',
+                connection: 'ConnectionsScreen',
+              };
+              const targetScreen = screenMap[n.type?.toLowerCase()] || null;
+              return (
+                <TouchableOpacity
+                  key={n.id}
+                  onPress={async () => {
+                    try {
+                      await markNotificationAsRead(n.id);
+                      await loadNotifications();
+                    } catch (error) {
+                      showMessage('Failed to mark notification as read');
+                    }
+                    if (targetScreen) {
+                      navigation.navigate(targetScreen, n.params || {});
+                    }
+                  }}
+                  style={[
+                    styles.card,
+                    {
+                      backgroundColor: n.read ? theme.card : `${theme.card}`,
+                      borderColor: theme.border || '#e0e0e0',
+                      borderRadius: isTablet ? 20 : 16,
+                      padding: isTablet ? 20 : 16,
+                      marginBottom: isTablet ? 16 : 12,
+                    },
+                  ]}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                    <View
+                      style={[
+                        styles.iconCircle,
+                        {
+                          backgroundColor: theme.avatarBg,
+                          width: isTablet ? 50 : 42,
+                          height: isTablet ? 50 : 42,
+                          borderRadius: isTablet ? 16 : 12,
+                          marginRight: isTablet ? 16 : 12,
+                        },
+                      ]}>
+                      <Text
+                        style={{
+                          color: theme.primary,
+                          fontWeight: '500',
+                          fontSize: isTablet ? 24 : 20,
+                        }}>
+                        {n.type?.charAt(0)?.toUpperCase() || 'N'}
                       </Text>
                     </View>
-                    <Text
-                      style={{
-                        color: theme.secondaryText,
-                        fontSize: isTablet ? 14 : 12,
-                        fontWeight: '300',
-                      }}>
-                      {n.message}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <View
+                        style={{
+                          flexDirection: 'row',
+                          justifyContent: 'space-between',
+                          alignItems: 'flex-start',
+                          marginBottom: isTablet ? 4 : 2,
+                        }}>
+                        <Text
+                          style={[
+                            styles.name,
+                            {
+                              color: theme.text,
+                              flex: 1,
+                              fontSize: isTablet ? 16 : 14,
+                              fontWeight: '600',
+                              marginBottom: isTablet ? 6 : 5,
+                            },
+                          ]}>
+                          {n.type}
+                        </Text>
+                        <Text
+                          style={{
+                            color: theme.secondaryText,
+                            fontSize: isTablet ? 13 : 11,
+                            fontWeight: '300',
+                          }}>
+                          {formatDateTime(n.createdAt)}
+                        </Text>
+                      </View>
+                      <Text
+                        style={{
+                          color: theme.secondaryText,
+                          fontSize: isTablet ? 14 : 12,
+                          fontWeight: '300',
+                        }}>
+                        {n.message}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
-      </ScrollView>
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      )}
+
       {/* Custom message drawer */}
       {message && (
         <Animated.View
@@ -664,6 +681,12 @@ const NotificationScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  // ADDED: Loading container style
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   backBtn: {
     marginTop: Platform.OS === 'ios' ? 0 : 25,
     marginLeft: 16,
