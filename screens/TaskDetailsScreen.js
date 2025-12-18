@@ -1204,178 +1204,169 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         )}
         <FieldBox
-          label={t("added_attachments")}
+          label={t("description")}
+          value={task.description || ''}
+          editable={false}
+          multiline={true}
+          theme={theme}
+        />
+        <FieldBox
+          label={t("attachments") || "Attachments"}
           value=""
+          // ✅ FIX: Clean pluralization logic for the placeholder
           placeholder={
-            allAttachments.length === 0 ? t('no_attachments') : t('tap_on_view_to_see_attachments')
+            allAttachments.length === 0
+              ? (t('no_attachments') || 'No attachments')
+              : `${allAttachments.length} ${allAttachments.length === 1 ? 'file' : 'files'} attached`
           }
           rightComponent={
-            allAttachments.length > 0 && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              {/* View Button (Only visible if attachments exist) */}
+              {allAttachments.length > 0 && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    backgroundColor: theme.primary + '15', // Light transparent primary color
+                    borderRadius: 8,
+                  }}
+                  onPress={() => {
+                    setDrawerVisible(true);
+                    setDrawerAttachments(task.images || []);
+                  }}>
+                  <MaterialIcons name="folder-open" size={18} color={theme.primary} />
+                  <Text style={{ color: theme.primary, fontWeight: '600', marginLeft: 4, fontSize: 12 }}>
+                    {t("view")}
+                  </Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Add Button (Paperclip) */}
               <TouchableOpacity
                 style={{
                   flexDirection: 'row',
                   alignItems: 'center',
                   paddingVertical: 6,
-                  paddingHorizontal: 12,
-                  backgroundColor: theme.primary,
+                  paddingHorizontal: 10,
+                  backgroundColor: theme.secCard,
                   borderRadius: 8,
-                  justifyContent: 'center',
+                  borderWidth: 1,
+                  borderColor: theme.border
                 }}
-                onPress={() => {
-                  setDrawerVisible(true);
-                  setDrawerAttachments(task.images || []);
-                }}>
-                <MaterialIcons name="folder" size={16} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                  {t("view")} ({allAttachments.length})
+                onPress={() => setShowAttachmentSheet(true)}>
+                <Feather name="paperclip" size={16} color={theme.text} />
+                <Text style={{ color: theme.text, fontWeight: '500', marginLeft: 6, fontSize: 12 }}>
+                   {uploadingAttachment ? t('uploading') : attaching ? t('attaching') : t('add')}
                 </Text>
               </TouchableOpacity>
-            )
+            </View>
           }
           theme={theme}
         />
-        <FieldBox
-          label={t("add_new_attachments")}
-          value=""
-          placeholder={t("tap_to_add_attachments")}
-          rightComponent={
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 6,
-                paddingHorizontal: 12,
-                backgroundColor: theme.secCard,
-                borderRadius: 8,
-                justifyContent: 'center',
-              }}
-              onPress={() => setShowAttachmentSheet(true)}>
-              <Feather name="paperclip" size={16} color={theme.primary} />
-              <Text style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                {uploadingAttachment
-                  ? t('uploading')
-                  : attaching
-                    ? t('attaching')
-                    : t('add_files')}
-              </Text>
 
-            </TouchableOpacity>
-          }
-          theme={theme}
-        />
+        {/* PREVIEW LIST FOR NEW (UNSAVED) ATTACHMENTS (Before Upload) */}
         {newAttachments.length > 0 && (
-          <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
-            {/* Show two attachments per row */}
-            {Array.from({ length: Math.ceil(newAttachments.length / 2) }).map((_, rowIdx) => (
-              <View
-                key={rowIdx}
-                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                {[0, 1].map((colIdx) => {
-                  const idx = rowIdx * 2 + colIdx;
-                  const att = newAttachments[idx];
-                  if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
-                  return (
-                    <View
-                      key={att.uri || att.name || idx}
-                      style={{
-                        flex: 1,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'flex-start',
-                        padding: 8,
-                        borderWidth: 1,
-                        borderColor: theme.border,
-                        borderRadius: 10,
-                        backgroundColor: theme.card,
-                        marginRight: colIdx === 0 ? 12 : 0,
-                      }}>
-                      {/* Preview for images */}
-                      {att.type && att.type.startsWith('image') ? (
-                        <TouchableOpacity
-                          onPress={() => {
-                            /* Optionally open image in modal */
-                          }}>
-                          <Image
-                            source={{ uri: att.uri }}
-                            style={{ width: 25, height: 25, borderRadius: 6, marginRight: 8 }}
-                          />
-                        </TouchableOpacity>
-                      ) : null}
-                      {/* Preview for audio */}
-                      {att.type && att.type.startsWith('audio') ? (
-                        <TouchableOpacity
-                          onPress={async () => {
-                            const { Sound } = await import('expo-av');
-                            const { sound } = await Sound.createAsync({ uri: att.uri });
-                            await sound.playAsync();
-                          }}
-                          style={{ marginRight: 8 }}>
-                          <MaterialCommunityIcons
-                            name="play-circle-outline"
-                            size={28}
-                            color="#1D4ED8"
-                          />
-                        </TouchableOpacity>
-                      ) : null}
-                      {/* File/document icon for other types */}
-                      {!att.type?.startsWith('image') && !att.type?.startsWith('audio') ? (
-                        <MaterialCommunityIcons
-                          name="file-document-outline"
-                          size={28}
-                          color="#888"
-                          style={{ marginRight: 8 }}
-                        />
-                      ) : null}
-                      {/* File name */}
-                      <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
-                        {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
-                          ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
-                          : att.name || att.uri?.split('/').pop()}
-                      </Text>
-                      {/* Remove button */}
-                      <TouchableOpacity
-                        onPress={() => {
-                          // Use setNewAttachments from useAttachmentPicker
-                          setNewAttachments((prev) => prev.filter((_, i) => i !== idx));
-                        }}
-                        style={{ marginLeft: 8 }}>
-                        <MaterialCommunityIcons name="close-circle" size={22} color="#E53935" />
-                      </TouchableOpacity>
-                    </View>
-                  );
-                })}
-              </View>
-            ))}
-            <TouchableOpacity
-              style={{
-                backgroundColor: theme.primary,
-                borderRadius: 8,
-                paddingHorizontal: 18,
-                paddingVertical: 10,
-                alignItems: 'center',
-                marginTop: 6,
-              }}
-              disabled={uploadingAttachment}
-              onPress={async () => {
-                setUploadingAttachment(true);
-                try {
-                  await updateTaskDetails(task.id || task._id || task.taskId, {
-                    attachments: newAttachments,
-                  });
-                  clearAttachments();
-                  // Refresh task details to show new attachments
-                  const updated = await getTaskDetailsById(task.id || task._id || task.taskId);
-                  setTask(updated);
-                  Alert.alert('Success', 'Attachment(s) added!');
-                } catch (err) {
-                  Alert.alert('Error', err.message || 'Failed to add attachment.');
-                }
-                setUploadingAttachment(false);
-              }}>
-              <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                {uploadingAttachment ? 'Uploading...' : 'Upload to Task'}
+          <View style={{ marginHorizontal: 16, marginBottom: 16, marginTop: -6 }}>
+            <View style={{ 
+               backgroundColor: theme.card, 
+               borderRadius: 12, 
+               padding: 12, 
+               borderWidth: 1, 
+               borderColor: theme.primary, 
+               borderStyle: 'dashed' 
+            }}>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary, marginBottom: 8 }}>
+                Ready to Upload ({newAttachments.length})
               </Text>
-            </TouchableOpacity>
+              {/* List of new files to be uploaded */}
+              {Array.from({ length: Math.ceil(newAttachments.length / 2) }).map((_, rowIdx) => (
+                <View
+                  key={rowIdx}
+                  style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                  {[0, 1].map((colIdx) => {
+                    const idx = rowIdx * 2 + colIdx;
+                    const att = newAttachments[idx];
+                    if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
+                    return (
+                      <View
+                        key={att.uri || att.name || idx}
+                        style={{
+                          flex: 1,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          padding: 8,
+                          borderWidth: 1,
+                          borderColor: theme.border,
+                          borderRadius: 8,
+                          backgroundColor: theme.background,
+                          marginRight: colIdx === 0 ? 8 : 0,
+                        }}>
+                        {/* Thumbnail Preview */}
+                        {att.type && att.type.startsWith('image') ? (
+                           <Image source={{ uri: att.uri }} style={{ width: 24, height: 24, borderRadius: 4, marginRight: 8 }} />
+                        ) : (
+                           <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.secondaryText} style={{ marginRight: 8 }} />
+                        )}
+                        <Text style={{ color: theme.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                          {(att.name || 'File').slice(0, 15)}
+                        </Text>
+                        {/* Remove from staging */}
+                        <TouchableOpacity
+                          onPress={() => setNewAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                          style={{ marginLeft: 4 }}>
+                          <MaterialCommunityIcons name="close" size={18} color="#E53935" />
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </View>
+              ))}
+              {/* UPLOAD ACTION BUTTON */}
+              <TouchableOpacity
+                style={{
+                  backgroundColor: theme.primary,
+                  borderRadius: 8,
+                  paddingVertical: 12,
+                  alignItems: 'center',
+                  marginTop: 4,
+                  shadowColor: theme.primary,
+                  shadowOffset: { width: 0, height: 2 },
+                  shadowOpacity: 0.2,
+                  shadowRadius: 4,
+                  elevation: 2,
+                }}
+                disabled={uploadingAttachment}
+                onPress={async () => {
+                  setUploadingAttachment(true);
+                  try {
+                    // Pass taskName and description so they don't get overwritten with null
+                    await updateTaskDetails(task.id || task._id || task.taskId, {
+                      taskName: task.taskName,
+                      description: task.description, 
+                      attachments: newAttachments,
+                    });
+                    clearAttachments();
+                    // Refresh task details to show new attachments immediately
+                    const updated = await getTaskDetailsById(task.id || task._id || task.taskId);
+                    setTask(updated);
+                    Alert.alert('Success', 'Attachment(s) uploaded successfully!');
+                  } catch (err) {
+                    console.error('Upload Error:', err);
+                    Alert.alert('Error', err.message || 'Failed to upload attachments.');
+                  }
+                  setUploadingAttachment(false);
+                }}>
+                {uploadingAttachment ? (
+                   <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                     Upload {newAttachments.length} {newAttachments.length === 1 ? 'File' : 'Files'} Now
+                   </Text>
+                )}
+              </TouchableOpacity>
+            </View>
           </View>
         )}
         <AttachmentSheet
@@ -1387,13 +1378,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             setShowAttachmentSheet(false);
           }}
         />
-        <FieldBox
-          label={t("description")}
-          value={task.description || ''}
-          editable={false}
-          multiline={true}
-          theme={theme}
-        />
+
         {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
         {task.isIssue &&
           Array.isArray(task.resolvedImages) &&
@@ -1862,7 +1847,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 6, minWidth: 160
           }}>
             {/* Edit */}
-            <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateTaskScreen', { taskId: task.id, projects, users, worklists, projectTasks }); }}>
+            <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateTaskScreen', { taskId: task.id || task._id || task.taskId, projects, users, worklists, projectTasks }); }}>
               <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
               <Text style={{ color: '#366CD9', fontSize: 15 }}>{t("edit")}</Text>
             </TouchableOpacity>
@@ -1893,7 +1878,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   setMenuVisible(false);
                   Alert.alert(t('delete_task'), t('delete_task_confirmation'), [
                     { text: t('cancel'), style: 'cancel' },
-                    { text: t('delete'), style: 'destructive', onPress: async () => { /* Delete logic */ await deleteTask(task.id); safeGoBack(); } },
+                    { text: t('delete'), style: 'destructive', onPress: async () => { /* Delete logic */ await deleteTask(task.id || task._id || task.taskId); safeGoBack(); } },
                   ]);
                 }}>
                   <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />

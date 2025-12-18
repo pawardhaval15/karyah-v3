@@ -442,90 +442,245 @@ export const updateTaskFlags = async (taskId, flags) => {
   }
 };
 
+// export const updateTaskDetails = async (taskId, data) => {
+//   try {
+//     const token = await AsyncStorage.getItem('token');
+//     const formData = new FormData();
+
+//     // Append basic fields (matching backend schema)
+//     formData.append('name', data.taskName || data.name || '');
+//     formData.append('description', data.description || '');
+//     formData.append('startDate', data.startDate || '');
+//     formData.append('endDate', data.endDate || '');
+//     formData.append('isIssue', String(data.isIssue || false));
+//     formData.append('isCritical', String(data.isCritical || false));
+    
+//     // Progress field
+//     if (typeof data.progress === 'number') {
+//       formData.append('progress', String(data.progress));
+//     }
+    
+//     // Status field
+//     if (data.status) {
+//       formData.append('status', data.status);
+//     }
+    
+//     // Approval fields
+//     if (typeof data.isApproved === 'boolean') {
+//       formData.append('isApproved', String(data.isApproved));
+//     }
+    
+//     // Tags field - send as JSON array as expected by backend
+//     if (Array.isArray(data.tags)) {
+//       formData.append('tags', JSON.stringify(data.tags));
+//     }
+
+//     // Assigned user IDs
+//     if (Array.isArray(data.assignedUserIds)) {
+//       data.assignedUserIds.forEach(id => {
+//         formData.append('assignedUserIds', String(id));
+//       });
+//     }
+
+//     // Images to remove
+//     if (Array.isArray(data.imagesToRemove)) {
+//       data.imagesToRemove.forEach(index => {
+//         formData.append('imagesToRemove', String(index));
+//       });
+//     }
+
+//     // Append new files
+//     if (Array.isArray(data.attachments)) {
+//   data.attachments.forEach(att => {
+//     if (att && att.uri) {
+//       const uri = att.uri.startsWith('file://') ? att.uri : `file://${att.uri}`;
+
+//       // Fix MIME type here - ensure it contains '/' character
+//       let mimeType = att.type;
+//       if (mimeType && !mimeType.includes('/')) {
+//         if (mimeType === 'image') mimeType = 'image/jpeg';
+//         else if (mimeType === 'video') mimeType = 'video/mp4';
+//         else mimeType = 'application/octet-stream';
+//       }
+
+//       formData.append('images', {
+//         uri,
+//         name: att.name || 'file',
+//         type: mimeType || 'application/octet-stream',
+//       });
+//     }
+//   });
+// }
+
+//     // Dependent task IDs
+//     if (Array.isArray(data.dependentTaskIds)) {
+//       data.dependentTaskIds.forEach(id => {
+//         formData.append('dependentTaskIds', String(id));
+//       });
+//     }
+    
+//     // Resolved images for issue resolution (when task is marked as issue)
+//     if (Array.isArray(data.resolvedImages)) {
+//       data.resolvedImages.forEach(resolvedImg => {
+//         if (resolvedImg && resolvedImg.uri) {
+//           const uri = resolvedImg.uri.startsWith('file://') ? resolvedImg.uri : `file://${resolvedImg.uri}`;
+          
+//           // Fix MIME type
+//           let mimeType = resolvedImg.type;
+//           if (mimeType && !mimeType.includes('/')) {
+//             if (mimeType === 'image') mimeType = 'image/jpeg';
+//             else if (mimeType === 'video') mimeType = 'video/mp4';
+//             else mimeType = 'application/octet-stream';
+//           }
+          
+//           formData.append('resolvedImages', {
+//             uri,
+//             name: resolvedImg.name || 'resolved-file',
+//             type: mimeType || 'application/octet-stream',
+//           });
+//         }
+//       });
+//     }
+
+//     // Debug log
+//     console.log('[updateTaskDetails] Final FormData:');
+//     for (let [key, value] of formData.entries()) {
+//       console.log(`${key}:`, value);
+//     }
+
+//     const url = `${API_URL}api/tasks/${taskId}`;
+//     console.log('[updateTaskDetails] Final URL:', url);
+
+//     const res = await fetch(url, {
+//       method: 'PUT',
+//       headers: {
+//         Authorization: `Bearer ${token}`,
+//       },
+//       body: formData,
+//     });
+
+//     const text = await res.text();
+
+//     try {
+//       const json = JSON.parse(text);
+//       if (!res.ok) {
+//         console.error('[updateTaskDetails] Server error response:', json);
+//         throw new Error(json.message || 'Failed to update task');
+//       }
+//       console.log('[updateTaskDetails] Success response:', json);
+//       return json;
+//     } catch (err) {
+//       console.error('[updateTaskDetails] Invalid JSON:', text);
+//       throw new Error('Server response was not JSON');
+//     }
+//   } catch (error) {
+//     console.error('[updateTaskDetails] Network error:', error);
+//     throw error;
+//   }
+// };
+
+
 export const updateTaskDetails = async (taskId, data) => {
   try {
     const token = await AsyncStorage.getItem('token');
     const formData = new FormData();
 
-    // Append basic fields (matching backend schema)
-    formData.append('name', data.taskName || data.name || '');
-    formData.append('description', data.description || '');
-    formData.append('startDate', data.startDate || '');
-    formData.append('endDate', data.endDate || '');
-    formData.append('isIssue', String(data.isIssue || false));
-    formData.append('isCritical', String(data.isCritical || false));
+    // ---------------------------------------------------------
+    // 1. BASIC FIELDS
+    // ---------------------------------------------------------
+    if (data.name) formData.append('name', data.name);
+    if (data.description) formData.append('description', data.description);
+    if (data.startDate) formData.append('startDate', data.startDate);
+    if (data.endDate) formData.append('endDate', data.endDate);
+    if (data.status) formData.append('status', data.status);
+
+    // ---------------------------------------------------------
+    // 2. BOOLEAN FIELDS (Critical Fix)
+    // Only append these if they are actually defined in 'data'.
+    // This prevents overwriting 'true' values with 'false' defaults.
+    // ---------------------------------------------------------
+    if (data.isIssue !== undefined) {
+      formData.append('isIssue', String(data.isIssue));
+    }
+    if (data.isCritical !== undefined) {
+      formData.append('isCritical', String(data.isCritical));
+    }
+    // Added as per your new Backend Controller
+    if (data.isApprovalNeeded !== undefined) {
+      formData.append('isApprovalNeeded', String(data.isApprovalNeeded));
+    }
+
+    // ---------------------------------------------------------
+    // 3. OPTIONAL FIELDS
+    // ---------------------------------------------------------
+    if (data.approvalRequiredBy) {
+      formData.append('approvalRequiredBy', String(data.approvalRequiredBy));
+    }
     
-    // Progress field
-    if (typeof data.progress === 'number') {
+    if (data.progress !== undefined && data.progress !== null) {
       formData.append('progress', String(data.progress));
     }
-    
-    // Status field
-    if (data.status) {
-      formData.append('status', data.status);
-    }
-    
-    // Approval fields
-    if (typeof data.isApproved === 'boolean') {
-      formData.append('isApproved', String(data.isApproved));
-    }
-    
-    // Tags field - send as JSON array as expected by backend
+
+    // Tags: Backend expects a JSON string
     if (Array.isArray(data.tags)) {
       formData.append('tags', JSON.stringify(data.tags));
     }
 
-    // Assigned user IDs
+    // ---------------------------------------------------------
+    // 4. ARRAYS (Users, Dependencies, Removals)
+    // ---------------------------------------------------------
     if (Array.isArray(data.assignedUserIds)) {
       data.assignedUserIds.forEach(id => {
         formData.append('assignedUserIds', String(id));
       });
     }
 
-    // Images to remove
+    if (Array.isArray(data.dependentTaskIds)) {
+      data.dependentTaskIds.forEach(id => {
+        formData.append('dependentTaskIds', String(id));
+      });
+    }
+
     if (Array.isArray(data.imagesToRemove)) {
       data.imagesToRemove.forEach(index => {
         formData.append('imagesToRemove', String(index));
       });
     }
 
-    // Append new files
+    // ---------------------------------------------------------
+    // 5. STANDARD ATTACHMENTS (Your existing logic)
+    // ---------------------------------------------------------
     if (Array.isArray(data.attachments)) {
-  data.attachments.forEach(att => {
-    if (att && att.uri) {
-      const uri = att.uri.startsWith('file://') ? att.uri : `file://${att.uri}`;
+      data.attachments.forEach(att => {
+        if (att && att.uri) {
+          const uri = att.uri.startsWith('file://') ? att.uri : `file://${att.uri}`;
 
-      // Fix MIME type here - ensure it contains '/' character
-      let mimeType = att.type;
-      if (mimeType && !mimeType.includes('/')) {
-        if (mimeType === 'image') mimeType = 'image/jpeg';
-        else if (mimeType === 'video') mimeType = 'video/mp4';
-        else mimeType = 'application/octet-stream';
-      }
+          let mimeType = att.type;
+          if (mimeType && !mimeType.includes('/')) {
+            if (mimeType === 'image') mimeType = 'image/jpeg';
+            else if (mimeType === 'video') mimeType = 'video/mp4';
+            else mimeType = 'application/octet-stream';
+          }
 
-      formData.append('images', {
-        uri,
-        name: att.name || 'file',
-        type: mimeType || 'application/octet-stream',
+          formData.append('images', {
+            uri,
+            name: att.name || 'file',
+            type: mimeType || 'application/octet-stream',
+          });
+        }
       });
     }
-  });
-}
 
-    // Dependent task IDs
-    if (Array.isArray(data.dependentTaskIds)) {
-      data.dependentTaskIds.forEach(id => {
-        formData.append('dependentTaskIds', String(id));
-      });
-    }
-    
-    // Resolved images for issue resolution (when task is marked as issue)
+    // ---------------------------------------------------------
+    // 6. RESOLVED IMAGES (Your existing logic preserved)
+    // Note: I set the append key to 'images' because your backend 
+    // controller merges all files into one list.
+    // ---------------------------------------------------------
     if (Array.isArray(data.resolvedImages)) {
       data.resolvedImages.forEach(resolvedImg => {
         if (resolvedImg && resolvedImg.uri) {
           const uri = resolvedImg.uri.startsWith('file://') ? resolvedImg.uri : `file://${resolvedImg.uri}`;
           
-          // Fix MIME type
           let mimeType = resolvedImg.type;
           if (mimeType && !mimeType.includes('/')) {
             if (mimeType === 'image') mimeType = 'image/jpeg';
@@ -533,7 +688,8 @@ export const updateTaskDetails = async (taskId, data) => {
             else mimeType = 'application/octet-stream';
           }
           
-          formData.append('resolvedImages', {
+          // Using 'images' key to ensure backend controller sees them
+          formData.append('images', {
             uri,
             name: resolvedImg.name || 'resolved-file',
             type: mimeType || 'application/octet-stream',
@@ -542,19 +698,20 @@ export const updateTaskDetails = async (taskId, data) => {
       });
     }
 
-    // Debug log
-    console.log('[updateTaskDetails] Final FormData:');
-    for (let [key, value] of formData.entries()) {
-      console.log(`${key}:`, value);
-    }
-
+    // ---------------------------------------------------------
+    // 7. NETWORK REQUEST
+    // ---------------------------------------------------------
     const url = `${API_URL}api/tasks/${taskId}`;
-    console.log('[updateTaskDetails] Final URL:', url);
+    
+    // Debug Logs
+    console.log('[updateTaskDetails] Final FormData Key-Values:');
+    // Note: formData.entries() isn't always visible in RN debugger, but the logic is sound.
 
     const res = await fetch(url, {
       method: 'PUT',
       headers: {
         Authorization: `Bearer ${token}`,
+        // Content-Type is handled automatically by fetch for FormData
       },
       body: formData,
     });
@@ -567,7 +724,6 @@ export const updateTaskDetails = async (taskId, data) => {
         console.error('[updateTaskDetails] Server error response:', json);
         throw new Error(json.message || 'Failed to update task');
       }
-      console.log('[updateTaskDetails] Success response:', json);
       return json;
     } catch (err) {
       console.error('[updateTaskDetails] Invalid JSON:', text);

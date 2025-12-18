@@ -68,7 +68,18 @@ export default function MyTasksScreen({ navigation }) {
     assignedTo: [],
     locations: [],
     tags: [], // Add tags filter
+    mode: [],
+    category: [],
   });
+  // Filter Options State
+  const [statuses, setStatuses] = useState([]);
+  const [projectOptions, setProjectOptions] = useState([]);
+  const [assignedOptions, setAssignedOptions] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [tagOptions, setTagOptions] = useState([]);
+  // New Options
+  const [modeOptions, setModeOptions] = useState([]);
+  const [categoryOptions, setCategoryOptions] = useState([]);
   const [taskCounts, setTaskCounts] = useState({
     mytasks: 0,
     createdby: 0,
@@ -102,6 +113,10 @@ export default function MyTasksScreen({ navigation }) {
       setTaskCounts({
         mytasks: myTasksData.length,
         createdby: createdByMeData.length,
+      });
+      console.log(' Task loaded:', {
+        mytasks: myTasksData
+        // createdby: createdByMeData.length
       });
     } catch (error) {
       // If there's an error, keep existing counts
@@ -137,6 +152,7 @@ export default function MyTasksScreen({ navigation }) {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -175,101 +191,47 @@ export default function MyTasksScreen({ navigation }) {
   }, [addTaskForm.projectId]);
 
   const filteredTasks = tasks.filter((task) => {
-    // Search in task name
-    const nameMatch = (task.name || task.taskName || '')
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    // Search in task description
-    const descMatch = (task.description || '').toLowerCase().includes(search.toLowerCase());
-    // Search in project name
-    const projectMatch = (
-      task.projectName ||
-      (task.project && task.project.projectName) ||
-      (task.project && task.project.name) ||
-      task.projectTitle ||
-      (typeof task.project === 'string' ? task.project : '') ||
-      ''
-    )
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    // Search in tags
-    const tagsMatch =
-      task.tags &&
-      Array.isArray(task.tags) &&
-      task.tags.some((tag) => tag.toLowerCase().includes(search.toLowerCase()));
-    // Search in location
-    const locationMatch = ((task.project && task.project.location) || '')
-      .toLowerCase()
-      .includes(search.toLowerCase());
-    // Combine all search matches
-    const searchMatch = nameMatch || descMatch || projectMatch || tagsMatch || locationMatch;
-    // Status filter
-    const statusMatch = filters.status.length === 0 || filters.status.includes(task.status);
-    // Progress filter
-    let progressMatch = true;
-    if (filters.progress.length > 0) {
-      const progress = task.progress || 0;
-      progressMatch = filters.progress.some((range) => {
-        switch (range) {
-          case 'not-started':
-            return progress === 0;
-          case 'in-progress':
-            return progress > 0 && progress < 100;
-          case 'completed':
-            return progress === 100;
-          default:
-            return false;
-        }
-      });
-    }
-    // Project filter
-    const projectFilterMatch =
-      filters.projects.length === 0 ||
-      filters.projects.includes(
-        task.projectName ||
-        (task.project && task.project.projectName) ||
-        (task.project && task.project.name) ||
-        task.projectTitle ||
-        (typeof task.project === 'string' ? task.project : null)
-      );
-    // Assigned to filter
+    // 1. Search (Global)
+    const taskNameMatch = (task.name || task.taskName || '').toLowerCase().includes(search.toLowerCase());
+    const projectName = (task.project?.name || task.project?.projectName || task.projectTitle || '').toLowerCase();
+    const searchMatch = taskNameMatch || projectName.includes(search.toLowerCase());
+
+    // 2. Status Filter (Handle nulls)
+    const taskStatus = task.status || (task.mode === 'WORKFLOW' ? 'Active Workflow' : 'Pending');
+    const statusMatch = filters.status.length === 0 || filters.status.includes(taskStatus);
+
+    // 3. Project Filter
+    const taskProjectName = task.project?.name || task.project?.projectName || 'No Project';
+    const projectMatch = filters.projects.length === 0 || filters.projects.includes(taskProjectName);
+
+    // 4. Assigned/Creator Filter
     let assignedMatch = true;
     if (filters.assignedTo.length > 0) {
       if (activeTab === 'mytasks') {
-        // For my tasks, filter by creator name
-        assignedMatch =
-          filters.assignedTo.includes(task.creatorName) ||
-          filters.assignedTo.includes(task.creator?.name);
+        const creatorName = task.creator?.name || task.creator?.username || task.creatorName;
+        assignedMatch = filters.assignedTo.includes(creatorName);
       } else {
-        // For created by me, filter by assigned user names
         if (task.assignedUserDetails && task.assignedUserDetails.length > 0) {
-          assignedMatch = task.assignedUserDetails.some((user) =>
-            filters.assignedTo.includes(user.name)
-          );
+          assignedMatch = task.assignedUserDetails.some((user) => filters.assignedTo.includes(user.name));
         } else {
-          assignedMatch = false; // No assigned users, so doesn't match filter
+          assignedMatch = false;
         }
       }
     }
-    const locationFilterMatch =
-      filters.locations.length === 0 ||
-      filters.locations.includes((task.project && task.project.location) || '');
-    // Tags filter
-    const tagsFilterMatch =
-      filters.tags.length === 0 ||
-      (task.tags &&
-        Array.isArray(task.tags) &&
-        filters.tags.some((filterTag) => task.tags.includes(filterTag)));
 
-    return (
-      searchMatch &&
-      statusMatch &&
-      progressMatch &&
-      projectFilterMatch &&
-      assignedMatch &&
-      locationFilterMatch &&
-      tagsFilterMatch
-    );
+    // 5. Location Filter
+    const locationMatch = filters.locations.length === 0 || filters.locations.includes(task.project?.location);
+
+    // 6. Tags Filter
+    const tagsMatch = filters.tags.length === 0 || (task.tags && task.tags.some(tag => filters.tags.includes(tag)));
+
+    // 7. NEW: Category Filter
+    const categoryMatch = !filters.category || filters.category.length === 0 || filters.category.includes(task.category);
+
+    // 8. NEW: Mode Filter
+    const modeMatch = !filters.mode || filters.mode.length === 0 || filters.mode.includes(task.mode);
+
+    return searchMatch && statusMatch && projectMatch && assignedMatch && locationMatch && tagsMatch && categoryMatch && modeMatch;
   });
 
   // Filter users based on search query and hide selected users
@@ -427,64 +389,67 @@ export default function MyTasksScreen({ navigation }) {
       projects: [],
       assignedTo: [],
       locations: [],
-      tags: [], // Add tags to clear function
+      tags: [],
+      mode: [],
+      category: [],
     });
   };
 
   const getActiveFiltersCount = () => {
-    return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
+    return Object.values(filters).reduce((count, filterArray) => count + (filterArray?.length || 0), 0);
   };
 
   // Get unique values for filter options
-  const getFilterOptions = () => {
-    const statuses = [...new Set(tasks.map((task) => task.status).filter(Boolean))];
-    const projectOptions = [
-      ...new Set(
-        tasks
-          .map(
-            (task) =>
-              task.projectName ||
-              (task.project && task.project.projectName) ||
-              (task.project && task.project.name) ||
-              task.projectTitle ||
-              (typeof task.project === 'string' ? task.project : null)
-          )
-          .filter(Boolean)
-      ),
-    ];
-    const locations = [
-      ...new Set(
-        tasks.map((task) => (task.project && task.project.location) || null).filter(Boolean)
-      ),
-    ];
-
-    let assignedOptions = [];
-    if (activeTab === 'mytasks') {
-      // For my tasks, show creators
-      assignedOptions = [
+  useEffect(() => {
+    if (tasks.length > 0) {
+      // 1. Status: Handle nulls for Workflow tasks
+      const uniqueStatuses = [
         ...new Set(
-          tasks
-            .map((task) => task.creatorName || (task.creator && task.creator.name))
-            .filter(Boolean)
+          tasks.map((t) => t.status || (t.mode === 'WORKFLOW' ? 'Active Workflow' : 'Pending'))
         ),
+      ].filter(Boolean);
+
+      // 2. Projects: Handle [Object] structure
+      const uniqueProjects = [
+        ...new Set(
+          tasks.map((t) => t.project?.name || t.project?.projectName || 'No Project')
+        ),
+      ].filter(Boolean);
+
+      // 3. Assigned/Creator: Handle [Object] structure
+      let uniquePeople = [];
+      if (activeTab === 'mytasks') {
+        uniquePeople = [...new Set(tasks.map((t) => t.creator?.name || t.creator?.username || t.creatorName))];
+      } else {
+        const allAssigned = tasks.flatMap(t => t.assignedUserDetails ? t.assignedUserDetails.map(u => u.name) : []);
+        uniquePeople = [...new Set(allAssigned)];
+      }
+
+      // 4. Locations
+      const uniqueLocations = [
+        ...new Set(tasks.map(t => t.project?.location).filter(Boolean))
       ];
-    } else {
-      // For created by me, show assigned users
-      const allAssignedUsers = tasks.flatMap((task) =>
-        task.assignedUserDetails
-          ? task.assignedUserDetails.map((user) => user.name || 'Unknown')
-          : []
-      );
-      assignedOptions = [...new Set(allAssignedUsers)];
+
+      // 5. Tags
+      const uniqueTags = [...new Set(tasks.flatMap((t) => t.tags || []).filter(Boolean))];
+
+      // 6. NEW: Categories
+      const uniqueCategories = [...new Set(tasks.map(t => t.category).filter(Boolean))];
+
+      // 7. NEW: Modes
+      const uniqueModes = [...new Set(tasks.map(t => t.mode).filter(Boolean))];
+
+      setStatuses(uniqueStatuses);
+      setProjectOptions(uniqueProjects);
+      setAssignedOptions(uniquePeople.filter(Boolean));
+      setLocations(uniqueLocations);
+      setTagOptions(uniqueTags);
+      setCategoryOptions(uniqueCategories);
+      setModeOptions(uniqueModes);
     }
+  }, [tasks, activeTab]);
 
-    // Get unique tags from all tasks
-    const tagOptions = [...new Set(tasks.flatMap((task) => task.tags || []).filter(Boolean))];
-
-    return { statuses, projectOptions, assignedOptions, locations, tagOptions };
-  };
-
-  const { statuses, projectOptions, assignedOptions, locations, tagOptions } = getFilterOptions();
+  // const { statuses, projectOptions, assignedOptions, locations, tagOptions } = getFilterOptions();
   const closeModal = () => setModalTaskId(null);
 
   const renderItem = ({ item, index }) => {
@@ -1671,9 +1636,9 @@ const styles = StyleSheet.create({
   },
   compactInfoRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start', 
-    marginTop: 4, 
-    flexWrap: 'wrap', 
+    alignItems: 'flex-start',
+    marginTop: 4,
+    flexWrap: 'wrap',
   },
 
   compactProject: {

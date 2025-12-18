@@ -1149,6 +1149,13 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     </View>
                 )}
                 <FieldBox
+                    label={t("description")}
+                    value={task.description || ''}
+                    editable={false}
+                    multiline={true}
+                    theme={theme}
+                />
+                <FieldBox
                     label={t("added_attachments")}
                     value=""
                     placeholder={
@@ -1332,13 +1339,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         setShowAttachmentSheet(false);
                     }}
                 />
-                <FieldBox
-                    label={t("description")}
-                    value={task.description || ''}
-                    editable={false}
-                    multiline={true}
-                    theme={theme}
-                />
+                
                 {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
                 {task.isIssue &&
                     Array.isArray(task.resolvedImages) &&
@@ -1802,7 +1803,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     }}>
 
                         {/* Edit */}
-                        <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateTaskScreen', { taskId: task.id, projects, users, worklists, projectTasks }); }}>
+                        <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateTaskScreen', { taskId: task.id || task._id || task.taskId, projects, users, worklists, projectTasks }); }}>
                             <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
                             <Text style={{ color: '#366CD9', fontSize: 15 }}>{t("edit")}</Text>
                         </TouchableOpacity>
@@ -1835,7 +1836,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                     setMenuVisible(false);
                                     Alert.alert(t('delete_task'), t('delete_task_confirmation'), [
                                         { text: t('cancel'), style: 'cancel' },
-                                        { text: t('delete'), style: 'destructive', onPress: async () => { /* Delete logic */ await deleteTask(task.id); safeGoBack(); } },
+                                        { text: t('delete'), style: 'destructive', onPress: async () => { /* Delete logic */ await deleteTask(task.id || task._id || task.taskId);; safeGoBack(); } },
                                     ]);
                                 }}>
                                     <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
