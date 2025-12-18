@@ -24,7 +24,7 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import {
-  deleteTask, getTaskDetailsById, getTasksByProjectId, updateTask, updateTaskDetails, updateTaskFlags, updateTaskProgress, moveTaskToNextStage,
+  deleteTask, getTaskDetailsById, getTasksByProjectId, updateTask, updateTaskDetails, updateTaskFlags, updateTaskProgress, moveTaskToNextStage, holdTask, reopenTask,
 } from '../utils/task';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
@@ -43,6 +43,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [userName, setUserName] = useState(null);
   const [loading, setLoading] = useState(true);
   const [stageLoading, setStageLoading] = useState(false);
+  const [showHoldModal, setShowHoldModal] = useState(false);
+  const [holdReason, setHoldReason] = useState('');
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [showAddSubTaskPopup, setShowAddSubTaskPopup] = useState(false);
   const [showTaskChat, setShowTaskChat] = useState(false);
@@ -196,6 +198,56 @@ export default function TaskDetailsScreen({ route, navigation }) {
     } finally {
       setStageLoading(false);
     }
+  };
+
+  // HOLD & REOPEN HANDLERS
+  const handleHoldTask = async () => {
+    if (!holdReason.trim()) {
+      Alert.alert('Required', 'Please enter a reason for putting this task on hold.');
+      return;
+    }
+    try {
+      setLoading(true);
+      await holdTask(task.id || task.taskId, holdReason);
+
+      // Refresh task
+      const updatedTask = await getTaskDetailsById(task.id || task.taskId);
+      setTask(updatedTask);
+
+      setShowHoldModal(false);
+      setHoldReason('');
+      Alert.alert('Success', 'Task put on hold successfully.');
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to hold task');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleReopenTask = async () => {
+    Alert.alert(
+      'Reopen Task',
+      'Are you sure you want to reopen this task? It will be moved to In Progress/Pending.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reopen',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await reopenTask(task.id || task.taskId);
+              const updatedTask = await getTaskDetailsById(task.id || task.taskId);
+              setTask(updatedTask);
+              Alert.alert('Success', 'Task reopened successfully.');
+            } catch (error) {
+              Alert.alert('Error', error.message || 'Failed to reopen task');
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
   };
 
   useEffect(() => {
@@ -590,6 +642,34 @@ export default function TaskDetailsScreen({ route, navigation }) {
               <Text style={styles.dueDate}>
                 {t('due_date')}: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
               </Text>
+              {/* STATUS BADGES ROW */}
+              <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+                {/* Hold Badge */}
+                {task.status === 'Hold' && (
+                  <View style={{
+                    backgroundColor: '#FF9800', // Orange for Hold
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                    alignSelf: 'flex-start'
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>ON HOLD</Text>
+                  </View>
+                )}
+
+                {/* Completed Badge (Optional but useful) */}
+                {(task.status === 'Completed' || task.progress === 100) && (
+                  <View style={{
+                    backgroundColor: '#4CAF50', // Green for Completed
+                    paddingHorizontal: 8,
+                    paddingVertical: 3,
+                    borderRadius: 6,
+                    alignSelf: 'flex-start'
+                  }}>
+                    <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>COMPLETED</Text>
+                  </View>
+                )}
+              </View>
             </View>
             {/* Details Button: stays at right, never hidden */}
             <TouchableOpacity
@@ -1773,93 +1853,83 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         )}
       </ScrollView>
-      <Modal
-        visible={menuVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setMenuVisible(false)}>
-        <TouchableOpacity
-          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }}
-          activeOpacity={1}
-          onPress={() => setMenuVisible(false)}>
-          <View
-            style={{
-              position: 'absolute',
-              top: Platform.OS === 'ios' ? 80 : 35, // adjust as needed
-              right: 20,
-              backgroundColor: '#fff',
-              borderRadius: 10,
-              paddingVertical: 8,
-              shadowColor: '#000',
-              shadowOpacity: 0.1,
-              shadowOffset: { width: 0, height: 1 },
-              shadowRadius: 6,
-              elevation: 6,
-              minWidth: 140,
-            }}>
-            {/* Edit Option - visible to everyone */}
-            <TouchableOpacity
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                paddingVertical: 12,
-                paddingHorizontal: 16,
-              }}
-              onPress={() => {
-                setMenuVisible(false);
-                navigation.navigate('UpdateTaskScreen', {
-                  taskId: task.id || task._id || task.taskId,
-                  projects,
-                  users,
-                  worklists,
-                  projectTasks,
-                });
-              }}>
+      {/* Options Menu Modal */}
+      <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
+        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+          <View style={{
+            position: 'absolute', top: Platform.OS === 'ios' ? 80 : 35, right: 20,
+            backgroundColor: '#fff', borderRadius: 10, paddingVertical: 8,
+            shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 6, elevation: 6, minWidth: 160
+          }}>
+            {/* Edit */}
+            <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateTaskScreen', { taskId: task.id, projects, users, worklists, projectTasks }); }}>
               <Feather name="edit" size={18} color="#366CD9" style={{ marginRight: 8 }} />
-              <Text style={{ color: '#366CD9', fontWeight: '500', fontSize: 15 }}>{t("edit")}</Text>
+              <Text style={{ color: '#366CD9', fontSize: 15 }}>{t("edit")}</Text>
             </TouchableOpacity>
-            {/* Divider shown only if Delete option visible */}
-            {isCreator && (
-              <View style={{ height: 1, backgroundColor: '#EEE', marginVertical: 2 }} />
+            {/* Hold / Reopen Logic (Only if creator AND Legacy Mode) */}
+            {isCreator && !isWorkflowTask && (
+              <>
+                <View style={styles.menuDivider} />
+                {task.status === 'Hold' ? (
+                  <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); handleReopenTask(); }}>
+                    <Feather name="play-circle" size={18} color="#4CAF50" style={{ marginRight: 8 }} />
+                    <Text style={{ color: '#4CAF50', fontSize: 15 }}>Reopen Task</Text>
+                  </TouchableOpacity>
+                ) : (
+                  task.status !== 'Completed' && (
+                    <TouchableOpacity style={styles.menuOption} onPress={() => { setMenuVisible(false); setShowHoldModal(true); }}>
+                      <Feather name="pause-circle" size={18} color="#FF9800" style={{ marginRight: 8 }} />
+                      <Text style={{ color: '#FF9800', fontSize: 15 }}>Hold Task</Text>
+                    </TouchableOpacity>
+                  )
+                )}
+              </>
             )}
-            {/* Delete Option - visible only to creator */}
+            {/* Delete (Only creator) */}
             {isCreator && (
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                }}
-                onPress={() => {
+              <>
+                <View style={styles.menuDivider} />
+                <TouchableOpacity style={styles.menuOption} onPress={() => {
                   setMenuVisible(false);
                   Alert.alert(t('delete_task'), t('delete_task_confirmation'), [
                     { text: t('cancel'), style: 'cancel' },
-                    {
-                      text: t('delete'),
-                      style: 'destructive',
-                      onPress: async () => {
-                        try {
-                          await deleteTask(task.id || task._id || task.taskId);
-                          Alert.alert(t('deleted'), t('task_deleted_successfully'), [
-                            {
-                              text: t('ok'),
-                              onPress: safeGoBack,
-                            },
-                          ]);
-                        } catch (err) {
-                          Alert.alert(t('delete_failed'), err.message || t('could_not_delete_task'));
-                        }
-                      },
-                    },
+                    { text: t('delete'), style: 'destructive', onPress: async () => { /* Delete logic */ await deleteTask(task.id); safeGoBack(); } },
                   ]);
                 }}>
-                <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
-                <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>{t("delete")}</Text>
-              </TouchableOpacity>
+                  <Feather name="trash-2" size={18} color="#E53935" style={{ marginRight: 8 }} />
+                  <Text style={{ color: '#E53935', fontSize: 15 }}>{t("delete")}</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </TouchableOpacity>
+      </Modal>
+      {/* Hold Task Modal */}
+      <Modal visible={showHoldModal} transparent animationType="slide" onRequestClose={() => setShowHoldModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>Hold Task</Text>
+            <Text style={{ color: theme.secondaryText, marginBottom: 10 }}>Please provide a reason for putting this task on hold.</Text>
+
+            <TextInput
+              style={[styles.modalInput, { color: theme.text, borderColor: theme.border }]}
+              placeholder="Enter reason..."
+              placeholderTextColor={theme.secondaryText}
+              value={holdReason}
+              onChangeText={setHoldReason}
+              multiline
+            />
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setShowHoldModal(false)} style={{ padding: 10 }}>
+                <Text style={{ color: theme.secondaryText }}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleHoldTask} style={{ padding: 10, backgroundColor: '#FF9800', borderRadius: 8 }}>
+                {loading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={{ color: '#fff', fontWeight: 'bold' }}>Confirm Hold</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
       {/* Subtask Popup with updated props */}
       <AddSubTaskPopup
@@ -2156,7 +2226,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E7EB',
   },
-  // 🆕 NEW STYLES FOR WORKFLOW UI
+  actionChip: { flexDirection: 'row', alignItems: 'center', borderRadius: 18, paddingHorizontal: 14, paddingVertical: 7, borderWidth: 1 },
+  // Menu Styles
+  menuOption: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16 },
+  menuDivider: { height: 1, backgroundColor: '#EEE', marginVertical: 2 },
+  modalOverlay: { flex: 1, justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', padding: 20 },
+  modalContainer: { borderRadius: 12, padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '700', marginBottom: 10 },
+  modalInput: { borderWidth: 1, borderRadius: 8, padding: 10, height: 80, textAlignVertical: 'top', marginBottom: 20 },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  // NEW STYLES FOR WORKFLOW UI
   workflowCard: {
     marginHorizontal: 20,
     marginTop: 10,
