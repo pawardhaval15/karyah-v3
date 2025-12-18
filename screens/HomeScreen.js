@@ -451,7 +451,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     flexDirection: 'row',
-    zIndex: 1000,
+    // zIndex: 1000,
   },
   overlayBg: {
     flex: 1,
