@@ -16,41 +16,6 @@ import { getProjectsByUserId } from '../utils/project';
 import usePushNotifications from '../utils/usePushNotifications';
 const DRAWER_WIDTH = 300;
 
-const projectProgressData = [
-  {
-    title: 'Dashboard Admin for SaaS Dream Company',
-    timeline: '03 August – 28 August 2023',
-    assignedBy: 'Astri',
-    avatars: [
-      'https://randomuser.me/api/portraits/men/1.jpg',
-      'https://randomuser.me/api/portraits/men/2.jpg',
-      'https://randomuser.me/api/portraits/men/3.jpg',
-    ],
-    progress: 80,
-  },
-  {
-    title: 'UI Kit for Landing Page and Mobile Res',
-    timeline: '28 July – 16 July 2023',
-    assignedBy: 'Meyda',
-    avatars: [
-      'https://randomuser.me/api/portraits/men/4.jpg',
-      'https://randomuser.me/api/portraits/men/5.jpg',
-      'https://randomuser.me/api/portraits/men/6.jpg',
-    ],
-    progress: 60,
-  },
-  {
-    title: 'CRM Integration for Sales Team',
-    timeline: '01 July – 20 July 2023',
-    assignedBy: 'Rahul',
-    avatars: [
-      'https://randomuser.me/api/portraits/men/7.jpg',
-      'https://randomuser.me/api/portraits/men/8.jpg',
-    ],
-    progress: 45,
-  },
-];
-
 function formatMinimalDateRange(start, end) {
   const startDate = new Date(start);
   const endDate = end ? new Date(end) : null;
