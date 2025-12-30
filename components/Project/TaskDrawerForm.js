@@ -45,28 +45,26 @@ const WORKFLOW_DATA = {
   PROCUREMENT: {
     name: "Procurement",
     stages: [
-      { id: "DESIGN", name: "Design Pending" },
-      { id: "MATERIAL_SELECTION", name: "Material Selection" },
-      { id: "ORDER", name: "Order Pending" },
-      { id: "ACCOUNTS", name: "Accounts Pending" },
-      { id: "DISPATCH", name: "Dispatch" },
-      { id: "DELIVERY", name: "Delivery" },
-      { id: "INSTALLATION", name: "Installation" },
+      { id: "REQUIREMENT_LIST", name: "Requirement List Pending" },
+      { id: "QUOTATION_PENDING", name: "Quotation Pending" },
+      { id: "ORDER_PENDING", name: "Order Pending" },
+      { id: "PAYMENT_PENDING", name: "Payment Pending" },
+      { id: "DISPATCH_PENDING", name: "Dispatch Pending" },
+      { id: "DELIVERY_PENDING", name: "Delivery Pending" },
     ],
   },
   INTERIOR_DESIGN: {
     name: "Interior Design",
     stages: [
-      { id: "DRAFTING", name: "Drafting Plan" },
-      { id: "APPROVED_PLAN", name: "Approved Plan" },
-      { id: "THEME", name: "Themed Plan" },
-      { id: "CIVIL", name: "Civil" },
-      { id: "ELECTRICAL", name: "Electrical" },
-      { id: "PLUMBING", name: "Plumbing" },
-      { id: "ACP", name: "ACP" },
-      { id: "PAINTING", name: "Painting" },
-      { id: "FURNISHING", name: "Furnishing" },
-      { id: "POP", name: "POP" },
+      { id: "DRAFT_PLANS", name: "Draft Plans Pending" },
+      { id: "THEME_PLANS", name: "Theme Plans Pending" },
+      { id: "CIVIL_MAISON_PLANS", name: "Civil (Maison) Plans Pending" },
+      { id: "PLUMBING_PLANS", name: "Plumbing Plans Pending" },
+      { id: "ELECTRICAL_PLANS", name: "Electrical Plans Pending" },
+      { id: "FURNITURE_PLANS", name: "Furniture Plans Pending" },
+      { id: "FURNISHING_PLANS", name: "Furnishing Plans Pending" },
+      { id: "FACADE_PLANS", name: "Facade Plans Pending" },
+      { id: "OTHER_PLANS", name: "Other Plans Pending" },
     ],
   },
 };
@@ -104,7 +102,7 @@ export default function TaskDrawerForm({
   const [showDepPicker, setShowDepPicker] = useState(false);
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
   const [showPreviewModal, setShowPreviewModal] = useState(false);
-  
+
   // New Workflow Pickers
   const [showModePicker, setShowModePicker] = useState(false);
   const [showCategoryPicker, setShowCategoryPicker] = useState(false);
@@ -133,7 +131,7 @@ export default function TaskDrawerForm({
       Alert.alert('Audio recorded and attached!');
     },
   });
-  
+
   const prevProjectIdRef = useRef(values.projectId);
 
   // --- DERIVED VALUES ---
@@ -271,7 +269,7 @@ export default function TaskDrawerForm({
         ? values.taskDeps.map((id) => String(id))
         : [];
       const parentId = values.parentId ? Number(values.parentId) : undefined;
-      
+
       const images = attachments.map((att) => ({
         uri: att.uri,
         name: att.name || att.uri?.split('/').pop(),
@@ -287,21 +285,21 @@ export default function TaskDrawerForm({
         endDate,
         worklistId: values.taskWorklist,
         projectId: values.projectId,
-        
+
         // Workflow Logic
         status: isWorkflow ? undefined : 'Pending', // Let backend handle workflow status
         category: isWorkflow ? values.category : null,
         currentStage: isWorkflow ? values.currentStage : null,
-        
+
         progress: 0,
         images,
-        
+
         // Flags
         isIssue: values.isIssue || false,
         isCritical: values.isCritical || false,
         isApprovalNeeded: values.isApprovalNeeded || false,
         approvalRequiredBy: values.isApprovalNeeded ? values.approvalRequiredBy : null,
-        
+
         ...(parentId && { parentId }),
       };
 
@@ -334,7 +332,6 @@ export default function TaskDrawerForm({
   return (
     <>
       {/* --- CORE FIELDS (Always Visible) --- */}
-
       {/* Task Name */}
       <FieldBox
         value={values.taskName}
@@ -343,7 +340,6 @@ export default function TaskDrawerForm({
         editable={true}
         onChangeText={(t) => onChange('taskName', t)}
       />
-
       {/* Project Picker */}
       <FieldBox
         value={
@@ -382,7 +378,6 @@ export default function TaskDrawerForm({
         placeholder={t("search_project")}
         showImage={false}
       />
-
       {/* Worklist Picker */}
       <FieldBox
         value={
@@ -419,7 +414,6 @@ export default function TaskDrawerForm({
         placeholder={t("search_worklist")}
         showImage={false}
       />
-
       {/* Description */}
       <FieldBox
         value={values.taskDesc}
@@ -429,13 +423,11 @@ export default function TaskDrawerForm({
         multiline={true}
         onChangeText={(t) => onChange('taskDesc', t)}
       />
-
       {/* Dates */}
       <View style={styles.dateRow}>
         <DateBox theme={theme} label={t("start_date")} value={values.startDate} onChange={(date) => onChange('startDate', date)} />
         <DateBox theme={theme} label={t("end_date")} value={values.endDate} onChange={(date) => onChange('endDate', date)} />
       </View>
-
       {/* Assigned Users */}
       <FieldBox
         value={values.assignTo?.length ? values.assignTo.map((uid) => users.find((u) => u.userId === uid)?.name || 'Unknown').join(', ') : ''}
@@ -466,7 +458,6 @@ export default function TaskDrawerForm({
         placeholder={t("search_user")}
         showImage={true}
       />
-
       {/* Attachments */}
       <FieldBox
         value=""
@@ -487,7 +478,6 @@ export default function TaskDrawerForm({
           </>
         }
       />
-      
       {/* Attachment Preview Grid (Simplified) */}
       {attachments.length > 0 && (
         <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
@@ -511,47 +501,74 @@ export default function TaskDrawerForm({
           ))}
         </View>
       )}
-
       {/* =================================================================================== */}
       {/* 🔘 ADDITIONAL OPTIONS TOGGLE */}
       {/* =================================================================================== */}
-
       <TouchableOpacity style={styles.additionalOptionsBtn} onPress={toggleAdditionalOptions} activeOpacity={0.7}>
         <Text style={[styles.additionalOptionsText, { color: theme.primary }]}>
           {showAdditionalOptions ? "- Hide Additional Options" : "+ Show Additional Options"}
         </Text>
       </TouchableOpacity>
-
       {/* =================================================================================== */}
       {/* 🟡 EXPANDABLE SECTION */}
       {/* =================================================================================== */}
-
       {showAdditionalOptions && (
         <View style={styles.additionalSection}>
-          
-          {/* Dependencies */}
-          <FieldBox
-            value={selectedDeps.length ? selectedDeps.map((t) => t.name || t.taskName || `Task ${t[taskValueKey]}`).join(', ') : ''}
-            placeholder={t("select_dependencies")}
-            theme={theme}
-            editable={false}
-            onPress={() => setShowDepPicker(true)}
-            rightComponent={<Feather name="chevron-down" size={20} color="#bbb" style={{ marginLeft: 8 }} />}
-          />
-          <CustomPickerDrawer visible={showDepPicker} onClose={() => setShowDepPicker(false)} data={projectTasks} valueKey={taskValueKey} labelKey="name" selectedValue={selectedDepIds} onSelect={handleDepToggle} multiSelect={true} theme={theme} placeholder={t("search_task")} showImage={false} />
 
-          {/* Task Mode Picker */}
-          <FieldBox
-            value={TASK_MODES.find(m => m.id === taskMode)?.name || taskMode}
-            placeholder="Task Mode"
-            theme={theme}
-            editable={false}
-            onPress={() => setShowModePicker(true)}
-            rightComponent={<Feather name="chevron-down" size={20} color="#bbb" style={{ marginLeft: 8 }} />}
-          />
-          <CustomPickerDrawer visible={showModePicker} onClose={() => setShowModePicker(false)} data={TASK_MODES} valueKey="id" labelKey="name" selectedValue={[taskMode]} onSelect={(id) => { setTaskMode(id); if (id === 'LEGACY') { onChange('category', null); onChange('currentStage', null); } setShowModePicker(false); }} multiSelect={false} theme={theme} placeholder="Select Mode" />
 
-          {/* Category Picker (Workflow Only) */}
+
+          {/* 1. Task Mode Picker - Show ONLY if Not an Issue */}
+          {!values.isIssue && (
+            <>
+              <FieldBox
+                value={TASK_MODES.find(m => m.id === taskMode)?.name || taskMode}
+                placeholder="Task Mode"
+                theme={theme}
+                editable={false}
+                onPress={() => setShowModePicker(true)}
+                rightComponent={<Feather name="chevron-down" size={20} color="#bbb" style={{ marginLeft: 8 }} />}
+              />
+              <CustomPickerDrawer
+                visible={showModePicker}
+                onClose={() => setShowModePicker(false)}
+                data={TASK_MODES}
+                valueKey="id"
+                labelKey="name"
+                selectedValue={[taskMode]}
+                onSelect={(id) => {
+                  setTaskMode(id);
+                  if (id === 'LEGACY') {
+                    onChange('category', null);
+                    onChange('currentStage', null);
+                  } else {
+                    // If switching to WORKFLOW, clear Issue/Critical flags and deps to ensure UI consistency and clean data
+                    onChange('isIssue', false);
+                    onChange('isCritical', false);
+                    onChange('taskDeps', []);
+                  }
+                  setShowModePicker(false);
+                }}
+                multiSelect={false}
+                theme={theme}
+                placeholder="Select Mode"
+              />
+            </>
+          )}
+          {/* 2. Dependencies - Show ONLY in Legacy Mode AND Not an Issue */}
+          {taskMode === 'LEGACY' && !values.isIssue && (
+            <>
+              <FieldBox
+                value={selectedDeps.length ? selectedDeps.map((t) => t.name || t.taskName || `Task ${t[taskValueKey]}`).join(', ') : ''}
+                placeholder={t("select_dependencies")}
+                theme={theme}
+                editable={false}
+                onPress={() => setShowDepPicker(true)}
+                rightComponent={<Feather name="chevron-down" size={20} color="#bbb" style={{ marginLeft: 8 }} />}
+              />
+              <CustomPickerDrawer visible={showDepPicker} onClose={() => setShowDepPicker(false)} data={projectTasks} valueKey={taskValueKey} labelKey="name" selectedValue={selectedDepIds} onSelect={handleDepToggle} multiSelect={true} theme={theme} placeholder={t("search_task")} showImage={false} />
+            </>
+          )}
+          {/* 3. Category Picker (Workflow Only) */}
           {taskMode === 'WORKFLOW' && (
             <>
               <FieldBox
@@ -565,8 +582,7 @@ export default function TaskDrawerForm({
               <CustomPickerDrawer visible={showCategoryPicker} onClose={() => setShowCategoryPicker(false)} data={CATEGORY_OPTIONS} valueKey="id" labelKey="name" selectedValue={[values.category]} onSelect={(id) => { onChange('category', id); onChange('currentStage', null); setShowCategoryPicker(false); }} multiSelect={false} theme={theme} placeholder="Select Category" />
             </>
           )}
-
-          {/* Stage Picker (Workflow Only) */}
+          {/* 4. Stage Picker (Workflow Only) */}
           {taskMode === 'WORKFLOW' && values.category && (
             <>
               <FieldBox
@@ -580,29 +596,30 @@ export default function TaskDrawerForm({
               <CustomPickerDrawer visible={showStagePicker} onClose={() => setShowStagePicker(false)} data={availableStages} valueKey="id" labelKey="name" selectedValue={[values.currentStage]} onSelect={(id) => { onChange('currentStage', id); setShowStagePicker(false); }} multiSelect={false} theme={theme} placeholder="Select Stage" />
             </>
           )}
-
-          {/* Flags */}
-          <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-            <View style={styles.toggleIconBox}><Feather name="alert-triangle" size={20} color="#FF6B35" /></View>
-            <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text></View>
-            <Switch value={values.isIssue || false} onValueChange={v => { onChange('isIssue', v); if (!v && values.isCritical) onChange('isCritical', false); }} trackColor={{ false: '#ddd', true: '#FF6B35' }} thumbColor="#fff" />
-          </View>
-
-          {values.isIssue && (
-            <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
-              <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(229, 57, 53, 0.1)' }]}><Feather name="zap" size={20} color="#E53935" /></View>
-              <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsCritical')}</Text></View>
-              <Switch value={values.isCritical || false} onValueChange={v => onChange('isCritical', v)} trackColor={{ false: '#ddd', true: '#E53935' }} thumbColor="#fff" />
-            </View>
+          {/* 5. Issue/Critical Flags - Show ONLY in Legacy Mode */}
+          {taskMode === 'LEGACY' && (
+            <>
+              <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <View style={styles.toggleIconBox}><Feather name="alert-triangle" size={20} color="#FF6B35" /></View>
+                <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text></View>
+                <Switch value={values.isIssue || false} onValueChange={v => { onChange('isIssue', v); if (!v && values.isCritical) onChange('isCritical', false); }} trackColor={{ false: '#ddd', true: '#FF6B35' }} thumbColor="#fff" />
+              </View>
+              {values.isIssue && (
+                <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                  <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(229, 57, 53, 0.1)' }]}><Feather name="zap" size={20} color="#E53935" /></View>
+                  <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsCritical')}</Text></View>
+                  <Switch value={values.isCritical || false} onValueChange={v => onChange('isCritical', v)} trackColor={{ false: '#ddd', true: '#E53935' }} thumbColor="#fff" />
+                </View>
+              )}
+            </>
           )}
-
+          {/* 6. Approval Flags */}
           <View style={[styles.toggleRow, { backgroundColor: theme.card, borderColor: theme.border }]}>
             <View style={[styles.toggleIconBox, { backgroundColor: 'rgba(54, 108, 217, 0.1)' }]}><Feather name="check-circle" size={20} color={theme.primary} /></View>
             <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('approvalRequired')}</Text></View>
             <Switch value={values.isApprovalNeeded || false} onValueChange={v => onChange('isApprovalNeeded', v)} trackColor={{ false: '#ddd', true: theme.primary }} thumbColor="#fff" />
           </View>
-
-          {/* Approver Picker */}
+          {/* 7. Approver Picker */}
           {values.isApprovalNeeded && (
             <>
               <FieldBox
@@ -616,17 +633,14 @@ export default function TaskDrawerForm({
               <CustomPickerDrawer visible={showApproverPicker} onClose={() => setShowApproverPicker(false)} data={users} valueKey="userId" labelKey="name" imageKey="profilePhoto" selectedValue={[values.approvalRequiredBy]} onSelect={(id) => { onChange('approvalRequiredBy', id); setShowApproverPicker(false); }} multiSelect={false} theme={theme} placeholder="Select Approver" showImage={true} />
             </>
           )}
-
         </View>
       )}
-
       {/* --- Submit Button --- */}
       <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate} disabled={loading}>
         <LinearGradient colors={['#011F53', '#366CD9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.drawerBtnGradient}>
           <Text style={styles.drawerBtnText}>{loading ? 'Creating...' : t('add_task')}</Text>
         </LinearGradient>
       </TouchableOpacity>
-
       {/* --- EXTRA MODALS --- */}
       <AttachmentSheet visible={showAttachmentSheet} onClose={() => setShowAttachmentSheet(false)} onPick={async (type) => { await pickAttachment(type); setShowAttachmentSheet(false); }} />
       <FilePreviewModal visible={showPreviewModal} onClose={() => setShowPreviewModal(false)} attachments={attachments} onRemoveFile={(index) => { setAttachments(prev => prev.filter((_, i) => i !== index)); }} theme={theme} getFileType={getFileType} getFileIcon={getFileIcon} getFormattedSize={getFormattedSize} />
@@ -635,7 +649,6 @@ export default function TaskDrawerForm({
     </>
   );
 }
-
 const styles = StyleSheet.create({
   dateRow: {
     flexDirection: 'row',
@@ -661,7 +674,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 17,
   },
-  
+
   // Toggle Styles
   additionalOptionsBtn: {
     alignItems: 'center',
