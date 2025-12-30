@@ -10,6 +10,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import categoriesData from '../../utils/categories.json';
 import { getUserConnections, searchConnections, searchUsers, sendConnectionRequest } from '../../utils/connections';
 import { createProject } from '../../utils/project';
+import { fetchUserDetails } from '../../utils/auth';
 import DateBox from '../task details/DateBox';
 export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimpleForm = false }) {
   const [showFullForm, setShowFullForm] = useState(hideSimpleForm);
@@ -26,10 +27,59 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
   const { t } = useTranslation();
+  const [organizations, setOrganizations] = useState([]);
+  const [showOrgPicker, setShowOrgPicker] = useState(false);
 
   // Category suggestions state
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState([]);
+
+  // --- UPDATED: Safer Data Loading with Debugging ---
+  // --- UPDATED: Default select "Kona Kona Interiors" ---
+  useEffect(() => {
+    const loadUserOrgs = async () => {
+      try {
+        const userData = await fetchUserDetails();
+        // console.log('DEBUG: User Data fetched:', JSON.stringify(userData, null, 2));
+
+        if (userData && userData.OrganizationUsers) {
+          const activeOrgs = userData.OrganizationUsers
+            .filter(orgUser => orgUser.status === 'Active' || orgUser.status === 'active')
+            .map(orgUser => ({
+              id: orgUser.Organization?.id,
+              name: orgUser.Organization?.name || 'Unnamed Organization',
+              role: orgUser.role
+            }))
+            .filter(org => org.id);
+
+          // console.log('DEBUG: Parsed Organizations:', activeOrgs);
+          setOrganizations(activeOrgs);
+
+          // Logic to handle default selection
+          if (!values?.organizationId && activeOrgs.length > 0) {
+
+            // 1. Priority Check: Look specifically for "Kona Kona Interiors"
+            const preferredOrg = activeOrgs.find(org => org.name === "Kona Kona Interiors");
+
+            if (preferredOrg) {
+              // console.log('DEBUG: Auto-selecting preferred org:', preferredOrg.name);
+              onChange('organizationId', preferredOrg.id);
+            }
+            // 2. Fallback: If "Kona Kona" isn't found but there is only one org, select it
+            else if (activeOrgs.length === 1) {
+              onChange('organizationId', activeOrgs[0].id);
+            }
+          }
+        } else {
+          // console.log('DEBUG: No OrganizationUsers found');
+        }
+      } catch (err) {
+        console.error('ERROR loading user organizations:', err);
+        Alert.alert('Error', 'Could not load your organizations');
+      }
+    };
+    loadUserOrgs();
+  }, []);
 
   // Filter categories and subcategories based on search text
   const filterCategories = (searchText) => {
@@ -44,7 +94,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
       });
       return allSuggestions;
     }
-
     const suggestions = [];
     const lowercaseSearch = searchText.toLowerCase();
     categoriesData.categories.forEach((category) => {
@@ -81,7 +130,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   // Handle category input change
   const handleCategoryChange = (text) => {
     onChange('projectCategory', text);
-
     const suggestions = filterCategories(text);
     setCategorySuggestions(suggestions);
     setShowCategorySuggestions(true); // Always show suggestions when typing
@@ -90,7 +138,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   // Handle category suggestion selection
   const handleCategorySuggestionSelect = (suggestion) => {
     onChange('projectCategory', suggestion.text);
-
     // If a main category is selected, show its subcategories
     if (suggestion.type === 'category') {
       const category = categoriesData.categories.find(cat => cat.name === suggestion.text);
@@ -112,25 +159,34 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
 
   const handleCreate = async () => {
     try {
+      // --- NEW: Validation for Organization ID ---
+      if (!values.organizationId) {
+        Alert.alert('Validation Error', 'Please select an Organization for this project.');
+        return;
+      }
+
       const payload = {
         ...values,
+        organizationId: values.organizationId, // <--- Added this
         description: values.projectDesc,
         location: values.location,
         coAdminIds: selectedCoAdmins,
         startDate:
           values.startDate && !isNaN(new Date(values.startDate))
             ? new Date(values.startDate).toISOString()
-            : new Date().toISOString(), // fallback today
+            : new Date().toISOString(),
         endDate:
           values.endDate && !isNaN(new Date(values.endDate))
             ? new Date(values.endDate).toISOString()
-            : new Date().toISOString(), // fallback today
+            : new Date().toISOString(),
       };
       delete payload.projectDesc;
+
       if (!payload.projectName || payload.projectName.trim() === '') {
         Alert.alert('Validation Error', 'Project name is required.');
         return;
       }
+
       const createdProject = await createProject(payload);
       Alert.alert('Success', `Project "${createdProject.projectName}" created successfully!`);
       setShowFullForm(false);
@@ -235,6 +291,31 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
     }
   };
 
+  // --- NEW: Helper Component for Organization Input ---
+  const OrganizationInputField = ({ style }) => {
+    const selectedOrg = organizations.find(o => o.id === values?.organizationId);
+    return (
+      <TouchableOpacity
+        style={[
+          styles.inputBox,
+          { backgroundColor: theme.card, borderColor: theme.border },
+          style
+        ]}
+        onPress={() => setShowOrgPicker(true)}>
+        <Feather
+          name="briefcase"
+          size={20}
+          color={theme.secondaryText}
+          style={{ marginRight: 10 }}
+        />
+        <Text style={{ color: selectedOrg ? theme.text : theme.secondaryText, flex: 1 }}>
+          {selectedOrg ? selectedOrg.name : 'Select Organization'}
+        </Text>
+        <Feather name="chevron-down" size={20} color={theme.secondaryText} />
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <>
       {!showFullForm && !hideSimpleForm && (
@@ -253,6 +334,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 editable={true}
                 onChangeText={(t) => onChange && onChange('projectName', t)}
               />
+              <OrganizationInputField />
               <FieldBox
                 value={values?.projectDesc || ''}
                 placeholder={t('description')}
@@ -296,6 +378,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
             editable={true}
             onChangeText={(t) => onChange('projectName', t)}
           />
+          <OrganizationInputField />
           <View style={styles.dateRow}>
             <DateBox
               label={t('start_date')}
@@ -496,6 +579,9 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                       editable={true}
                       onChangeText={(t) => onChange('projectName', t)}
                     />
+                    <View style={{ marginHorizontal: 22, marginBottom: 0 }}>
+                      <OrganizationInputField style={{ marginHorizontal: 0 }} />
+                    </View>
                     <View style={styles.dateRow}>
                       <DateBox
                         label={t('start_date')}
@@ -626,6 +712,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                       editable={true}
                       onChangeText={(t) => onChange('location', t)}
                     />
+
                     <Modal
                       visible={showCoAdminPicker}
                       animationType="slide"
@@ -752,7 +839,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               />
                             </>
                           )}
-
                           {/* Show All Users */}
                           {showingAllUsers && allUsers.length > 0 && (
                             <>
@@ -837,7 +923,6 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               />
                             </>
                           )}
-
                           {/* Show message when no results found */}
                           {searchText.trim() !== '' && filteredConnections.length === 0 && allUsers.length === 0 && (
                             <Text
@@ -909,7 +994,59 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
           </View>
         </Modal>
       )}
-      {/* Co-Admin Picker Modal (shared between embedded and full modal) */}
+      {/* --- NEW: Organization Selection Modal --- */}
+      <Modal
+        visible={showOrgPicker}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowOrgPicker(false)}>
+        <View style={styles.bottomModalContainer}>
+          <View style={[styles.bottomSheet, { backgroundColor: theme.card, width: '100%', maxHeight: '50%' }]}>
+            <View style={{ paddingHorizontal: 20, marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', color: theme.text }}>Select Organization</Text>
+              <TouchableOpacity onPress={() => setShowOrgPicker(false)}>
+                <Ionicons name="close-circle" size={24} color={theme.secondaryText} />
+              </TouchableOpacity>
+            </View>
+
+            <FlatList
+              data={organizations}
+              keyExtractor={(item) => (item.id ? item.id.toString() : Math.random().toString())}
+              contentContainerStyle={{ paddingBottom: 20 }} // Add padding to bottom
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={{
+                    padding: 16,
+                    borderBottomWidth: 1,
+                    borderBottomColor: theme.border,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}
+                  onPress={() => {
+                    onChange('organizationId', item.id);
+                    setShowOrgPicker(false);
+                  }}
+                >
+                  <View>
+                    <Text style={{ fontSize: 16, color: theme.text, fontWeight: '500' }}>{item.name}</Text>
+                    <Text style={{ fontSize: 12, color: theme.secondaryText }}>Role: {item.role}</Text>
+                  </View>
+                  {values?.organizationId === item.id && (
+                    <Feather name="check-circle" size={20} color={theme.primary} />
+                  )}
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <Text style={{ color: theme.secondaryText, marginBottom: 5 }}>No active organizations found.</Text>
+                  <Text style={{ color: theme.secondaryText, fontSize: 10 }}>Check your console logs for details.</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
       {/* Co-Admin Picker Modal (Unified List) */}
       <Modal
         visible={showCoAdminPicker}
