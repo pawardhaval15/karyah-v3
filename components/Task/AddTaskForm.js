@@ -104,11 +104,11 @@ export default function AddTaskForm({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   // Local state for new project popup
   const [addProjectValues, setAddProjectValues] = useState({ projectName: '', projectDesc: '', projectCategory: '', startDate: '', endDate: '' });
-  
+
   const handleAddProjectChange = (key, value) => {
     setAddProjectValues(prev => ({ ...prev, [key]: value }));
   };
-  
+
   const { t } = useTranslation();
   const { attachments, pickAttachment, setAttachments, getFileType, getFileIcon, getFormattedSize } = useAttachmentPicker();
   const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
@@ -117,9 +117,9 @@ export default function AddTaskForm({
       Alert.alert('Audio recorded and attached!');
     }
   });
-  
+
   const taskValueKey = projectTasks.length && projectTasks[0]?.id !== undefined ? 'id' : 'taskId';
-  
+
   // Add New Project/Worklist options
   const projectsWithAddNew = [
     { id: '__add_new__', projectName: '+ Add New Project' },
@@ -129,19 +129,19 @@ export default function AddTaskForm({
     { id: '__add_new__', name: '+ Add New Worklist' },
     ...worklists,
   ];
-  
+
   const selectedDepIds = Array.isArray(values.taskDeps) ? values.taskDeps.map(String) : [];
   const selectedDeps = selectedDepIds
     .map(id => projectTasks.find(t => String(t[taskValueKey]) === id))
     .filter(Boolean);
-  
+
   const selectedApprover = users.find(u => u.userId === values.approvalRequiredBy);
-  
+
   // Get Category/Stage Names
   const selectedCategoryName = values.category ? WORKFLOW_DATA[values.category]?.name : null;
   const availableStages = values.category ? WORKFLOW_DATA[values.category]?.stages : [];
   const selectedStageName = values.currentStage ? availableStages.find(s => s.id === values.currentStage)?.name : null;
-  
+
   useEffect(() => {
     if (!values.projectId) {
       setWorklists([]);
@@ -164,14 +164,14 @@ export default function AddTaskForm({
     fetchProjectAndWorklists();
     onChange('taskWorklist', '');
   }, [values.projectId]);
-  
+
   const toggleAdditionalOptions = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setShowAdditionalOptions(!showAdditionalOptions);
   };
-  
+
   const isValidDate = (date) => date && !isNaN(new Date(date).getTime());
-  
+
   const handleTaskCreate = async () => {
     try {
       setLoading(true);
@@ -197,7 +197,7 @@ export default function AddTaskForm({
         name: att.name || att.uri?.split('/').pop(),
         type: att.mimeType || att.type || 'application/octet-stream',
       }));
-      
+
       // Prepare payload based on Mode
       const isWorkflow = taskMode === 'WORKFLOW';
       const taskData = {
@@ -221,7 +221,7 @@ export default function AddTaskForm({
         approvalRequiredBy: values.isApprovalNeeded ? values.approvalRequiredBy : null,
         ...(parentId && { parentId }),
       };
-      
+
       // Validation
       if (!values.taskName) {
         Alert.alert('Validation Error', 'Task Name is required');
@@ -248,7 +248,7 @@ export default function AddTaskForm({
       setLoading(false);
     }
   };
-  
+
   const handleUserToggle = (userId) => {
     const current = values.assignTo || [];
     const updated = current.includes(userId)
@@ -256,7 +256,7 @@ export default function AddTaskForm({
       : [...current, userId];
     onChange('assignTo', updated);
   };
-  
+
   const handleDepToggle = (taskId) => {
     const current = Array.isArray(values.taskDeps) ? [...values.taskDeps] : [];
     const id = String(taskId);
@@ -265,7 +265,7 @@ export default function AddTaskForm({
       : [...current, id];
     onChange('taskDeps', updated);
   };
-  
+
   return (
     <>
       {/* =================================================================================== */}
@@ -364,6 +364,13 @@ export default function AddTaskForm({
           value={values.endDate}
           onChange={date => onChange('endDate', date)}
         />
+      </View>
+      {/* * Note: Leave "Assign To" blank to auto-assign to yourself */}
+      <View style={styles.noteContainer}>
+        <Feather name="info" size={14} color={theme.secondaryText} style={styles.noteIcon} />
+        <Text style={styles.noteText}>
+          * Leave "Assign To" blank to auto-assign to yourself
+        </Text>
       </View>
       {/* Assigned Users Multi-select */}
       <FieldBox
@@ -497,7 +504,7 @@ export default function AddTaskForm({
       {/* =================================================================================== */}
       {showAdditionalOptions && (
         <View style={styles.additionalSection}>
-          
+
           {/* 1. Dependencies Multi-select - Show ONLY in Legacy Mode AND Not an Issue */}
           {taskMode === 'LEGACY' && !values.isIssue && (
             <>
@@ -651,7 +658,7 @@ export default function AddTaskForm({
                   thumbColor="#fff"
                 />
               </View>
-              
+
               {/* Show Critical ONLY if Marked as Issue */}
               {values.isIssue && (
                 <View style={[styles.toggleRow, {
@@ -695,7 +702,7 @@ export default function AddTaskForm({
               thumbColor="#fff"
             />
           </View>
-          
+
           {/* 7. Approval User Picker */}
           {values.isApprovalNeeded && (
             <>
@@ -801,6 +808,27 @@ const styles = StyleSheet.create({
     marginHorizontal: 22,
     marginBottom: 14,
     gap: 10,
+  },
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 22,
+    marginTop: -8,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+  },
+  noteIcon: {
+    marginTop: 2,
+    marginRight: 6,
+  },
+  noteText: {
+    fontSize: 13,
+    color: '#666',
+    // color: theme.secondaryText,
+    fontWeight: '500',
+    lineHeight: 17,
+    flex: 1,
   },
   drawerBtn: {
     marginHorizontal: 22,

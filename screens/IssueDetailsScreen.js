@@ -62,6 +62,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
   // Attachment state
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -1325,10 +1326,12 @@ export default function IssueDetailsScreen({ navigation, route }) {
         onClose={() => setDrawerVisible(false)}
         attachments={drawerAttachments.length ? drawerAttachments : allAttachments}
         theme={theme}
-        onAttachmentPress={(item) => {
-          setSelectedAttachment(item);
+        onAttachmentPress={(item, index) => {
+          // When clicking an item in the grid, open the Gallery at that specific index
+          setPreviewIndex(index);
           setPreviewVisible(true);
-          setDrawerVisible(false);
+          // Optional: Keep drawer open behind it, or close it. Usually close it.
+          // setDrawerVisible(false); 
         }}
       />
       <ImageModal
@@ -1339,17 +1342,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
       />
       <AttachmentPreviewModal
         visible={previewVisible}
-        onClose={() => {
-          setPreviewVisible(false);
-          setSelectedAttachment(null);
-        }}
-        attachment={selectedAttachment}
+        onClose={() => setPreviewVisible(false)}
+        attachments={allAttachments} // Pass ALL files
+        initialIndex={previewIndex}  // Pass start index
         theme={theme}
-        onImagePress={(uri) => {
-          setSelectedImage(uri);
-          setImageModalVisible(true);
-          setPreviewVisible(false);
-        }}
       />
       <TaskReassignPopup
         visible={showReassignModal}

@@ -335,6 +335,13 @@ export default function AddSubTask({
           onChange={(date) => onChange('endDate', date)}
         />
       </View>
+      {/* * Note: Leave "Assign To" blank to auto-assign to yourself */}
+      <View style={styles.noteContainer}>
+        <Feather name="info" size={14} color={theme.secondaryText} style={styles.noteIcon} />
+        <Text style={styles.noteText}>
+          * Leave "Assign To" blank to auto-assign to yourself
+        </Text>
+      </View>
       {/* Assigned Users Multi-select */}
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TouchableOpacity
@@ -443,8 +450,8 @@ export default function AddSubTask({
       {/* =================================================================================== */}
       {/* 🔘 ADDITIONAL OPTIONS TOGGLE */}
       {/* =================================================================================== */}
-      <TouchableOpacity 
-        style={styles.additionalOptionsBtn} 
+      <TouchableOpacity
+        style={styles.additionalOptionsBtn}
         onPress={toggleAdditionalOptions}
         activeOpacity={0.7}
       >
@@ -457,7 +464,7 @@ export default function AddSubTask({
       {/* =================================================================================== */}
       {showAdditionalOptions && (
         <View style={styles.additionalSection}>
-          
+
           {/* 1. Dependencies Multi-select - Show ONLY in Legacy Mode AND Not an Issue */}
           {taskMode === 'LEGACY' && !values.isIssue && (
             <>
@@ -541,7 +548,7 @@ export default function AddSubTask({
             <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
               <TouchableOpacity style={{ flex: 1, justifyContent: 'center', paddingVertical: 12 }} onPress={() => setShowCategoryPicker(true)}>
                 <View>
-                  <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Category <Text style={{color: 'red'}}>*</Text></Text>
+                  <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Category <Text style={{ color: 'red' }}>*</Text></Text>
                   <Text style={{ color: values.category ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>{selectedCategoryName || "Select Category"}</Text>
                 </View>
               </TouchableOpacity>
@@ -549,7 +556,7 @@ export default function AddSubTask({
             </View>
           )}
           <CustomPickerDrawer visible={showCategoryPicker} onClose={() => setShowCategoryPicker(false)} data={CATEGORY_OPTIONS} valueKey="id" labelKey="name" selectedValue={values.category} onSelect={(id) => { onChange('category', id); onChange('currentStage', null); setShowCategoryPicker(false); }} multiSelect={false} theme={theme} placeholder="Select Category" />
-          
+
           {/* 4. Stage Selector (Only if Workflow & Category Selected) */}
           {taskMode === 'WORKFLOW' && values.category && (
             <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
@@ -563,7 +570,7 @@ export default function AddSubTask({
             </View>
           )}
           <CustomPickerDrawer visible={showStagePicker} onClose={() => setShowStagePicker(false)} data={availableStages} valueKey="id" labelKey="name" selectedValue={values.currentStage} onSelect={(id) => { onChange('currentStage', id); setShowStagePicker(false); }} multiSelect={false} theme={theme} placeholder="Select Initial Stage" />
-          
+
           {/* 5. Flags (Issue, Critical) - Show ONLY in Legacy Mode */}
           {taskMode === 'LEGACY' && (
             <>
@@ -644,6 +651,27 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 22,
+    marginTop: -8,
+    marginBottom: 14,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+  },
+  noteIcon: {
+    marginTop: 2,
+    marginRight: 6,
+  },
+  noteText: {
+    fontSize: 13,
+    color: '#666',
+    // color: theme.secondaryText,
+    fontWeight: '500',
+    lineHeight: 17,
+    flex: 1,
   },
   input: {
     flex: 1,

@@ -12,6 +12,7 @@
     "web": "expo start --web"
   },
   "dependencies": {
+    "@dudigital/react-native-zoomable-view": "^1.1.4",
     "@expo-google-fonts/poppins": "^0.4.0",
     "@expo/metro-runtime": "~5.0.4",
     "@expo/vector-icons": "^14.1.0",
@@ -69,6 +70,7 @@
     "react-native-svg-circular-progress": "^1.0.4",
     "react-native-toast-message": "^2.3.3",
     "react-native-vector-icons": "^10.2.0",
+    "react-native-webview": "13.13.5",
     "socket.io-client": "^4.8.1",
     "victory-native": "^41.19.3"
   },

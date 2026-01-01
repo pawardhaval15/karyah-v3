@@ -132,13 +132,13 @@ export default function TaskForm({
 
   const selectedApprover = users.find(u => u.userId === values.approvalRequiredBy);
   // Get Category Name for display
-  const selectedCategoryName = values.category 
-    ? WORKFLOW_DATA[values.category]?.name 
+  const selectedCategoryName = values.category
+    ? WORKFLOW_DATA[values.category]?.name
     : null;
   // Get Stage Name for display
   const availableStages = values.category ? WORKFLOW_DATA[values.category]?.stages : [];
-  const selectedStageName = values.currentStage 
-    ? availableStages.find(s => s.id === values.currentStage)?.name 
+  const selectedStageName = values.currentStage
+    ? availableStages.find(s => s.id === values.currentStage)?.name
     : null;
   const toggleAdditionalOptions = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -289,6 +289,14 @@ export default function TaskForm({
           onChange={(date) => onChange('endDate', date)}
         />
       </View>
+      {/* * Note: Leave "Assign To" blank to auto-assign to yourself */}
+      <View style={styles.noteContainer}>
+        <Feather name="info" size={14} color={theme.secondaryText} style={styles.noteIcon} />
+        <Text style={styles.noteText}>
+          * Leave "Assign To" blank to auto-assign to yourself
+        </Text>
+      </View>
+
       {/* --- Assigned Users --- */}
       <View style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
         <TouchableOpacity
@@ -305,7 +313,8 @@ export default function TaskForm({
               ? values.assignTo.map(uid =>
                 users.find(u => u.userId === uid)?.name || 'Unknown'
               ).join(', ')
-              : t("assign_to")}
+              : t("assign_to")
+            }
           </Text>
         </TouchableOpacity>
       </View>
@@ -380,8 +389,8 @@ export default function TaskForm({
       {/* =================================================================================== */}
       {/* 🔘 ADDITIONAL OPTIONS TOGGLE */}
       {/* =================================================================================== */}
-      <TouchableOpacity 
-        style={styles.additionalOptionsBtn} 
+      <TouchableOpacity
+        style={styles.additionalOptionsBtn}
         onPress={toggleAdditionalOptions}
         activeOpacity={0.7}
       >
@@ -394,7 +403,7 @@ export default function TaskForm({
       {/* =================================================================================== */}
       {showAdditionalOptions && (
         <View style={styles.additionalSection}>
-          
+
           {/* 1. Dependencies - Show ONLY in Legacy Mode AND Not an Issue */}
           {taskMode === 'LEGACY' && !values.isIssue && (
             <>
@@ -485,7 +494,7 @@ export default function TaskForm({
                 activeOpacity={0.8}
               >
                 <View>
-                  <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Category <Text style={{color: 'red'}}>*</Text></Text>
+                  <Text style={{ fontSize: 12, color: theme.secondaryText, marginBottom: 2 }}>Category <Text style={{ color: 'red' }}>*</Text></Text>
                   <Text style={{ color: values.category ? theme.text : theme.secondaryText, fontWeight: '400', fontSize: 16 }}>
                     {selectedCategoryName || "Select Category"}
                   </Text>
@@ -543,7 +552,7 @@ export default function TaskForm({
             theme={theme}
             placeholder="Select Initial Stage"
           />
-          
+
           {/* 5. Flags (Issue, Critical) - Show ONLY in Legacy Mode */}
           {taskMode === 'LEGACY' && (
             <>
@@ -551,8 +560,8 @@ export default function TaskForm({
                 <View style={styles.toggleIconBox}><Feather name="alert-triangle" size={24} color="#FF6B35" /></View>
                 <View style={{ flex: 1 }}><Text style={[styles.toggleLabel, { color: theme.text }]}>{t('markAsIssue')}</Text></View>
                 <Switch value={values.isIssue || false} onValueChange={v => {
-                  onChange('isIssue', v); 
-                  if (v) onChange('isCritical', false); 
+                  onChange('isIssue', v);
+                  if (v) onChange('isCritical', false);
                 }} trackColor={{ false: '#ddd', true: '#FF6B35' }} thumbColor="#fff" />
               </View>
               {/* Show Critical ONLY if Marked as Issue */}
@@ -608,6 +617,27 @@ const styles = StyleSheet.create({
     borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  noteContainer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 22,
+    marginTop: -8,  // Slight overlap with date row
+    marginBottom: 14,
+    paddingHorizontal: 4,
+    paddingVertical: 6,
+  },
+  noteIcon: {
+    marginTop: 2,
+    marginRight: 6,
+  },
+  noteText: {
+    fontSize: 11,
+    color: '#666',
+    // color: theme.secondaryText,
+    fontWeight: '500',
+    lineHeight: 17,
+    flex: 1,
   },
   input: {
     flex: 1,

@@ -109,6 +109,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   const [showCreatorPopup, setShowCreatorPopup] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
   const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -1938,10 +1939,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
         onClose={() => setDrawerVisible(false)}
         attachments={drawerAttachments.length ? drawerAttachments : allAttachments}
         theme={theme}
-        onAttachmentPress={(item) => {
-          setSelectedAttachment(item);
+        onAttachmentPress={(item, index) => {
+          // When clicking an item in the grid, open the Gallery at that specific index
+          setPreviewIndex(index); 
           setPreviewVisible(true);
-          setDrawerVisible(false);
+          // Optional: Keep drawer open behind it, or close it. Usually close it.
+          // setDrawerVisible(false); 
         }}
       />
       <ImageModal
@@ -1952,17 +1955,10 @@ export default function TaskDetailsScreen({ route, navigation }) {
       />
       <AttachmentPreviewModal
         visible={previewVisible}
-        onClose={() => {
-          setPreviewVisible(false);
-          setSelectedAttachment(null);
-        }}
-        attachment={selectedAttachment}
+        onClose={() => setPreviewVisible(false)}
+        attachments={allAttachments} // Pass ALL files
+        initialIndex={previewIndex}  // Pass start index
         theme={theme}
-        onImagePress={(uri) => {
-          setSelectedImage(uri);
-          setImageModalVisible(true);
-          setPreviewVisible(false);
-        }}
       />
       <Modal
         visible={showEditModal}

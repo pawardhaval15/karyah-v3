@@ -72,7 +72,7 @@ export default function AttachmentDrawer({
                     {/* Preview tap */}
                     <TouchableOpacity
                         activeOpacity={0.8}
-                        onPress={() => onAttachmentPress(item)}
+                        onPress={() => onAttachmentPress(item, index)}
                         style={styles.previewTapper}
                     >
                         {isImage ? (
