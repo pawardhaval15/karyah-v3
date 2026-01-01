@@ -434,7 +434,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               </Text>
             </TouchableOpacity>
             {/* Materials Tab */}
-            <TouchableOpacity
+            {/* <TouchableOpacity
               key="materials"
               activeOpacity={0.7}
               onPress={() => {
@@ -451,7 +451,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
               <Text style={[styles.tabButtonText, { color: theme.text, fontWeight: '500' }]}>
                 {t('materials')}
               </Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
             {/* Settings Tab - Only show for project owner */}
             {projectDetails?.userId === userId && (
               <TouchableOpacity
