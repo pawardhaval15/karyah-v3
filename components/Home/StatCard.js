@@ -89,7 +89,7 @@ export default function StatCardList({ navigation, theme, loading, refreshKey = 
       }, 100); // Small delay to ensure the ScrollView is rendered
     }
     fetchStats();
-  }, [refreshKey]);
+  }, [refreshKey, t]);
 
   if (loading) {
     return (

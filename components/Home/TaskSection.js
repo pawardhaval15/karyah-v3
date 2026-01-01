@@ -9,13 +9,13 @@ import TaskCard from './TaskCard';
 
 export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
   const theme = useTheme();
+  const { t } = useTranslation();
 
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('issues');
   const [tasks, setTasks] = useState([]);
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -24,7 +24,18 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
         const [tasksData, issuesData] = await Promise.all([fetchMyTasks(), fetchIssuesByUser()]);
         setTasks(tasksData || []);
         setIssues(issuesData || []);
-        // console.log('Fetched tasks:', tasksData);
+
+        // Check if there are any valid PENDING issues
+        const pendingIssues = (issuesData || []).filter(issue => {
+          const status = String(issue.status || '').toLowerCase();
+          return status !== 'completed' && status !== 'resolved';
+        });
+
+        // If no pending issues exist, force switch to 'tasks' tab
+        if (pendingIssues.length === 0) {
+          setActiveTab('tasks');
+        }
+
       } catch (err) {
         console.error('Error fetching tasks/issues:', err);
       } finally {
@@ -34,46 +45,38 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     fetchData();
   }, [refreshKey]);
 
-  // Filter issues to unresolved only (exclude resolved)
-  const unresolvedIssues = issues.filter(issue => issue.issueStatus !== 'resolved');
+  // Filter for badge count - Only Pending
+  const unresolvedIssues = issues.filter(issue => {
+    const status = String(issue.status || '').toLowerCase();
+    return status !== 'completed' && status !== 'resolved';
+  });
 
-  // Filter tasks to incomplete only
+  // Filter for badge count - Only Incomplete
   const incompleteTasks = tasks.filter(task => {
     const isCompletedByPercent = (task.percent || task.progress || 0) === 100;
     const isCompletedByStatus = String(task.status || '').toLowerCase() === 'completed';
     return !isCompletedByPercent && !isCompletedByStatus;
   });
 
+  // Select data source
   const data = activeTab === 'tasks' ? tasks : issues;
-  
-  const filtered = data.filter((item) => {
-    const searchText = search.toLowerCase();
-    
-    // For issues
-    if (activeTab === 'issues') {
-      return (
-        (item.title || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
-        (item.desc || item.description || '').toLowerCase().includes(searchText) ||
-        (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
-        (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
-      );
-    }
 
-    // For tasks - ADDED item.taskName here
-    return (
-      (item.taskName || '').toLowerCase().includes(searchText) || 
-      (item.title || '').toLowerCase().includes(searchText) ||
-      (item.name || '').toLowerCase().includes(searchText) ||
+  // 1. Search Filter
+  const searchedData = data.filter((item) => {
+    const searchText = search.toLowerCase();
+    const commonFields = (
+      (item.title || item.taskName || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
       (item.desc || item.description || '').toLowerCase().includes(searchText) ||
       (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
       (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
     );
+    return commonFields;
   });
 
-  // Sort issues: critical first, then by creation date (newest first)
+  // 2. Sort Logic
   const getDaysDiff = (item) => {
     const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
-    if (!dateVal.getTime()) return null; // no valid date
+    if (!dateVal.getTime()) return null;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return Math.ceil((dateVal - today) / (1000 * 60 * 60 * 24));
@@ -83,36 +86,43 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
     const diffA = getDaysDiff(a);
     const diffB = getDaysDiff(b);
 
-    // Overdue first
     const isOverdueA = diffA !== null && diffA < 0;
     const isOverdueB = diffB !== null && diffB < 0;
+
     if (isOverdueA && !isOverdueB) return -1;
     if (!isOverdueA && isOverdueB) return 1;
-
-    // Both overdue → most overdue first (smaller diff comes first)
     if (isOverdueA && isOverdueB) return diffA - diffB;
-
-    // Upcoming (diff >= 0) → soonest first
     if (diffA !== null && diffB !== null) return diffA - diffB;
-
-    // Items without due date go last
     if (diffA === null && diffB !== null) return 1;
     if (diffA !== null && diffB === null) return -1;
-
-    // Otherwise no change
     return 0;
   };
 
   const sortedData = activeTab === 'issues'
-    ? filtered.sort((a, b) => {
-      // Critical issues first
-      if (a.isCritical && !b.isCritical) return -1;
-      if (!a.isCritical && b.isCritical) return 1;
+    ? searchedData.sort((a, b) => {
+        // Critical first
+        if (a.isCritical && !b.isCritical) return -1;
+        if (!a.isCritical && b.isCritical) return 1;
+        return sortByDueLogic(a, b);
+      })
+    : searchedData.sort(sortByDueLogic);
 
-      // Then by due logic
-      return sortByDueLogic(a, b);
-    })
-    : filtered.sort(sortByDueLogic);
+  // 3. FINAL DISPLAY FILTER (Removes completed items)
+  const displayData = sortedData.filter(item => {
+    const status = String(item.status || '').toLowerCase();
+    const progress = item.percent || item.progress || 0;
+
+    if (activeTab === 'issues') {
+      // Hide if Completed or Resolved
+      const isCompleted = status === 'completed' || status === 'resolved' || progress === 100;
+      return !isCompleted;
+    } else {
+      // Hide if Completed, 100%, or marked as Issue
+      const isCompleted = status === 'completed' || progress === 100;
+      const isMarkedAsIssue = item.isIssue === true;
+      return !isCompleted && !isMarkedAsIssue;
+    }
+  });
 
   if (parentLoading || loading) {
     return (
@@ -127,7 +137,7 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
       {/* Section Heading */}
       <View style={styles.sectionRow}>
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
-          <Text >{t('my_issues_and_task')}</Text>
+          <Text>{t('my_issues_and_task')}</Text>
         </Text>
         <TouchableOpacity
           onPress={() =>
@@ -140,30 +150,33 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
         </TouchableOpacity>
       </View>
 
+      {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            { borderColor: theme.border },
-            activeTab === 'issues' && { backgroundColor: theme.primary },
-          ]}
-          onPress={() => setActiveTab('issues')}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Feather
-              name="alert-circle"
-              size={16}
-              color={activeTab === 'issues' ? '#fff' : '#FF5252'}
-              style={{ marginRight: 6 }}
-            />
-            <Text
-              style={[
-                styles.tabText,
-                { color: theme.text },
-                activeTab === 'issues' && styles.activeTabText,
-              ]}>
-              {t('issues')}
-            </Text>
-            {unresolvedIssues.length > 0 && (
+        
+        {/* Only show Issues tab if there are unresolved issues */}
+        {unresolvedIssues.length > 0 && (
+          <TouchableOpacity
+            style={[
+              styles.tabButton,
+              { borderColor: theme.border },
+              activeTab === 'issues' && { backgroundColor: theme.primary },
+            ]}
+            onPress={() => setActiveTab('issues')}>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Feather
+                name="alert-circle"
+                size={16}
+                color={activeTab === 'issues' ? '#fff' : '#FF5252'}
+                style={{ marginRight: 6 }}
+              />
+              <Text
+                style={[
+                  styles.tabText,
+                  { color: theme.text },
+                  activeTab === 'issues' && styles.activeTabText,
+                ]}>
+                {t('issues')}
+              </Text>
               <View
                 style={{
                   minWidth: 18,
@@ -184,9 +197,10 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                   {unresolvedIssues.length}
                 </Text>
               </View>
-            )}
-          </View>
-        </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity
           style={[
             styles.tabButton,
@@ -246,55 +260,40 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
         />
       </View>
 
+      {/* Grid Content */}
       <ScrollView contentContainerStyle={styles.gridContainer} showsVerticalScrollIndicator={false}>
-        {sortedData
-          .filter(item => {
-            if (activeTab === 'issues') {
-              // Hide resolved issues
-              return item.issueStatus !== 'resolved';
-            } else {
-              // Hide completed tasks (either by status or full percent)
-              const isCompletedByPercent = (item.percent || item.progress || 0) === 100;
-              const isCompletedByStatus = String(item.status || '').toLowerCase() === 'completed';
-              // Also hide tasks that are marked as issues (isIssue: true)
-              const isMarkedAsIssue = item.isIssue === true;
-              return !isCompletedByPercent && !isCompletedByStatus && !isMarkedAsIssue;
+        {displayData.map((item, idx) => (
+          <TouchableOpacity
+            key={(item.id || item.taskId || idx) + '_item'}
+            style={styles.cardWrapper}
+            activeOpacity={0.8}
+            onPress={() =>
+              activeTab === 'tasks'
+                ? navigation.navigate('TaskDetails', { taskId: item.id || item.taskId })
+                : navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' })
             }
-          })
-          .map((item, idx) => (
-            <TouchableOpacity
-              key={(item.taskName || item.title || item.issueTitle || '') + idx}
-              style={styles.cardWrapper}
-              activeOpacity={0.8}
-              onPress={() =>
-                activeTab === 'tasks'
-                  ? navigation.navigate('TaskDetails', { taskId: item.id || item.taskId })
-                  : navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' })
-              }
-            >
-              <View style={{ position: 'relative' }}>
-                <TaskCard
-                  // UPDATED: Added item.taskName to the priority list
-                  title={item.taskName || item.title || item.issueTitle || item.name || t('untitled')}
-                  project={item.project?.projectName || item.project || item.projectName}
-                  percent={item.percent || item.progress || 0}
-                  desc={item.desc || item.description}
-                  date={item.date || item.dueDate || item.endDate}
-                  theme={theme}
-                  creatorName={item.creatorName || item.createdBy || item.creator?.name}
-                  isIssue={activeTab === 'issues'}
-                  issueStatus={item.issueStatus}
-                  isCritical={item.isCritical}
-                />
-                {/* Critical Issue Red Dot Indicator */}
-                {activeTab === 'issues' && item.isCritical && (
-                  <View style={styles.criticalDot} />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
+          >
+            <View style={{ position: 'relative' }}>
+              <TaskCard
+                title={item.taskName || item.title || item.issueTitle || item.name || t('untitled')}
+                project={item.project?.projectName || item.project || item.projectName}
+                percent={item.percent || item.progress || 0}
+                desc={item.desc || item.description}
+                date={item.date || item.dueDate || item.endDate}
+                theme={theme}
+                creatorName={item.creatorName || item.createdBy || item.creator?.name}
+                isIssue={activeTab === 'issues'}
+                issueStatus={item.status}
+                isCritical={item.isCritical}
+              />
+              {/* Only show red dot if it is an issue AND critical */}
+              {activeTab === 'issues' && item.isCritical && (
+                <View style={styles.criticalDot} />
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
-
     </View>
   );
 }
@@ -325,18 +324,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#363942',
   },
-  count: {
-    color: '#222',
-    fontWeight: '600',
-    fontSize: 20,
-    marginLeft: 8,
-  },
-  countsmall: {
-    color: '#222',
-    fontWeight: '400',
-    fontSize: 16,
-    marginLeft: 8,
-  },
   viewAll: {
     color: '#366CD9',
     fontWeight: '400',
@@ -356,9 +343,6 @@ const styles = StyleSheet.create({
     marginRight: isTablet ? 0 : 6,
     borderWidth: 1,
     borderColor: '#e5e7eb',
-  },
-  activeTab: {
-    backgroundColor: '#366CD9',
   },
   tabText: {
     fontSize: isTablet ? 16 : 14,
@@ -384,9 +368,6 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     color: '#363942',
     paddingVertical: 0,
-  },
-  searchIcon: {
-    marginLeft: 8,
   },
   criticalDot: {
     position: 'absolute',

@@ -25,77 +25,61 @@ export default function TaskCard({
       .toUpperCase()
       .slice(0, 2);
   };
-  // Calculate widths for each color segment
-  const yellowWidth = percent <= 33 ? percent : 33;
-  const orangeWidth = percent > 33 ? (percent <= 66 ? percent - 33 : 33) : 0;
-  const blueWidth = percent > 66 ? percent - 66 : 0;
 
   // Calculate due date status
   const getDueDateStatus = () => {
-  if (!date) return null;
+    if (!date) return null;
 
-  const dueDate = new Date(date);
-  const today = new Date();
-  const timeDiff = dueDate.getTime() - today.getTime();
-  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+    const dueDate = new Date(date);
+    const today = new Date();
+    const timeDiff = dueDate.getTime() - today.getTime();
+    const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-  // Format the due date as needed, e.g., 'MMM DD, YYYY'
-  const formattedDate = dueDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    // Format the due date
+    const formattedDate = dueDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
-  if (daysDiff < 0) {
-    return {
-      text: formattedDate,
-      color: '#FF5252',
-      isOverdue: true,
-    };
-  } else if (daysDiff === 0) {
-    return {
-      text: 'Due Today',
-      color: '#FF6F3C',
-      isOverdue: false,
-    };
-  } else if (daysDiff <= 3) {
-    return {
-      text: `Due in ${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
-      color: '#FFC107',
-      isOverdue: false,
-    };
-  } else {
-    return {
-      text: `Due in ${daysDiff} days`,
-      color: theme.secondaryText,
-      isOverdue: false,
-    };
-  }
-};
-
+    if (daysDiff < 0) {
+      return {
+        text: formattedDate,
+        color: '#FF5252',
+        isOverdue: true,
+      };
+    } else if (daysDiff === 0) {
+      return {
+        text: 'Due Today',
+        color: '#FF6F3C',
+        isOverdue: false,
+      };
+    } else if (daysDiff <= 3) {
+      return {
+        text: `Due in ${daysDiff} day${daysDiff !== 1 ? 's' : ''}`,
+        color: '#FFC107',
+        isOverdue: false,
+      };
+    } else {
+      return {
+        text: `Due in ${daysDiff} days`,
+        color: theme.secondaryText,
+        isOverdue: false,
+      };
+    }
+  };
 
   const dueDateStatus = getDueDateStatus();
 
-  // Format the dueDate string nicely for display
-  // For example, "Apr 25, 2024"
-  const dueDate = date
-    ? new Date(date).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    })
-    : 'No due date';
-  // Hide resolved issues entirely
-  if (isIssue && issueStatus === 'resolved') {
+  // --- FILTERING LOGIC ---
+  const statusLower = String(issueStatus || '').toLowerCase();
+  
+  // Hide resolved/completed issues
+  if (isIssue && (statusLower === 'completed' || statusLower === 'resolved' || (percent || 0) === 100)) {
     return null;
   }
-  // Hide completed tasks entirely
-  if (!isIssue && percent === 100) {
+  
+  // Hide completed tasks
+  if (!isIssue && ((percent || 0) === 100 || statusLower === 'completed')) {
     return null;
   }
-  // Map statuses for better labels
-  const formatIssueStatus = (status) => {
-    if (!status) return '';
-    if (status === 'pending_approval') return 'Unresolved';
-    if (status === 'resolved') return 'Resolved';
-    return status.replace(/_/g, ' ');
-  };
+
   return (
     <View style={[
       styles.card, 
@@ -104,7 +88,6 @@ export default function TaskCard({
         borderColor:  theme.border,
       }
     ]}>
-
       <View style={styles.content}>
         <View style={styles.row}>
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
@@ -137,8 +120,9 @@ export default function TaskCard({
             <Text style={[styles.tooltipText, { color: theme.text }]}>{creatorName}</Text>
           </View>
         )}
+        
         <View style={{ width: '100%' }}>
-          {/* First row: Project name and status/creator */}
+          {/* First row: Project name and due date */}
           <View
             style={{
               flexDirection: 'row',
@@ -154,7 +138,7 @@ export default function TaskCard({
             </Text>
 
             {/* Show due date for both issues and tasks */}
-            {dueDateStatus && (
+            {dueDateStatus ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
                 <Feather
                   name="calendar"
@@ -174,8 +158,7 @@ export default function TaskCard({
                   {dueDateStatus.text}
                 </Text>
               </View>
-            )}
-            {!dueDateStatus && (
+            ) : (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
                 <Feather
                   name="calendar"
@@ -199,7 +182,8 @@ export default function TaskCard({
           </View>
         </View>
       </View>
-      {/* Compact thin progress bar */}
+      
+      {/* Progress bar */}
       <View style={[styles.progressBarContainer, { backgroundColor: theme.border }]}>
         <View
           style={[
@@ -230,73 +214,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     position: 'relative',
   },
-  dueDateBanner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-  },
-  issueTag: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FF5252',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    zIndex: 2,
-  },
-  issueTagText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  criticalTag: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: '#FF8C00',
-    borderRadius: 8,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    zIndex: 2,
-  },
-  criticalTagText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: 'bold',
-  },
-  criticalBanner: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 2,
-    backgroundColor: '#FF0000',
-  },
-  dueDateBannerText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  criticalBannerText: {
-    color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    italic: true,
-    textAlign: 'center',
-    paddingHorizontal: 4,
-  },
   content: {
     flex: 1,
     paddingHorizontal: 12,
@@ -323,20 +240,6 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     maxWidth: '100%',
     textAlign: 'left',
-  },
-  dueDateText: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginLeft: 4,
-    flexShrink: 0,
-  },
-  criticalText: {
-    fontSize: 9,
-    fontWeight: '700',
-    marginLeft: 4,
-    flexShrink: 0,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   progressText: {
     fontWeight: '400',
@@ -387,10 +290,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     zIndex: 10,
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
