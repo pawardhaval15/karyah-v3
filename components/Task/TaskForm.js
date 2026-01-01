@@ -293,7 +293,7 @@ export default function TaskForm({
       <View style={styles.noteContainer}>
         <Feather name="info" size={14} color={theme.secondaryText} style={styles.noteIcon} />
         <Text style={styles.noteText}>
-          * Leave "Assign To" blank to auto-assign to yourself
+          * Leave &quot;Assign To&quot; blank to auto-assign to yourself
         </Text>
       </View>
 
