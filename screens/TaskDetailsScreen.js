@@ -152,6 +152,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
     const stages = task.workflowStages || [];
     const totalStages = stages.length;
+    // Check if we are at the end (User input validation)
     const isLastStage = task.currentStageIndex >= totalStages - 1;
 
     if (isLastStage) {
@@ -162,36 +163,29 @@ export default function TaskDetailsScreen({ route, navigation }) {
     try {
       setStageLoading(true);
 
-      // Move to Next Stage
+      // 1. Call API: The backend now performs the move, calculates progress, and updates status
       const updatedTaskData = await moveTaskToNextStage(task.id || task.taskId);
 
-      // Calculate New Progress Percentage
-      // Formula: (Current Stage Index / (Total Stages - 1)) * 100
-      const newStageIndex = updatedTaskData.currentStageIndex ?? (task.currentStageIndex + 1);
-
-      let newProgress = 0;
-      if (totalStages > 1) {
-        newProgress = Math.round((newStageIndex / (totalStages - 1)) * 100);
-      } else {
-        newProgress = 100; // Fallback if only 1 stage
-      }
-
-      // Update Progress in Backend
-      await updateTaskProgress(task.id || task.taskId, newProgress);
-
-      // Update Local State (Visuals)
+      // 2. Update Local State (Visuals)
+      // We merge the backend response directly into our local task state
       setTask((prev) => ({
         ...prev,
-        ...updatedTaskData, // Updates stage name and index
-        progress: newProgress,
-        status: newProgress === 100 ? 'Completed' : 'In Progress'
+        ...updatedTaskData, // Contains: currentStage, progress, etc.
+        // Fallback: If backend didn't return 'status', infer it locally based on progress
+        status: updatedTaskData.progress === 100 ? 'Completed' : (updatedTaskData.status || prev.status),
+        // Fallback: If backend didn't return 'currentStageIndex', increment locally
+        currentStageIndex: updatedTaskData.currentStageIndex ?? (prev.currentStageIndex + 1)
       }));
 
-      // Update the slider/progress bar ref so it doesn't jump back
-      setEditableProgress(newProgress);
-      lastProgressRef.current = newProgress;
-
-      Alert.alert('Success', `Moved to next stage! Progress updated to ${newProgress}%`);
+      // 3. Update the slider/progress bar ref so it matches the backend's calculation
+      if (updatedTaskData.progress !== undefined) {
+          setEditableProgress(updatedTaskData.progress);
+          lastProgressRef.current = updatedTaskData.progress;
+          
+          Alert.alert('Success', `Moved to next stage! Progress updated to ${updatedTaskData.progress}%`);
+      } else {
+          Alert.alert('Success', 'Moved to next stage!');
+      }
 
     } catch (error) {
       console.error('Stage update failed:', error);
