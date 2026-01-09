@@ -1,6 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Switch, Text, TouchableOpacity, View } from 'react-native';
+
 export default function IssueList({
   issues,
   onPressIssue,
@@ -11,8 +12,8 @@ export default function IssueList({
   onStatusFilter,
   statusTab,
   refreshControl,
-  currentUserName, // Add this prop to identify current user
-  onToggleCritical, // Add this prop to handle critical toggle
+  currentUserName,
+  onToggleCritical,
 }) {
   // Filtering logic for task-based issues
   let filteredIssues = issues;
@@ -23,7 +24,7 @@ export default function IssueList({
   } else if (statusTab === 'completed') {
     filteredIssues = issues.filter((i) => i.status === 'Completed');
   }
-  // console.log(issues);
+
   filteredIssues = filteredIssues.slice().sort((a, b) => {
     const getPriority = (issue) => {
       const isCritical = issue.isCritical === true;
@@ -50,6 +51,7 @@ export default function IssueList({
   });
 
   const { t } = useTranslation();
+
   return (
     <>
       {/* Status filter tabs row (pill design) */}
@@ -93,20 +95,6 @@ export default function IssueList({
             count: issues.filter((i) => i.status === 'Pending').length,
             color: '#FFC107',
           },
-          // {
-          //   key: 'in_progress',
-          //   label: t('in_progress') || 'In Progress',
-          //   icon: (
-          //     <Feather
-          //       name="play-circle"
-          //       size={13}
-          //       color={statusTab === 'in_progress' ? '#fff' : '#2563EB'}
-          //       style={{ marginRight: 2 }}
-          //     />
-          //   ),
-          //   count: issues.filter((i) => i.status === 'In Progress').length,
-          //   color: '#2563EB',
-          // },
           {
             key: 'completed',
             label: t('completed') || 'Completed',
@@ -173,6 +161,7 @@ export default function IssueList({
           </TouchableOpacity>
         ))}
       </View>
+
       <ScrollView
         style={{ marginHorizontal: 16, marginBottom: 20 }}
         showsVerticalScrollIndicator={false}
@@ -186,18 +175,21 @@ export default function IssueList({
               style={[
                 styles.issueCard,
                 {
-                  backgroundColor: '#fff',
+                  // --- FIX: Use theme colors for Dark Mode support ---
+                  backgroundColor: theme.card,
+                  borderColor: theme.border,
+                  // --------------------------------------------------
                   borderRadius: 10,
                   borderWidth: 1,
-                  borderColor: '#eee',
-                  padding: 6,             // Reduced from 10
-                  marginBottom: 8,        // Reduced from 12/16
+                  padding: 6,
+                  marginBottom: 8,
                   flexDirection: 'row',
                   alignItems: 'center',
                 },
               ]}>
               <View style={[styles.issueIcon, {
-                backgroundColor: theme.avatarBg, width: 28,              // Reduced from ~36+
+                backgroundColor: theme.avatarBg,
+                width: 28,
                 height: 28,
                 borderRadius: 14,
                 justifyContent: 'center',
@@ -205,7 +197,8 @@ export default function IssueList({
                 marginRight: 8,
               }]}>
                 <Text style={[styles.issueIconText, {
-                  color: theme.primary, fontSize: 16,           // Reduced from 20+
+                  color: theme.primary,
+                  fontSize: 16,
                   fontWeight: 'bold',
                 }]}>
                   {/* Display first letter of task name */}
@@ -235,7 +228,7 @@ export default function IssueList({
                             fontSize: 13,
                             fontWeight: '600',
                             flexShrink: 1,
-                            maxWidth: '60%', // or 65%
+                            maxWidth: '60%',
                           },
                         ]}
                         numberOfLines={1}
@@ -276,7 +269,7 @@ export default function IssueList({
                             style={{
                               backgroundColor:
                                 item.status === 'Completed'
-                                  ? 'rgba(57, 201, 133, 0.13)' // subtle green background
+                                  ? 'rgba(57, 201, 133, 0.13)'
                                   : item.status === 'Pending'
                                     ? 'rgba(230, 117, 20, 0.08)'
                                     : '#FFC10720',
@@ -284,10 +277,10 @@ export default function IssueList({
                               paddingHorizontal: 6,
                               paddingVertical: 1,
                               alignSelf: 'center',
-                              borderWidth: 1, // slightly thicker border for emphasis
+                              borderWidth: 1,
                               borderColor:
                                 item.status === 'Completed'
-                                  ? '#39C985' // Use explicit green color
+                                  ? '#39C985'
                                   : item.status === 'Pending'
                                     ? '#E67514'
                                     : '#FFC107',
@@ -297,7 +290,7 @@ export default function IssueList({
                               style={{
                                 color:
                                   item.status === 'Completed'
-                                    ? '#039855' // Strong green for text
+                                    ? '#039855'
                                     : item.status === 'Pending'
                                       ? '#E67514'
                                       : '#FFC107',
@@ -322,8 +315,6 @@ export default function IssueList({
 
                       </View>
                     </View>
-
-
                   </View>
                 </View>
 
@@ -339,7 +330,7 @@ export default function IssueList({
                         color={item.isCritical ? '#FF2700' : theme.secondaryText}
                       />
                       <Text style={[styles.issueInfo, {
-                        color: theme.secondaryText, flex: 1, fontSize: 11.5,         // Down from 13/14
+                        color: theme.secondaryText, flex: 1, fontSize: 11.5,
                         marginLeft: 4,
                       }]}>
                         Critical Priority
@@ -347,39 +338,28 @@ export default function IssueList({
                       <Switch
                         value={item.isCritical || false}
                         onValueChange={(value) => onToggleCritical(item, value)}
-                        trackColor={{ false: '#ddd', true: '#FF2700' }}
+                        trackColor={{
+                          false: theme.type === 'dark' ? '#3e3e3e' : '#ddd',
+                          true: '#FF2700'
+                        }}
                         thumbColor="#fff"
                         style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
                       />
                     </View>
                   )}
 
-                {/* User Info Row */}
-                {/* <View style={styles.issueRow}>
-                  <Feather name="user" size={14} color={theme.secondaryText} />
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                    {` Creator : ${item.creatorName || item.creator?.name || 'N/A'}`}
-                  </Text>
-                </View> */}
-
                 {/* Location Row */}
                 <View style={styles.issueRow}>
                   <MaterialIcons name="folder" size={13} color={theme.primary} style={{ marginRight: 4 }} />
                   <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                    {item.project?.projectName || 'No Project'}
+                    {item.project?.projectName || 'NA'}
                   </Text>
                   <MaterialIcons name="location-on" size={13} color={theme.secondaryText} style={{ marginRight: 2 }} />
                   <Text style={[styles.issueInfo, { color: theme.secondaryText }]}>
-                    {item.project?.location || 'No Project'}
+                    {item.project?.location || 'NA'}
                   </Text>
                 </View>
               </View>
-              {/* <View style={styles.chevronBox}>
-                <Feather name="chevron-right" size={24} color={theme.text} />
-              </View> */}
             </View>
           </TouchableOpacity>
         ))}

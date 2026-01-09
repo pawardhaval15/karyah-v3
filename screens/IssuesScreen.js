@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
@@ -21,6 +21,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth';
 import { fetchIssuesByUser, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { updateTask } from '../utils/task';
+
 export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
     const [search, setSearch] = useState('');
@@ -35,7 +36,7 @@ export default function IssuesScreen({ navigation }) {
     const [issueForm, setIssueForm] = useState({
         title: '',
         description: '',
-        projectId: '',    // <-- add this
+        projectId: '',
         assignTo: '',
         dueDate: '',
         isCritical: false,
@@ -43,17 +44,56 @@ export default function IssuesScreen({ navigation }) {
 
     const [issues, setIssues] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [statusTab, setStatusTab] = useState('all'); // 'all', 'resolved', 'unresolved'
+    const [statusTab, setStatusTab] = useState('all');
     const [currentUserName, setCurrentUserName] = useState(null);
     const [filters, setFilters] = useState({
         status: [],
-        progress: [],     // Optional: if progress applies to issues
+        progress: [],
         projects: [],
         createdBy: [],
-        locations: [], // Optional: if you have location-based filtering
+        locations: [],
     });
-    // Show/hide filters panel
+
     const [showFilters, setShowFilters] = useState(false);
+
+    // --- Dynamic Styles for Dark Theme Support ---
+    const dynamicStyles = useMemo(() => ({
+        ...styles,
+        container: {
+            flex: 1,
+            backgroundColor: theme.background
+        },
+        issueCard: {
+            ...styles.issueCard,
+            backgroundColor: theme.card,
+            borderColor: theme.border,
+        },
+        issueName: {
+            ...styles.issueName,
+            color: theme.text,
+        },
+        issueInfo: {
+            ...styles.issueInfo,
+            color: theme.secondaryText,
+        },
+        issueIcon: {
+            ...styles.issueIcon,
+            backgroundColor: theme.dark ? '#333' : '#F2F6FF', // Adjust icon bg for dark mode
+        },
+        sectionTitle: {
+            ...styles.sectionTitle,
+            color: theme.text,
+        },
+        count: {
+            ...styles.count,
+            color: theme.text,
+        },
+        countsmall: {
+            ...styles.countsmall,
+            color: theme.secondaryText,
+        }
+    }), [theme]);
+
     const toggleFilter = (filterType, value) => {
         setFilters(prev => ({
             ...prev,
@@ -62,21 +102,23 @@ export default function IssuesScreen({ navigation }) {
                 : [...prev[filterType], value],
         }));
     };
+
     const clearAllFilters = () => {
         setFilters({
             status: [],
             progress: [],
             projects: [],
             createdBy: [],
-            locations: [], // Reset all filters
+            locations: [],
         });
     };
+
     const getActiveFiltersCount = () => {
         return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
     };
+
     const currentIssues = issues;
 
-    // Generate filter options based on Task model structure
     const statuses = Array.from(new Set(
         currentIssues.map(issue => issue.status || issue.issueStatus).filter(Boolean)
     ));
@@ -93,18 +135,14 @@ export default function IssuesScreen({ navigation }) {
         currentIssues.map(issue => issue.project?.location || issue.projectLocation).filter(Boolean)
     ));
 
-
     const handleRefresh = async () => {
         setRefreshing(true);
         try {
             const [taskBasedIssues, projects, connections] = await Promise.all([
-                fetchIssuesByUser(), // Fetch issues using the new API
+                fetchIssuesByUser(),
                 fetchProjectsByUser(),
                 fetchUserConnections()
             ]);
-
-            console.log(`Fetched issues: ${taskBasedIssues ? taskBasedIssues.length : 0}`);
-
             setIssues(taskBasedIssues || []);
             setProjects(projects || []);
             setUsers(connections || []);
@@ -118,19 +156,14 @@ export default function IssuesScreen({ navigation }) {
         }
     };
 
-    // Handle critical toggle for issues created by current user
     const handleToggleCritical = async (issue, isCritical) => {
         try {
-            // Update the task using the task API - use Task model ID
             const taskId = issue.id || issue.taskId;
             const updatePayload = {
                 isCritical,
-                isIssue: true // Ensure it remains as an issue
+                isIssue: true
             };
-
             await updateTask(taskId, updatePayload);
-
-            // Update the local state
             setIssues(prev =>
                 prev.map(item =>
                     item.id === taskId
@@ -138,14 +171,12 @@ export default function IssuesScreen({ navigation }) {
                         : item
                 )
             );
-
             Alert.alert('Success', `Issue ${isCritical ? 'marked as critical' : 'unmarked as critical'}`);
         } catch (error) {
             Alert.alert('Error', error.message || 'Failed to update critical status');
         }
     };
 
-    // Fetch current user name
     React.useEffect(() => {
         const fetchCurrentUserName = async () => {
             try {
@@ -155,22 +186,19 @@ export default function IssuesScreen({ navigation }) {
                 console.error('Error fetching current user name:', error);
             }
         };
-
         fetchCurrentUserName();
     }, []);
 
-    // Refetch issues on mount and when coming back from details with refresh param
     useFocusEffect(
         React.useCallback(() => {
             const fetchData = async () => {
                 setLoading(true);
                 try {
                     const [taskBasedIssues, projects, connections] = await Promise.all([
-                        fetchIssuesByUser(), // Fetch issues using the new API
+                        fetchIssuesByUser(),
                         fetchProjectsByUser(),
                         fetchUserConnections()
                     ]);
-
                     setIssues(taskBasedIssues || []);
                     setProjects(projects || []);
                     setUsers(connections || []);
@@ -189,20 +217,15 @@ export default function IssuesScreen({ navigation }) {
     const filterAndSortIssues = (issues) => {
         return issues
             .filter(item => {
-                // Search match - check both task name and issue-specific title
                 const searchText = (item.name || item.issueTitle || '').toLowerCase();
                 const searchMatch = searchText.includes(search.toLowerCase());
-
-                // Critical filter - check isCritical boolean flag
                 const activeTabMatch = activeTab === 'all' || (activeTab === 'critical' && item.isCritical === true);
 
-                // Status filter - handle both Task status enum and legacy issue status
-                const taskStatus = item.status; // "Pending", "In Progress", "Completed"
-                const issueStatus = item.issueStatus; // legacy field
+                const taskStatus = item.status;
+                const issueStatus = item.issueStatus;
                 const currentStatus = taskStatus || issueStatus;
                 const statusMatch = filters.status.length === 0 || filters.status.includes(currentStatus);
 
-                // Progress filter based on Task model progress field
                 const progressMatch = filters.progress.length === 0 || filters.progress.some(range => {
                     const progress = item.progress ?? 0;
                     switch (range) {
@@ -212,37 +235,40 @@ export default function IssuesScreen({ navigation }) {
                         default: return false;
                     }
                 });
-                // Projects filter - handle Task model project association
+
                 const projectName = item.project?.name || item.projectName || '';
                 const projectMatch = filters.projects.length === 0 || filters.projects.includes(projectName);
 
-                // CreatedBy filter based on creator information
                 let creatorMatch = true;
                 if (filters.createdBy.length > 0) {
                     const creatorName = item.creatorName || item.creator?.name || '';
                     creatorMatch = creatorName && filters.createdBy.includes(creatorName);
                 }
 
-                // Location filter - check project location
                 const location = item.project?.location || item.projectLocation || '';
                 const locationMatch = filters.locations.length === 0 || filters.locations.includes(location);
 
                 return searchMatch && activeTabMatch && statusMatch && progressMatch && projectMatch && creatorMatch && locationMatch;
             })
             .sort((a, b) => {
-                // Priority-based sorting
+                // --- Updated Sorting Logic ---
+                // Sequence: 
+                // 1. Critical & Pending (Unresolved)
+                // 2. Normal & Pending (Unresolved)
+                // 3. Completed (Bottom)
                 const getPriority = (issue) => {
                     const isCritical = issue.isCritical === true;
-                    const status = issue.status || issue.issueStatus;
-                    // Priority order:
-                    // 0 - Pending Critical
-                    // 1 - Pending Normal
-                    // 2 - Completed Critical
-                    // 3 - Completed Normal
-                    // 4 - Others (In Progress, etc.)
-                    if (status === 'Pending') return isCritical ? 0 : 1;
-                    if (status === 'Completed') return isCritical ? 2 : 3;
-                    return 4;
+                    const status = (issue.status || issue.issueStatus || '').toLowerCase();
+                    const isCompleted = status === 'completed' || status === 'resolved' || status === 'done';
+
+                    // Priority 0: Critical and NOT completed (Pending/In Progress)
+                    if (isCritical && !isCompleted) return 0;
+
+                    // Priority 1: Normal and NOT completed
+                    if (!isCritical && !isCompleted) return 1;
+
+                    // Priority 2: Completed (regardless of critical status, usually goes to bottom)
+                    return 2;
                 };
 
                 const priorityA = getPriority(a);
@@ -262,15 +288,12 @@ export default function IssuesScreen({ navigation }) {
         setIssueForm(prev => ({ ...prev, [field]: value }));
     };
     const handleDateSelect = () => {
-        // Use your preferred date picker here
         console.log("Open date picker");
-        // Example with DateTimePickerModal or native DatePickerAndroid/DatePickerIOS
     };
     const handleIssueCreated = async (newIssue) => {
-        // After creating a new issue, refresh the issues from the API for up-to-date data
         setLoading(true);
         try {
-            const taskBasedIssues = await fetchIssuesByUser(); // Fetch issues using the new API
+            const taskBasedIssues = await fetchIssuesByUser();
             setIssues(taskBasedIssues || []);
         } catch (e) {
             setIssues([]);
@@ -293,7 +316,7 @@ export default function IssuesScreen({ navigation }) {
         setIssueForm({
             title: '',
             description: '',
-            projectId: '',    // <-- reset this too
+            projectId: '',
             assignTo: '',
             dueDate: '',
             isCritical: false,
@@ -301,7 +324,7 @@ export default function IssuesScreen({ navigation }) {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: theme.background }}>
+        <View style={dynamicStyles.container}>
             <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                 <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
                 <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
@@ -316,11 +339,8 @@ export default function IssuesScreen({ navigation }) {
                     <Text style={styles.bannerTitle}>{t('issues')}</Text>
                     <Text style={styles.bannerDesc}>{t('all_issues_assigned_or_created_by_you_are_listed_here')}</Text>
                 </View>
-                {/* <TouchableOpacity style={styles.bannerAction} onPress={() => setShowIssuePopup(true)}>
-                    <Text style={styles.bannerActionText}>{t('issue')}</Text>
-                    <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
-                </TouchableOpacity> */}
             </LinearGradient>
+
             {/* Search */}
             <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
                 <TextInput
@@ -330,7 +350,6 @@ export default function IssuesScreen({ navigation }) {
                     value={search}
                     onChangeText={setSearch}
                 />
-                {/* <Ionicons name="search" size={22} color={theme.text} style={styles.searchIcon} /> */}
                 <TouchableOpacity
                     style={[
                         styles.filterButton,
@@ -353,6 +372,7 @@ export default function IssuesScreen({ navigation }) {
                     )}
                 </TouchableOpacity>
             </View>
+
             {showFilters && (
                 <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <View style={styles.filterHeader}>
@@ -505,9 +525,10 @@ export default function IssuesScreen({ navigation }) {
                 <IssueList
                     issues={filteredIssues}
                     onPressIssue={issue => navigation.navigate('IssueDetails', {
-                        issueId: issue.id // Use Task model ID 
+                        issueId: issue.id
                     })}
-                    styles={styles}
+                    // Pass dynamicStyles here instead of static styles
+                    styles={dynamicStyles}
                     theme={theme}
                     onStatusFilter={setStatusTab}
                     statusTab={statusTab}
@@ -530,10 +551,10 @@ export default function IssuesScreen({ navigation }) {
                 onChange={handleIssueChange}
                 onSubmit={handleIssueSubmit}
                 projects={projects}
-                onSelectDate={handleDateSelect} // ← PASS IT
+                onSelectDate={handleDateSelect}
                 users={users}
                 theme={theme}
-                onIssueCreated={handleIssueCreated} // <-- pass the handler
+                onIssueCreated={handleIssueCreated}
             />
         </View>
     );
