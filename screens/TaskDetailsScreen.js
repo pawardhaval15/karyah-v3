@@ -179,12 +179,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
       // 3. Update the slider/progress bar ref so it matches the backend's calculation
       if (updatedTaskData.progress !== undefined) {
-          setEditableProgress(updatedTaskData.progress);
-          lastProgressRef.current = updatedTaskData.progress;
-          
-          Alert.alert('Success', `Moved to next stage! Progress updated to ${updatedTaskData.progress}%`);
+        setEditableProgress(updatedTaskData.progress);
+        lastProgressRef.current = updatedTaskData.progress;
+
+        Alert.alert('Success', `Moved to next stage! Progress updated to ${updatedTaskData.progress}%`);
       } else {
-          Alert.alert('Success', 'Moved to next stage!');
+        Alert.alert('Success', 'Moved to next stage!');
       }
 
     } catch (error) {
@@ -852,9 +852,21 @@ export default function TaskDetailsScreen({ route, navigation }) {
             </View>
 
             {/* Current Stage Display */}
-            <View style={styles.currentStageBox}>
-              <Text style={[styles.currentStageLabel, { color: theme.secondaryText }]}>CURRENT STAGE</Text>
-              <Text style={[styles.currentStageValue, { color: theme.text }]}>{currentStageLabel}</Text>
+            <View
+              style={[
+                styles.currentStageBox,
+                {
+                  backgroundColor: theme.card,
+                  borderColor: theme.border
+                }
+              ]}
+            >
+              <Text style={[styles.currentStageLabel, { color: theme.secondaryText }]}>
+                CURRENT STAGE
+              </Text>
+              <Text style={[styles.currentStageValue, { color: theme.text }]}>
+                {currentStageLabel}
+              </Text>
             </View>
 
             {/* Action Button */}
@@ -884,7 +896,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
           </View>
         ) : (
-          // 🟠 LEGACY MODE VIEW (Original Slider)
+          // LEGACY MODE VIEW (Original Slider)
           task && typeof editableProgress === 'number' && (
             <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>
               <Text style={{ color: theme.text, fontWeight: '500', fontSize: 16, marginBottom: 8 }}>
@@ -1253,7 +1265,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 onPress={() => setShowAttachmentSheet(true)}>
                 <Feather name="paperclip" size={16} color={theme.text} />
                 <Text style={{ color: theme.text, fontWeight: '500', marginLeft: 6, fontSize: 12 }}>
-                   {uploadingAttachment ? t('uploading') : attaching ? t('attaching') : t('add')}
+                  {uploadingAttachment ? t('uploading') : attaching ? t('attaching') : t('add')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -1264,13 +1276,13 @@ export default function TaskDetailsScreen({ route, navigation }) {
         {/* PREVIEW LIST FOR NEW (UNSAVED) ATTACHMENTS (Before Upload) */}
         {newAttachments.length > 0 && (
           <View style={{ marginHorizontal: 16, marginBottom: 16, marginTop: -6 }}>
-            <View style={{ 
-               backgroundColor: theme.card, 
-               borderRadius: 12, 
-               padding: 12, 
-               borderWidth: 1, 
-               borderColor: theme.primary, 
-               borderStyle: 'dashed' 
+            <View style={{
+              backgroundColor: theme.card,
+              borderRadius: 12,
+              padding: 12,
+              borderWidth: 1,
+              borderColor: theme.primary,
+              borderStyle: 'dashed'
             }}>
               <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary, marginBottom: 8 }}>
                 Ready to Upload ({newAttachments.length})
@@ -1300,9 +1312,9 @@ export default function TaskDetailsScreen({ route, navigation }) {
                         }}>
                         {/* Thumbnail Preview */}
                         {att.type && att.type.startsWith('image') ? (
-                           <Image source={{ uri: att.uri }} style={{ width: 24, height: 24, borderRadius: 4, marginRight: 8 }} />
+                          <Image source={{ uri: att.uri }} style={{ width: 24, height: 24, borderRadius: 4, marginRight: 8 }} />
                         ) : (
-                           <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.secondaryText} style={{ marginRight: 8 }} />
+                          <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.secondaryText} style={{ marginRight: 8 }} />
                         )}
                         <Text style={{ color: theme.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
                           {(att.name || 'File').slice(0, 15)}
@@ -1339,7 +1351,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
                     // Pass taskName and description so they don't get overwritten with null
                     await updateTaskDetails(task.id || task._id || task.taskId, {
                       taskName: task.taskName,
-                      description: task.description, 
+                      description: task.description,
                       attachments: newAttachments,
                     });
                     clearAttachments();
@@ -1354,11 +1366,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
                   setUploadingAttachment(false);
                 }}>
                 {uploadingAttachment ? (
-                   <ActivityIndicator color="#fff" size="small" />
+                  <ActivityIndicator color="#fff" size="small" />
                 ) : (
-                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
-                     Upload {newAttachments.length} {newAttachments.length === 1 ? 'File' : 'Files'} Now
-                   </Text>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                    Upload {newAttachments.length} {newAttachments.length === 1 ? 'File' : 'Files'} Now
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -1935,7 +1947,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
         theme={theme}
         onAttachmentPress={(item, index) => {
           // When clicking an item in the grid, open the Gallery at that specific index
-          setPreviewIndex(index); 
+          setPreviewIndex(index);
           setPreviewVisible(true);
           // Optional: Keep drawer open behind it, or close it. Usually close it.
           // setDrawerVisible(false); 

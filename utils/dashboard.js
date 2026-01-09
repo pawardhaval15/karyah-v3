@@ -11,7 +11,7 @@ export const fetchDashboardStats = async () => {
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.message || 'Failed to fetch dashboard stats');
-    console.log(' Dashboard stats fetched:', data);
+    // console.log(' Dashboard stats fetched:', data);
     return data;
   } catch (error) {
     console.error(' Error fetching dashboard stats:', error.message);
