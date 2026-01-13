@@ -1,27 +1,27 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
+import { Feather } from '@expo/vector-icons';
+import { Audio, ResizeMode, Video } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import { useEffect, useRef, useState } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  Image,
   ActivityIndicator,
-  StyleSheet,
   Alert,
   Dimensions,
   FlatList,
+  Image,
+  InteractionManager,
+  Linking,
+  Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
-  Platform,
-  Linking,
-  InteractionManager
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
-import { Feather } from '@expo/vector-icons';
-import { Audio, Video, ResizeMode } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
 import { WebView } from 'react-native-webview';
-import { ReactNativeZoomableView } from '@dudigital/react-native-zoomable-view';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -58,7 +58,7 @@ export default function AttachmentPreviewModal({ visible, onClose, attachments =
               console.log("Initial scroll deferred:", e);
             }
           }
-        }, 500);
+        }, 100);
       });
 
       return () => task.cancel();

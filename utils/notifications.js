@@ -54,15 +54,27 @@ export const markAllNotificationsAsRead = async () => {
     const text = await res.text();
 
     try {
-      const json = JSON.parse(text);
       if (!res.ok) {
-        throw new Error(json.message || 'Failed to mark as read');
+        // If error response, try to parse JSON message
+        try {
+          const json = JSON.parse(text);
+          throw new Error(json.message || 'Failed to mark as read');
+        } catch (e) {
+          throw new Error('Failed to mark as read (Server Error)');
+        }
       }
-    } catch (e) {
-      throw new Error('Invalid JSON response from server');
-    }
 
-    return true;
+      // If success, try parse JSON, but if fails (e.g. empty 200 OK), just return true
+      try {
+        const json = JSON.parse(text);
+        return json;
+      } catch (e) {
+        // Assume success if status was OK but body wasn't JSON
+        return true;
+      }
+    } catch (error) {
+      throw error;
+    }
   } catch (error) {
     console.error('Error in markAllNotificationsAsRead:', error.message);
     throw error;

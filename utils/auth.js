@@ -1,3 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { jwtDecode } from 'jwt-decode';
+import { API_URL } from './config';
+
 // Forgot PIN API
 export const forgotPin = async (email) => {
   try {
@@ -115,13 +119,13 @@ export const registerUser = async (data) => {
     throw error;
   }
 };
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { jwtDecode } from 'jwt-decode';
-import { API_URL } from './config';
+
 
 export const checkEmailOrMobile = async (identifier) => {
   const url = `${API_URL}api/auth/check-email`;
-  const body = { mobile: identifier };
+  // Detect if identifier is email (contains @)
+  const isEmail = identifier.includes('@');
+  const body = isEmail ? { email: identifier } : { mobile: identifier };
 
   console.log('[checkEmailOrMobile] Sending request to:', url);
   console.log(' Request body:', body);
@@ -174,12 +178,12 @@ export const verifyOtp = async (identifier, otp) => {
 };
 
 export const loginWithPin = async (identifier, pin) => {
-  const API_URL = 'https://api.karyah.in/api/auth/login'; // or use your config file
+  const url = `${API_URL}api/auth/login`;
 
-  console.log(' [loginWithPin] Sending request to:', API_URL);
+  console.log(' [loginWithPin] Sending request to:', url);
   console.log(' Request body:', { identifier, pin });
 
-  const response = await fetch(API_URL, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ identifier, pin }),

@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider'; // Add this import
+import { useFocusEffect } from '@react-navigation/native';
 import AttachmentSheet from 'components/popups/AttachmentSheet';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,7 +9,9 @@ import { jwtDecode } from 'jwt-decode';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View, RefreshControl,
+  ActivityIndicator, Alert, Image, Modal, Platform,
+  RefreshControl,
+  ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View,
 } from 'react-native';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
@@ -24,9 +27,12 @@ import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import {
-  deleteTask, getTaskDetailsById, getTasksByProjectId, updateTask, updateTaskDetails, updateTaskFlags, updateTaskProgress, moveTaskToNextStage, holdTask, reopenTask,
+  deleteTask, getTaskDetailsById, getTasksByProjectId,
+  holdTask,
+  moveTaskToNextStage,
+  reopenTask,
+  updateTask, updateTaskDetails, updateTaskFlags, updateTaskProgress,
 } from '../utils/task';
-import { useFocusEffect } from '@react-navigation/native';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
 export default function TaskDetailsScreen({ route, navigation }) {
@@ -516,10 +522,13 @@ export default function TaskDetailsScreen({ route, navigation }) {
   }, [task?.progress]);
   // Allow edit if the logged-in user's name matches the creatorName (case-insensitive, trimmed)
   const creatorName = task?.creatorName || task?.creator?.name || null;
+  const creatorUserId = task?.creatorUserId || task?.creatorID || task?.creator?._id || task?.creator?.id;
+
   const isCreator =
-    userName && creatorName && userName.trim().toLowerCase() === creatorName.trim().toLowerCase();
-  // console.log('[TaskDetailsScreen] Matching userName:', userName, 'with creatorName:', creatorName, '| isCreator:', isCreator);
-  //   console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
+    (userName && creatorName && userName.trim().toLowerCase() === creatorName.trim().toLowerCase()) ||
+    (currentUserId && creatorUserId && String(currentUserId) === String(creatorUserId));
+  console.log('[TaskDetailsScreen] Matching userName:', userName, 'with creatorName:', creatorName, '| isCreator:', isCreator);
+  console.log('[TaskDetailsScreen] userName:', userName, '| creatorName:', creatorName, '| isCreator:', isCreator);
   // Filter subtasks based on search
   const filteredSubtasks = (task?.subTasks || []).filter((sub) => {
     if (!subtaskSearch.trim()) return true;
@@ -1946,11 +1955,11 @@ export default function TaskDetailsScreen({ route, navigation }) {
         attachments={drawerAttachments.length ? drawerAttachments : allAttachments}
         theme={theme}
         onAttachmentPress={(item, index) => {
-          // When clicking an item in the grid, open the Gallery at that specific index
           setPreviewIndex(index);
-          setPreviewVisible(true);
-          // Optional: Keep drawer open behind it, or close it. Usually close it.
-          // setDrawerVisible(false); 
+          setDrawerVisible(false); // Close drawer first
+          setTimeout(() => {
+            setPreviewVisible(true);
+          }, Platform.OS === 'ios' ? 400 : 100); // Wait for modal close animation
         }}
       />
       <ImageModal
@@ -1962,8 +1971,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
       <AttachmentPreviewModal
         visible={previewVisible}
         onClose={() => setPreviewVisible(false)}
-        attachments={allAttachments} // Pass ALL files
-        initialIndex={previewIndex}  // Pass start index
+        attachments={drawerAttachments.length > 0 ? drawerAttachments : allAttachments}
+        initialIndex={previewIndex}
         theme={theme}
       />
       <Modal

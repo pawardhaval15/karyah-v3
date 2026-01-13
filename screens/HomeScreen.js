@@ -206,18 +206,37 @@ export default function HomeScreen({ navigation }) {
             {/* Modern Header */}
             <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
               <View style={styles.headerRow}>
+                {/* Menu Icon */}
                 <TouchableOpacity
                   onPress={() => setDrawerOpen(true)}
-                  style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
+                  style={[styles.headerButton, { backgroundColor: theme.avatarBg, marginRight: 10 }]}
                 >
                   <Feather name="menu" size={22} color={theme.text} />
                 </TouchableOpacity>
 
-                <View style={styles.titleContainer}>
-                  <Text style={[styles.modernTitle, { color: theme.text }]}></Text>
-                  <Text style={[styles.subtitle, { color: theme.secondaryText }]}></Text>
-                </View>
+                {/* Smart Search Bar (Now in header) */}
+                <TouchableOpacity
+                  style={[
+                    styles.searchBarContainer,
+                    {
+                      backgroundColor: theme.SearchBar,
+                      flex: 1,
+                      marginHorizontal: 0,
+                      marginTop: 0,
+                      marginBottom: 0,
+                      marginRight: 10,
+                      paddingVertical: 10
+                    }
+                  ]}
+                  onPress={() => setShowSmartSearch(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.searchPlaceholder, { color: theme.secondaryText }]}>
+                    {t('search_placeholder')}
+                  </Text>
+                </TouchableOpacity>
 
+                {/* Notification Icon */}
                 <TouchableOpacity
                   onPress={() => navigation.navigate('NotificationScreen')}
                   style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
@@ -268,18 +287,6 @@ export default function HomeScreen({ navigation }) {
                 </TouchableOpacity>
               </View>
             </View>
-
-            {/* Smart Search Bar */}
-            <TouchableOpacity
-              style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}
-              onPress={() => setShowSmartSearch(true)}
-              activeOpacity={0.7}
-            >
-              {/* <Feather name="search" size={18} color={theme.secondaryText} style={styles.searchIcon} /> */}
-              <Text style={[styles.searchPlaceholder, { color: theme.secondaryText }]}>
-                {t('search_placeholder')}
-              </Text>
-            </TouchableOpacity>
 
             <ScrollView
               contentContainerStyle={{ paddingBottom: 0 }}

@@ -109,7 +109,7 @@ const NotificationScreen = ({ navigation, route }) => {
       setPendingRequests(Array.isArray(data) ? data : []);
       // console.log('Loaded pending requests:', data);
     } catch (err) {
-      setPendingRequests([]); 
+      setPendingRequests([]);
     }
   }, []);
 

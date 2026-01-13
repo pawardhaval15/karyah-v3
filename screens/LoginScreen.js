@@ -1,27 +1,25 @@
-import React, { useState, useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
-  KeyboardAvoidingView,
-  Platform,
+  Alert,
   ImageBackground,
-  View,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   SafeAreaView,
   ScrollView,
-  Keyboard,
-  TouchableWithoutFeedback,
-  Alert,
-  TouchableOpacity,
-  Text,
   StyleSheet,
-  Modal,
-  TextInput,
-  Dimensions,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Header from '../components/Login/Header';
 import LoginPanel from '../components/Login/LoginPanel';
-import { checkEmailOrMobile, verifyOtp } from '../utils/auth';
 import { useTheme } from '../theme/ThemeContext';
+import { checkEmailOrMobile, verifyOtp } from '../utils/auth';
 export default function LoginScreen({ navigation }) {
   const theme = useTheme();
 
@@ -29,6 +27,8 @@ export default function LoginScreen({ navigation }) {
   const [otp, setOtp] = useState(['', '', '', '']);
   const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
   const [showTerms, setShowTerms] = useState(false);
+  const [isNewUser, setIsNewUser] = useState(false);
+
   const handleOtpChange = (value, index) => {
     if (/^\d?$/.test(value)) {
       const newOtp = [...otp];
@@ -58,6 +58,11 @@ export default function LoginScreen({ navigation }) {
 
     try {
       const res = await checkEmailOrMobile(mobile);
+      if (res.isRegistered === false) {
+        setIsNewUser(true);
+      } else {
+        setIsNewUser(false);
+      }
       Alert.alert("Success", res.message);
     } catch (err) {
       Alert.alert("Error", err.message);
@@ -75,14 +80,19 @@ export default function LoginScreen({ navigation }) {
       const res = await verifyOtp(mobile, enteredOtp);
       await AsyncStorage.setItem('token', res.token);
       console.log("OTP verified successfully:", res);
-      if (res.redirectTo === 'Dashboard') {
+
+      // Check if user is new or explicitly redirected to registration
+      if (isNewUser || res.redirectTo === 'registrationForm') {
+        navigation.navigate('RegistrationForm', {
+          user: res.user,
+          identifier: mobile, // Pass identifier for pre-filling
+        });
+      } else {
+        // Default to Home/Dashboard
         navigation.reset({
           index: 0,
           routes: [{ name: 'Home' }],
         });
-
-      } else if (res.redirectTo === 'registrationForm') {
-        navigation.navigate('RegistrationForm', { user: res.user });
       }
     } catch (err) {
       Alert.alert("OTP Verification Failed", err.message);
