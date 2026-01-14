@@ -1,393 +1,267 @@
 import { Feather } from '@expo/vector-icons';
-import CustomDrawer from 'components/Home/CustomDrawer';
-import ProjectProgressCard from 'components/Home/ProjectProgressCard';
-import TaskSection from 'components/Home/TaskSection';
-import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
-import SmartSearchBar from 'components/ui/SmartSearchBar';
-import { useEffect, useRef, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Animated, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { Easing, useAnimatedStyle, useSharedValue, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import CustomDrawer from '../components/Home/CustomDrawer';
+import ProjectSection from '../components/Home/ProjectSection';
 import StatCardList from '../components/Home/StatCard';
+import TaskSection from '../components/Home/TaskSection';
+import ProjectFabDrawer from '../components/Project/ProjectFabDrawer';
+import SmartSearchBar from '../components/ui/SmartSearchBar';
+import { useNotifications } from '../hooks/useNotifications';
+import { useProjectInvites } from '../hooks/useProjects';
+import { useUIStore } from '../store/uiStore';
 import { useTheme } from '../theme/ThemeContext';
-import { getMyProjectInvites } from '../utils/connections';
-import { fetchNotifications } from '../utils/notifications';
-import { getProjectsByUserId } from '../utils/project';
 import usePushNotifications from '../utils/usePushNotifications';
-const DRAWER_WIDTH = 300;
 
-function formatMinimalDateRange(start, end) {
-  const startDate = new Date(start);
-  const endDate = end ? new Date(end) : null;
-  const startStr = `${startDate.getDate()} ${startDate.toLocaleString('default', { month: 'short' })}`;
-  const endStr = endDate
-    ? `${endDate.getDate()} ${endDate.toLocaleString('default', { month: 'short' })} ${endDate.getFullYear()}`
-    : 'Ongoing';
-  return `${startStr} – ${endStr}`;
-}
+const DRAWER_WIDTH = 300;
 
 export default function HomeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const theme = useTheme(); // <-- Use theme
-  const [projects, setProjects] = useState([]);
-  const [loadingProjects, setLoadingProjects] = useState(true);
-  const [drawerOpen, setDrawerOpen] = useState(false); // <-- state for drawer
-  const drawerAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current; // Start hidden
-  const [hasUnreadNotifications, setHasUnreadNotifications] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
-  const [search, setSearch] = useState('');
-  const [refreshKey, setRefreshKey] = useState(0);
-  const [showSmartSearch, setShowSmartSearch] = useState(false);
-  const [pendingInvites, setPendingInvites] = useState(0);
-  const blinkAnim = useRef(new Animated.Value(1)).current;
-  const waveAnim = useRef(new Animated.Value(0)).current;
-  const bellWaveAnim = useRef(new Animated.Value(0)).current;
-  const { t } = useTranslation();
+  const theme = useTheme();
+  const queryClient = useQueryClient();
   usePushNotifications();
+  const { t } = useTranslation();
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      if (navigation?.getState()?.routes?.find(r => r.name === 'HomeScreen')?.params?.refresh) {
-        fetchProjectsData();
-        setRefreshKey(prev => prev + 1);
-        // Optionally clear the param so it doesn't keep refreshing
+  // Global UI State
+  const {
+    drawerOpen,
+    setDrawerOpen,
+    homeRefreshing: refreshing,
+    setHomeRefreshing,
+    homeRefreshKey: refreshKey,
+    incrementHomeRefreshKey
+  } = useUIStore();
+
+  const {
+    data: invites = [],
+    refetch: refetchInvites
+  } = useProjectInvites();
+
+  const {
+    data: notifications = []
+  } = useNotifications();
+
+  // Local State
+  const [showSmartSearch, setShowSmartSearch] = useState(false);
+
+  // Derived State
+  const pendingInvites = invites.length || 0;
+  const hasUnreadNotifications = notifications?.some(n => !n.read);
+
+  // Reanimated Values
+  const drawerTranslateX = useSharedValue(-DRAWER_WIDTH);
+  const blinkOpacity = useSharedValue(1);
+  const waveScale = useSharedValue(0);
+  const waveOpacity = useSharedValue(0);
+  const bellScale = useSharedValue(1);
+  const bellWaveScale = useSharedValue(1);
+  const bellWaveOpacity = useSharedValue(0);
+
+  // Effects
+  useFocusEffect(
+    useCallback(() => {
+      const route = navigation.getState()?.routes?.find(r => r.name === 'HomeScreen');
+      if (route?.params?.refresh) {
+        onRefresh();
         navigation.setParams({ refresh: false });
       }
-    });
-    return unsubscribe;
-  }, [navigation]);
+    }, [navigation])
+  );
 
+  // Drawer Animation
   useEffect(() => {
-    const checkUnreadNotifications = async () => {
-      try {
-        const data = await fetchNotifications();
-        const hasUnread = data?.some(n => !n.read); // assuming each notification has a `read` boolean
-        setHasUnreadNotifications(hasUnread);
-      } catch (err) {
-        console.error('Error checking notifications:', err.message);
-      }
-    };
-
-    checkUnreadNotifications();
-
-    const interval = setInterval(checkUnreadNotifications, 10000); // poll every 10s
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
-
-    Animated.timing(drawerAnim, {
-      toValue: drawerOpen ? 0 : -DRAWER_WIDTH,
+    drawerTranslateX.value = withTiming(drawerOpen ? 0 : -DRAWER_WIDTH, {
       duration: 250,
-      useNativeDriver: false,
-    }).start();
+      easing: Easing.out(Easing.cubic),
+    });
   }, [drawerOpen]);
 
-  // Blinking animation for pending invites - Red alert style
+  const drawerStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: drawerTranslateX.value }],
+  }));
+
+  // Blinking/Wave Animation for Invites
   useEffect(() => {
     if (pendingInvites > 0) {
-      const blinkAnimation = Animated.loop(
-        Animated.sequence([
-          Animated.timing(blinkAnim, {
-            toValue: 0.4,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-          Animated.timing(blinkAnim, {
-            toValue: 1,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ])
+      blinkOpacity.value = withRepeat(
+        withSequence(withTiming(0.4, { duration: 600 }), withTiming(1, { duration: 600 })),
+        -1,
+        true
       );
-
-      const waveAnimation = Animated.loop(
-        Animated.timing(waveAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        })
-      );
-
-      blinkAnimation.start();
-      waveAnimation.start();
-
-      return () => {
-        blinkAnimation.stop();
-        waveAnimation.stop();
-      };
+      waveScale.value = 0;
+      waveOpacity.value = 1;
+      waveScale.value = withRepeat(withTiming(1, { duration: 1500 }), -1, false);
+      waveOpacity.value = withRepeat(withTiming(0, { duration: 1500 }), -1, false);
     } else {
-      blinkAnim.setValue(1);
-      waveAnim.setValue(0);
+      blinkOpacity.value = 1;
+      waveScale.value = 0;
+      waveOpacity.value = 0;
     }
   }, [pendingInvites]);
 
-  // Wave animation for bell notification
+  // Bell Animation
   useEffect(() => {
     if (hasUnreadNotifications) {
-      const bellWaveAnimation = Animated.loop(
-        Animated.timing(bellWaveAnim, {
-          toValue: 1,
-          duration: 1500,
-          useNativeDriver: true,
-        })
-      );
-
-      bellWaveAnimation.start();
-
-      return () => bellWaveAnimation.stop();
+      bellWaveScale.value = 0; // reset
+      bellWaveScale.value = withRepeat(withTiming(2.5, { duration: 1500 }), -1, false);
+      bellWaveOpacity.value = 0.8;
+      bellWaveOpacity.value = withRepeat(withTiming(0, { duration: 1500 }), -1, false);
     } else {
-      bellWaveAnim.setValue(0);
+      bellWaveScale.value = 1;
+      bellWaveOpacity.value = 0;
     }
   }, [hasUnreadNotifications]);
 
-  const fetchPendingInvites = async () => {
-    try {
-      const invitesData = await getMyProjectInvites();
-      console.log('📨 Fetched project invites on HomeScreen:', invitesData?.length || 0);
-      setPendingInvites(invitesData?.length || 0);
-    } catch (err) {
-      console.error('Error fetching pending invites:', err.message);
-      setPendingInvites(0);
-    }
-  };
-
-  const fetchProjectsData = async () => {
-    try {
-      setLoadingProjects(true);
-      const data = await getProjectsByUserId();
-      const filtered = (data || []).filter(
-        project => project.status?.toLowerCase() !== 'completed'
-      );
-      setProjects(filtered);
-
-      // Also fetch pending invites
-      await fetchPendingInvites();
-    } catch (err) {
-      console.error('Failed to fetch projects:', err.message);
-    } finally {
-      setLoadingProjects(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchProjectsData();
-  }, []);
+  const bellWaveStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: bellWaveScale.value }],
+    opacity: bellWaveOpacity.value,
+  }));
 
   const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchProjectsData();
-    setRefreshing(false);
+    setHomeRefreshing(true);
+    // Invalidate all relevant queries to trigger a fresh fetch in all components
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['projects'] }),
+      queryClient.invalidateQueries({ queryKey: ['myTasks'] }),
+      queryClient.invalidateQueries({ queryKey: ['issuesByUser'] }),
+      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] }),
+      queryClient.invalidateQueries({ queryKey: ['criticalIssues'] }),
+      queryClient.invalidateQueries({ queryKey: ['projectInvites'] }),
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+    ]);
+    incrementHomeRefreshKey();
+    setHomeRefreshing(false);
   };
 
   return (
-    <View style={[
-      { backgroundColor: theme.card, flex: 1 }
-    ]}>
-      {loadingProjects ? (
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" color={theme.primary || '#366CD9'} />
-        </View>
-      ) : (
-        <>
-          <ScrollView
-            contentContainerStyle={{ paddingBottom: 0 }}
-            showsVerticalScrollIndicator={false}
-            style={[styles.container, { backgroundColor: theme.background }]}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                colors={[theme.primary || '#366CD9']}
-                tintColor={theme.primary || '#366CD9'}
-              />
-            }
-          >
-            {/* Modern Header */}
-            <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
-              <View style={styles.headerRow}>
-                {/* Menu Icon */}
-                <TouchableOpacity
-                  onPress={() => setDrawerOpen(true)}
-                  style={[styles.headerButton, { backgroundColor: theme.avatarBg, marginRight: 10 }]}
-                >
-                  <Feather name="menu" size={22} color={theme.text} />
-                </TouchableOpacity>
-
-                {/* Smart Search Bar (Now in header) */}
-                <TouchableOpacity
-                  style={[
-                    styles.searchBarContainer,
-                    {
-                      backgroundColor: theme.SearchBar,
-                      flex: 1,
-                      marginHorizontal: 0,
-                      marginTop: 0,
-                      marginBottom: 0,
-                      marginRight: 10,
-                      paddingVertical: 10
-                    }
-                  ]}
-                  onPress={() => setShowSmartSearch(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[styles.searchPlaceholder, { color: theme.secondaryText }]}>
-                    {t('search_placeholder')}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Notification Icon */}
-                <TouchableOpacity
-                  onPress={() => navigation.navigate('NotificationScreen')}
-                  style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
-                >
-                  <View style={{ position: 'relative' }}>
-                    <Feather name="bell" size={22} color={theme.text} />
-                    {hasUnreadNotifications && (
-                      <>
-                        {/* Wave circles */}
-                        <Animated.View style={[
-                          styles.waveCircle,
-                          {
-                            transform: [
-                              {
-                                scale: bellWaveAnim.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [1, 2.5],
-                                }),
-                              },
-                            ],
-                            opacity: bellWaveAnim.interpolate({
-                              inputRange: [0, 0.5, 1],
-                              outputRange: [0.8, 0.3, 0],
-                            }),
-                          },
-                        ]} />
-                        <Animated.View style={[
-                          styles.waveCircle,
-                          {
-                            transform: [
-                              {
-                                scale: bellWaveAnim.interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [1, 2],
-                                }),
-                              },
-                            ],
-                            opacity: bellWaveAnim.interpolate({
-                              inputRange: [0, 0.7, 1],
-                              outputRange: [0.6, 0.2, 0],
-                            }),
-                          },
-                        ]} />
-                        <View style={styles.notificationDot} />
-                      </>
-                    )}
-                  </View>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <ScrollView
-              contentContainerStyle={{ paddingBottom: 0 }}
-              showsVerticalScrollIndicator={false}
+    <View style={[{ backgroundColor: theme.card, flex: 1 }]}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 0 }}
+        showsVerticalScrollIndicator={false}
+        style={[styles.container, { backgroundColor: theme.background }]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary || '#366CD9']}
+            tintColor={theme.primary || '#366CD9'}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={[styles.modernHeader, { backgroundColor: theme.background }]}>
+          <View style={styles.headerRow}>
+            <TouchableOpacity
+              onPress={() => setDrawerOpen(true)}
+              style={[styles.headerButton, { backgroundColor: theme.avatarBg, marginRight: 10 }]}
             >
-              <Text style={[styles.greeting, { color: theme.text }]}></Text>
-              <StatCardList
-                navigation={navigation}
-                theme={theme}
-                loading={loadingProjects || refreshing}
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                refreshKey={refreshKey}
-              />
-              {projects.length > 0 && (
-                <>
-                  <View style={styles.sectionRow}>
-                    <View style={styles.sectionTitleContainer}>
-                      <Text style={[styles.sectionTitle, { color: theme.text }]}>
-                        {t('ongoing_projects')} <Text style={{ color: theme.text }}>{projects.length}</Text>
-                      </Text>
+              <Feather name="menu" size={22} color={theme.text} />
+            </TouchableOpacity>
 
-                    </View>
-                  </View>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingLeft: 20, paddingRight: 20, marginBottom: 20 }}
-                  >
-                    {projects.map((project, idx) => (
-                      <ProjectProgressCard
-                        key={project.id || idx}
-                        title={project.projectName}
-                        timeline={formatMinimalDateRange(project.startDate, project.endDate)}
-                        assignedBy={t('you')}
-                        avatars={[
-                          ...(project.mainUserProfilePhoto ? [project.mainUserProfilePhoto] : []),
-                          ...(Array.isArray(project.coAdminProfilePhotos)
-                            ? project.coAdminProfilePhotos
-                              .map(photoObj => photoObj?.profilePhoto)
-                              .filter(Boolean)
-                            : [])
-                        ]}
-                        progress={project.progress}
-                        theme={theme}
-                        project={project}
-                        creatorName={project.mainUserName || t('unknown')}
-                        location={project.location}
-                      />
-                    ))}
-                  </ScrollView>
-                </>
-              )}
-              <TaskSection
-                navigation={navigation}
-                theme={theme}
-                loading={loadingProjects || refreshing}
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                refreshKey={refreshKey}
-              />
-            </ScrollView>
-          </ScrollView>
-          {!drawerOpen && (
-            <ProjectFabDrawer
-              onTaskSubmit={async (task) => {
-                await fetchProjectsData();
-                setRefreshKey(prev => prev + 1);
-              }}
-              onProjectSubmit={async (project) => {
-                await fetchProjectsData();
-                setRefreshKey(prev => prev + 1);
-              }}
-              theme={theme}
-            />
-          )}
-          {/* {refreshing && (
-            <View style={styles.activityOverlay} pointerEvents="none">
-              <ActivityIndicator size="large" color={theme.primary} />
-            </View>
-          )} */}
-          {drawerOpen && (
-            <View style={styles.drawerOverlay}>
-              <Pressable style={styles.overlayBg} onPress={() => setDrawerOpen(false)} />
-              <Animated.View style={[styles.animatedDrawer, { left: drawerAnim }]}>
-                <CustomDrawer onClose={() => setDrawerOpen(false)} theme={theme} />
-              </Animated.View>
-            </View>
-          )}
-          {showSmartSearch && (
-            <SmartSearchBar
-              navigation={navigation}
-              theme={theme}
-              onClose={() => setShowSmartSearch(false)}
-            />
-          )}
-        </>
+            <TouchableOpacity
+              style={[
+                styles.searchBarContainer,
+                {
+                  backgroundColor: theme.SearchBar,
+                  flex: 1,
+                  marginHorizontal: 0,
+                  marginTop: 0,
+                  marginBottom: 0,
+                  marginRight: 10,
+                  paddingVertical: 10
+                }
+              ]}
+              onPress={() => setShowSmartSearch(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.searchPlaceholder, { color: theme.secondaryText }]}>
+                {t('search_placeholder')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => navigation.navigate('NotificationScreen')}
+              style={[styles.headerButton, { backgroundColor: theme.avatarBg }]}
+            >
+              <View style={{ position: 'relative' }}>
+                <Feather name="bell" size={22} color={theme.text} />
+                {hasUnreadNotifications && (
+                  <>
+                    <Animated.View style={[styles.waveCircle, bellWaveStyle]} />
+                    <View style={styles.notificationDot} />
+                  </>
+                )}
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.greeting, { color: theme.text }]}></Text>
+          <StatCardList
+            navigation={navigation}
+            theme={theme}
+            loading={refreshing}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            refreshKey={refreshKey}
+          />
+
+          <ProjectSection
+            navigation={navigation}
+            theme={theme}
+            loading={refreshing}
+          />
+
+          <TaskSection
+            navigation={navigation}
+            theme={theme}
+            loading={refreshing}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            refreshKey={refreshKey}
+          />
+        </View>
+      </ScrollView>
+
+      {!drawerOpen && (
+        <ProjectFabDrawer
+          onTaskSubmit={async (task) => {
+            onRefresh();
+          }}
+          onProjectSubmit={async (project) => {
+            onRefresh();
+          }}
+          theme={theme}
+        />
+      )}
+
+      {drawerOpen && (
+        <View style={styles.drawerOverlay}>
+          <Pressable style={styles.overlayBg} onPress={() => setDrawerOpen(false)} />
+          <Animated.View style={[styles.animatedDrawer, drawerStyle]}>
+            <CustomDrawer onClose={() => setDrawerOpen(false)} theme={theme} />
+          </Animated.View>
+        </View>
+      )}
+
+      {showSmartSearch && (
+        <SmartSearchBar
+          navigation={navigation}
+          theme={theme}
+          onClose={() => setShowSmartSearch(false)}
+        />
       )}
     </View>
   );
 }
+
+
 
 const styles = StyleSheet.create({
   activityOverlay: {
@@ -423,7 +297,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 0, left: 0, right: 0, bottom: 0,
     flexDirection: 'row',
-    // zIndex: 1000,
   },
   overlayBg: {
     flex: 1,
@@ -482,6 +355,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF3B30',
     borderWidth: 1.5,
     borderColor: '#fff',
+    zIndex: 10,
   },
   headerRow: {
     flexDirection: 'row',
@@ -522,60 +396,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 6,
   },
-  inviteIndicator: {
-    marginLeft: 12,
-  },
-  inviteBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-  },
-  inviteText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '600',
-    marginRight: 4,
-  },
-  inviteCount: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    minWidth: 16,
-    height: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  inviteCountText: {
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  viewAll: {
-    color: '#363942',
-    fontWeight: '400',
-    fontSize: 14,
-  },
-  fabContainer: {
-    zIndex: 0,
+  waveCircle: {
     position: 'absolute',
-    bottom: 45,
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'rgba(255, 59, 48, 0.5)',
+    borderRadius: 12, // Match headerButton radius
+    top: 0,
     left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingBottom: 20,
-    backgroundColor: 'transparent',
-  },
-  fab: {
-    width: 60,
-    height: 60,
-    borderRadius: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: -36,
-  },
+  }
 });

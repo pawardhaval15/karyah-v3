@@ -1,679 +1,357 @@
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
+import { Feather } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator, // Ensure this is imported
-  Animated,
   Dimensions,
+  FlatList,
   Image,
   Platform,
   RefreshControl,
   SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import Animated, {
+  FadeInDown,
+  FadeOut,
+  Layout,
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withSequence,
+  withTiming
+} from 'react-native-reanimated';
+import { useAcceptConnection, usePendingRequests, useRejectConnection } from '../hooks/useConnections';
+import { useMarkAllNotificationsAsRead, useMarkNotificationAsRead, useNotifications } from '../hooks/useNotifications';
+import { useUIStore } from '../store/uiStore';
 import { useTheme } from '../theme/ThemeContext';
-import { acceptConnectionRequest, getPendingRequests, rejectConnectionRequest } from '../utils/connections';
-import {
-  fetchNotifications,
-  markAllNotificationsAsRead,
-  markNotificationAsRead,
-} from '../utils/notifications';
-import { useTranslation } from 'react-i18next';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const IS_TABLET = SCREEN_WIDTH >= 768;
+
+// Optimized Item Heights for getItemLayout
+const CONNECTION_ITEM_HEIGHT = 160;
+const NOTIFICATION_ITEM_HEIGHT = 100;
+
+const formatDateTime = (dateString) => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', {
+    month: 'short', day: 'numeric',
+    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
+};
+
+const SkeletonItem = memo(({ theme }) => {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(withTiming(0.7, { duration: 800 }), withTiming(0.3, { duration: 800 })),
+      -1,
+      true
+    );
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }, animatedStyle]}
+    >
+      <View style={styles.cardContentRow}>
+        <View style={[styles.avatarContainer, { backgroundColor: theme.avatarBg, borderWidth: 0 }]} />
+        <View style={{ flex: 1, gap: 8 }}>
+          <View style={{ height: 16, backgroundColor: theme.avatarBg, width: '40%', borderRadius: 4 }} />
+          <View style={{ height: 12, backgroundColor: theme.avatarBg, width: '90%', borderRadius: 4 }} />
+          <View style={{ height: 12, backgroundColor: theme.avatarBg, width: '20%', borderRadius: 4 }} />
+        </View>
+      </View>
+    </Animated.View>
+  );
+});
+
+const ConnectionRequestCard = memo(({ req, onAccept, onReject, theme, t }) => {
+  const initials = req.requester?.name
+    ? req.requester.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
+    : 'U';
+
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(400).springify()}
+      exiting={FadeOut.duration(200)}
+      layout={Layout.springify().damping(15)}
+      style={[styles.card, { backgroundColor: theme.card, borderColor: theme.border }]}
+    >
+      <View style={styles.cardContentRow}>
+        <View style={[styles.avatarContainer, { borderColor: theme.primary, backgroundColor: theme.avatarBg }]}>
+          {req.requester?.profilePhoto ? (
+            <Image source={{ uri: req.requester.profilePhoto }} style={styles.avatarImage} />
+          ) : (
+            <Text style={[styles.avatarText, { color: theme.primary }]}>{initials}</Text>
+          )}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.name, { color: theme.text }]}>{req.requester?.name || 'User'}</Text>
+          <Text style={[styles.subText, { color: theme.secondaryText }]}>wants to connect</Text>
+          <Text style={[styles.timeText, { color: theme.secondaryText }]}>{formatDateTime(req.createdAt)}</Text>
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              onPress={() => onAccept(req.id)}
+              style={[styles.acceptBtn, { borderColor: theme.primary }]}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: theme.primary, fontWeight: '600' }}>{t('accept')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => onReject(req.id)}
+              style={[styles.rejectBtn, { backgroundColor: theme.danger, borderColor: theme.dangerText }]}
+              activeOpacity={0.7}
+            >
+              <Text style={{ color: theme.dangerText, fontWeight: '600' }}>{t('reject')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Animated.View>
+  );
+});
+
+const NotificationCard = memo(({ item, onRead, theme }) => {
+  const typeIcon = useMemo(() => {
+    const type = item.type?.toLowerCase();
+    if (type === 'issue') return { icon: 'alert-circle', color: '#FF3B30' };
+    if (type === 'task') return { icon: 'clipboard', color: theme.primary };
+    if (type === 'project') return { icon: 'folder', color: '#FF9500' };
+    return { icon: 'bell', color: theme.text };
+  }, [item.type, theme]);
+
+  return (
+    <Animated.View
+      entering={FadeInDown.duration(400).springify()}
+      exiting={FadeOut.duration(200)}
+      layout={Layout.springify().damping(15)}
+      style={[styles.card, {
+        backgroundColor: theme.card,
+        borderColor: theme.border,
+        opacity: item.read ? 0.6 : 1,
+        borderLeftWidth: item.read ? 1 : 4,
+        borderLeftColor: item.read ? theme.border : theme.primary
+      }]}
+    >
+      <TouchableOpacity
+        onPress={() => onRead(item)}
+        style={styles.cardContentRow}
+        activeOpacity={0.7}
+      >
+        <View style={[styles.iconCircle, { backgroundColor: theme.avatarBg }]}>
+          <Feather name={typeIcon.icon} size={20} color={typeIcon.color} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={styles.cardHeader}>
+            <Text style={[styles.name, { color: theme.text, flex: 1 }]} numberOfLines={1}>{item.type}</Text>
+            <Text style={[styles.timeText, { color: theme.secondaryText }]}>{formatDateTime(item.createdAt)}</Text>
+          </View>
+          <Text style={[styles.messageText, { color: theme.secondaryText }]} numberOfLines={2}>{item.message}</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
 
 const NotificationScreen = ({ navigation, route }) => {
   const { defaultTab } = route.params || {};
-  const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'ALL');
-  const [notifications, setNotifications] = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true); // <--- Added Loading State
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [message, setMessage] = useState(null);
-  const messageTimeout = useRef(null);
-  const messageAnim = useRef(new Animated.Value(0)).current;
   const theme = useTheme();
   const { t } = useTranslation();
-  const screenWidth = Dimensions.get('window').width;
-  const isTablet = screenWidth >= 768;
 
-  // Tab configuration
-  const tabFilters = [
-    {
-      key: 'ALL',
-      label: t('all') || 'All',
-      count: (notifications, pendingRequests) => notifications.length,
-      filter: (notifications) => notifications,
-    },
-    {
-      key: 'CRITICAL',
-      label: t('critical') || 'Critical',
-      count: (notifications) => notifications.filter((n) => n.type?.toLowerCase() === 'issue').length,
-      filter: (notifications) => notifications.filter((n) => n.type?.toLowerCase() === 'issue'),
-    },
-    {
-      key: 'TASK',
-      label: t('task') || 'Task',
-      count: (notifications) => notifications.filter((n) => n.type === 'task' || n.type === 'task_message').length,
-      filter: (notifications) => notifications.filter((n) => n.type === 'task' || n.type === 'task_message'),
-    },
-    {
-      key: 'PROJECT',
-      label: t('project') || 'Project',
-      count: (notifications) =>
-        notifications.filter(
-          (n) => n.type === 'coadmin_added' || n.type === 'project_updated' || n.type === 'discussion'
-        ).length,
-      filter: (notifications) =>
-        notifications.filter(
-          (n) => n.type === 'coadmin_added' || n.type === 'project_updated' || n.type === 'discussion'
-        ),
-    },
-    {
-      key: 'CONNECTIONS',
-      label: t('connections') || 'Connections',
-      count: (_, pendingRequests) => pendingRequests.length,
-      filter: () => [], // Handled separately below
-    },
-  ];
+  const [activeTab, setActiveTab] = useState(defaultTab?.toUpperCase() || 'ALL');
+  const { homeRefreshing, setHomeRefreshing } = useUIStore();
 
-  // Show only tabs with notifications or requests
-  const activeTabs = tabFilters.filter((tab) =>
-    tab.key === 'CONNECTIONS' ? pendingRequests.length > 0 : tab.count(notifications, pendingRequests) > 0
-  );
+  // Optimized Data Fetching with auto-updates
+  const { data: notifications = [], isLoading: notifsLoading, refetch: refetchNotifs, isFetching: isRefreshingNotifs } = useNotifications();
+  const { data: pendingRequests = [], isLoading: requestsLoading, refetch: refetchRequests, isFetching: isRefreshingReqs } = usePendingRequests();
 
-  // Ensure activeTab is always valid
-  useEffect(() => {
-    if (!activeTabs.some((tab) => tab.key === activeTab)) {
-      setActiveTab(activeTabs.length ? activeTabs[0].key : 'ALL');
+  const markAsRead = useMarkNotificationAsRead();
+  const markAllAsRead = useMarkAllNotificationsAsRead();
+  const acceptReq = useAcceptConnection();
+  const rejectReq = useRejectConnection();
+
+  const isLoadingInitial = (notifsLoading || requestsLoading) && notifications.length === 0 && pendingRequests.length === 0;
+
+  const tabFilters = useMemo(() => [
+    { key: 'ALL', label: t('all'), count: notifications.length },
+    { key: 'CRITICAL', label: t('critical'), count: notifications.filter(n => n.type?.toLowerCase() === 'issue').length },
+    { key: 'TASK', label: t('task'), count: notifications.filter(n => n.type === 'task' || n.type === 'task_message').length },
+    { key: 'PROJECT', label: t('project'), count: notifications.filter(n => ['coadmin_added', 'project_updated', 'discussion'].includes(n.type)).length },
+    { key: 'CONNECTIONS', label: t('connections'), count: pendingRequests.length },
+  ], [notifications, pendingRequests, t]);
+
+  const activeTabs = useMemo(() =>
+    tabFilters.filter(tab => tab.key === 'CONNECTIONS' ? tab.count > 0 : tab.count > 0 || tab.key === 'ALL')
+    , [tabFilters]);
+
+  const displayData = useMemo(() => {
+    if (activeTab === 'CONNECTIONS') return pendingRequests;
+    if (activeTab === 'ALL') return notifications;
+
+    switch (activeTab) {
+      case 'CRITICAL': return notifications.filter(n => n.type?.toLowerCase() === 'issue');
+      case 'TASK': return notifications.filter(n => n.type === 'task' || n.type === 'task_message');
+      case 'PROJECT': return notifications.filter(n => ['coadmin_added', 'project_updated', 'discussion'].includes(n.type));
+      default: return notifications;
     }
-    // eslint-disable-next-line
-  }, [notifications, pendingRequests]);
+  }, [activeTab, notifications, pendingRequests]);
 
-  const loadNotifications = useCallback(async () => {
-    try {
-      const data = await fetchNotifications();
-      if (!Array.isArray(data)) throw new Error('Invalid notification data');
-      setNotifications(data);
-      console.log('Loaded notifications:', data);
-    } catch (err) {
-      // console.log('Load Error:', err.message);
-    }
-  }, []);
-
-  const loadPendingRequests = useCallback(async () => {
-    try {
-      const data = await getPendingRequests();
-      setPendingRequests(Array.isArray(data) ? data : []);
-      // console.log('Loaded pending requests:', data);
-    } catch (err) {
-      setPendingRequests([]);
-    }
-  }, []);
-
-  // Combined Initial Load
-  useEffect(() => {
-    const initLoad = async () => {
-      setIsLoading(true);
-      await Promise.all([loadNotifications(), loadPendingRequests()]);
-      setIsLoading(false);
-    };
-    initLoad();
-  }, []); // Run only on mount
-
-  // Focus listener (Silent update, no loading spinner)
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadNotifications();
-      loadPendingRequests();
-    });
-    return unsubscribe;
-  }, [navigation, loadNotifications, loadPendingRequests]);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
+  const onRefresh = useCallback(async () => {
+    setHomeRefreshing(true);
     try {
       const { sound } = await Audio.Sound.createAsync(require('../assets/sounds/refresh.wav'));
       await sound.playAsync();
-      sound.setOnPlaybackStatusUpdate((status) => {
-        if (status.didJustFinish) sound.unloadAsync();
-      });
-    } catch (err) {
-      // console.error('Refresh sound error:', err.message);
+    } catch { }
+    await Promise.all([refetchNotifs(), refetchRequests()]);
+    setHomeRefreshing(false);
+  }, [refetchNotifs, refetchRequests, setHomeRefreshing]);
+
+  const handleRead = useCallback(async (n) => {
+    if (!n.read) await markAsRead.mutateAsync(n.id);
+    const screenMap = { task: 'MyTasksScreen', issue: 'IssuesScreen', project: 'ProjectScreen' };
+    const target = screenMap[n.type?.toLowerCase()];
+    if (target) navigation.navigate(target, n.params || {});
+  }, [markAsRead, navigation]);
+
+  const renderItem = useCallback(({ item }) => {
+    if (activeTab === 'CONNECTIONS') {
+      return (
+        <ConnectionRequestCard
+          req={item}
+          onAccept={acceptReq.mutate}
+          onReject={rejectReq.mutate}
+          theme={theme}
+          t={t}
+        />
+      );
     }
-    await loadNotifications();
-    await loadPendingRequests();
-    setRefreshing(false);
-    showMessage('Refreshed');
-  };
+    return (
+      <NotificationCard
+        item={item}
+        onRead={handleRead}
+        theme={theme}
+      />
+    );
+  }, [activeTab, acceptReq.mutate, rejectReq.mutate, theme, t, handleRead]);
 
-  const handleAccept = async (connectionId) => {
-    try {
-      await acceptConnectionRequest(connectionId);
-      showMessage('Connection request accepted');
-      setPendingRequests((prev) => prev.filter((req) => req.id !== connectionId));
-      setNotifications((prev) => prev.filter((n) => n.connectionId !== connectionId));
-    } catch (err) {
-      showMessage('Error accepting request: ' + err.message);
-    }
-  };
-
-  const handleReject = async (connectionId) => {
-    try {
-      await rejectConnectionRequest(connectionId);
-      showMessage('Connection request rejected');
-      setPendingRequests((prev) => prev.filter((req) => req.id !== connectionId));
-      setNotifications((prev) => prev.filter((n) => n.connectionId !== connectionId));
-    } catch (err) {
-      showMessage('Error rejecting request: ' + err.message);
-    }
-  };
-
-  const handleMarkAllAsRead = async () => {
-    try {
-      await markAllNotificationsAsRead();
-      await loadNotifications();
-      showMessage('All notifications marked as read');
-    } catch (err) {
-      showMessage('Error marking notifications: ' + err.message);
-    }
-  };
-
-  const getFilteredNotifications = () => {
-    const found = tabFilters.find((f) => f.key === activeTab);
-    if (!found) return notifications;
-    if (activeTab === 'CONNECTIONS') return [];
-    return found.filter(notifications);
-  };
-
-  const filteredNotifications = getFilteredNotifications();
-
-  const showMessage = (msg) => {
-    setMessage(msg);
-    Animated.timing(messageAnim, {
-      toValue: 1,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
-    if (messageTimeout.current) clearTimeout(messageTimeout.current);
-    messageTimeout.current = setTimeout(() => {
-      Animated.timing(messageAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }).start(() => setMessage(null));
-    }, 2000);
-  };
-
-  const formatDateTime = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / (1000 * 60));
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    });
-  };
+  // Performance: Get item layout for silky smooth scrolling with large datasets
+  const getItemLayout = useCallback((data, index) => ({
+    length: activeTab === 'CONNECTIONS' ? CONNECTION_ITEM_HEIGHT : NOTIFICATION_ITEM_HEIGHT,
+    offset: (activeTab === 'CONNECTIONS' ? CONNECTION_ITEM_HEIGHT : NOTIFICATION_ITEM_HEIGHT) * index,
+    index,
+  }), [activeTab]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity
-        style={[
-          styles.backBtn,
-          {
-            marginLeft: isTablet ? 24 : 16,
-            marginBottom: isTablet ? 24 : 18,
-          },
-        ]}
-        onPress={() => navigation.navigate('Home', { refreshing: true })}>
-        <MaterialIcons name="arrow-back-ios" size={isTablet ? 18 : 16} color={theme.text} />
-        <Text
-          style={[
-            styles.backText,
-            {
-              color: theme.text,
-              fontSize: isTablet ? 20 : 18,
-            },
-          ]}>
-          {t('back')}
-        </Text>
-      </TouchableOpacity>
-
-      <View
-        style={[
-          styles.headerRow,
-          {
-            paddingHorizontal: isTablet ? 24 : 16,
-            marginBottom: isTablet ? 4 : 0,
-          },
-        ]}>
-        <Text
-          style={[
-            styles.headerTitle,
-            {
-              color: theme.text,
-              fontSize: isTablet ? 24 : 20,
-            },
-          ]}>
-          {t('notifications')}
-        </Text>
-        <View style={{ flexDirection: 'row' }}>
-          <TouchableOpacity onPress={onRefresh}>
-            <MaterialIcons
-              name="refresh"
-              size={isTablet ? 26 : 22}
-              color={theme.text}
-              style={{ marginRight: isTablet ? 16 : 12 }}
-            />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleMarkAllAsRead}>
-            <MaterialIcons
-              name="check-circle-outline"
-              size={isTablet ? 26 : 22}
-              color={theme.text}
-            />
-          </TouchableOpacity>
-        </View>
+      {/* Premium Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Feather name="arrow-left" size={24} color={theme.text} />
+          <Text style={[styles.headerTitle, { color: theme.text }]}>{t('notifications')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => markAllAsRead.mutate()}
+          disabled={notifications.length === 0}
+          style={[styles.readAllBtn, { backgroundColor: theme.avatarBg }]}
+          activeOpacity={0.7}
+        >
+          <Feather name="check-circle" size={18} color={theme.primary} />
+          <Text style={[styles.readAllText, { color: theme.primary }]}>Read All</Text>
+        </TouchableOpacity>
       </View>
 
-      <View
-        style={[
-          styles.tabRow,
-          {
-            paddingHorizontal: isTablet ? 14 : 10,
-            marginTop: isTablet ? 12 : 8,
-          },
-        ]}>
-        <ScrollView
+      {/* Dynamic Tab Bar */}
+      <View style={styles.tabContainer}>
+        <FlatList
+          data={activeTabs}
           horizontal
           showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.tabRow, { gap: isTablet ? 0 : 0 }]}>
-          {activeTabs.map((tab) => {
-            const isActive = activeTab === tab.key;
-            const count = tab.count(notifications, pendingRequests);
-            return (
-              <TouchableOpacity
-                key={tab.key}
-                style={[
-                  styles.tabButton,
-                  {
-                    paddingVertical: isTablet ? 12 : 8,
-                    paddingHorizontal: isTablet ? 22 : 17,
-                    borderRadius: isTablet ? 24 : 20,
-                    marginRight: isTablet ? 0 : 8,
-                  },
-                  isActive
-                    ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                    : { backgroundColor: theme.card, borderColor: theme.border },
-                ]}
-                onPress={() => setActiveTab(tab.key)}>
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: isTablet ? 8 : 6,
-                  }}>
-                  <Text
-                    style={[
-                      styles.tabText,
-                      {
-                        fontSize: isTablet ? 16 : 14,
-                      },
-                      isActive
-                        ? { color: '#fff', fontWeight: '600' }
-                        : { color: theme.text, fontWeight: '400' },
-                    ]}>
-                    {tab.label}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              onPress={() => setActiveTab(item.key)}
+              style={[
+                styles.tabButton,
+                activeTab === item.key
+                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                  : { backgroundColor: theme.card, borderColor: theme.border }
+              ]}
+              activeOpacity={0.9}
+            >
+              <Text style={[styles.tabText, { color: activeTab === item.key ? '#FFF' : theme.text }]}>
+                {item.label}
+              </Text>
+              {item.count > 0 && (
+                <View style={[styles.badge, { backgroundColor: activeTab === item.key ? 'rgba(255,255,255,0.2)' : theme.primary }]}>
+                  <Text style={[styles.badgeText, { color: activeTab === item.key ? '#FFF' : '#FFF' }]}>
+                    {item.count}
                   </Text>
-                  {count > 0 && (
-                    <View
-                      style={{
-                        minWidth: isTablet ? 24 : 20,
-                        height: isTablet ? 24 : 20,
-                        borderRadius: isTablet ? 12 : 10,
-                        backgroundColor: isActive
-                          ? 'rgba(255,255,255,0.3)'
-                          : theme.primary + '33',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        paddingHorizontal: isTablet ? 8 : 6,
-                      }}>
-                      <Text
-                        style={{
-                          color: isActive ? '#fff' : theme.primary,
-                          fontSize: isTablet ? 14 : 12,
-                          fontWeight: '700',
-                        }}>
-                        {count}
-                      </Text>
-                    </View>
-                  )}
                 </View>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
+              )}
+            </TouchableOpacity>
+          )}
+          keyExtractor={item => item.key}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}
+        />
       </View>
 
-      {/* Body */}
-      {/* ADDED: Loader Conditional Rendering */}
-      {isLoading ? (
-        <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={{ marginTop: 10, color: theme.secondaryText }}>{t('Loading Notifications...')}</Text>
+      {/* Main Dataset List */}
+      {isLoadingInitial ? (
+        <View style={styles.listContent}>
+          {[1, 2, 3, 4, 5].map((i) => <SkeletonItem key={i} theme={theme} />)}
         </View>
       ) : (
-        <ScrollView
-          contentContainerStyle={{
-            padding: isTablet ? 24 : 16,
-            paddingBottom: isTablet ? 60 : 50,
-            flexGrow: 1, // Ensures empty state centers vertically if needed
-          }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          showsVerticalScrollIndicator={false}>
-          {activeTab === 'CONNECTIONS' && pendingRequests.length > 0 && (
-            <>
-              <Text
-                style={[
-                  styles.sectionTitle,
-                  {
-                    color: theme.text,
-                    fontSize: isTablet ? 18 : 16,
-                    marginBottom: isTablet ? 12 : 8,
-                  },
-                ]}>
-                {t('connection_requests')}
-              </Text>
-              {pendingRequests.map((req) => {
-                const initials = req.requester?.name
-                  ? req.requester.name
-                    .split(' ')
-                    .map((n) => n[0])
-                    .join('')
-                    .toUpperCase()
-                    .slice(0, 2)
-                  : 'U';
-                return (
-                  <View
-                    key={req.id}
-                    style={[
-                      styles.card,
-                      {
-                        backgroundColor: theme.card,
-                        borderColor: theme.DrawerBorder || '#e0e0e0',
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        paddingVertical: isTablet ? 18 : 14,
-                        paddingHorizontal: isTablet ? 20 : 14,
-                        borderRadius: isTablet ? 20 : 16,
-                        marginBottom: isTablet ? 16 : 12,
-                      },
-                    ]}>
-                    <View
-                      style={{
-                        width: isTablet ? 64 : 54,
-                        height: isTablet ? 64 : 54,
-                        borderRadius: isTablet ? 32 : 27,
-                        borderWidth: 2,
-                        borderColor: theme.primary,
-                        backgroundColor: theme.avatarBg,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        marginRight: isTablet ? 18 : 14,
-                        overflow: 'hidden',
-                      }}>
-                      {req.requester?.profilePhoto ? (
-                        <Image
-                          source={{ uri: req.requester.profilePhoto }}
-                          style={{
-                            width: isTablet ? 60 : 50,
-                            height: isTablet ? 60 : 50,
-                            borderRadius: isTablet ? 30 : 25,
-                          }}
-                          resizeMode="cover"
-                        />
-                      ) : (
-                        <Text
-                          style={{
-                            color: theme.primary,
-                            fontWeight: '700',
-                            fontSize: isTablet ? 24 : 20,
-                          }}>
-                          {initials}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={{ flex: 1, justifyContent: 'center' }}>
-                      <Text
-                        style={[
-                          styles.name,
-                          {
-                            color: theme.text,
-                            fontWeight: '500',
-                            fontSize: isTablet ? 18 : 16,
-                          },
-                        ]}>
-                        {req.requester?.name || 'User'}
-                      </Text>
-                      <Text
-                        style={{
-                          color: theme.secondaryText,
-                          fontSize: isTablet ? 15 : 13,
-                          marginBottom: isTablet ? 10 : 8,
-                          fontWeight: '300',
-                        }}>
-                        wants to connect
-                      </Text>
-                      <Text
-                        style={{
-                          color: theme.secondaryText,
-                          fontSize: isTablet ? 13 : 11,
-                          marginBottom: isTablet ? 12 : 8,
-                          fontWeight: '300',
-                        }}>
-                        {formatDateTime(req.createdAt)}
-                      </Text>
-                      <View style={{ flexDirection: 'row', gap: 0 }}>
-                        <TouchableOpacity
-                          onPress={() => handleAccept(req.id)}
-                          style={{
-                            backgroundColor: '#366CD91A',
-                            borderRadius: isTablet ? 24 : 20,
-                            paddingVertical: isTablet ? 10 : 6,
-                            paddingHorizontal: isTablet ? 24 : 18,
-                            marginRight: isTablet ? 12 : 8,
-                            borderWidth: 1,
-                            borderColor: theme.primary,
-                          }}>
-                          <Text
-                            style={{
-                              color: theme.primary,
-                              fontWeight: '500',
-                              fontSize: isTablet ? 16 : 14,
-                            }}>
-                            {t('accept')}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          onPress={() => handleReject(req.id)}
-                          style={{
-                            backgroundColor: theme.danger,
-                            borderRadius: isTablet ? 24 : 20,
-                            paddingVertical: isTablet ? 10 : 6,
-                            paddingHorizontal: isTablet ? 24 : 18,
-                            borderWidth: 1,
-                            borderColor: theme.dangerText,
-                          }}>
-                          <Text
-                            style={{
-                              color: theme.dangerText,
-                              fontWeight: '500',
-                              fontSize: isTablet ? 16 : 14,
-                            }}>
-                            {t('reject')}
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })}
-            </>
-          )}
-          {activeTab !== 'CONNECTIONS' && filteredNotifications.length === 0 ? (
-            <View style={styles.emptyContainer}>
+        <FlatList
+          data={displayData}
+          renderItem={renderItem}
+          keyExtractor={item => item.id || item._id}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={homeRefreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.primary}
+              progressBackgroundColor={theme.card}
+              colors={[theme.primary]}
+            />
+          }
+          ListEmptyComponent={
+            <Animated.View entering={FadeInDown} style={styles.emptyContainer}>
+              <View style={[styles.emptyIconCircle, { backgroundColor: theme.avatarBg }]}>
+                <Feather name="bell" size={40} color={theme.secondaryText} />
+              </View>
               <Text style={[styles.emptyTitle, { color: theme.text }]}>{t('no_notifications_yet')}</Text>
-              <Text style={[styles.emptySub, { color: theme.text }]}>
-                {t('notifications_updates')}
-              </Text>
-            </View>
-          ) : (
-            filteredNotifications.map((n) => {
-              const screenMap = {
-                task: 'MyTasksScreen',
-                issue: 'IssuesScreen',
-                project: 'ProjectScreen',
-                connection: 'ConnectionsScreen',
-              };
-              const targetScreen = screenMap[n.type?.toLowerCase()] || null;
-              return (
-                <TouchableOpacity
-                  key={n.id}
-                  onPress={async () => {
-                    try {
-                      await markNotificationAsRead(n.id);
-                      await loadNotifications();
-                    } catch (error) {
-                      showMessage('Failed to mark notification as read');
-                    }
-                    if (targetScreen) {
-                      navigation.navigate(targetScreen, n.params || {});
-                    }
-                  }}
-                  style={[
-                    styles.card,
-                    {
-                      backgroundColor: n.read ? theme.card : `${theme.card}`,
-                      borderColor: theme.border || '#e0e0e0',
-                      borderRadius: isTablet ? 20 : 16,
-                      padding: isTablet ? 20 : 16,
-                      marginBottom: isTablet ? 16 : 12,
-                    },
-                  ]}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                    <View
-                      style={[
-                        styles.iconCircle,
-                        {
-                          backgroundColor: theme.avatarBg,
-                          width: isTablet ? 50 : 42,
-                          height: isTablet ? 50 : 42,
-                          borderRadius: isTablet ? 16 : 12,
-                          marginRight: isTablet ? 16 : 12,
-                        },
-                      ]}>
-                      <Text
-                        style={{
-                          color: theme.primary,
-                          fontWeight: '500',
-                          fontSize: isTablet ? 24 : 20,
-                        }}>
-                        {n.type?.charAt(0)?.toUpperCase() || 'N'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          marginBottom: isTablet ? 4 : 2,
-                        }}>
-                        <Text
-                          style={[
-                            styles.name,
-                            {
-                              color: theme.text,
-                              flex: 1,
-                              fontSize: isTablet ? 16 : 14,
-                              fontWeight: '600',
-                              marginBottom: isTablet ? 6 : 5,
-                            },
-                          ]}>
-                          {n.type}
-                        </Text>
-                        <Text
-                          style={{
-                            color: theme.secondaryText,
-                            fontSize: isTablet ? 13 : 11,
-                            fontWeight: '300',
-                          }}>
-                          {formatDateTime(n.createdAt)}
-                        </Text>
-                      </View>
-                      <Text
-                        style={{
-                          color: theme.secondaryText,
-                          fontSize: isTablet ? 14 : 12,
-                          fontWeight: '300',
-                        }}>
-                        {n.message}
-                      </Text>
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </ScrollView>
-      )}
-
-      {/* Custom message drawer */}
-      {message && (
-        <Animated.View
-          style={[
-            styles.messageDrawer,
-            {
-              backgroundColor: theme.primary,
-              right: isTablet ? 30 : 20,
-              top: isTablet ? 80 : 70,
-              maxWidth: isTablet ? 400 : 360,
-              borderRadius: isTablet ? 20 : 16,
-              paddingVertical: isTablet ? 18 : 14,
-              paddingHorizontal: isTablet ? 30 : 24,
-            },
-            {
-              opacity: messageAnim,
-              transform: [
-                {
-                  translateY: messageAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [isTablet ? -50 : -40, 0],
-                  }),
-                },
-              ],
-            },
-          ]}>
-          <Text
-            style={{
-              color: '#fff',
-              fontWeight: '500',
-              fontSize: isTablet ? 14 : 12,
-              textAlign: 'center',
-            }}>
-            {message}
-          </Text>
-        </Animated.View>
+              <Text style={[styles.emptySub, { color: theme.secondaryText }]}>{t('notifications_updates')}</Text>
+            </Animated.View>
+          }
+          // Optimization props for handling large amounts of data
+          removeClippedSubviews={Platform.OS === 'android'}
+          initialNumToRender={8}
+          maxToRenderPerBatch={10}
+          windowSize={11}
+          getItemLayout={getItemLayout}
+          updateCellsBatchingPeriod={50}
+          onEndReachedThreshold={0.5}
+        />
       )}
     </SafeAreaView>
   );
@@ -681,161 +359,109 @@ const NotificationScreen = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  // ADDED: Loading container style
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backBtn: {
-    marginTop: Platform.OS === 'ios' ? 0 : 25,
-    marginLeft: 16,
-    marginBottom: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 6,
-  },
-  backText: {
-    fontSize: 18,
-    fontWeight: '400',
-    marginLeft: 0,
-  },
-  headerRow: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    marginBottom: 0,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
   },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
-  tabRow: {
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTitle: { fontSize: 24, fontWeight: '800' },
+  readAllBtn: {
     flexDirection: 'row',
-    paddingHorizontal: 10,
-    marginTop: 8,
-    paddingBottom: 0,
-  },
-  tabButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 17,
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 20,
-    marginRight: 8,
+  },
+  readAllText: { fontSize: 13, fontWeight: '700' },
+  tabContainer: { height: 44, marginBottom: 12 },
+  tabButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    height: 38,
+    borderRadius: 19,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fff',
   },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#222',
+  tabText: { fontSize: 13, fontWeight: '700' },
+  badge: {
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+    minWidth: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  activeTabText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 8,
-    marginTop: 0,
-  },
+  badgeText: { fontSize: 10, fontWeight: '800' },
+  listContent: { paddingHorizontal: 20, paddingBottom: 40, paddingTop: 5 },
   card: {
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    marginRight: 12,
-    backgroundColor: '#ddd',
-  },
-  name: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 5,
-  },
-  actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    marginTop: 12,
-  },
-  acceptButton: {
-    backgroundColor: '#2196F3',
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    marginRight: 8,
-  },
-  acceptText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  rejectButton: {
-    backgroundColor: '#eee',
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  cardContentRow: { flexDirection: 'row', alignItems: 'center' },
+  avatarContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 16,
+    overflow: 'hidden',
   },
-  rejectText: {
-    fontSize: 20,
-    color: '#333',
+  avatarImage: { width: 56, height: 56, borderRadius: 28 },
+  avatarText: { fontSize: 22, fontWeight: '800' },
+  name: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  subText: { fontSize: 14, marginBottom: 6, opacity: 0.8 },
+  timeText: { fontSize: 11, fontWeight: '500', opacity: 0.6 },
+  actionRow: { flexDirection: 'row', marginTop: 14, gap: 12 },
+  acceptBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(54, 108, 217, 0.08)',
+  },
+  rejectBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
   },
   iconCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  emptyContainer: {
-    marginTop: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyTitle: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  emptySub: {
-    fontSize: 12,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  loadingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 10,
-    backgroundColor: 'rgba(255,255,255,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  messageDrawer: {
-    position: 'absolute',
-    right: 20,
-    top: 70,
-    maxWidth: 360,
+    width: 48,
+    height: 48,
     borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 24,
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 16,
   },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  messageText: { fontSize: 14, lineHeight: 20, marginTop: 4, opacity: 0.8 },
+  emptyContainer: { alignItems: 'center', marginTop: 100 },
+  emptyIconCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 20,
+  },
+  emptyTitle: { fontSize: 20, fontWeight: '700', marginTop: 10 },
+  emptySub: { fontSize: 15, textAlign: 'center', marginTop: 8, paddingHorizontal: 50, opacity: 0.7 },
 });
 
 export default NotificationScreen;

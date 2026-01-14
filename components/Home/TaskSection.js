@@ -1,130 +1,138 @@
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
+import { useIssuesByUser, useMyTasks } from '../../hooks/useTasks';
 import { useTheme } from '../../theme/ThemeContext';
-import { fetchIssuesByUser } from '../../utils/issues';
-import { fetchMyTasks } from '../../utils/task';
 import TaskCard from './TaskCard';
 
-export default function TaskSection({ navigation, loading: parentLoading, refreshKey = 0 }) {
+const TaskSection = ({ navigation, loading: parentLoading }) => {
   const theme = useTheme();
   const { t } = useTranslation();
 
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('issues');
-  const [tasks, setTasks] = useState([]);
-  const [issues, setIssues] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('issues'); // Default to tasks to avoid empty issue state switch blink
 
+  // Debounce search input to avoid heavy re-renders on every keystroke
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        const [tasksData, issuesData] = await Promise.all([fetchMyTasks(), fetchIssuesByUser()]);
-        setTasks(tasksData || []);
-        setIssues(issuesData || []);
+    const handler = setTimeout(() => {
+      setDebouncedSearch(search);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [search]);
 
-        // Check if there are any valid PENDING issues
-        const pendingIssues = (issuesData || []).filter(issue => {
-          const status = String(issue.status || '').toLowerCase();
-          return status !== 'completed' && status !== 'resolved';
-        });
+  const { data: tasksRec = [], isLoading: tasksLoading } = useMyTasks();
+  const { data: issuesRec = [], isLoading: issuesLoading } = useIssuesByUser();
 
-        // If no pending issues exist, force switch to 'tasks' tab
-        if (pendingIssues.length === 0) {
-          setActiveTab('tasks');
-        }
+  const loading = parentLoading || tasksLoading || issuesLoading;
 
-      } catch (err) {
-        console.error('Error fetching tasks/issues:', err);
-      } finally {
-        setLoading(false);
+  // Optimized navigation handlers
+  const handleViewAll = useCallback(() => {
+    activeTab === 'tasks'
+      ? navigation.navigate('MyTasksScreen')
+      : navigation.navigate('IssuesScreen');
+  }, [navigation, activeTab]);
+
+  const handleCardPress = useCallback((item) => {
+    if (activeTab === 'tasks') {
+      navigation.navigate('TaskDetails', { taskId: item.id || item.taskId });
+    } else {
+      navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' });
+    }
+  }, [navigation, activeTab]);
+
+  // Filter for badge count - Only Pending Issues
+  const unresolvedIssues = useMemo(() => {
+    return issuesRec.filter(issue => {
+      const status = String(issue.status || '').toLowerCase();
+      return status !== 'completed' && status !== 'resolved';
+    });
+  }, [issuesRec]);
+
+  // Filter for badge count - Only Incomplete Tasks
+  const incompleteTasks = useMemo(() => {
+    return tasksRec.filter(task => {
+      const isCompletedByPercent = (task.percent || task.progress || 0) === 100;
+      const isCompletedByStatus = String(task.status || '').toLowerCase() === 'completed';
+      return !isCompletedByPercent && !isCompletedByStatus;
+    });
+  }, [tasksRec]);
+
+  // Select source data based on tab
+  const sourceData = activeTab === 'tasks' ? tasksRec : issuesRec;
+
+  // Centralized filter, search, sort, and limit logic
+  const displayData = useMemo(() => {
+    if (!sourceData) return [];
+
+    // 1. Initial Filtering (Status-based)
+    let filtered = sourceData.filter(item => {
+      const status = String(item.status || '').toLowerCase();
+      const progress = item.percent || item.progress || 0;
+
+      if (activeTab === 'issues') {
+        const isCompleted = status === 'completed' || status === 'resolved' || progress === 100;
+        return !isCompleted;
+      } else {
+        const isCompleted = status === 'completed' || progress === 100;
+        const isMarkedAsIssue = item.isIssue === true;
+        return !isCompleted && !isMarkedAsIssue;
       }
-    };
-    fetchData();
-  }, [refreshKey]);
+    });
 
-  // Filter for badge count - Only Pending
-  const unresolvedIssues = issues.filter(issue => {
-    const status = String(issue.status || '').toLowerCase();
-    return status !== 'completed' && status !== 'resolved';
-  });
+    // 2. Search (using debounced value)
+    if (debouncedSearch) {
+      const searchText = debouncedSearch.toLowerCase();
+      filtered = filtered.filter((item) => {
+        return (
+          (item.title || item.taskName || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
+          (item.desc || item.description || '').toLowerCase().includes(searchText) ||
+          (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
+          (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
+        );
+      });
+    }
 
-  // Filter for badge count - Only Incomplete
-  const incompleteTasks = tasks.filter(task => {
-    const isCompletedByPercent = (task.percent || task.progress || 0) === 100;
-    const isCompletedByStatus = String(task.status || '').toLowerCase() === 'completed';
-    return !isCompletedByPercent && !isCompletedByStatus;
-  });
-
-  // Select data source
-  const data = activeTab === 'tasks' ? tasks : issues;
-
-  // 1. Search Filter
-  const searchedData = data.filter((item) => {
-    const searchText = search.toLowerCase();
-    const commonFields = (
-      (item.title || item.taskName || item.issueTitle || item.name || '').toLowerCase().includes(searchText) ||
-      (item.desc || item.description || '').toLowerCase().includes(searchText) ||
-      (item.project?.projectName || item.project || item.projectName || '').toLowerCase().includes(searchText) ||
-      (item.creatorName || item.createdBy || item.creator?.name || '').toLowerCase().includes(searchText)
-    );
-    return commonFields;
-  });
-
-  // 2. Sort Logic
-  const getDaysDiff = (item) => {
-    const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
-    if (!dateVal.getTime()) return null;
+    // 3. Sorting (Optimized with pre-calculated date diffs)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return Math.ceil((dateVal - today) / (1000 * 60 * 60 * 24));
-  };
 
-  const sortByDueLogic = (a, b) => {
-    const diffA = getDaysDiff(a);
-    const diffB = getDaysDiff(b);
-
-    const isOverdueA = diffA !== null && diffA < 0;
-    const isOverdueB = diffB !== null && diffB < 0;
-
-    if (isOverdueA && !isOverdueB) return -1;
-    if (!isOverdueA && isOverdueB) return 1;
-    if (isOverdueA && isOverdueB) return diffA - diffB;
-    if (diffA !== null && diffB !== null) return diffA - diffB;
-    if (diffA === null && diffB !== null) return 1;
-    if (diffA !== null && diffB === null) return -1;
-    return 0;
-  };
-
-  const sortedData = activeTab === 'issues'
-    ? searchedData.sort((a, b) => {
-        // Critical first
+    const sorted = [...filtered].map(item => {
+      // Pre-calculate date for sorting efficiency
+      const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
+      const diff = dateVal.getTime() ? (dateVal - today) / (1000 * 60 * 60 * 24) : null;
+      return { ...item, _sortDiff: diff };
+    }).sort((a, b) => {
+      // Critical first for issues
+      if (activeTab === 'issues') {
         if (a.isCritical && !b.isCritical) return -1;
         if (!a.isCritical && b.isCritical) return 1;
-        return sortByDueLogic(a, b);
-      })
-    : searchedData.sort(sortByDueLogic);
+      }
 
-  // 3. FINAL DISPLAY FILTER (Removes completed items)
-  const displayData = sortedData.filter(item => {
-    const status = String(item.status || '').toLowerCase();
-    const progress = item.percent || item.progress || 0;
+      const diffA = a._sortDiff;
+      const diffB = b._sortDiff;
 
-    if (activeTab === 'issues') {
-      // Hide if Completed or Resolved
-      const isCompleted = status === 'completed' || status === 'resolved' || progress === 100;
-      return !isCompleted;
-    } else {
-      // Hide if Completed, 100%, or marked as Issue
-      const isCompleted = status === 'completed' || progress === 100;
-      const isMarkedAsIssue = item.isIssue === true;
-      return !isCompleted && !isMarkedAsIssue;
-    }
-  });
+      const isOverdueA = diffA !== null && diffA < 0;
+      const isOverdueB = diffB !== null && diffB < 0;
 
-  if (parentLoading || loading) {
+      if (isOverdueA && !isOverdueB) return -1;
+      if (!isOverdueA && isOverdueB) return 1;
+      if (isOverdueA && isOverdueB) return diffA - diffB; // smallest number (most overdue) first
+
+      if (diffA !== null && diffB !== null) return diffA - diffB;
+      if (diffA === null && diffB !== null) return 1;
+      if (diffA !== null && diffB === null) return -1;
+      return 0;
+    });
+
+    // 4. Limit results (Home summary should be concise)
+    return sorted.slice(0, 8);
+
+  }, [sourceData, debouncedSearch, activeTab]);
+
+
+  if (loading) {
     return (
       <View style={{ margin: 20, alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator size="small" color={theme.primary || '#366CD9'} />
@@ -139,21 +147,13 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
         <Text style={[styles.sectionTitle, { color: theme.text }]}>
           <Text>{t('my_issues_and_task')}</Text>
         </Text>
-        <TouchableOpacity
-          onPress={() =>
-            activeTab === 'tasks'
-              ? navigation.navigate('MyTasksScreen')
-              : navigation.navigate('IssuesScreen')
-          }
-        >
+        <TouchableOpacity onPress={handleViewAll}>
           <Text style={[styles.viewAll, { color: theme.primary }]}>{t('view_all')}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Tabs */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
-        
-        {/* Only show Issues tab if there are unresolved issues */}
         {unresolvedIssues.length > 0 && (
           <TouchableOpacity
             style={[
@@ -261,17 +261,13 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
       </View>
 
       {/* Grid Content */}
-      <ScrollView contentContainerStyle={styles.gridContainer} showsVerticalScrollIndicator={false}>
+      <View style={styles.gridContainer}>
         {displayData.map((item, idx) => (
           <TouchableOpacity
             key={(item.id || item.taskId || idx) + '_item'}
             style={styles.cardWrapper}
             activeOpacity={0.8}
-            onPress={() =>
-              activeTab === 'tasks'
-                ? navigation.navigate('TaskDetails', { taskId: item.id || item.taskId })
-                : navigation.navigate('IssueDetails', { issueId: item.id || item.issueId, section: 'assigned' })
-            }
+            onPress={() => handleCardPress(item)}
           >
             <View style={{ position: 'relative' }}>
               <TaskCard
@@ -286,17 +282,18 @@ export default function TaskSection({ navigation, loading: parentLoading, refres
                 issueStatus={item.status}
                 isCritical={item.isCritical}
               />
-              {/* Only show red dot if it is an issue AND critical */}
               {activeTab === 'issues' && item.isCritical && (
                 <View style={styles.criticalDot} />
               )}
             </View>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
-}
+};
+
+export default memo(TaskSection);
 
 const { width: screenWidth } = Dimensions.get('window');
 const isTablet = screenWidth >= 768;
@@ -310,7 +307,8 @@ const styles = StyleSheet.create({
     paddingBottom: isTablet ? 24 : 20,
   },
   cardWrapper: {
-    width: isTablet ? '23%' : '49%',
+    width: isTablet ? '23%' : '48%',
+    marginBottom: 6,
   },
   sectionRow: {
     flexDirection: 'row',
@@ -383,3 +381,4 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 });
+

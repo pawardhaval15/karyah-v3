@@ -1,8 +1,21 @@
 import { Feather } from '@expo/vector-icons';
-import { useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
 
-export default function TaskCard({
+// Pure helper function moved outside to avoid re-creation
+const getInitials = (name) => {
+  if (!name) return '?';
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0))
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+};
+
+const TaskCard = ({
   title,
   project,
   percent,
@@ -12,30 +25,19 @@ export default function TaskCard({
   creatorName,
   date,
   isCritical,
-}) {
+}) => {
   const [showCreatorTooltip, setShowCreatorTooltip] = useState(false);
 
-  // Get initials from creator name
-  const getInitials = (name) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  // Calculate due date status
-  const getDueDateStatus = () => {
+  // Memoize due date status calculation to avoid expensive Date operations on every render
+  const dueDateStatus = useMemo(() => {
     if (!date) return null;
 
     const dueDate = new Date(date);
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const timeDiff = dueDate.getTime() - today.getTime();
     const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
 
-    // Format the due date
     const formattedDate = dueDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 
     if (daysDiff < 0) {
@@ -63,142 +65,150 @@ export default function TaskCard({
         isOverdue: false,
       };
     }
-  };
+  }, [date, theme.secondaryText]);
 
-  const dueDateStatus = getDueDateStatus();
+  const initials = useMemo(() => getInitials(creatorName), [creatorName]);
 
   // --- FILTERING LOGIC ---
   const statusLower = String(issueStatus || '').toLowerCase();
-  
+
   // Hide resolved/completed issues
   if (isIssue && (statusLower === 'completed' || statusLower === 'resolved' || (percent || 0) === 100)) {
     return null;
   }
-  
+
   // Hide completed tasks
   if (!isIssue && ((percent || 0) === 100 || statusLower === 'completed')) {
     return null;
   }
 
   return (
-    <View style={[
-      styles.card, 
-      { 
-        backgroundColor: theme.card, 
-        borderColor:  theme.border,
-      }
-    ]}>
-      <View style={styles.content}>
-        <View style={styles.row}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-            <Text
-              style={[styles.taskTitle, { color: theme.text, flex: 1 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail">
-              {title}
-            </Text>
+    <Animated.View
+      entering={FadeInUp.duration(400).springify()}
+      layout={Layout.springify()}
+      style={{ width: '100%' }}
+    >
+      <View style={[
+        styles.card,
+        {
+          backgroundColor: theme.card,
+          borderColor: theme.border,
+        }
+      ]}>
+        <View style={styles.content}>
+          <View style={styles.row}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+              <Text
+                style={[styles.taskTitle, { color: theme.text, flex: 1 }]}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {title}
+              </Text>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              {/* Creator initials circle */}
+              {creatorName && (
+                <TouchableOpacity
+                  onPress={() => setShowCreatorTooltip(!showCreatorTooltip)}
+                  style={[styles.initialsCircle, { backgroundColor: theme.primary }]}
+                  activeOpacity={0.7}>
+                  <Text style={styles.initialsText}>{initials}</Text>
+                </TouchableOpacity>
+              )}
+              {isIssue ? null : (
+                <Text style={[styles.progressText, { color: theme.secondaryText }]}>{percent}%</Text>
+              )}
+            </View>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            {/* Creator initials circle */}
-            {creatorName && (
-              <TouchableOpacity
-                onPress={() => setShowCreatorTooltip(!showCreatorTooltip)}
-                style={[styles.initialsCircle, { backgroundColor: theme.primary }]}
-                activeOpacity={0.7}>
-                <Text style={styles.initialsText}>{getInitials(creatorName)}</Text>
-              </TouchableOpacity>
-            )}
-            {isIssue ? null : (
-              <Text style={[styles.progressText, { color: theme.secondaryText }]}>{percent}%</Text>
-            )}
+
+          {/* Creator tooltip */}
+          {showCreatorTooltip && creatorName && (
+            <View style={[styles.tooltip, { backgroundColor: theme.background, borderColor: theme.border }]}>
+              <Text style={[styles.tooltipText, { color: theme.text }]}>{creatorName}</Text>
+            </View>
+          )}
+
+          <View style={{ width: '100%' }}>
+            {/* First row: Project name and due date */}
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 4,
+              }}>
+              <Text
+                style={[styles.taskSubTitle, { color: theme.secondaryText, flex: 1 }]}
+                numberOfLines={1}
+                ellipsizeMode="tail">
+                {project}
+              </Text>
+
+              {/* Show due date for both issues and tasks */}
+              {dueDateStatus ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
+                  <Feather
+                    name="calendar"
+                    size={12}
+                    color={dueDateStatus.color}
+                    style={{ marginRight: 2 }}
+                  />
+                  <Text
+                    style={{
+                      color: dueDateStatus.color,
+                      fontSize: 11,
+                      fontWeight: '500',
+                      maxWidth: 80,
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
+                    {dueDateStatus.text}
+                  </Text>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
+                  <Feather
+                    name="calendar"
+                    size={12}
+                    color={theme.secondaryText}
+                    style={{ marginRight: 2 }}
+                  />
+                  <Text
+                    style={{
+                      color: theme.secondaryText,
+                      fontSize: 11,
+                      fontWeight: '400',
+                      maxWidth: 60,
+                    }}
+                    numberOfLines={1}
+                    ellipsizeMode="tail">
+                    No due date
+                  </Text>
+                </View>
+              )}
+            </View>
           </View>
         </View>
 
-        {/* Creator tooltip */}
-        {showCreatorTooltip && creatorName && (
-          <View style={[styles.tooltip, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Text style={[styles.tooltipText, { color: theme.text }]}>{creatorName}</Text>
-          </View>
-        )}
-        
-        <View style={{ width: '100%' }}>
-          {/* First row: Project name and due date */}
+        {/* Progress bar */}
+        <View style={[styles.progressBarContainer, { backgroundColor: theme.border }]}>
           <View
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: 4,
-            }}>
-            <Text
-              style={[styles.taskSubTitle, { color: theme.secondaryText, flex: 1 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail">
-              {project}
-            </Text>
-
-            {/* Show due date for both issues and tasks */}
-            {dueDateStatus ? (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
-                <Feather
-                  name="calendar"
-                  size={12}
-                  color={dueDateStatus.color}
-                  style={{ marginRight: 2 }}
-                />
-                <Text
-                  style={{
-                    color: dueDateStatus.color,
-                    fontSize: 11,
-                    fontWeight: '500',
-                    maxWidth: 80,
-                  }}
-                  numberOfLines={1}
-                  ellipsizeMode="tail">
-                  {dueDateStatus.text}
-                </Text>
-              </View>
-            ) : (
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
-                <Feather
-                  name="calendar"
-                  size={12}
-                  color={theme.secondaryText}
-                  style={{ marginRight: 2 }}
-                />
-                <Text
-                  style={{
-                    color: theme.secondaryText,
-                    fontSize: 11,
-                    fontWeight: '400',
-                    maxWidth: 60,
-                  }}
-                  numberOfLines={1}
-                  ellipsizeMode="tail">
-                  No due date
-                </Text>
-              </View>
-            )}
-          </View>
+            style={[
+              styles.progressBar,
+              {
+                width: `${isIssue ? 100 : percent}%`,
+                backgroundColor:
+                  isIssue && isCritical ? '#FF0000' : isIssue ? '#FF5252' : theme.primary,
+              },
+            ]}
+          />
         </View>
       </View>
-      
-      {/* Progress bar */}
-      <View style={[styles.progressBarContainer, { backgroundColor: theme.border }]}>
-        <View
-          style={[
-            styles.progressBar,
-            {
-              width: `${isIssue ? 100 : percent}%`,
-              backgroundColor:
-                isIssue && isCritical ? '#FF0000' : isIssue ? '#FF5252' : theme.primary,
-            },
-          ]}
-        />
-      </View>
-    </View>
+    </Animated.View>
   );
-}
+};
+
+export default memo(TaskCard);
 
 const CARD_HEIGHT = 68;
 

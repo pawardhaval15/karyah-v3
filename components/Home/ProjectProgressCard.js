@@ -1,6 +1,8 @@
-import { useNavigation } from '@react-navigation/native';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import { memo, useEffect, useMemo } from 'react';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInRight, Layout, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 function formatShortDateRange(timeline) {
   if (!timeline) return '';
@@ -10,94 +12,118 @@ function formatShortDateRange(timeline) {
   );
 }
 
-export default function ProjectProgressCard({
+const AvatarGroup = memo(({ avatars, theme }) => {
+  return (
+    <View style={styles.avatarGroup}>
+      {avatars.map((uri, idx) => (
+        <Image
+          key={idx}
+          source={{ uri }}
+          style={[
+            styles.avatar,
+            {
+              left: idx * 13,
+              zIndex: 10 - idx,
+              borderColor: theme.card,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+});
+
+const ProjectProgressCard = memo(({
   title,
   timeline,
-  assignedBy,
   avatars = [],
   progress,
   project,
-  theme, // <-- receive theme prop
-  creatorName, // <-- receive creatorName
+  theme,
   location
-
-}) {
+}) => {
   const navigation = useNavigation();
+  const progressWidth = useSharedValue(0);
+
+  useEffect(() => {
+    progressWidth.value = withTiming(progress, { duration: 800 });
+  }, [progress]);
+
+  const progressStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value}%`,
+  }), []); // Empty deps because shared value is sufficient
+
+  const validAvatars = useMemo(() => avatars
+    .filter(uri => typeof uri === 'string' && uri.trim().length > 0)
+    .slice(0, 4), [avatars]);
 
   return (
-    <TouchableOpacity
-      onPress={() => navigation.navigate('ProjectDetailsScreen', { project })}
-      style={[
-        styles.card,
-        {
-          borderColor: theme.border,
-          backgroundColor: theme.card,
-        },
-      ]}
-      activeOpacity={0.85}
+    <Animated.View
+      entering={FadeInRight.duration(300).springify().damping(15)}
+      layout={Layout.duration(200)} // Subtle layout transition
     >
-      <View style={styles.titleTimelineRow}>
-        <Text
-          style={[styles.title, { color: theme.text, flex: 1 }]}
-          numberOfLines={1}
-          ellipsizeMode="tail"
-        >
-          {title}
-        </Text>
-
-        <View style={styles.locationRow}>
-          <Feather
-            name="map-pin"
-            size={13}
-            color={theme.text}
-            style={{ marginRight: 4 }}
-          />
+      <TouchableOpacity
+        onPress={() => navigation.navigate('ProjectDetailsScreen', { project })}
+        style={[
+          styles.card,
+          {
+            borderColor: theme.border,
+            backgroundColor: theme.card,
+          },
+        ]}
+        activeOpacity={0.85}
+      >
+        <View style={styles.titleTimelineRow}>
           <Text
+            style={[styles.title, { color: theme.text, flex: 1 }]}
             numberOfLines={1}
             ellipsizeMode="tail"
-            style={[styles.locationText, { color: theme.text }]}
           >
-            {location || "N/A"}
+            {title}
+          </Text>
+
+          <View style={styles.locationRow}>
+            <Feather
+              name="map-pin"
+              size={13}
+              color={theme.text}
+              style={{ marginRight: 4 }}
+            />
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={[styles.locationText, { color: theme.text }]}
+            >
+              {location || "N/A"}
+            </Text>
+          </View>
+        </View>
+
+        <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
+          <Animated.View
+            style={[
+              styles.progressBar,
+              { backgroundColor: theme.primary },
+              progressStyle
+            ]}
+          />
+        </View>
+        <View style={styles.row}>
+          <AvatarGroup avatars={validAvatars} theme={theme} />
+          <Text
+            ellipsizeMode="tail"
+            style={[styles.timeline, { color: theme.text, marginLeft: 10, flexShrink: 1 }]}
+            numberOfLines={1}
+          >
+            {formatShortDateRange(timeline)}
           </Text>
         </View>
-      </View>
-
-      <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
-        <View style={[styles.progressBar, { width: `${progress}%`, backgroundColor: theme.primary }]} />
-      </View>
-      <View style={styles.row}>
-        <View style={styles.avatarGroup}>
-          {avatars
-            .filter(uri => typeof uri === 'string' && uri.trim().length > 0)
-            .slice(0, 4)
-            .map((uri, idx) => (
-              <Image
-                key={idx}
-                source={{ uri }}
-                style={[
-                  styles.avatar,
-                  {
-                    left: idx * 13, // tighter overlap
-                    zIndex: 10 - idx,
-                    borderColor: theme.card,
-                  },
-                ]}
-              />
-            ))}
-        </View>
-        <Text
-          ellipsizeMode="tail"
-          style={[styles.timeline, { color: theme.text, marginLeft: 10, flexShrink: 1 }]}
-          numberOfLines={1}
-        >
-          {formatShortDateRange(timeline)}
-        </Text>
-      </View>
-
-
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
-}
+});
+
+export default ProjectProgressCard;
 
 const styles = StyleSheet.create({
   locationRow: {
@@ -111,16 +137,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     flexShrink: 1,
-    maxWidth: 120, // adjust as needed for your card width
+    maxWidth: 120,
   },
   titleTimelineRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 4, // or your preferred spacing
+    marginBottom: 4,
     width: '100%',
   },
-
   card: {
     borderWidth: 1,
     borderRadius: 12,
@@ -142,6 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     marginTop: 2,
     width: '100%',
+    overflow: 'hidden'
   },
   progressBar: {
     height: 3,
@@ -179,14 +205,5 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: '#ccc',
     left: 0,
-  },
-  assigned: {
-    fontSize: 11,
-    marginTop: 6,
-    color: '#888',
-  },
-  assignedBy: {
-    fontWeight: '500',
-    color: '#444',
   },
 });

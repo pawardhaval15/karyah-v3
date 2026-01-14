@@ -4,18 +4,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    Alert,
-    Image,
-    Keyboard,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DateBox from '../components/task details/DateBox';
@@ -41,12 +41,31 @@ export default function UpdateProjectScreen({ route, navigation }) {
   });
   const [selectedCoAdmins, setSelectedCoAdmins] = useState([]);
   const [searchText, setSearchText] = useState('');
-  const [filteredConnections, setFilteredConnections] = useState([]);
   const [allUsers, setAllUsers] = useState([]);
-  const [showingAllUsers, setShowingAllUsers] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
   const [showCoAdminPicker, setShowCoAdminPicker] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
-  
+
+  const mergedUsers = useMemo(() => {
+    if (!searchText) return [];
+    const searchLower = searchText.toLowerCase();
+
+    // Filter local connections
+    const filteredConns = allConnections.filter(conn =>
+      conn.name?.toLowerCase().includes(searchLower)
+    ).map(conn => ({ ...conn, connectionStatus: 'accepted' }));
+
+    // Merge with searched users, avoiding duplicates
+    const userMap = new Map();
+    filteredConns.forEach(conn => userMap.set(conn.userId || conn.id, conn));
+    allUsers.forEach(user => {
+      const userId = user.userId || user.id;
+      if (!userMap.has(userId)) userMap.set(userId, user);
+    });
+
+    return Array.from(userMap.values());
+  }, [allConnections, allUsers, searchText]);
+
   // Category suggestions state
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState([]);
@@ -71,7 +90,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
           subtext: 'Main Category'
         });
       }
-      
+
       // Check subcategories
       cat.subcategories.forEach(sub => {
         if (sub.toLowerCase().includes(search)) {
@@ -132,55 +151,29 @@ export default function UpdateProjectScreen({ route, navigation }) {
     }
   }, [showCoAdminPicker]);
 
-  // Enhanced search functionality like ProjectDrawerForm
+  // Enhanced search functionality
   useEffect(() => {
+    if (!searchText.trim() || searchText.length < 2) {
+      setAllUsers([]);
+      return;
+    }
+
     const performSearch = async () => {
-      if (!searchText.trim()) {
-        setFilteredConnections(allConnections);
-        setAllUsers([]);
-        setShowingAllUsers(false);
-        return;
-      }
-
       try {
-        // First, search in connections
-        const filtered = allConnections.filter((user) =>
-          user.name.toLowerCase().includes(searchText.toLowerCase())
-        );
-        setFilteredConnections(filtered);
-
-        // Then search all users if we want to show more options
-        if (searchText.length >= 2) {
-          try {
-            const users = await searchUsers(searchText);
-            // Filter out users who are already in connections to avoid duplicates
-            const connectedUserIds = allConnections.map((conn) => conn.userId || conn.id);
-            const filteredUsers = (users || []).filter((user) => {
-              const userId = user.userId || user.id;
-              return !connectedUserIds.includes(userId);
-            });
-            setAllUsers(filteredUsers);
-            setShowingAllUsers(true);
-          } catch (searchError) {
-            console.log('SearchUsers API error:', searchError.message);
-            // Don't show error for API failures, just don't show additional users
-            setAllUsers([]);
-            setShowingAllUsers(false);
-          }
-        } else {
-          setAllUsers([]);
-          setShowingAllUsers(false);
-        }
+        setSearchingUsers(true);
+        const users = await searchUsers(searchText);
+        setAllUsers(users || []);
       } catch (error) {
-        console.error('Search error:', error);
+        console.log('SearchUsers API error:', error.message);
         setAllUsers([]);
-        setShowingAllUsers(false);
+      } finally {
+        setSearchingUsers(false);
       }
     };
 
-    const debounceTimer = setTimeout(performSearch, 300);
+    const debounceTimer = setTimeout(performSearch, 400);
     return () => clearTimeout(debounceTimer);
-  }, [searchText, allConnections]);
+  }, [searchText]);
 
   useEffect(() => {
     const fetchProject = async () => {
@@ -323,8 +316,8 @@ export default function UpdateProjectScreen({ route, navigation }) {
               style={[styles.inputValue, { color: theme.text }]}
             />
             {showCategorySuggestions && categorySuggestions.length > 0 && (
-              <ScrollView 
-                style={[styles.suggestionsContainer, { 
+              <ScrollView
+                style={[styles.suggestionsContainer, {
                   backgroundColor: theme.card,
                   borderColor: theme.border,
                 }]}
@@ -334,9 +327,9 @@ export default function UpdateProjectScreen({ route, navigation }) {
                 {categorySuggestions.map((suggestion, index) => (
                   <TouchableOpacity
                     key={index}
-                    style={[styles.suggestionItem, { 
+                    style={[styles.suggestionItem, {
                       borderBottomColor: theme.border,
-                      backgroundColor: theme.card 
+                      backgroundColor: theme.card
                     }]}
                     onPress={() => handleCategorySuggestionSelect(suggestion)}
                   >
@@ -405,7 +398,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
             {selectedCoAdmins.map((id, idx) => {
               const user =
                 (project.coAdmins || []).find((u) => u.userId === id) ||
-                filteredConnections.find((u) => u.userId === id);
+                allConnections.find((u) => (u.userId || u.id) === id);
               const photo =
                 user?.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
               return (
@@ -462,7 +455,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
                     style={{ marginBottom: 8, minHeight: 54 }}
                     contentContainerStyle={{ alignItems: 'center', paddingVertical: 0 }}>
                     {selectedCoAdmins.map((userId, idx) => {
-                      const user = allConnections.find((u) => u.userId === userId);
+                      const user = allConnections.find((u) => (u.userId || u.id) === userId);
                       if (!user) return null;
                       return (
                         <TouchableOpacity
@@ -518,160 +511,57 @@ export default function UpdateProjectScreen({ route, navigation }) {
                 />
 
                 <ScrollView keyboardShouldPersistTaps="handled">
-                  {/* Show connections first, then all users */}
-                  {filteredConnections.length > 0 && (
-                    <>
-                      <Text
-                        style={{
-                          color: theme.secondaryText,
-                          fontSize: 14,
-                          marginBottom: 8,
-                          marginTop: 8,
-                          paddingHorizontal: 4,
-                          fontWeight: '500',
-                        }}>
-                        {t('your_connections') || 'Your Connections'}
-                      </Text>
-                      {filteredConnections.slice(0, 10).map((item) => {
-                        const userId = item.userId || item.id;
-                        return (
-                          <TouchableOpacity
-                            key={userId}
-                            onPress={() => handleUserSelection(item)}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              paddingVertical: 10,
-                              borderBottomWidth: 0.5,
-                              borderColor: theme.border,
-                            }}>
-                            <Image
-                              source={{
-                                uri:
-                                  item.profilePhoto ||
-                                  'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                              }}
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                marginRight: 10,
-                                borderWidth: 1,
-                                borderColor: theme.border,
-                              }}
-                            />
-                            <View style={{ flex: 1 }}>
-                              <Text style={{ color: theme.text, fontWeight: '500' }}>
-                                {item.name}
-                              </Text>
-                            </View>
-                            {selectedCoAdmins.includes(userId) && (
-                              <Feather name="check-circle" size={20} color={theme.primary} />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </>
+                  {searchingUsers && (
+                    <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 10 }} />
                   )}
 
-                  {/* Show all users when searching */}
-                  {showingAllUsers && allUsers.length > 0 && (
-                    <>
-                      <Text
-                        style={{
-                          color: theme.secondaryText,
-                          fontSize: 14,
-                          marginBottom: 8,
-                          marginTop: filteredConnections.length > 0 ? 16 : 0,
-                          paddingHorizontal: 4,
-                          fontWeight: '500',
-                        }}>
-                        {t('all_users') || 'All Users'}
-                      </Text>
-                      {allUsers.slice(0, 10).map((item) => {
-                        const userId = item.userId || item.id;
-                        const isConnection = allConnections.some(
-                          (conn) => (conn.userId || conn.id) === userId
-                        );
-                        // Debug: Check if user is selected
-                        const isSelected =
-                          selectedCoAdmins.includes(userId) ||
-                          selectedCoAdmins.includes(String(userId)) ||
-                          selectedCoAdmins.includes(Number(userId));
-                        return (
-                          <TouchableOpacity
-                            key={userId}
-                            onPress={() => handleUserSelection(item)}
-                            style={{
-                              flexDirection: 'row',
-                              alignItems: 'center',
-                              paddingVertical: 10,
-                              borderBottomWidth: 0.5,
-                              borderColor: theme.border,
-                            }}>
-                            <Image
-                              source={{
-                                uri:
-                                  item.profilePhoto ||
-                                  'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                              }}
-                              style={{
-                                width: 36,
-                                height: 36,
-                                borderRadius: 18,
-                                marginRight: 10,
-                                borderWidth: 1,
-                                borderColor: theme.border,
-                              }}
-                            />
-                            <View style={{ flex: 1 }}>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                                <Text style={{ color: theme.text, fontWeight: '500' }}>
-                                  {item.name}
-                                </Text>
-                                {!isConnection && (
-                                  <View
-                                    style={{
-                                      backgroundColor: theme.primary + '20',
-                                      paddingHorizontal: 6,
-                                      paddingVertical: 2,
-                                      borderRadius: 8,
-                                    }}>
-                                    <Text
-                                      style={{
-                                        fontSize: 10,
-                                        color: theme.primary,
-                                        fontWeight: '600',
-                                      }}>
-                                      {t('not_connected') || 'Not Connected'}
-                                    </Text>
-                                  </View>
-                                )}
-                              </View>
-                            </View>
-                            {isSelected && (
-                              <Feather name="check-circle" size={20} color={theme.primary} />
-                            )}
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </>
+                  {mergedUsers.length > 0 && (
+                    mergedUsers.map((item) => {
+                      const userId = item.userId || item.id;
+                      return (
+                        <TouchableOpacity
+                          key={userId}
+                          onPress={() => handleUserSelection(item)}
+                          style={{
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            paddingVertical: 10,
+                            borderBottomWidth: 0.5,
+                            borderColor: theme.border,
+                            opacity: item.connectionStatus === 'accepted' ? 1 : 0.6
+                          }}>
+                          <Image
+                            source={{
+                              uri:
+                                item.profilePhoto ||
+                                'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                            }}
+                            style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
+                          />
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: theme.text, fontWeight: '500' }}>{item.name}</Text>
+                            <Text style={{ fontSize: 10, color: item.connectionStatus === 'accepted' ? theme.primary : '#FFA500' }}>
+                              {item.connectionStatus === 'accepted' ? 'Connected' : 'Not Connected'}
+                            </Text>
+                          </View>
+                          {selectedCoAdmins.includes(userId) && (
+                            <Feather name="check-circle" size={20} color={theme.primary} />
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })
                   )}
 
-                  {/* No results message */}
-                  {searchText.trim() &&
-                    filteredConnections.length === 0 &&
-                    allUsers.length === 0 && (
-                      <Text
-                        style={{
-                          color: theme.secondaryText,
-                          textAlign: 'center',
-                          paddingVertical: 20,
-                          fontStyle: 'italic',
-                        }}>
-                        {t('no_users_found') || 'No users found'}
-                      </Text>
-                    )}
+                  {searchText.trim() !== '' && mergedUsers.length === 0 && !searchingUsers && (
+                    <Text
+                      style={{
+                        color: theme.secondaryText,
+                        textAlign: 'center',
+                        marginTop: 20,
+                      }}>
+                      No users found.
+                    </Text>
+                  )}
                 </ScrollView>
                 <TouchableOpacity
                   style={{

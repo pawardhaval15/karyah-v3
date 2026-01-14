@@ -1,18 +1,21 @@
 import { Poppins_400Regular, Poppins_700Bold, useFonts } from '@expo-google-fonts/poppins';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Platform, StatusBar, View } from 'react-native';
+import { ActivityIndicator, AppState, Platform, StatusBar, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import Toast from 'react-native-toast-message';
 import AppNavigator from './navigation/AppNavigator';
 import { ThemeProvider, useThemeContext } from './theme/ThemeContext';
 import { CustomNotificationProvider } from './utils/CustomNotificationManager';
-import usePushNotifications from './utils/usePushNotifications';
 import { initI18n } from './utils/i18n';
+import usePushNotifications from './utils/usePushNotifications';
 
 // Import background message handler
 import './configure/backgroundMessageHandler';
+
+const queryClient = new QueryClient();
 
 function AppContent() {
   const { colorMode, theme } = useThemeContext();
@@ -20,6 +23,16 @@ function AppContent() {
     Poppins_400Regular,
     Poppins_700Bold,
   });
+
+  // Sync AppState with React Query focus for automatic background refetching
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      if (Platform.OS !== 'web') {
+        focusManager.setFocused(status === 'active');
+      }
+    });
+    return () => subscription.remove();
+  }, []);
   const [biometricChecked, setBiometricChecked] = useState(false);
   const [biometricPassed, setBiometricPassed] = useState(false);
   const [i18nInitialized, setI18nInitialized] = useState(false);
@@ -84,10 +97,12 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <AppContent />
-        <Toast />
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <AppContent />
+          <Toast />
+        </ThemeProvider>
+      </QueryClientProvider>
     </SafeAreaProvider>
   );
 }

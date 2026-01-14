@@ -1,44 +1,47 @@
-import { Feather } from '@expo/vector-icons'; // Add this import if not already present
-import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { jwtDecode } from 'jwt-decode';
-import { useEffect, useState } from 'react';
+import { Feather, MaterialIcons } from '@expo/vector-icons';
+import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator, Alert,
   Dimensions,
   FlatList,
+  Platform,
   RefreshControl,
   StyleSheet, Text, TouchableOpacity,
   View
 } from 'react-native';
-import { useTheme } from '../theme/ThemeContext';
-import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
-import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
 import ProjectPopup from '../components/popups/ProjectPopup';
 import ProjectTagsManagementModal from '../components/popups/ProjectTagsManagementModal';
 import ProjectBanner from '../components/Project/ProjectBanner';
 import ProjectCard from '../components/Project/ProjectCard';
 import ProjectInvitesSection from '../components/Project/ProjectInvitesSection';
 import ProjectSearchBar from '../components/Project/ProjectSearchBar';
-import { getProjectsByUserId, updateProjectTags } from '../utils/project';
+import { useProjects, useUpdateProjectTags } from '../hooks/useProjects';
+import { useUserDetails } from '../hooks/useUser';
+import { useTheme } from '../theme/ThemeContext';
 export default function ProjectScreen({ navigation }) {
   const theme = useTheme();
-  const [projects, setProjects] = useState([]);
+  const { t } = useTranslation();
+
+  // Data Fetching
+  const { data: projects = [], isLoading: loading, refetch, isRefetching } = useProjects();
+  const { data: user } = useUserDetails();
+  const updateTagsMutation = useUpdateProjectTags();
+
+  // State
   const [search, setSearch] = useState('');
-  const [loading, setLoading] = useState(true);
   const [showProjectPopup, setShowProjectPopup] = useState(false);
   const [activeTab, setActiveTab] = useState('all'); // 'all', 'working', 'delayed', 'completed'
-  const [refreshing, setRefreshing] = useState(false);
   const [showTagsModal, setShowTagsModal] = useState(false);
   const [selectedProjectForTags, setSelectedProjectForTags] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
-  const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    tags: [], // Add tags filter
+    tags: [],
   });
-  const { t } = useTranslation();
-  // Get screen dimensions for responsive layout
+
+  const currentUserId = user?.id || user?.userId || user?._id;
+
+  // Screen layout
   const { width: screenWidth } = Dimensions.get('window');
   const isTablet = screenWidth >= 768;
 
@@ -50,14 +53,14 @@ export default function ProjectScreen({ navigation }) {
     projectCategory: '',
     location: '',
     coAdmins: '',
-    tags: [], // Add tags field
+    tags: [],
   });
 
-  const handleProjectChange = (field, value) => {
+  const handleProjectChange = useCallback((field, value) => {
     setProjectForm(prev => ({ ...prev, [field]: value }));
-  };
+  }, []);
 
-  const handleProjectSubmit = () => {
+  const handleProjectSubmit = useCallback(() => {
     setShowProjectPopup(false);
     setProjectForm({
       projectName: '',
@@ -67,91 +70,20 @@ export default function ProjectScreen({ navigation }) {
       projectCategory: '',
       location: '',
       coAdmins: '',
-      tags: [], // Reset tags
+      tags: [],
     });
-  };
+  }, []);
 
-  const fetchProjects = async () => {
-    try {
-      const result = await getProjectsByUserId();
-
-      // Ensure each project has a tags field (empty array if not present)
-      const projectsWithTags = (result || []).map(project => ({
-        ...project,
-        tags: project.tags || [] // Default to empty array if tags is missing
-      }));
-
-      setProjects(projectsWithTags);
-    } catch (err) {
-      console.error(' Error fetching projects:', err.message);
-      Alert.alert("Error", err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getCurrentUser = async () => {
-    try {
-      // Get user from AsyncStorage
-      const userData = await AsyncStorage.getItem('user');
-      let user = null;
-      let userIdFromStorage = null;
-      if (userData) {
-        user = JSON.parse(userData);
-        userIdFromStorage = user.id || user.userId || user._id;
-      }
-      // Also decode JWT token to get user ID
-      const token = await AsyncStorage.getItem('token');
-      let userIdFromToken = null;
-      let decodedToken = null;
-      if (token) {
-        try {
-          decodedToken = jwtDecode(token);
-          userIdFromToken = decodedToken.userId || decodedToken.id || decodedToken.sub;
-        } catch (tokenError) {
-          console.error(' Error decoding token:', tokenError);
-        }
-      }
-      // Use token ID if available, otherwise fall back to storage ID
-      const finalUserId = userIdFromToken || userIdFromStorage;
-      setCurrentUserId(finalUserId);
-
-    } catch (error) {
-      console.error(' Error getting current user:', error);
-    }
-  };
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
 
   useEffect(() => {
-    getCurrentUser();
-    fetchProjects();
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchProjects();
+      refetch();
     });
     return unsubscribe;
-  }, [navigation]);
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    // Store current tags before refresh to preserve them
-    const currentTags = {};
-    projects.forEach(project => {
-      if (project.tags && project.tags.length > 0) {
-        currentTags[project.id] = project.tags;
-      }
-    });
-    await fetchProjects();
-    // Restore tags after refresh since API doesn't return them
-    if (Object.keys(currentTags).length > 0) {
-      setProjects(prevProjects =>
-        prevProjects.map(project => ({
-          ...project,
-          tags: currentTags[project.id] || project.tags || []
-        }))
-      );
-    }
-
-    setRefreshing(false);
-  };
+  }, [navigation, refetch]);
   const handleTagsManagement = (project) => {
     console.log('🔍 Debug Tags Management:', {
       currentUserId,
@@ -175,33 +107,11 @@ export default function ProjectScreen({ navigation }) {
 
   const handleSaveTags = async (projectId, newTags) => {
     try {
-      console.log('Saving project tags:', { projectId, newTags });
-
-      const updatedProject = await updateProjectTags(projectId, newTags);
-      console.log('API returned updated project:', updatedProject);
-
-      // Update the local projects state
-      setProjects(prevProjects => {
-        const newProjects = prevProjects.map(project => {
-          const isMatch = project.id === projectId || project.projectId === projectId;
-          if (isMatch) {
-            console.log('Updating project in state:', {
-              projectId: project.id,
-              oldTags: project.tags,
-              newTags: newTags
-            });
-            return { ...project, tags: newTags };
-          }
-          return project;
-        });
-        console.log('Updated projects state:', newProjects.map(p => ({ id: p.id, name: p.projectName, tags: p.tags })));
-        return newProjects;
-      });
-
+      await updateTagsMutation.mutateAsync({ projectId, tags: newTags });
       console.log('Project tags saved successfully');
-      return Promise.resolve();
     } catch (error) {
       console.error('Failed to save project tags:', error);
+      Alert.alert("Error", "Failed to update project tags");
       throw error;
     }
   };
@@ -237,63 +147,72 @@ export default function ProjectScreen({ navigation }) {
     return tagOptions;
   };
 
-  // Categorize projects
-  const now = new Date();
-  let filtered = projects.filter(p => {
-    // Search in project name
-    const nameMatch = p?.projectName?.toLowerCase().includes(search.toLowerCase());
+  // Memoized Search & Filter Logic
+  const filteredProjects = useMemo(() => {
+    let result = projects;
 
-    // Search in project description
-    const descMatch = p?.description?.toLowerCase().includes(search.toLowerCase());
-
-    // Search in tags
-    const tagsMatch = p?.tags && Array.isArray(p.tags) &&
-      p.tags.some(tag => tag.toLowerCase().includes(search.toLowerCase()));
-
-    // Search in location  
-    const locationMatch = p?.location?.toLowerCase().includes(search.toLowerCase());
-
-    // Search in project category
-    const categoryMatch = p?.projectCategory?.toLowerCase().includes(search.toLowerCase());
-
-    // Return true if any search criteria matches
-    return nameMatch || descMatch || tagsMatch || locationMatch || categoryMatch;
-  });
-
-  // Apply tags filter
-  if (filters.tags.length > 0) {
-    filtered = filtered.filter(project =>
-      project.tags && Array.isArray(project.tags) &&
-      filters.tags.some(filterTag => project.tags.includes(filterTag))
-    );
-  }
-
-  const working = [];
-  const completed = [];
-  const delayed = [];
-  filtered.forEach(p => {
-    const end = p.endDate ? new Date(p.endDate) : null;
-    if (p.progress >= 100) {
-      completed.push(p);
-    } else if (end && end < now) {
-      delayed.push(p);
-    } else {
-      working.push(p);
+    // Search filter
+    if (search.trim()) {
+      const lowercaseSearch = search.toLowerCase();
+      result = result.filter(p => {
+        const nameMatch = p?.projectName?.toLowerCase().includes(lowercaseSearch);
+        const descMatch = p?.description?.toLowerCase().includes(lowercaseSearch);
+        const tagsMatch = p?.tags?.some(tag => tag.toLowerCase().includes(lowercaseSearch));
+        const locationMatch = p?.location?.toLowerCase().includes(lowercaseSearch);
+        const categoryMatch = p?.projectCategory?.toLowerCase().includes(lowercaseSearch);
+        return nameMatch || descMatch || tagsMatch || locationMatch || categoryMatch;
+      });
     }
-  });
 
-  let tabData = [];
-  if (activeTab === 'all') {
-    tabData = [...working, ...delayed, ...completed];
-  } else if (activeTab === 'working') {
-    tabData = working;
-  } else if (activeTab === 'delayed') {
-    tabData = delayed;
-  } else if (activeTab === 'completed') {
-    tabData = completed;
-  }
+    // Tags filter
+    if (filters.tags.length > 0) {
+      result = result.filter(project =>
+        project.tags && Array.isArray(project.tags) &&
+        filters.tags.some(filterTag => project.tags.includes(filterTag))
+      );
+    }
+
+    return result;
+  }, [projects, search, filters.tags]);
+
+  // Memoized Categorized Data
+  const categories = useMemo(() => {
+    const working = [];
+    const completed = [];
+    const delayed = [];
+    const now = new Date();
+
+    filteredProjects.forEach(p => {
+      const end = p.endDate ? new Date(p.endDate) : null;
+      if (p.progress >= 100) {
+        completed.push(p);
+      } else if (end && end < now) {
+        delayed.push(p);
+      } else {
+        working.push(p);
+      }
+    });
+
+    return { working, completed, delayed };
+  }, [filteredProjects]);
+
+  const tabData = useMemo(() => {
+    const { working, delayed, completed } = categories;
+    if (activeTab === 'all') return [...working, ...delayed, ...completed];
+    if (activeTab === 'working') return working;
+    if (activeTab === 'delayed') return delayed;
+    if (activeTab === 'completed') return completed;
+    return [];
+  }, [activeTab, categories]);
+
+  const counts = useMemo(() => ({
+    all: categories.working.length + categories.delayed.length + categories.completed.length,
+    working: categories.working.length,
+    delayed: categories.delayed.length,
+    completed: categories.completed.length,
+  }), [categories]);
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingBottom: 70 }]}>
+    <View style={[styles.container, { backgroundColor: theme.background, paddingBottom: 40 }]}>
       <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home', { refresh: true })}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
         <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
@@ -306,7 +225,7 @@ export default function ProjectScreen({ navigation }) {
         onInviteResponse={(action) => {
           // Refresh projects list when invite is accepted
           if (action === 'accept') {
-            fetchProjects();
+            refetch();
           }
         }}
       />
@@ -315,25 +234,25 @@ export default function ProjectScreen({ navigation }) {
           {
             key: 'all',
             label: t('all'),
-            count: working.length + delayed.length + completed.length,
+            count: counts.all,
             icon: <Feather name="grid" size={13} color={activeTab === 'all' ? "#fff" : theme.primary} style={{ marginRight: 4 }} />
           },
           {
             key: 'working',
             label: t('working'),
-            count: working.length,
+            count: counts.working,
             icon: <Feather name="play-circle" size={13} color={activeTab === 'working' ? "#fff" : "#039855"} style={{ marginRight: 4 }} />
           },
           {
             key: 'delayed',
             label: t('delayed'),
-            count: delayed.length,
+            count: counts.delayed,
             icon: <Feather name="clock" size={13} color={activeTab === 'delayed' ? "#fff" : "#E67514"} style={{ marginRight: 4 }} />
           },
           {
             key: 'completed',
             label: t('completed'),
-            count: completed.length,
+            count: counts.completed,
             icon: <Feather name="check-circle" size={13} color={activeTab === 'completed' ? "#fff" : "#366CD9"} style={{ marginRight: 4 }} />
           },
         ].map(tab => (
@@ -407,7 +326,7 @@ export default function ProjectScreen({ navigation }) {
           }
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
+              refreshing={isRefetching}
               onRefresh={handleRefresh}
               colors={[theme.primary]} // Android
               tintColor={theme.primary} // iOS
@@ -415,11 +334,11 @@ export default function ProjectScreen({ navigation }) {
           }
         />
       )}
-      <ProjectFabDrawer
+      {/* <ProjectFabDrawer
         onTaskSubmit={(task) => console.log('New Task:', task)}
         onProjectSubmit={(project) => console.log('New Project:', project)}
         theme={theme}
-      />
+      /> */}
       <ProjectPopup
         visible={showProjectPopup}
         onClose={() => setShowProjectPopup(false)}

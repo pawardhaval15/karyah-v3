@@ -1,85 +1,52 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import FieldBox from 'components/task details/FieldBox';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
 } from 'react-native';
+import { useSearchUsers, useSendConnectionRequest, useUserConnections } from '../../hooks/useConnections';
+import { useUserOrganizations } from '../../hooks/useOrganizations';
+import { useCreateProject } from '../../hooks/useProjects';
 import { useTheme } from '../../theme/ThemeContext';
 import categoriesData from '../../utils/categories.json';
-import { getUserConnections, searchConnections, searchUsers, sendConnectionRequest } from '../../utils/connections';
-import { createProject } from '../../utils/project';
-import { fetchUserDetails } from '../../utils/auth';
 import DateBox from '../task details/DateBox';
 export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimpleForm = false }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  // Hooks
+  const { data: organizations = [] } = useUserOrganizations();
+  const { data: connections = [] } = useUserConnections();
+  const createProjectMutation = useCreateProject();
+  const sendRequestMutation = useSendConnectionRequest();
+
+  // Local State
   const [showFullForm, setShowFullForm] = useState(hideSimpleForm);
-  const [connections, setConnections] = useState([]);
   const [selectedCoAdmins, setSelectedCoAdmins] = useState([]);
   const [searchText, setSearchText] = useState('');
-  const [filteredConnections, setFilteredConnections] = useState([]);
-  const [allUsers, setAllUsers] = useState([]);
-  const [showingAllUsers, setShowingAllUsers] = useState(false);
   const [showCoAdminPicker, setShowCoAdminPicker] = useState(false);
-  const [isStartDateModalVisible, setStartDateModalVisible] = useState(false);
-  const [isEndDateModalVisible, setEndDateModalVisible] = useState(false);
-  const theme = useTheme();
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
-  const { t } = useTranslation();
-  const [organizations, setOrganizations] = useState([]);
   const [showOrgPicker, setShowOrgPicker] = useState(false);
 
   // Category suggestions state
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState([]);
 
-  // --- UPDATED: Safer Data Loading with Debugging ---
-  // --- UPDATED: Default select "Kona Kona Interiors" ---
+  // Default Organization Selection
   useEffect(() => {
-    const loadUserOrgs = async () => {
-      try {
-        const userData = await fetchUserDetails();
-        // console.log('DEBUG: User Data fetched:', JSON.stringify(userData, null, 2));
-
-        if (userData && userData.OrganizationUsers) {
-          const activeOrgs = userData.OrganizationUsers
-            .filter(orgUser => orgUser.status === 'Active' || orgUser.status === 'active')
-            .map(orgUser => ({
-              id: orgUser.Organization?.id,
-              name: orgUser.Organization?.name || 'Unnamed Organization',
-              role: orgUser.role
-            }))
-            .filter(org => org.id);
-
-          // console.log('DEBUG: Parsed Organizations:', activeOrgs);
-          setOrganizations(activeOrgs);
-
-          // Logic to handle default selection
-          if (!values?.organizationId && activeOrgs.length > 0) {
-
-            // 1. Priority Check: Look specifically for "Kona Kona Interiors"
-            const preferredOrg = activeOrgs.find(org => org.name === "Kona Kona Interiors");
-
-            if (preferredOrg) {
-              // console.log('DEBUG: Auto-selecting preferred org:', preferredOrg.name);
-              onChange('organizationId', preferredOrg.id);
-            }
-            // 2. Fallback: If "Kona Kona" isn't found but there is only one org, select it
-            else if (activeOrgs.length === 1) {
-              onChange('organizationId', activeOrgs[0].id);
-            }
-          }
-        } else {
-          // console.log('DEBUG: No OrganizationUsers found');
-        }
-      } catch (err) {
-        console.error('ERROR loading user organizations:', err);
-        Alert.alert('Error', 'Could not load your organizations');
+    if (organizations.length > 0 && !values?.organizationId) {
+      const preferredOrg = organizations.find(org => org.name === "Kona Kona Interiors");
+      if (preferredOrg) {
+        onChange('organizationId', preferredOrg.id);
+      } else if (organizations.length === 1) {
+        onChange('organizationId', organizations[0].id);
       }
-    };
-    loadUserOrgs();
-  }, []);
+    }
+  }, [organizations, values?.organizationId, onChange]);
+
+  // Search Users logic using hook
+  const { data: allUsers = [], isLoading: searchingUsers } = useSearchUsers(searchText);
 
   // Filter categories and subcategories based on search text
   const filterCategories = (searchText) => {
@@ -159,135 +126,73 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
 
   const handleCreate = async () => {
     try {
-      // --- NEW: Validation for Organization ID ---
       if (!values.organizationId) {
         Alert.alert('Validation Error', 'Please select an Organization for this project.');
         return;
       }
 
-      const payload = {
-        ...values,
-        organizationId: values.organizationId, // <--- Added this
-        description: values.projectDesc,
-        location: values.location,
-        coAdminIds: selectedCoAdmins,
-        startDate:
-          values.startDate && !isNaN(new Date(values.startDate))
-            ? new Date(values.startDate).toISOString()
-            : new Date().toISOString(),
-        endDate:
-          values.endDate && !isNaN(new Date(values.endDate))
-            ? new Date(values.endDate).toISOString()
-            : new Date().toISOString(),
-      };
-      delete payload.projectDesc;
-
-      if (!payload.projectName || payload.projectName.trim() === '') {
+      if (!values.projectName || values.projectName.trim() === '') {
         Alert.alert('Validation Error', 'Project name is required.');
         return;
       }
 
-      const createdProject = await createProject(payload);
+      const payload = {
+        ...values,
+        description: values.projectDesc,
+        coAdminIds: selectedCoAdmins,
+        startDate: values.startDate ? new Date(values.startDate).toISOString() : new Date().toISOString(),
+        endDate: values.endDate ? new Date(values.endDate).toISOString() : new Date().toISOString(),
+      };
+      delete payload.projectDesc;
+
+      const createdProject = await createProjectMutation.mutateAsync(payload);
       Alert.alert('Success', `Project "${createdProject.projectName}" created successfully!`);
       setShowFullForm(false);
       if (onSubmit) onSubmit();
     } catch (err) {
       console.error(' Create Project Error:', err);
-      Alert.alert('Error', err.message || 'Failed to create project');
+      Alert.alert('Error', err.response?.data?.message || err.message || 'Failed to create project');
     }
   };
 
-  useEffect(() => {
-    if (!showFullForm) return;
-    const fetchConnections = async () => {
-      try {
-        // Get all user connections
-        const result = await getUserConnections();
-        setConnections(result || []);
-      } catch (err) {
-        // console.log('Error fetching connections:', err.message);
-        setConnections([]);
-      }
-    };
-    fetchConnections();
-  }, [showFullForm]);
+  const mergedUsers = useMemo(() => {
+    if (!searchText) return [];
+    const searchLower = searchText.toLowerCase();
 
-  useEffect(() => {
-    const performSearch = async () => {
-      if (!searchText) {
-        setFilteredConnections([]);
-        setAllUsers([]);
-        setShowingAllUsers(false);
-        return;
-      }
-      try {
-        // First, search in connections
-        const filtered = connections.filter((user) =>
-          user.name.toLowerCase().includes(searchText.toLowerCase())
-        );
-        setFilteredConnections(filtered);
-        // Then search all users if we want to show more options
-        if (searchText.length >= 2) {
-          try {
-            const users = await searchUsers(searchText);
-            // Filter out users who are already in connections to avoid duplicates
-            const connectedUserIds = connections.map(conn => conn.userId);
-            const filteredUsers = (users || []).filter(user => !connectedUserIds.includes(user.userId));
-            setAllUsers(filteredUsers);
-            setShowingAllUsers(true);
-          } catch (searchError) {
-            // console.log('SearchUsers API error:', searchError.message);
-            // Don't show error for API failures, just don't show additional users
-            setAllUsers([]);
-            setShowingAllUsers(false);
-          }
-        }
-      } catch (error) {
-        console.error('Search error:', error);
-        setAllUsers([]);
-        setShowingAllUsers(false);
-      }
-    };
+    // Filter connections
+    const filteredConns = connections.filter(conn =>
+      conn.name?.toLowerCase().includes(searchLower)
+    ).map(conn => ({ ...conn, connectionStatus: 'accepted' }));
 
-    const timeoutId = setTimeout(performSearch, 300); // Debounce search
-    return () => clearTimeout(timeoutId);
-  }, [searchText, connections]);
+    // Merge with allUsers, avoiding duplicates
+    const userMap = new Map();
+    filteredConns.forEach(conn => userMap.set(conn.userId, conn));
+    allUsers.forEach(user => {
+      if (!userMap.has(user.userId)) userMap.set(user.userId, user);
+    });
+
+    return Array.from(userMap.values());
+  }, [connections, allUsers, searchText]);
 
   const handleUserSelection = async (user) => {
     if (user.connectionStatus === 'accepted') {
-      // If already connected, toggle selection
-      if (selectedCoAdmins.includes(user.userId)) {
-        setSelectedCoAdmins(selectedCoAdmins.filter(id => id !== user.userId));
-      } else {
-        setSelectedCoAdmins([...selectedCoAdmins, user.userId]);
-      }
+      setSelectedCoAdmins(prev =>
+        prev.includes(user.userId) ? prev.filter(id => id !== user.userId) : [...prev, user.userId]
+      );
     } else if (user.connectionStatus === 'none') {
-      // Send connection request for non-connected users
       try {
-        await sendConnectionRequest(user.userId);
-        Alert.alert(
-          'Connection Request Sent',
-          `Connection request sent to ${user.name}. They will be invited to the project and added as co-admin once they accept your connection request.`
-        );
-        // Add them to selected list - they'll be invited to the project
+        await sendRequestMutation.mutateAsync(user.userId);
+        Alert.alert('Request Sent', `Connection request sent to ${user.name}.`);
         if (!selectedCoAdmins.includes(user.userId)) {
-          setSelectedCoAdmins([...selectedCoAdmins, user.userId]);
+          setSelectedCoAdmins(prev => [...prev, user.userId]);
         }
       } catch (error) {
-        console.error('Failed to send connection request:', error);
-        Alert.alert('Error', 'Failed to send connection request. Please try again.');
+        Alert.alert('Error', 'Failed to send connection request.');
       }
     } else if (user.connectionStatus === 'pending') {
-      // If request is pending, still allow them to be selected for project invitation
-      if (selectedCoAdmins.includes(user.userId)) {
-        setSelectedCoAdmins(selectedCoAdmins.filter(id => id !== user.userId));
-      } else {
-        setSelectedCoAdmins([...selectedCoAdmins, user.userId]);
-        Alert.alert(
-          'User Added',
-          `${user.name} will be invited to the project. They can join once the connection request is accepted.`
-        );
-      }
+      setSelectedCoAdmins(prev =>
+        prev.includes(user.userId) ? prev.filter(id => id !== user.userId) : [...prev, user.userId]
+      );
     }
   };
 
@@ -754,20 +659,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                             placeholder="Search connections or add new users..."
                             placeholderTextColor={theme.secondaryText}
                             value={searchText}
-                            onChangeText={async (text) => {
-                              setSearchText(text);
-                              if (text.trim()) {
-                                try {
-                                  const result = await searchConnections(text.trim());
-                                  setFilteredConnections(result);
-                                } catch (err) {
-                                  console.error('Search Error:', err);
-                                  setFilteredConnections([]);
-                                }
-                              } else {
-                                setFilteredConnections([]);
-                              }
-                            }}
+                            onChangeText={setSearchText}
                             style={{
                               color: theme.text,
                               backgroundColor: theme.secCard,
@@ -777,154 +669,79 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               marginBottom: 10,
                             }}
                           />
-                          {/* Show Connections First */}
-                          {filteredConnections.length > 0 && (
-                            <>
-                              <Text style={{
-                                color: theme.text,
-                                fontWeight: '600',
-                                fontSize: 14,
-                                marginBottom: 8,
-                                marginTop: 8
-                              }}>
-                                Your Connections
-                              </Text>
-                              <FlatList
-                                keyboardShouldPersistTaps="always"
-                                data={filteredConnections.slice(0, 5)}
-                                keyExtractor={(item) => `connection-${item.userId}`}
-                                renderItem={({ item }) => (
-                                  <TouchableOpacity
-                                    onPress={() => handleUserSelection({ ...item, connectionStatus: 'accepted' })}
+                          {/* Unified List - Merge filteredConnections and allUsers */}
+                          {mergedUsers.length > 0 && (
+                            <FlatList
+                              keyboardShouldPersistTaps="always"
+                              data={mergedUsers}
+                              keyExtractor={(item) => `user-${item.userId}`}
+                              renderItem={({ item }) => (
+                                <TouchableOpacity
+                                  onPress={() => handleUserSelection(item)}
+                                  style={{
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    paddingVertical: 10,
+                                    borderBottomWidth: 0.5,
+                                    borderColor: theme.border,
+                                  }}>
+                                  <Image
+                                    source={{
+                                      uri: item.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                                    }}
                                     style={{
-                                      flexDirection: 'row',
-                                      alignItems: 'center',
-                                      paddingVertical: 10,
-                                      borderBottomWidth: 0.5,
+                                      width: 36,
+                                      height: 36,
+                                      borderRadius: 18,
+                                      marginRight: 10,
+                                      borderWidth: 1,
                                       borderColor: theme.border,
+                                    }}
+                                  />
+                                  <View style={{ flex: 1 }}>
+                                    <Text style={{ color: theme.text, fontWeight: '500' }}>
+                                      {item.name}
+                                    </Text>
+                                    {item.phone && (
+                                      <Text style={{ fontSize: 12, color: theme.secondaryText }}>
+                                        {t('phone')}: {item.phone}
+                                      </Text>
+                                    )}
+                                    <Text style={{
+                                      fontSize: 10,
+                                      color: item.connectionStatus === 'accepted'
+                                        ? theme.primary
+                                        : item.connectionStatus === 'pending'
+                                          ? '#FFA500'
+                                          : theme.secondaryText
                                     }}>
-                                    <Image
-                                      source={{
-                                        uri:
-                                          item.profilePhoto ||
-                                          'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                                      }}
-                                      style={{
-                                        width: 36,
-                                        height: 36,
-                                        borderRadius: 18,
-                                        marginRight: 10,
-                                        borderWidth: 1,
-                                        borderColor: theme.border,
-                                      }}
-                                    />
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={{ color: theme.text, fontWeight: '500' }}>
-                                        {item.name}
-                                      </Text>
-                                      {item.phone && (
-                                        <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                                          {t('phone')}: {item.phone}
-                                        </Text>
-                                      )}
-                                      <Text style={{ fontSize: 10, color: theme.primary }}>
-                                        Connected
-                                      </Text>
-                                    </View>
+                                      {item.connectionStatus === 'accepted'
+                                        ? 'Connected'
+                                        : item.connectionStatus === 'pending'
+                                          ? 'Request Pending'
+                                          : 'Not Connected'}
+                                    </Text>
+                                  </View>
+                                  <View style={{ alignItems: 'center' }}>
                                     {selectedCoAdmins.includes(item.userId) && (
                                       <Feather name="check-circle" size={20} color={theme.primary} />
                                     )}
-                                  </TouchableOpacity>
-                                )}
-                              />
-                            </>
-                          )}
-                          {/* Show All Users */}
-                          {showingAllUsers && allUsers.length > 0 && (
-                            <>
-                              <Text style={{
-                                color: theme.text,
-                                fontWeight: '600',
-                                fontSize: 14,
-                                marginBottom: 8,
-                                marginTop: 12
-                              }}>
-                                All Users
-                              </Text>
-                              <FlatList
-                                keyboardShouldPersistTaps="always"
-                                data={allUsers.slice(0, 8)}
-                                keyExtractor={(item) => `user-${item.userId}`}
-                                renderItem={({ item }) => (
-                                  <TouchableOpacity
-                                    onPress={() => handleUserSelection(item)}
-                                    style={{
-                                      flexDirection: 'row',
-                                      alignItems: 'center',
-                                      paddingVertical: 10,
-                                      borderBottomWidth: 0.5,
-                                      borderColor: theme.border,
-                                    }}>
-                                    <Image
-                                      source={{
-                                        uri:
-                                          item.profilePhoto ||
-                                          'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                                      }}
-                                      style={{
-                                        width: 36,
-                                        height: 36,
-                                        borderRadius: 18,
-                                        marginRight: 10,
-                                        borderWidth: 1,
-                                        borderColor: theme.border,
-                                      }}
-                                    />
-                                    <View style={{ flex: 1 }}>
-                                      <Text style={{ color: theme.text, fontWeight: '500' }}>
-                                        {item.name}
-                                      </Text>
-                                      {item.phone && (
-                                        <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                                          {t('phone')}: {item.phone}
-                                        </Text>
-                                      )}
+                                    {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
                                       <Text style={{
                                         fontSize: 10,
-                                        color: item.connectionStatus === 'accepted'
-                                          ? theme.primary
-                                          : item.connectionStatus === 'pending'
-                                            ? '#FFA500'
-                                            : theme.secondaryText
+                                        color: theme.secondaryText,
+                                        textAlign: 'center'
                                       }}>
-                                        {item.connectionStatus === 'accepted'
-                                          ? 'Connected'
-                                          : item.connectionStatus === 'pending'
-                                            ? 'Request Pending'
-                                            : 'Not Connected'}
+                                        Tap to send{'\n'}connection request
                                       </Text>
-                                    </View>
-                                    <View style={{ alignItems: 'center' }}>
-                                      {selectedCoAdmins.includes(item.userId) && (
-                                        <Feather name="check-circle" size={20} color={theme.primary} />
-                                      )}
-                                      {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
-                                        <Text style={{
-                                          fontSize: 10,
-                                          color: theme.secondaryText,
-                                          textAlign: 'center'
-                                        }}>
-                                          Tap to send{'\n'}connection request
-                                        </Text>
-                                      )}
-                                    </View>
-                                  </TouchableOpacity>
-                                )}
-                              />
-                            </>
+                                    )}
+                                  </View>
+                                </TouchableOpacity>
+                              )}
+                            />
                           )}
                           {/* Show message when no results found */}
-                          {searchText.trim() !== '' && filteredConnections.length === 0 && allUsers.length === 0 && (
+                          {searchText.trim() !== '' && mergedUsers.length === 0 && !searchingUsers && (
                             <Text
                               style={{
                                 color: theme.secondaryText,
@@ -933,6 +750,9 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                               }}>
                               No users found. Try a different search term.
                             </Text>
+                          )}
+                          {searchingUsers && (
+                            <ActivityIndicator size="small" color={theme.primary} style={{ marginTop: 20 }} />
                           )}
                           <TouchableOpacity
                             style={{
@@ -1101,100 +921,86 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 marginBottom: 10,
               }}
             />
-            {/* Unified List - Merge filteredConnections and allUsers */}
-            {(() => {
-              // Merge logic: connections (accepted) come first. No duplicate userIds.
-              const userMap = new Map();
-              filteredConnections.forEach(conn => userMap.set(conn.userId, { ...conn, connectionStatus: 'accepted' }));
-              allUsers.forEach(user => {
-                if (!userMap.has(user.userId)) userMap.set(user.userId, user);
-              });
-              const mergedUsers = Array.from(userMap.values());
-              return (
-                <>
-                  {mergedUsers.length > 0 && (
-                    <FlatList
-                      keyboardShouldPersistTaps="always"
-                      data={mergedUsers}
-                      keyExtractor={(item) => `user-${item.userId}`}
-                      renderItem={({ item }) => (
-                        <TouchableOpacity
-                          onPress={() => handleUserSelection(item)}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 10,
-                            borderBottomWidth: 0.5,
-                            borderColor: theme.border,
-                          }}>
-                          <Image
-                            source={{
-                              uri: item.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                            }}
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 18,
-                              marginRight: 10,
-                              borderWidth: 1,
-                              borderColor: theme.border,
-                            }}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ color: theme.text, fontWeight: '500' }}>
-                              {item.name}
-                            </Text>
-                            {item.phone && (
-                              <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                                {t('phone')}: {item.phone}
-                              </Text>
-                            )}
-                            <Text style={{
-                              fontSize: 10,
-                              color: item.connectionStatus === 'accepted'
-                                ? theme.primary
-                                : item.connectionStatus === 'pending'
-                                  ? '#FFA500'
-                                  : theme.secondaryText
-                            }}>
-                              {item.connectionStatus === 'accepted'
-                                ? 'Connected'
-                                : item.connectionStatus === 'pending'
-                                  ? 'Request Pending'
-                                  : 'Not Connected'}
-                            </Text>
-                          </View>
-                          <View style={{ alignItems: 'center' }}>
-                            {selectedCoAdmins.includes(item.userId) && (
-                              <Feather name="check-circle" size={20} color={theme.primary} />
-                            )}
-                            {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
-                              <Text style={{
-                                fontSize: 10,
-                                color: theme.secondaryText,
-                                textAlign: 'center'
-                              }}>
-                                Tap to send{'\n'}connection request
-                              </Text>
-                            )}
-                          </View>
-                        </TouchableOpacity>
-                      )}
-                    />
-                  )}
-                  {searchText.trim() !== '' && mergedUsers.length === 0 && (
-                    <Text
+            {mergedUsers.length > 0 && (
+              <FlatList
+                keyboardShouldPersistTaps="always"
+                data={mergedUsers}
+                keyExtractor={(item) => `user-${item.userId}`}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    onPress={() => handleUserSelection(item)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingVertical: 10,
+                      borderBottomWidth: 0.5,
+                      borderColor: theme.border,
+                    }}>
+                    <Image
+                      source={{
+                        uri: item.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
+                      }}
                       style={{
-                        color: theme.secondaryText,
-                        textAlign: 'center',
-                        marginTop: 20,
+                        width: 36,
+                        height: 36,
+                        borderRadius: 18,
+                        marginRight: 10,
+                        borderWidth: 1,
+                        borderColor: theme.border,
+                      }}
+                    />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ color: theme.text, fontWeight: '500' }}>
+                        {item.name}
+                      </Text>
+                      {item.phone && (
+                        <Text style={{ fontSize: 12, color: theme.secondaryText }}>
+                          {t('phone')}: {item.phone}
+                        </Text>
+                      )}
+                      <Text style={{
+                        fontSize: 10,
+                        color: item.connectionStatus === 'accepted'
+                          ? theme.primary
+                          : item.connectionStatus === 'pending'
+                            ? '#FFA500'
+                            : theme.secondaryText
                       }}>
-                      No users found. Try a different search term.
-                    </Text>
-                  )}
-                </>
-              );
-            })()}
+                        {item.connectionStatus === 'accepted'
+                          ? 'Connected'
+                          : item.connectionStatus === 'pending'
+                            ? 'Request Pending'
+                            : 'Not Connected'}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: 'center' }}>
+                      {selectedCoAdmins.includes(item.userId) && (
+                        <Feather name="check-circle" size={20} color={theme.primary} />
+                      )}
+                      {item.connectionStatus === 'none' && !selectedCoAdmins.includes(item.userId) && (
+                        <Text style={{
+                          fontSize: 10,
+                          color: theme.secondaryText,
+                          textAlign: 'center'
+                        }}>
+                          Tap to send{'\n'}connection request
+                        </Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+            {searchText.trim() !== '' && mergedUsers.length === 0 && (
+              <Text
+                style={{
+                  color: theme.secondaryText,
+                  textAlign: 'center',
+                  marginTop: 20,
+                }}>
+                No users found. Try a different search term.
+              </Text>
+            )}
             <TouchableOpacity
               style={{
                 marginTop: 18,

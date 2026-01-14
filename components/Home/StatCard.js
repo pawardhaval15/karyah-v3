@@ -1,205 +1,198 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { fetchDashboardStats } from '../../utils/dashboard';
-import { fetchAssignedCriticalIssues } from '../../utils/issues';
+import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-export default function StatCardList({ navigation, theme, loading, refreshKey = 0 }) {
-  const [statData, setStatData] = useState([]);
-  const scrollViewRef = useRef(null);
-  const { t } = useTranslation();
-  useEffect(() => {
-    async function fetchStats() {
-      const [apiData, criticalIssues] = await Promise.all([
-        fetchDashboardStats(),
-        fetchAssignedCriticalIssues()
-      ]);
-      const newStatData = [
-        {
-          title: t('critical_issues'),
-          value: criticalIssues.length,
-          total: apiData.issues?.total ?? 0,
-          percent: apiData.issues?.total
-            ? Math.round((criticalIssues.length / apiData.issues.total) * 100)
-            : 0,
-          extra: `Unres: ${apiData.issues?.unresolved ?? 0}`,
-          gradientColors: ['#212121', '#FF2700'],
-          screen: 'IssuesScreen',
-        },
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Animated, { FadeInRight } from 'react-native-reanimated';
+import { useDashboardStats } from '../../hooks/useDashboard';
 
-        {
-          title: t('issues'),
-          value: apiData.issues?.unresolved ?? 0,
-          total: apiData.issues?.total ?? 0,
-          percent: apiData.issues?.total
-            ? Math.round((apiData.issues.unresolved / apiData.issues.total) * 100)
-            : 0,
-          extra: `Res: ${apiData.issues?.resolved ?? 0}`,
-          gradientColors: ['#011F53', '#366CD9'],
-          screen: 'IssuesScreen',
-        },
-        {
-          title: t('tasks'),
-          value: apiData.tasks?.inProgress ?? 0,
-          total: apiData.tasks?.total ?? 0,
-          percent: apiData.tasks?.total
-            ? Math.round((apiData.tasks.inProgress / apiData.tasks.total) * 100)
-            : 0,
-          extra: `Pend: ${apiData.tasks?.pending ?? 0}`,
-          extra2: `Comp: ${apiData.tasks?.completed ?? 0}`,
-          gradientColors: ['#011F53', '#366CD9'],
-          screen: 'MyTasksScreen',
-        },
-        {
-          title: t('projects'),
-          value: apiData.projects?.inProgress ?? 0,
-          total: apiData.projects?.total ?? 0,
-          percent: apiData.projects?.total
-            ? Math.round((apiData.projects.inProgress / apiData.projects.total) * 100)
-            : 0,
-          extra: `Pend: ${apiData.projects?.pending ?? 0}`,
-          extra2: `Comp: ${apiData.projects?.completed ?? 0}`,
-          gradientColors: ['#011F53', '#366CD9'],
-          screen: 'ProjectScreen',
-        },
-        {
-          title: t('connections'),
-          value: apiData.connections?.active ?? 0,
-          total: apiData.connections?.total ?? 0,
-          percent: apiData.connections?.total
-            ? Math.round((apiData.connections.active / apiData.connections.total) * 100)
-            : 0,
-          extra: `Inact: ${apiData.connections?.inactive ?? 0}`,
-          gradientColors: ['#011F53', '#366CD9'],
-          screen: 'ConnectionsScreen',
-        },
-      ];
-
-      setStatData(newStatData);
-
-      // Find the first card with non-zero value and scroll to it
-      setTimeout(() => {
-        const firstNonZeroIndex = newStatData.findIndex(item => item.value > 0);
-        if (firstNonZeroIndex > 0 && scrollViewRef.current) {
-          const cardWidth = 180; // width of each card
-          const cardMargin = 12; // margin between cards
-          const scrollPosition = firstNonZeroIndex * (cardWidth + cardMargin);
-          scrollViewRef.current.scrollTo({ x: scrollPosition, animated: true });
-        }
-      }, 100); // Small delay to ensure the ScrollView is rendered
-    }
-    fetchStats();
-  }, [refreshKey, t]);
-
-  if (loading) {
-    return (
-      <View style={{ padding: 20, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="small" color={theme.primary || '#366CD9'} />
-      </View>
-    );
-  }
-
-  return (
-    <ScrollView
-      ref={scrollViewRef}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ flexDirection: 'row', paddingLeft: 20, paddingRight: 20 }}
-      style={{ marginBottom: 0 }}
-    >
-      {statData.map((item, idx) => (
-        <View key={item.title} style={{ marginRight: idx !== statData.length - 1 ? 12 : 0 }}>
-          <StatCard {...item} navigation={navigation} theme={theme} />
-        </View>
-      ))}
-    </ScrollView>
-  );
-}
-
-function StatCard({ title, value, total, percent, gradientColors, screen, navigation, theme, extra, extra2 }) {
+const StatCard = memo(({
+  title,
+  value,
+  total,
+  percent,
+  gradientColors,
+  screen,
+  navigation,
+  theme,
+  extrasLine,
+  index
+}) => {
   const handlePress = () => {
     if (navigation && screen) {
       navigation.navigate(screen);
     }
   };
 
-  // Combine extras into one line, filter out falsy values
-  const extrasLine = [extra].filter(Boolean).join(' • ');
-
   return (
-    <TouchableOpacity activeOpacity={0.85} onPress={handlePress}>
-      <View style={[
-        styles.card,
-        { backgroundColor: theme.card }
-      ]}>
-        <LinearGradient
-          colors={gradientColors || ['#011F53', '#366CD9']}
-          start={{ x: 0, y: 2 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.gradientSection}
-        >
-          <View style={styles.cardSubTitleRow}>
-            <Text style={styles.cardSubTitleLabel}>
-              {title}
-            </Text>
-            <Text style={styles.cardSubTitleValue}>
-              {value}
-              <Text style={{ color: '#fff', opacity: 0.7 }}> / {total}</Text>
-            </Text>
-          </View>
-        </LinearGradient>
-        <View style={[
-          styles.bottomSection,
-          {
-            backgroundColor: theme.card,
-            borderColor: theme.border,
-          }
-        ]}>
-          <View style={styles.row}>
-            <Text style={[styles.progressLabel, { color: theme.text }]}>
-              {percent}%
-            </Text>
-            {extrasLine ? (
-              <Text
-                style={[
-                  styles.cardExtra,
-                  { marginLeft: 80 }
-                ]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {extrasLine}
+    <Animated.View
+      entering={FadeInRight.delay(index * 100).springify()}
+      style={{ marginRight: 12 }}
+    >
+      <TouchableOpacity activeOpacity={0.85} onPress={handlePress}>
+        <View style={[styles.card, { backgroundColor: theme.card }]}>
+          <LinearGradient
+            colors={gradientColors || ['#011F53', '#366CD9']}
+            start={{ x: 0, y: 2 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.gradientSection}
+          >
+            <View style={styles.cardSubTitleRow}>
+              <Text style={styles.cardSubTitleLabel}>
+                {title}
               </Text>
-            ) : null}
-          </View>
-          <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
-            <View style={[styles.progressBar, { width: `${percent}%`, backgroundColor: theme.primary }]} />
+              <Text style={styles.cardSubTitleValue}>
+                {value}
+                <Text style={{ color: '#fff', opacity: 0.7 }}> / {total}</Text>
+              </Text>
+            </View>
+          </LinearGradient>
+          <View style={[styles.bottomSection, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <View style={styles.row}>
+              <Text style={[styles.progressLabel, { color: theme.text }]}>
+                {percent}%
+              </Text>
+              {extrasLine ? (
+                <Text style={[styles.cardExtra, { marginLeft: 'auto' }]} numberOfLines={1}>
+                  {extrasLine}
+                </Text>
+              ) : null}
+            </View>
+            <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
+              <View style={[styles.progressBar, { width: `${percent}%`, backgroundColor: theme.primary }]} />
+            </View>
           </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Animated.View>
   );
-}
+});
+
+const StatCardList = memo(({ navigation, theme, loading: parentLoading, refreshKey = 0 }) => {
+  const { t } = useTranslation();
+
+  const { data: apiData, isLoading: statsLoading, refetch: refetchStats } = useDashboardStats();
+
+  const loading = parentLoading || statsLoading;
+
+  const statData = useMemo(() => {
+    if (!apiData) return [];
+
+    return [
+      {
+        id: 'critical_issues',
+        title: t('critical_issues'),
+        value: apiData.critical?.unresolved ?? 0,
+        total: apiData.critical?.total ?? 0,
+        percent: apiData.critical?.total
+          ? Math.round((apiData.critical.unresolved / apiData.critical.total) * 100)
+          : 0,
+        extrasLine: `Resolved: ${apiData.critical?.resolved ?? 0}`,
+        gradientColors: ['#3A0000', '#FF3B30'],
+        screen: 'IssuesScreen',
+      },
+      {
+        id: 'issues',
+        title: t('issues'),
+        value: apiData.issues?.unresolved ?? 0,
+        total: apiData.issues?.total ?? 0,
+        percent: apiData.issues?.total
+          ? Math.round((apiData.issues.unresolved / apiData.issues.total) * 100)
+          : 0,
+        extrasLine: `Resolved: ${apiData.issues?.resolved ?? 0}`,
+        gradientColors: ['#011F53', '#366CD9'],
+        screen: 'IssuesScreen',
+      },
+      {
+        id: 'tasks',
+        title: t('tasks'),
+        value: (apiData.tasks?.inProgress ?? 0) + (apiData.tasks?.pending ?? 0),
+        total: apiData.tasks?.total ?? 0,
+        percent: apiData.tasks?.total
+          ? Math.round((apiData.tasks.completed / apiData.tasks.total) * 100)
+          : 0,
+        extrasLine: `Pending: ${apiData.tasks?.pending ?? 0} • Done: ${apiData.tasks?.completed ?? 0}`,
+        gradientColors: ['#1A3E2F', '#34C759'],
+        screen: 'MyTasksScreen',
+      },
+      {
+        id: 'projects',
+        title: t('projects'),
+        value: (apiData.projects?.inProgress ?? 0) + (apiData.projects?.pending ?? 0),
+        total: apiData.projects?.total ?? 0,
+        percent: apiData.projects?.total
+          ? Math.round((apiData.projects.completed / apiData.projects.total) * 100)
+          : 0,
+        extrasLine: `Pending: ${apiData.projects?.pending ?? 0} • Done: ${apiData.projects?.completed ?? 0}`,
+        gradientColors: ['#4A2B00', '#FF9500'],
+        screen: 'ProjectScreen',
+      },
+      // {
+      //   id: 'connections',
+      //   title: t('connections'),
+      //   value: apiData.connections?.active ?? 0,
+      //   total: apiData.connections?.total ?? 0,
+      //   percent: apiData.connections?.total
+      //     ? Math.round((apiData.connections.active / apiData.connections.total) * 100)
+      //     : 0,
+      //   extrasLine: `Inactive: ${apiData.connections?.inactive ?? 0}`,
+      //   gradientColors: ['#2C3E50', '#7F8C8D'],
+      //   screen: 'ConnectionsScreen',
+      // },
+    ];
+  }, [apiData, t]);
+
+  const renderItem = useCallback(({ item, index }) => (
+    <StatCard
+      {...item}
+      index={index}
+      navigation={navigation}
+      theme={theme}
+    />
+  ), [navigation, theme]);
+
+  if (loading && statData.length === 0) {
+    return (
+      <View style={{ height: 100, padding: 20, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="small" color={theme.primary || '#366CD9'} />
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      data={statData}
+      renderItem={renderItem}
+      keyExtractor={item => item.id}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10 }}
+      style={{ marginBottom: 0 }}
+      initialNumToRender={3}
+      maxToRenderPerBatch={2}
+      windowSize={3}
+      removeClippedSubviews={true}
+    />
+  );
+});
+
+export default StatCardList;
 
 const styles = StyleSheet.create({
   card: {
     width: 180,
     borderRadius: 12,
     backgroundColor: '#fff',
-    marginBottom: 12,
-    marginRight: 0,
+    marginBottom: 0,
     overflow: 'hidden',
   },
   cardSubTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    // justifyContent: 'space-between',
     gap: 6,
   },
   cardSubTitleLabel: {
     fontSize: 16,
     color: '#fff',
-    // opacity: 0.7,
     marginRight: 8,
     fontWeight: '500',
   },
@@ -209,44 +202,22 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 'auto',
   },
-
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     width: '100%',
   },
-
   gradientSection: {
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
-  cardTitle: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: 2,
-  },
-  // cardSubTitleRow: {
-  //   flexDirection: 'row',
-  //   justifyContent: 'space-between',
-  //   alignItems: 'center',
-  //   marginBottom: 0,
-  // },
-  cardSubTitle: {
-    color: '#fff',
-    fontSize: 14,
-    marginBottom: 0,
-    fontWeight: '400',
-  },
   cardExtra: {
     color: '#000000',
-    fontSize: 12,
+    fontSize: 10,
     opacity: 0.85,
-    marginTop: 2,
-    marginBottom: 0,
     fontWeight: '400',
   },
   bottomSection: {
@@ -265,6 +236,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
     fontSize: 12,
     marginBottom: 2,
+    marginRight: 8,
   },
   progressBarBg: {
     width: '100%',
