@@ -20,7 +20,7 @@ export const getUserConnections = async () => {
       throw new Error(data.message || 'Failed to fetch connections');
     }
 
-    return data.connections;
+    return data.connections || [];
   } catch (error) {
     console.error('Error fetching connections:', error.message);
     throw error;
@@ -47,7 +47,7 @@ export const searchUsers = async (query) => {
       throw new Error(data.message || 'Failed to search users');
     }
 
-    return data.users;
+    return data.users || [];
   } catch (error) {
     console.error('Error searching users:', error.message);
     throw error;
@@ -191,7 +191,7 @@ export const getPendingRequests = async () => {
     if (!response.ok) {
       console.log('HTTP Error:', response.status, response.statusText);
       // console.log('Response data:', data);
-      
+
       // Handle specific HTTP errors
       if (response.status === 404) {
         console.log('Pending requests endpoint not found - using response data or returning empty array');
@@ -210,7 +210,7 @@ export const getPendingRequests = async () => {
     return data.pendingRequests || [];
   } catch (error) {
     console.log('Error fetching pending requests (handled):', error.message);
-    
+
     // For any errors, return empty array to prevent app crashes
     return [];
   }

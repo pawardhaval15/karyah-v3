@@ -35,9 +35,10 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
 
   // Optimized Search Results
   const searchResults = useMemo(() => {
-    if (!query.trim()) return connections;
+    const connArray = Array.isArray(connections) ? connections : [];
+    if (!query.trim()) return connArray;
     const lowerQuery = query.toLowerCase();
-    return connections.filter(user =>
+    return connArray.filter(user =>
       (user.userName || user.name || '').toLowerCase().includes(lowerQuery) ||
       (user.email || '').toLowerCase().includes(lowerQuery)
     );

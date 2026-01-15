@@ -48,7 +48,8 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
       return;
     }
     // Search with any length of input
-    const filtered = connections.filter(user =>
+    const connArray = Array.isArray(connections) ? connections : [];
+    const filtered = connArray.filter(user =>
       (user.userName || user.name || '').toLowerCase().includes(value.toLowerCase()) ||
       (user.email || '').toLowerCase().includes(value.toLowerCase())
     );
@@ -62,7 +63,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
 
   const handleConfirmReassign = async () => {
     if (!selectedUser) return;
-    
+
     try {
       await updateIssue({ issueId, assignTo: selectedUser.userId || selectedUser.id });
       Alert.alert(
@@ -141,7 +142,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
           <Text style={[styles.headerDesc, { color: theme.secondaryText }]}>
             Search and select a user to reassign this issue to:
           </Text>
-          
+
           {/* Current Assignee */}
           {currentAssignee && (
             <View style={[styles.currentAssigneeBox, { backgroundColor: theme.secCard, borderColor: theme.border, flexDirection: 'row', alignItems: 'center', gap: 12 }]}>
@@ -160,7 +161,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
               </View>
             </View>
           )}
-          
+
           <Text style={[styles.headerNote, { color: theme.dangerText }]}>
             Note: All images will be cleared when reassigning this issue.
           </Text>
@@ -215,7 +216,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
                   style={{ maxHeight: 220 }}
                 />
               ) : (
-                <View style={[styles.noResultsBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}> 
+                <View style={[styles.noResultsBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
                   <Text style={[styles.noResultsText, { color: theme.secondaryText }]}>No users found matching your search</Text>
                 </View>
               )}
@@ -251,7 +252,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
         onRequestClose={() => setShowConfirmation(false)}
       >
         <View style={styles.overlay}>
-          <View style={[styles.confirmationPopup, { backgroundColor: theme.card }]}> 
+          <View style={[styles.confirmationPopup, { backgroundColor: theme.card }]}>
             <Text style={[styles.confirmationTitle, { color: theme.text }]}>Confirm Reassignment</Text>
             <View style={{ alignItems: 'center', marginBottom: 12 }}>
               {selectedUser?.profilePhoto ? (
@@ -259,7 +260,7 @@ const ReassignPopup = ({ visible, onClose, issueId, theme, currentAssignee }) =>
                   <Image source={{ uri: selectedUser.profilePhoto }} style={styles.avatarImgLarge} />
                 </View>
               ) : (
-                <View style={[styles.avatarBoxLarge, { backgroundColor: theme.primary + '22' }]}> 
+                <View style={[styles.avatarBoxLarge, { backgroundColor: theme.primary + '22' }]}>
                   <Ionicons name="person" size={38} color={theme.primary} />
                 </View>
               )}

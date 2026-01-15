@@ -1,26 +1,26 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-    Dimensions,
-    FlatList,
-    Image,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  FlatList,
+  Image,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserConnections } from '../utils/connections';
 import ConnectionDetailsModal from './ConnectionDetailsModal';
-import { useTranslation } from 'react-i18next';
 export default function ConnectionsScreen({ navigation }) {
   const theme = useTheme();
   const screenWidth = Dimensions.get('window').width;
   const isTablet = screenWidth >= 768;
-const { t } = useTranslation();
+  const { t } = useTranslation();
   const [connections, setConnections] = useState([]);
   const [selectedConnection, setSelectedConnection] = useState(null);
   const [search, setSearch] = useState('');
@@ -38,8 +38,8 @@ const { t } = useTranslation();
     fetchConnections();
   }, []);
 
-  const filteredConnections = connections.filter((conn) =>
-    conn.name.toLowerCase().includes(search.toLowerCase())
+  const filteredConnections = (Array.isArray(connections) ? connections : []).filter((conn) =>
+    conn.name?.toLowerCase().includes(search.toLowerCase())
   );
 
   const toggleNumberVisibility = (connectionId) => {
@@ -86,16 +86,16 @@ const { t } = useTranslation();
         <View style={{ flex: 1 }}>
           <Text style={[
             styles.bannerTitle,
-            { 
+            {
               fontSize: isTablet ? 26 : 22,
               marginBottom: isTablet ? 4 : 2,
             }
           ]}>
-           {t('connections')}
+            {t('connections')}
           </Text>
           <Text style={[
             styles.bannerDesc,
-            { 
+            {
               fontSize: isTablet ? 16 : 14,
               maxWidth: isTablet ? '85%' : '80%',
             }
@@ -119,18 +119,18 @@ const { t } = useTranslation();
           ]}>
             {t('add')}
           </Text>
-          <Feather 
-            name="user-plus" 
-            size={isTablet ? 20 : 18} 
-            color="#fff" 
-            style={{ marginLeft: isTablet ? 6 : 4 }} 
+          <Feather
+            name="user-plus"
+            size={isTablet ? 20 : 18}
+            color="#fff"
+            style={{ marginLeft: isTablet ? 6 : 4 }}
           />
         </TouchableOpacity>
       </LinearGradient>
 
       <View style={[
-        styles.searchBarContainer, 
-        { 
+        styles.searchBarContainer,
+        {
           backgroundColor: theme.SearchBar,
           marginHorizontal: isTablet ? 24 : 20,
           paddingHorizontal: isTablet ? 20 : 16,
@@ -140,8 +140,8 @@ const { t } = useTranslation();
       ]}>
         <TextInput
           style={[
-            styles.searchInput, 
-            { 
+            styles.searchInput,
+            {
               color: theme.text,
               fontSize: isTablet ? 18 : 16,
             }
@@ -163,8 +163,8 @@ const { t } = useTranslation();
           <TouchableOpacity
             style={[
               styles.connectionCard,
-              { 
-                backgroundColor: theme.card, 
+              {
+                backgroundColor: theme.card,
                 borderColor: theme.border,
                 width: isTablet ? '32%' : '100%',
                 marginHorizontal: isTablet ? 0 : 0,
@@ -178,8 +178,8 @@ const { t } = useTranslation();
             <Image
               source={{ uri: item.profilePhoto || 'https://via.placeholder.com/48' }}
               style={[
-                styles.avatar, 
-                { 
+                styles.avatar,
+                {
                   borderColor: theme.border,
                   width: isTablet ? 56 : 48,
                   height: isTablet ? 56 : 48,
@@ -190,8 +190,8 @@ const { t } = useTranslation();
             />
             <View style={{ flex: 1 }}>
               <Text style={[
-                styles.name, 
-                { 
+                styles.name,
+                {
                   color: theme.text,
                   fontSize: isTablet ? 18 : 16,
                 }
@@ -202,14 +202,14 @@ const { t } = useTranslation();
                 <TouchableOpacity
                   onPress={() => toggleNumberVisibility(item.connectionId)}
                   activeOpacity={0.7}
-                  style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     marginTop: isTablet ? 4 : 2,
                     paddingVertical: isTablet ? 4 : 2,
                   }}>
-                  <Text style={{ 
-                    color: theme.secondaryText, 
+                  <Text style={{
+                    color: theme.secondaryText,
                     fontSize: isTablet ? 14 : 13,
                   }}>
                     Phone:{' '}

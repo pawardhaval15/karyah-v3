@@ -6,7 +6,7 @@ export const useUserConnections = () => {
         queryKey: ['userConnections'],
         queryFn: async () => {
             const response = await apiClient.get('api/connections/list');
-            return response.data || [];
+            return response.data.connections || [];
         },
     });
 };
@@ -17,7 +17,7 @@ export const useSearchUsers = (query) => {
         queryFn: async () => {
             if (!query || query.length < 2) return [];
             const response = await apiClient.get(`api/connections/search?query=${encodeURIComponent(query)}`);
-            return response.data || [];
+            return response.data.users || [];
         },
         enabled: !!query && query.length >= 2,
     });

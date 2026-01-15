@@ -160,7 +160,8 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
     const searchLower = searchText.toLowerCase();
 
     // Filter connections
-    const filteredConns = connections.filter(conn =>
+    const connArray = Array.isArray(connections) ? connections : [];
+    const filteredConns = connArray.filter(conn =>
       conn.name?.toLowerCase().includes(searchLower)
     ).map(conn => ({ ...conn, connectionStatus: 'accepted' }));
 
