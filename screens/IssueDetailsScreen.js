@@ -1,9 +1,8 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import AttachmentSheet from 'components/popups/AttachmentSheet';
-import TaskReassignPopup from 'components/popups/TaskReassignPopup';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -11,6 +10,7 @@ import {
   Image,
   Modal,
   Platform,
+  RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
@@ -19,23 +19,20 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
+
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
 import ImageModal from '../components/issue details/ImageModal';
+import AttachmentSheet from '../components/popups/AttachmentSheet';
+import TaskChatPopup from '../components/popups/TaskChatPopup';
+import TaskReassignPopup from '../components/popups/TaskReassignPopup';
 import useAttachmentPicker from '../components/popups/useAttachmentPicker';
 import useAudioRecorder from '../components/popups/useAudioRecorder';
 import FieldBox from '../components/task details/FieldBox';
+import { useDeleteIssue, useIssueDetails, useResolveIssue, useUpdateIssue } from '../hooks/useIssues';
+import { useUserDetails } from '../hooks/useUser';
 import { useTheme } from '../theme/ThemeContext';
-import { getUserNameFromToken } from '../utils/auth'; // import this
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
-import {
-  deleteIssue,
-  fetchIssueById,
-  resolveIssueByAssignedUser,
-  updateIssue,
-} from '../utils/issues';
-import TaskChatPopup from '../components/popups/TaskChatPopup';
-import { deleteTask, getTaskDetailsById, resolveCriticalOrIssueTask, updateTask } from '../utils/task';
 
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -46,24 +43,37 @@ function formatDate(dateString) {
 export default function IssueDetailsScreen({ navigation, route }) {
   const theme = useTheme();
   const { issueId } = route.params || {};
+  const { t } = useTranslation();
+
+  // React Query Hooks
+  const {
+    data: issue,
+    isLoading: loading,
+    refetch: refreshIssueData,
+    isRefetching
+  } = useIssueDetails(issueId);
+
+  const { data: userData } = useUserDetails();
+  const userName = userData?.name || userData?.userName;
+  const currentUserId = userData?.id || userData?.userId;
+
+  const resolveMutation = useResolveIssue();
+  const deleteMutation = useDeleteIssue();
+  const updateMutation = useUpdateIssue();
+
   const [showReassignModal, setShowReassignModal] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [issue, setIssue] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
-  const [userName, setUserName] = useState(null);
   const [editFields, setEditFields] = useState({
     issueTitle: '',
     description: '',
     dueDate: '',
   });
-  const { t } = useTranslation();
-  // Add menuVisible state for three-dots menu
+
+  // Simplified state for other UI elements
   const [menuVisible, setMenuVisible] = useState(false);
-  // Attachment state
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [previewVisible, setPreviewVisible] = useState(false);
   const [previewIndex, setPreviewIndex] = useState(0);
-  const [selectedAttachment, setSelectedAttachment] = useState(null);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
   const [remark, setRemark] = useState('');
@@ -77,122 +87,61 @@ export default function IssueDetailsScreen({ navigation, route }) {
   const [showTaskChat, setShowTaskChat] = useState(false);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatLoading, setChatLoading] = useState(false);
-  const [task, setTask] = useState(null);
-  const [currentUserId, setCurrentUserId] = useState(null);
   const [users, setUsers] = useState([]);
+
+  // Sync edit fields when issue data loads or changes
   useEffect(() => {
-    getUserNameFromToken().then(setUserName);
-  }, []);
+    if (issue) {
+      setEditFields({
+        issueTitle: issue.isTaskBased ? (issue.taskName || '') : (issue.issueTitle || ''),
+        description: issue.description || '',
+        dueDate: issue.isTaskBased ? (issue.endDate || '') : (issue.dueDate || ''),
+      });
+    }
+  }, [issue]);
+
+  // Refetch on focus for "instant" updates
+  useFocusEffect(
+    useCallback(() => {
+      refreshIssueData();
+    }, [refreshIssueData])
+  );
+
   const { isRecording, startRecording, stopRecording, seconds } = useAudioRecorder({
     onRecordingFinished: (audio) => {
       setAttachments((prev) => [...prev, audio]);
     },
   });
-  const userImg = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
 
-  // Helper function to refresh issue data
-  const refreshIssueData = async () => {
-    try {
-      if (issue?.isIssue) {
-        const updated = await getTaskDetailsById(issue.taskId);
-        setIssue(updated);
-      } else {
-        const updated = await fetchIssueById(issue?.issueId || issueId);
-        setIssue(updated);
-      }
-
-    } catch (error) {
-      console.error('Failed to refresh issue data:', error.message);
-    }
-  };
-
-  useEffect(() => {
-    if (!issueId) {
-      console.log('No issueId provided');
-      return;
-    }
-
-    console.log('Starting to fetch issue with ID:', issueId);
-    setLoading(true);
-
-    // Try to fetch as task-based issue first, then fall back to traditional issue
-    const fetchIssueData = async () => {
-      try {
-        console.log('Attempting to fetch task with ID:', issueId);
-        // First try to fetch as a task (for task-based issues)
-        const taskData = await getTaskDetailsById(issueId);
-        console.log('Task fetch result:', taskData);
-
-        if (taskData) {
-          // We found a task, now check if it's marked as an issue
-          if (taskData.isIssue) {
-            // This is a task marked as an issue
-            setIssue(taskData);
-            console.log(' Successfully fetched Task-based Issue:', taskData);
-            setEditFields({
-              issueTitle: taskData.taskName || '',
-              description: taskData.description || '',
-              dueDate: taskData.endDate || '',
-            });
-            return;
-          } else {
-            // Task exists but it's not marked as an issue, this shouldn't happen
-            console.log('⚠️ Task found but not marked as issue:', taskData);
-            throw new Error('Task is not marked as an issue');
-          }
-        } else {
-          console.log('⚠️ No task data returned');
-          throw new Error('No task data found');
-        }
-      } catch (taskError) {
-        console.log(' Task fetch failed, trying traditional issue:', taskError.message);
-
-        try {
-          console.log('Attempting to fetch traditional issue with ID:', issueId);
-          // Fall back to traditional issue fetching
-          const issueData = await fetchIssueById(issueId);
-          console.log('Traditional issue fetch result:', issueData);
-
-          if (issueData) {
-            setIssue(issueData);
-            console.log(' Successfully fetched Traditional Issue:', issueData);
-            setEditFields({
-              issueTitle: issueData.issueTitle || '',
-              description: issueData.description || '',
-              dueDate: issueData.dueDate || '',
-            });
-            return;
-          } else {
-            console.log('⚠️ No traditional issue data returned');
-            throw new Error('No traditional issue data found');
-          }
-        } catch (issueError) {
-          console.error(' Traditional issue fetch failed:', issueError.message);
-        }
-      }
-      // If we reach here, both attempts failed
-      console.error(' Failed to fetch issue data from both sources');
-      setIssue(null);
-    };
-
-    fetchIssueData().finally(() => {
-      console.log('Fetch complete, setting loading to false');
-      setLoading(false);
-    });
-  }, [issueId]);
-
-  useEffect(() => {
-    if (issue && issue.isIssue && issue.taskId) {
-      setTask({
+  const task = useMemo(() => {
+    if (issue && (issue.isIssue || issue.isTaskBased) && (issue.taskId || issue.id)) {
+      return {
         ...issue,
-        id: issue.taskId,       // Provide .id field for compatibility
-        taskId: issue.taskId,   // Provide .taskId as string
-        name: issue.taskName
-      });
-    } else {
-      setTask(null);
+        id: issue.taskId || issue.id,
+        taskId: issue.taskId || issue.id,
+        name: issue.taskName || issue.issueTitle
+      };
     }
+    return null;
   }, [issue]);
+
+  const isCreator = useMemo(() => {
+    if (!userName || !issue) return false;
+    const creatorName = issue.creatorName || issue.creator?.name || issue.creator?.userName;
+    return creatorName === userName;
+  }, [userName, issue]);
+
+  const allAttachments = useMemo(() => {
+    if (!issue) return attachments;
+    const existing = issue.isTaskBased
+      ? (issue.images || [])
+      : (issue.unresolvedImages || []);
+    return [...existing, ...(issue.resolvedImages || []), ...attachments];
+  }, [issue, attachments]);
+
+
+
+
 
   // Fetch chat messages when popup opens
   useEffect(() => {
@@ -233,81 +182,27 @@ export default function IssueDetailsScreen({ navigation, route }) {
       Alert.alert('Please enter remarks or add attachments.');
       return;
     }
-    setLoading(true);
     try {
-      if (issue?.isIssue) {
-        // Handle task-based issue resolution using the specific resolve API
-        const resolveData = {
-          remarks: remark.trim(), // Include remarks
-          resolvedImages: attachments.map((att, idx) => {
-            let fileUri = att.uri;
-            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
-              fileUri = `file://${fileUri}`;
-            }
-            let mimeType = att.mimeType || att.type || 'application/octet-stream';
-            if (mimeType && !mimeType.includes('/')) {
-              if (mimeType === 'image') mimeType = 'image/jpeg';
-              else if (mimeType === 'video') mimeType = 'video/mp4';
-              else mimeType = 'application/octet-stream';
-            }
-            return {
-              uri: fileUri,
-              name: att.name || fileUri.split('/').pop() || `file_${idx}`,
-              type: mimeType,
-            };
-          })
-        };
-        // Use the dedicated resolve critical/issue task API
-        await resolveCriticalOrIssueTask(issue.taskId, resolveData);
-        Alert.alert('Success', 'Issue task completed successfully');
-      } else {
-        // Handle traditional issue resolution
-        const resolvedImages = attachments.map((att, idx) => {
-          let fileUri = att.uri;
-          if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
-            fileUri = `file://${fileUri}`;
-          }
-          let mimeType = att.mimeType || att.type || 'application/octet-stream';
-          if (mimeType && !mimeType.includes('/')) {
-            if (mimeType === 'image') mimeType = 'image/jpeg';
-            else if (mimeType === 'video') mimeType = 'video/mp4';
-            else mimeType = 'application/octet-stream';
-          }
-          return {
-            uri: fileUri,
-            name: att.name || fileUri.split('/').pop() || `file_${idx}`,
-            type: mimeType,
-          };
-        });
-
-        await resolveIssueByAssignedUser({
-          issueId,
-          remarks: remark,
-          resolvedImages,
-          issueStatus: 'completed',  // Changed from 'resolved' to 'completed'
-        });
-        Alert.alert('Success', 'Issue completed successfully');
-      }
-
+      await resolveMutation.mutateAsync({
+        issueId: issue.isTaskBased ? issue.taskId : issue.issueId,
+        isTaskBased: issue.isTaskBased,
+        resolveData: {
+          remarks: remark.trim(),
+          resolvedImages: attachments,
+        }
+      });
+      Alert.alert('Success', 'Issue completed successfully');
       navigation.goBack();
     } catch (error) {
       Alert.alert('Error', error.message || 'Failed to submit resolution');
-    } finally {
-      setLoading(false);
     }
   };
-  // Merge all attachments for drawer
-  const allAttachments = [
-    // For task-based issues, use images and resolvedImages
-    ...(issue?.isIssue ? (issue.images || []) : (issue?.unresolvedImages || [])),
-    ...(issue?.resolvedImages || []),
-    ...attachments,
-  ];
 
-  // Check if current user is the creator
-  const isCreator = userName && issue && (issue?.creatorName === userName || issue?.creator?.name === userName);
+  const userImg = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
 
-  if (loading) {
+
+
+  if (loading && !issue) {
     return (
       <View
         style={{
@@ -351,7 +246,17 @@ export default function IssueDetailsScreen({ navigation, route }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 100 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={refreshIssueData}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
+      >
         <View
           style={{
             flexDirection: 'row',
@@ -383,107 +288,22 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     return;
                   }
                   try {
-                    setLoading(true);
-                    // Check if this is a task-based issue
-                    if (issue.isIssue) {
-                      // Update task-based issue
-                      const updatePayload = {
-                        taskName: editFields.issueTitle.trim() || undefined,
-                        description: editFields.description.trim() || undefined,
-                        endDate: editFields.dueDate || undefined,
-                      };
-                      // Remove undefined values
-                      Object.keys(updatePayload).forEach(key => {
-                        if (updatePayload[key] === undefined) {
-                          delete updatePayload[key];
-                        }
-                      });
-                      await updateTask(issue.taskId, updatePayload);
-                      // Show appropriate success message
-                      Alert.alert('Success', 'Issue updated successfully.');
-                      // Refresh the task data
-                      const updated = await getTaskDetailsById(issue.taskId);
-                      setIssue(updated);
-                    } else {
-                      // Handle traditional issue update
-                      // Prepare update payload, separating new files and existing URLs
-                      let assignedUserId = '';
-                      if (issue.assignTo) {
-                        // If assignTo is an object, get userId or id property
-                        if (
-                          typeof issue.assignTo === 'object' &&
-                          (issue.assignTo.userId || issue.assignTo.id)
-                        ) {
-                          assignedUserId = String(issue.assignTo.userId || issue.assignTo.id);
-                        } else if (
-                          typeof issue.assignTo === 'number' ||
-                          /^\d+$/.test(issue.assignTo)
-                        ) {
-                          assignedUserId = String(issue.assignTo);
-                        }
+                    await updateMutation.mutateAsync({
+                      issueId: issue.isTaskBased ? issue.taskId : issue.issueId,
+                      isTaskBased: issue.isTaskBased,
+                      updateData: {
+                        issueTitle: editFields.issueTitle.trim(),
+                        description: editFields.description.trim(),
+                        dueDate: editFields.dueDate,
+                        unresolvedImages: attachments,
                       }
-                      // Only send assignTo if it's a valid integer string
-                      let updatePayload = {
-                        issueId: issue.issueId,
-                        issueTitle: editFields.issueTitle.trim() || undefined,
-                        description: editFields.description.trim() || undefined,
-                        dueDate: editFields.dueDate || undefined,
-                        isCritical: editFields.isCritical,
-                        ...(assignedUserId ? { assignTo: assignedUserId } : {}),
-                      };
-                      // Separate existing URLs and new files
-                      let existingUnresolvedImages = [];
-                      let newUnresolvedImages = [];
-                      if (Array.isArray(issue.unresolvedImages)) {
-                        existingUnresolvedImages = issue.unresolvedImages.filter(
-                          (img) => typeof img === 'string' && !img.startsWith('file://')
-                        );
-                      }
-                      if (attachments && attachments.length > 0) {
-                        newUnresolvedImages = attachments
-                          .filter(att => att.uri)
-                          .map((att, idx) => {
-                            let fileUri = att.uri;
-                            if (Platform.OS === 'android' && !fileUri.startsWith('file://')) {
-                              fileUri = `file://${fileUri}`;
-                            }
-                            let mimeType = att.mimeType || att.type || 'application/octet-stream';
-                            if (mimeType && !mimeType.includes('/')) {
-                              if (mimeType === 'image') mimeType = 'image/jpeg';
-                              else if (mimeType === 'video') mimeType = 'video/mp4';
-                              else mimeType = 'application/octet-stream';
-                            }
-                            return {
-                              uri: fileUri,
-                              name: att.name || (fileUri.split('/').pop() || `file_${idx}`),
-                              type: mimeType,
-                            };
-                          });
-                      }
-                      // Only send new files as unresolvedImages (for FormData)
-                      if (newUnresolvedImages.length > 0) {
-                        updatePayload.unresolvedImages = newUnresolvedImages;
-                      }
-                      // Optionally, send existing URLs in a separate field if backend supports it
-                      if (existingUnresolvedImages.length > 0) {
-                        updatePayload.existingUnresolvedImages = existingUnresolvedImages;
-                      }
-                      await updateIssue(updatePayload);
-                      Alert.alert('Success', 'Issue updated successfully.');
-                      const updated = await fetchIssueById(issue.issueId);
-                      setIssue(updated);
-                    }
+                    });
+
+                    Alert.alert('Success', 'Issue updated successfully.');
                     setIsEditing(false);
-                    // Clear attachments after successful update
                     setAttachments([]);
                   } catch (err) {
-                    let errorMsg = 'Failed to update issue';
-                    if (err && (typeof err === 'string' || typeof err?.message === 'string')) {
-                      errorMsg = err.message || err;
-                    }
-                    Alert.alert('Error', errorMsg);
-                  } finally {
-                    setLoading(false);
+                    Alert.alert('Error', err.message || 'Failed to update issue');
                   }
                 }}
                 style={{
@@ -570,20 +390,13 @@ export default function IssueDetailsScreen({ navigation, route }) {
                             style: 'destructive',
                             onPress: async () => {
                               try {
-                                if (issue.isIssue) {
-                                  // Delete task-based issue
-                                  await deleteTask(issue.taskId);
-                                } else {
-                                  // Delete traditional issue
-                                  await deleteIssue(issue.issueId);
-                                }
-                                // Signal IssuesScreen to refresh
+                                await deleteMutation.mutateAsync({
+                                  issueId: issue.isTaskBased ? issue.taskId : issue.issueId,
+                                  isTaskBased: issue.isTaskBased
+                                });
                                 navigation.navigate('IssuesScreen', { refresh: true });
                               } catch (err) {
-                                Alert.alert(
-                                  'Delete Failed',
-                                  err.message || 'Could not delete issue.'
-                                );
+                                Alert.alert('Delete Failed', err.message || 'Could not delete issue.');
                               }
                             },
                           },
@@ -631,8 +444,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             ) : (
               <TouchableOpacity onPress={() => setShowIssueTitleModal(true)}>
                 <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600' }} numberOfLines={2} ellipsizeMode="tail">
-                  {/* Display task name for task-based issues, issueTitle for traditional issues */}
-                  {issue.isIssue ? issue.taskName : issue.issueTitle}
+                  {issue.isTaskBased ? issue.taskName : issue.issueTitle}
                 </Text>
               </TouchableOpacity>
             )}
@@ -719,77 +531,49 @@ export default function IssueDetailsScreen({ navigation, route }) {
           <>
             <FieldBox
               label={t('project_name')}
-              value={issue.isIssue ? (issue.projectName || '') : (issue.projectName || '')}
+              value={issue.projectName || ''}
               placeholder={t('project_name')}
               theme={theme}
               editable={false}
             />
             <FieldBox
               label={t('location')}
-              value={issue.isIssue ? (issue.location || '') : (issue.location || '')}
+              value={issue.location || ''}
               placeholder={t('location')}
               theme={theme}
               editable={false}
             />
             <FieldBox
               label={t('created_by') || 'Created By'}
-              value={issue.isIssue ? (issue.creatorName || issue.creator?.name || '') : (issue.creatorName || issue.creator?.name || '')}
+              value={issue.creatorName || issue.creator?.name || ''}
               placeholder={t('created_by') || 'Created By'}
               theme={theme}
               editable={false}
               rightComponent={
-                issue.isIssue ? (
-                  issue.creator?.profilePhoto ? (
-                    <Image
-                      source={{ uri: issue.creator.profilePhoto }}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        marginLeft: 10,
-                        borderWidth: 2,
-                        borderColor: theme.border,
-                      }}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        marginLeft: 10,
-                        borderWidth: 2,
-                        borderColor: theme.border,
-                      }}
-                    />
-                  )
+                issue.creator?.profilePhoto ? (
+                  <Image
+                    source={{ uri: issue.creator.profilePhoto }}
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 15,
+                      marginLeft: 10,
+                      borderWidth: 2,
+                      borderColor: theme.border,
+                    }}
+                  />
                 ) : (
-                  issue.creator?.profilePhoto ? (
-                    <Image
-                      source={{ uri: issue.creator.profilePhoto }}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        marginLeft: 10,
-                        borderWidth: 2,
-                        borderColor: theme.border,
-                      }}
-                    />
-                  ) : (
-                    <Image
-                      source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
-                      style={{
-                        width: 30,
-                        height: 30,
-                        borderRadius: 15,
-                        marginLeft: 10,
-                        borderWidth: 2,
-                        borderColor: theme.border,
-                      }}
-                    />
-                  )
+                  <Image
+                    source={{ uri: 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 15,
+                      marginLeft: 10,
+                      borderWidth: 2,
+                      borderColor: theme.border,
+                    }}
+                  />
                 )
               }
             />
@@ -825,7 +609,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               { backgroundColor: theme.card, borderColor: theme.border },
             ]}>
             {attachments.length > 0 ||
-              ((issue?.isIssue ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
+              ((issue.isTaskBased ? (issue.images && issue.images.length > 0) : (issue?.unresolvedImages && issue.unresolvedImages.length > 0))) ? (
               <>
                 <Text style={[styles.attachmentCount, { color: theme.text }]}>
                   {isEditing
@@ -937,7 +721,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
         <FieldBox
           label={t('assigned_to')}
           value={
-            issue.isIssue
+            issue.isTaskBased
               ? (Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0
                 ? issue.assignedUserDetails.map(user => user.name).join(', ')
                 : 'Not assigned')
@@ -945,7 +729,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           }
           placeholder={t('assigned_to')}
           rightComponent={
-            issue.isIssue && Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0 ? (
+            issue.isTaskBased && Array.isArray(issue.assignedUserDetails) && issue.assignedUserDetails.length > 0 ? (
               <Image
                 source={{ uri: issue.assignedUserDetails[0].profilePhoto || userImg }}
                 style={{
@@ -957,7 +741,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   borderColor: theme.border,
                 }}
               />
-            ) : !issue.isIssue && issue.assignTo?.profilePhoto ? (
+            ) : !issue.isTaskBased && issue.assignTo?.profilePhoto ? (
               <Image
                 source={{ uri: issue.assignTo.profilePhoto }}
                 style={{
@@ -992,7 +776,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
               ? editFields.dueDate
                 ? formatDate(editFields.dueDate)
                 : ''
-              : formatDate(issue.isIssue ? issue.endDate : issue.dueDate)
+              : formatDate(issue.isTaskBased ? issue.endDate : issue.dueDate)
           }
           placeholder={t("due_date")}
           theme={theme}
@@ -1352,13 +1136,11 @@ export default function IssueDetailsScreen({ navigation, route }) {
         onClose={async (wasReassigned = false) => {
           setShowReassignModal(false);
           if (wasReassigned) {
-            // Navigate back to IssuesScreen after successful reassignment
-            navigation.navigate('IssuesScreen', { refresh: true });
+            refreshIssueData();
           }
-          // Don't do anything if just canceled - stay on current screen
         }}
-        taskId={issue?.isIssue ? issue.taskId : (issue?.issueId || issueId)}
-        currentAssignees={issue?.assignedUserDetails || []}
+        taskId={issue.isTaskBased ? issue.taskId : (issue?.issueId || issueId)}
+        currentAssignees={issue.isTaskBased ? (issue?.assignedUserDetails || []) : (issue?.assignTo ? [issue.assignTo] : [])}
         theme={theme}
         isCreator={isCreator}
       />
@@ -1400,7 +1182,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   lineHeight: 22,
                   marginBottom: 12
                 }}>
-                  {issue?.isIssue ? issue?.taskName : issue?.issueTitle}
+                  {issue.isTaskBased ? issue?.taskName : issue?.issueTitle}
                 </Text>
                 <TouchableOpacity
                   style={{

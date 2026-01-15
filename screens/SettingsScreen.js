@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { jwtDecode } from 'jwt-decode';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   AppState, Platform,
   ScrollView,
@@ -16,7 +17,7 @@ import ChangePinPopup from '../components/popups/ChangePinPopup';
 import { getCustomNotificationsEnabled, toggleCustomNotifications } from '../components/popups/CustomNotificationPopup';
 import { useTheme } from '../theme/ThemeContext';
 import { changePin as changePinApi, getIsPublic, updateIsPublic } from '../utils/auth';
-import { useTranslation } from 'react-i18next';
+import { API_URL } from '../utils/config';
 export default function SettingsScreen({ navigation }) {
   const theme = useTheme();
   const [privateAccount, setPrivateAccount] = useState(true);
@@ -246,7 +247,7 @@ export default function SettingsScreen({ navigation }) {
 
               // 🔁 Unregister FCM token from backend
               if (userToken && fcmToken) {
-                await fetch('https://api.karyah.in/api/devices/deviceToken', {
+                await fetch(`${API_URL}api/devices/deviceToken`, {
                   method: 'DELETE', // or 'POST' depending on your API
                   headers: {
                     'Content-Type': 'application/json',

@@ -17,6 +17,7 @@ import {
 import Animated, { FadeInLeft } from 'react-native-reanimated';
 import { useUserDetails } from '../../hooks/useUser';
 import { useThemeContext } from '../../theme/ThemeContext';
+import { API_URL } from '../../utils/config';
 
 const DrawerItem = memo(({
   icon,
@@ -123,7 +124,7 @@ export default function CustomDrawer({ onClose, theme }) {
       if (deviceToken && userToken) {
         try {
           // We invoke fetch directly here as this is a cleanup operation
-          fetch('https://api.karyah.in/api/devices/deviceToken', {
+          fetch(`${API_URL}api/devices/deviceToken`, {
             method: 'DELETE',
             headers: {
               'Content-Type': 'application/json',

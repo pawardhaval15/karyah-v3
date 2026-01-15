@@ -6,8 +6,9 @@ import Toast from 'react-native-toast-message';
 import { getCustomNotificationsEnabled } from '../components/popups/CustomNotificationPopup';
 import { navigationRef } from '../navigation/navigationRef';
 import CustomNotificationManager from './CustomNotificationManager';
+import { API_URL } from './config';
 
-const API_URL = 'https://api.karyah.in/';
+
 
 class SystemNotificationService {
   constructor() {

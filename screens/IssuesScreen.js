@@ -1,4 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -6,6 +8,7 @@ import {
     ActivityIndicator,
     Alert,
     Platform,
+    RefreshControl,
     ScrollView,
     StyleSheet,
     Text,
@@ -23,6 +26,7 @@ import { getUserNameFromToken } from '../utils/auth';
 
 export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
+    const queryClient = useQueryClient();
     const { t } = useTranslation();
     const [search, setSearch] = useState('');
     const [statusTab, setStatusTab] = useState('all');
@@ -53,6 +57,13 @@ export default function IssuesScreen({ navigation }) {
     const { data: connectionsData = [] } = useUserConnections();
     const toggleCriticalMutation = useToggleCritical();
     const createIssueMutation = useCreateIssue();
+
+    // Refresh data when screen comes into focus
+    useFocusEffect(
+        useCallback(() => {
+            refetchIssues();
+        }, [refetchIssues])
+    );
 
     // Map connections correctly
     const users = useMemo(() => connectionsData.connections || [], [connectionsData]);
@@ -142,9 +153,13 @@ export default function IssuesScreen({ navigation }) {
         };
     }, [issues]);
 
-    const handleRefresh = useCallback(() => {
-        refetchIssues();
-    }, [refetchIssues]);
+    const handleRefresh = useCallback(async () => {
+        await Promise.all([
+            refetchIssues(),
+            queryClient.invalidateQueries({ queryKey: ['projects'] }),
+            queryClient.invalidateQueries({ queryKey: ['userConnections'] })
+        ]);
+    }, [refetchIssues, queryClient]);
 
     const handleToggleCritical = async (issue, isCritical) => {
         try {
@@ -390,8 +405,15 @@ export default function IssuesScreen({ navigation }) {
                     statusTab={statusTab}
                     currentUserName={currentUserName}
                     onToggleCritical={handleToggleCritical}
-                    refreshing={isRefetching}
-                    onRefresh={handleRefresh}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={isRefetching}
+                            onRefresh={handleRefresh}
+                            colors={[theme.primary]}
+                            tintColor={theme.primary}
+                            progressBackgroundColor={theme.card}
+                        />
+                    }
                 />
             )}
 

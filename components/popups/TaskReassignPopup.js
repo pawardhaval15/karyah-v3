@@ -1,7 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { jwtDecode } from 'jwt-decode';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -15,258 +13,145 @@ import {
   View,
 } from 'react-native';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useUserConnections } from '../../hooks/useConnections';
+import { useUserDetails } from '../../hooks/useUser';
 import { useTheme } from '../../theme/ThemeContext';
-import { getUserConnections } from '../../utils/connections';
 import { reassignTask } from '../../utils/task';
 
 const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, currentAssignees = [], isCreator = false }) => {
   const { t } = useTranslation();
-  const contextTheme = useTheme();
-  const theme = propTheme || contextTheme;
+  const queryClient = useQueryClient();
+  const theme = propTheme || useTheme();
+
   const [query, setQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [connections, setConnections] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState([]);
-  const [removedUsers, setRemovedUsers] = useState([]); // Track users being removed
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState(null);
+  const [removedUsers, setRemovedUsers] = useState([]);
 
-  // Get current user ID when component mounts
-  useEffect(() => {
-    const getCurrentUserId = async () => {
-      try {
-        const token = await AsyncStorage.getItem('token');
-        if (token) {
-          const decoded = jwtDecode(token);
-          setCurrentUserId(decoded.id || decoded.userId);
-        }
-      } catch (error) {
-        console.error('Error getting current user ID:', error);
-      }
-    };
-    getCurrentUserId();
-  }, []);
+  // React Query Hooks
+  const { data: connections = [], isLoading: loading } = useUserConnections();
+  const { data: userData } = useUserDetails();
+  const currentUserId = userData?.id || userData?.userId;
 
+  // Optimized Search Results
+  const searchResults = useMemo(() => {
+    if (!query.trim()) return connections;
+    const lowerQuery = query.toLowerCase();
+    return connections.filter(user =>
+      (user.userName || user.name || '').toLowerCase().includes(lowerQuery) ||
+      (user.email || '').toLowerCase().includes(lowerQuery)
+    );
+  }, [connections, query]);
+
+  // Reset state when popup opens
   useEffect(() => {
     if (visible) {
-      setLoading(true);
-      setSelectedUsers([]); // Reset selection when opening
-      setQuery(''); // Reset search query
-      getUserConnections()
-        .then((data) => {
-          if (data && Array.isArray(data)) {
-            setConnections(data);
-        
-            // Show all connections initially when popup opens (including current assignees)
-            setSearchResults(data);
-          } else {
-            setConnections([]);
-            setSearchResults([]);
-          }
-        })
-        .catch((error) => {
-          console.error('[TaskReassignPopup] Error loading connections:', error);
-          setConnections([]);
-          setSearchResults([]);
-        })
-        .finally(() => {
-          // console.log('[TaskReassignPopup] Finished loading connections');
-          setLoading(false);
-        });
-    } else {
-      // Reset everything when popup closes
-      setConnections([]);
-      setSearchResults([]);
       setSelectedUsers([]);
       setRemovedUsers([]);
       setQuery('');
     }
-  }, [visible, currentAssignees]);
+  }, [visible]);
 
-  const handleSearch = (value) => {
-    setQuery(value);
-    
-    if (!value.trim()) {
-      // Show all connections when search is empty
-      setSearchResults(connections);
-      return;
+  const reassignMutation = useMutation({
+    mutationFn: (finalUserIds) => reassignTask(taskId, finalUserIds),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['issue', taskId] });
     }
-    
-    // Search with any length of input (include all users, current assignees will be marked)
-    const filtered = connections.filter(user =>
-      (user.userName || user.name || '').toLowerCase().includes(value.toLowerCase()) ||
-      (user.email || '').toLowerCase().includes(value.toLowerCase())
-    );
-    setSearchResults(filtered);
-  };
+  });
 
-  const handleUserSelect = (user) => {
+
+  const handleSearch = useCallback((value) => {
+    setQuery(value);
+  }, []);
+
+  const handleUserSelect = useCallback((user) => {
     const userId = user.userId || user.id;
     const isCurrentlyAssigned = currentAssignees.some(assignee => (assignee.userId || assignee.id) === userId);
-    
-    // If creator: allow selection/deselection of anyone except current user
-    // If not creator: don't allow selection/deselection of current assignees or current user
-    if (!isCreator && (isCurrentlyAssigned || userId === currentUserId)) {
-      return;
-    }
-    
-    // Don't allow the current user to select/deselect themselves
-    if (userId === currentUserId) {
-      return;
-    }
-    
+
+    if (!isCreator && (isCurrentlyAssigned || userId === currentUserId)) return;
+    if (userId === currentUserId) return;
+
     if (isCurrentlyAssigned) {
-      // Handle removal of current assignee (only if creator)
       const isMarkedForRemoval = removedUsers.some(u => (u.userId || u.id) === userId);
       if (isMarkedForRemoval) {
-        // Remove from removal list (keep them assigned)
         setRemovedUsers(prev => prev.filter(u => (u.userId || u.id) !== userId));
       } else {
-        // Add to removal list
         setRemovedUsers(prev => [...prev, user]);
       }
     } else {
-      // Handle addition of new assignee
       const isSelected = selectedUsers.some(u => (u.userId || u.id) === userId);
       if (isSelected) {
-        // Remove user from selection
         setSelectedUsers(prev => prev.filter(u => (u.userId || u.id) !== userId));
       } else {
-        // Add user to selection
         setSelectedUsers(prev => [...prev, user]);
       }
     }
-  };
+  }, [currentAssignees, isCreator, currentUserId, removedUsers, selectedUsers]);
 
   const handleConfirmReassign = async () => {
     if (selectedUsers.length === 0 && removedUsers.length === 0) {
       Alert.alert("Error", "Please select users to add or remove.");
       return;
     }
-    
+
     try {
-      // Create new assignment array by:
-      // 1. Starting with all existing assignees
-      // 2. Removing users marked for removal
-      // 3. Adding newly selected users
-      // 4. Removing current user if they're not the creator (existing logic)
-      
       const currentAssigneeIds = (currentAssignees || []).map(assignee => assignee.userId || assignee.id);
       const removedUserIds = removedUsers.map(user => user.userId || user.id);
       const newUserIds = selectedUsers.map(user => user.userId || user.id);
-      
-      // Start with existing assignees, remove those marked for removal
+
       let finalAssignedUserIds = currentAssigneeIds.filter(id => !removedUserIds.includes(id));
-      
-      // If not creator, remove current user (existing behavior)
+
       if (!isCreator) {
         finalAssignedUserIds = finalAssignedUserIds.filter(id => id !== currentUserId);
       }
-      
-      // Add newly selected users, remove duplicates
+
       finalAssignedUserIds = [...new Set([...finalAssignedUserIds, ...newUserIds])];
-      
-      await reassignTask(taskId, finalAssignedUserIds);
-      
-      // Create success message that matches backend logic
-      let messageParts = [];
-      
-      // Users actually removed (including current user if not creator)
-      const actuallyRemoved = currentAssigneeIds.filter(id => 
-        removedUserIds.includes(id) || (!isCreator && id === currentUserId)
-      );
-      
-      // Users actually added (new selections)
-      const actuallyAdded = newUserIds;
-      
-      // Users retained (existing assignees not removed)
-      const retained = currentAssigneeIds.filter(id => 
-        !removedUserIds.includes(id) && (isCreator || id !== currentUserId)
-      );
-      
-      if (actuallyRemoved.includes(currentUserId)) {
-        messageParts.push("You have been removed from this task");
-      }
-      
-      if (actuallyAdded.length > 0) {
-        const addedUserNames = selectedUsers.map(u => u.userName || u.name).join(', ');
-        messageParts.push(` ${actuallyAdded.length} new user(s) added: ${addedUserNames}`);
-      }
-      
-      if (removedUsers.length > 0 && !actuallyRemoved.includes(currentUserId)) {
-        const removedUserNames = removedUsers.map(u => u.userName || u.name).join(', ');
-        messageParts.push(`${removedUsers.length} user(s) removed: ${removedUserNames}`);
-      }
-      
-      if (retained.length > 0) {
-        const retainedAssignees = currentAssignees
-          .filter(assignee => retained.includes(assignee.userId || assignee.id))
-          .map(assignee => assignee.userName || assignee.name)
-          .join(', ');
-        messageParts.push(`${retained.length} assignee(s) retained: ${retainedAssignees}`);
-      }
-      
-      const message = messageParts.length > 0 
-        ? `Assignment updated successfully!\n\n${messageParts.join('\n')}`
-        : "Assignment updated successfully!";
-      
+
+      await reassignMutation.mutateAsync(finalAssignedUserIds);
+
+      const message = "Assignment updated successfully!";
       Alert.alert("Success", message, [{ text: "OK", onPress: () => handleClose(true) }]);
     } catch (err) {
-      console.error('[TaskReassignPopup] Error:', err);
       Alert.alert("Error", err.message || "Failed to reassign");
     }
   };
 
-  const handleClose = (wasReassigned = false) => {
-    // Reset all popup state
+  const handleClose = useCallback((wasReassigned = false) => {
     setQuery('');
-    setSearchResults([]);
     setSelectedUsers([]);
     setRemovedUsers([]);
-    setShowConfirmation(false);
-    setConnections([]);
-    setLoading(false);
-    
-    // Only call onClose with wasReassigned parameter
-    // Don't pass any navigation actions that might cause unwanted navigation
-    if (onClose) {
-      onClose(wasReassigned);
-    }
-  };
+    if (onClose) onClose(wasReassigned);
+  }, [onClose]);
 
-  const renderUserItem = ({ item }) => {
+  const renderUserItem = useCallback(({ item }) => {
     const userId = item.userId || item.id;
     const isSelected = selectedUsers.some(u => (u.userId || u.id) === userId);
     const isCurrentUser = userId === currentUserId;
     const isCurrentlyAssigned = currentAssignees.some(assignee => (assignee.userId || assignee.id) === userId);
     const isMarkedForRemoval = removedUsers.some(u => (u.userId || u.id) === userId);
-    
-    // Disable interaction for current user or (non-creators with current assignees)
     const isDisabled = isCurrentUser || (!isCreator && isCurrentlyAssigned);
-    
-    // Determine visual state
+
     let borderColor = theme.border;
     let showCheckmark = false;
     let showRemovalIcon = false;
-    
+
     if (isCurrentlyAssigned) {
       if (isCreator && isMarkedForRemoval) {
-        borderColor = '#FF6B6B'; // Red border for removal
+        borderColor = '#FF6B6B';
         showRemovalIcon = true;
       } else if (!isMarkedForRemoval) {
-        borderColor = theme.border; // Normal border for staying assigned
+        borderColor = theme.border;
       }
     } else if (isSelected) {
-      borderColor = theme.primary; // Blue border for new selection
+      borderColor = theme.primary;
       showCheckmark = true;
     }
-    
+
     return (
       <TouchableOpacity
         style={[
-          styles.userItemCard, 
-          {  
+          styles.userItemCard,
+          {
             backgroundColor: theme.card,
             borderColor: borderColor,
             borderWidth: 1,
@@ -288,7 +173,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
             </View>
           )}
           <View style={{ flex: 1 }}>
-            <Text style={[styles.userName, { 
+            <Text style={[styles.userName, {
               color: isCurrentlyAssigned ? theme.secondaryText : theme.text
             }]}>
               {item.userName || item.name}
@@ -314,7 +199,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
         </View>
       </TouchableOpacity>
     );
-  };
+  }, [selectedUsers, currentUserId, currentAssignees, removedUsers, theme, isCreator, handleUserSelect]);
 
   return (
     <Modal
@@ -323,8 +208,8 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
       animationType="fade"
       onRequestClose={handleClose}
     >
-      <View style={[styles.overlay, { 
-        backgroundColor: theme.background === '#1A1A1A' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)' 
+      <View style={[styles.overlay, {
+        backgroundColor: theme.background === '#1A1A1A' ? 'rgba(0,0,0,0.8)' : 'rgba(0,0,0,0.5)'
       }]}>
         <View style={[styles.popup, { backgroundColor: theme.card }]}>
           {/* Header */}
@@ -336,7 +221,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               <Ionicons name="close" size={22} color={theme.text} />
             </TouchableOpacity>
           </View>
-          
+
           {/* Current Assignees - Compact Capsules */}
           {currentAssignees && currentAssignees.length > 0 && (
             <View style={[styles.currentAssigneesSection, { marginBottom: 20 }]}>
@@ -349,13 +234,13 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
                   const isMarkedForRemoval = removedUsers.some(u => (u.userId || u.id) === (assignee.userId || assignee.id));
                   const displayName = assignee.userName || assignee.name || 'Unknown User';
                   const canBeRemoved = isCreator && !isCurrentUser; // Creator can remove others, but not themselves
-                  
+
                   return (
-                    <TouchableOpacity 
-                      key={index} 
+                    <TouchableOpacity
+                      key={index}
                       style={[
-                        styles.assigneeCapsule, 
-                        { 
+                        styles.assigneeCapsule,
+                        {
                           backgroundColor: isMarkedForRemoval ? '#FFF5F5' : (isCurrentUser ? theme.secCard : theme.card),
                           borderColor: isMarkedForRemoval ? '#FF6B6B' : (isCurrentUser ? theme.primary : theme.border),
                           opacity: canBeRemoved ? 1 : 0.8,
@@ -369,7 +254,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
                       activeOpacity={canBeRemoved ? 0.7 : 1}
                       disabled={!canBeRemoved}
                     >
-                      <Text style={[styles.capsuleName, { 
+                      <Text style={[styles.capsuleName, {
                         color: isMarkedForRemoval ? '#FF6B6B' : (isCurrentUser ? theme.primary : theme.text)
                       }]}>
                         {displayName}
@@ -404,7 +289,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               {t("SELECT USERS TO ADDED") || "SELECT USERS TO ADDED"}
             </Text>
             <Text style={[styles.searchHintText, { color: theme.secondaryText + '80', marginBottom: 8, fontSize: 12 }]}>
-              {isCreator 
+              {isCreator
                 ? (t("As creator, you can add new users or remove existing assignees") || "As creator, you can add new users or remove existing assignees")
                 : (t("Current assignees are marked and cannot be removed") || "Current assignees are marked and cannot be removed")
               }
@@ -424,7 +309,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
 
           {/* Selected Users Count */}
           {(selectedUsers.length > 0 || removedUsers.length > 0) && (
-            <View style={[styles.selectedCountBox, { 
+            <View style={[styles.selectedCountBox, {
               backgroundColor: theme.primary + '15',
               borderColor: theme.primary + '30'
             }]}>
@@ -447,7 +332,7 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
             <View style={styles.resultsBox}>
               {searchResults.length > 0 ? (
                 <>
-                  
+
                   <FlatList
                     data={searchResults}
                     renderItem={renderUserItem}
@@ -459,9 +344,9 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
                   />
                 </>
               ) : (
-                <View style={[styles.noResultsBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}> 
+                <View style={[styles.noResultsBox, { backgroundColor: theme.secCard, borderColor: theme.border }]}>
                   <Text style={[styles.noResultsText, { color: theme.secondaryText }]}>
-                    {query ? 
+                    {query ?
                       (t("No users found matching your search") || "No users found matching your search") :
                       (t("No connections available") || "No connections available")
                     }
@@ -474,10 +359,10 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
           {/* Buttons */}
           <View style={[styles.buttonRow, { marginTop: 20 }]}>
             <TouchableOpacity
-              style={[styles.cancelBtn, { 
-                backgroundColor: theme.secCard, 
+              style={[styles.cancelBtn, {
+                backgroundColor: theme.secCard,
                 borderColor: theme.border,
-                borderWidth: 1 
+                borderWidth: 1
               }]}
               onPress={handleClose}
             >
@@ -487,8 +372,8 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
             </TouchableOpacity>
             <TouchableOpacity
               style={[
-                styles.assignBtn, 
-                { 
+                styles.assignBtn,
+                {
                   backgroundColor: (selectedUsers.length > 0 || removedUsers.length > 0) ? theme.primary : theme.border,
                   opacity: (selectedUsers.length > 0 || removedUsers.length > 0) ? 1 : 0.6,
                   shadowColor: (selectedUsers.length > 0 || removedUsers.length > 0) ? theme.primary : 'transparent',
@@ -501,8 +386,8 @@ const TaskReassignPopup = ({ visible, onClose, taskId, theme: propTheme, current
               onPress={handleConfirmReassign}
               disabled={selectedUsers.length === 0 && removedUsers.length === 0}
             >
-              <Text style={[styles.assignBtnText, { 
-                color: (selectedUsers.length > 0 || removedUsers.length > 0) ? '#fff' : theme.secondaryText 
+              <Text style={[styles.assignBtnText, {
+                color: (selectedUsers.length > 0 || removedUsers.length > 0) ? '#fff' : theme.secondaryText
               }]}>
                 {t("Update") || "Update"} {(selectedUsers.length > 0 || removedUsers.length > 0) && `(${selectedUsers.length + removedUsers.length})`}
               </Text>

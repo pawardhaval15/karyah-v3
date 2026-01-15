@@ -3,7 +3,7 @@ import { useEffect } from 'react';
 import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import SystemNotificationService from './SystemNotificationService';
 
-const API_URL = 'https://api.karyah.in/';
+
 
 async function requestUserPermission() {
   // Android specific permission
@@ -58,7 +58,7 @@ export default function usePushNotifications() {
   useEffect(() => {
     // Initialize system notification service
     const notificationService = new SystemNotificationService();
-    
+
     // Request permissions and register token
     const initializeNotifications = async () => {
       const hasPermission = await requestUserPermission();
