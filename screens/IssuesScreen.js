@@ -19,8 +19,9 @@ import {
 import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useUserConnections } from '../hooks/useConnections';
-import { useCreateIssue, useIssues, useToggleCritical } from '../hooks/useIssues';
+import { useIssues, useToggleCritical } from '../hooks/useIssues';
 import { useProjects } from '../hooks/useProjects';
+import { useIssueStore } from '../store/issueStore';
 import { useTheme } from '../theme/ThemeContext';
 import { getUserNameFromToken } from '../utils/auth';
 
@@ -28,19 +29,22 @@ export default function IssuesScreen({ navigation }) {
     const theme = useTheme();
     const queryClient = useQueryClient();
     const { t } = useTranslation();
-    const [search, setSearch] = useState('');
-    const [statusTab, setStatusTab] = useState('all');
-    const [currentUserName, setCurrentUserName] = useState(null);
-    const [showFilters, setShowFilters] = useState(false);
-    const [showIssuePopup, setShowIssuePopup] = useState(false);
 
-    // Filter State
-    const [filters, setFilters] = useState({
-        status: [],
-        projects: [],
-        createdBy: [],
-        locations: [],
-    });
+    // Zustand Store for instant UI state
+    const {
+        searchQuery,
+        setSearchQuery,
+        statusTab,
+        setStatusTab,
+        showFilters,
+        setShowFilters,
+        filters,
+        toggleFilter,
+        clearAllFilters
+    } = useIssueStore();
+
+    const [currentUserName, setCurrentUserName] = useState(null);
+    const [showIssuePopup, setShowIssuePopup] = useState(false);
 
     const [issueForm, setIssueForm] = useState({
         title: '',
@@ -56,21 +60,17 @@ export default function IssuesScreen({ navigation }) {
     const { data: projects = [], isLoading: loadingProjects } = useProjects();
     const { data: connectionsData = [] } = useUserConnections();
     const toggleCriticalMutation = useToggleCritical();
-    const createIssueMutation = useCreateIssue();
 
-    // Refresh data when screen comes into focus
+    // Sync on focus
     useFocusEffect(
         useCallback(() => {
             refetchIssues();
         }, [refetchIssues])
     );
 
-    // Map connections correctly
     const users = useMemo(() => connectionsData.connections || [], [connectionsData]);
-
     const loading = loadingIssues && issues.length === 0;
 
-    // Fetch user info on mount
     useEffect(() => {
         const fetchUser = async () => {
             try {
@@ -83,34 +83,15 @@ export default function IssuesScreen({ navigation }) {
         fetchUser();
     }, []);
 
-    // Filter Logic
-    const toggleFilter = (filterType, value) => {
-        setFilters(prev => ({
-            ...prev,
-            [filterType]: prev[filterType].includes(value)
-                ? prev[filterType].filter(item => item !== value)
-                : [...prev[filterType], value],
-        }));
-    };
-
-    const clearAllFilters = () => {
-        setFilters({
-            status: [],
-            projects: [],
-            createdBy: [],
-            locations: [],
-        });
-    };
-
-    const getActiveFiltersCount = () => {
+    const getActiveFiltersCount = useCallback(() => {
         return Object.values(filters).reduce((count, arr) => count + arr.length, 0);
-    };
+    }, [filters]);
 
     // Memoized Filtered Issues
     const filteredIssues = useMemo(() => {
         return issues.filter(item => {
             const searchText = (item.name || '').toLowerCase();
-            const matchesSearch = searchText.includes(search.toLowerCase());
+            const matchesSearch = searchText.includes(searchQuery.toLowerCase());
 
             const currentStatus = item.status;
             const matchesStatus = filters.status.length === 0 || filters.status.includes(currentStatus);
@@ -126,9 +107,8 @@ export default function IssuesScreen({ navigation }) {
 
             return matchesSearch && matchesStatus && matchesProject && matchesCreator && matchesLocation;
         });
-    }, [issues, search, filters]);
+    }, [issues, searchQuery, filters]);
 
-    // Derive filter options from current issues
     const filterOptions = useMemo(() => {
         const statuses = new Set();
         const projectNames = new Set();
@@ -167,13 +147,12 @@ export default function IssuesScreen({ navigation }) {
                 taskId: issue.id,
                 isCritical
             });
-            Alert.alert(t('success'), t('critical_status_updated'));
         } catch (error) {
             Alert.alert(t('error'), error.message || t('failed_to_update'));
         }
     };
 
-    const handleIssueCreated = async (newIssue) => {
+    const handleIssueCreated = () => {
         setShowIssuePopup(false);
         setIssueForm({
             title: '',
@@ -186,21 +165,8 @@ export default function IssuesScreen({ navigation }) {
         refetchIssues();
     };
 
-    const handleIssueSubmit = () => {
-        setShowIssuePopup(false);
-    };
-
-    const handleIssueChange = (field, value) => {
-        setIssueForm(prev => ({ ...prev, [field]: value }));
-    };
-
-    const handleDateSelect = () => {
-        // This will be handled inside IssuePopup or via another picker
-    };
-
     return (
         <View style={[styles.container, { backgroundColor: theme.background }]}>
-            {/* Header / Back */}
             <View style={styles.headerRow}>
                 <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
                     <MaterialIcons name="arrow-back-ios" size={20} color={theme.text} />
@@ -208,7 +174,6 @@ export default function IssuesScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Banner */}
             <LinearGradient
                 colors={theme.dark ? ['#1A3E2F', '#011F53'] : ['#011F53', '#366CD9']}
                 start={{ x: 0, y: 0 }}
@@ -216,21 +181,15 @@ export default function IssuesScreen({ navigation }) {
                 style={styles.banner}
             >
                 <View style={{ flex: 1 }}>
-                    <Text style={styles.bannerTitle}>{t('issues')}</Text>
+                    <Text style={styles.bannerTitle}>
+                        {t('issues')} {issues.length > 0 && `(${issues.length})`}
+                    </Text>
                     <Text style={styles.bannerDesc}>
-                        {/* {issues.length}  */}
                         {t('all_issues_assigned_or_created_by_you_are_listed_here')}
                     </Text>
                 </View>
-                {/* <TouchableOpacity
-                    style={styles.fabHeader}
-                    onPress={() => setShowIssuePopup(true)}
-                >
-                    <MaterialIcons name="add" size={24} color="#fff" />
-                </TouchableOpacity> */}
             </LinearGradient>
 
-            {/* Search & Filter Trigger */}
             <View style={styles.searchSection}>
                 <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar || (theme.dark ? '#333' : '#f7f7f7') }]}>
                     <MaterialIcons name="search" size={20} color={theme.secondaryText} style={{ marginRight: 8 }} />
@@ -238,11 +197,11 @@ export default function IssuesScreen({ navigation }) {
                         style={[styles.searchInput, { color: theme.text }]}
                         placeholder={t("search_placeholder_issues")}
                         placeholderTextColor={theme.secondaryText}
-                        value={search}
-                        onChangeText={setSearch}
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
                     />
-                    {search.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearch('')}>
+                    {searchQuery.length > 0 && (
+                        <TouchableOpacity onPress={() => setSearchQuery('')}>
                             <MaterialIcons name="close" size={18} color={theme.secondaryText} />
                         </TouchableOpacity>
                     )}
@@ -271,7 +230,6 @@ export default function IssuesScreen({ navigation }) {
                 </TouchableOpacity>
             </View>
 
-            {/* Compact Filters Panel */}
             {showFilters && (
                 <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
                     <View style={styles.filterHeader}>
@@ -282,7 +240,6 @@ export default function IssuesScreen({ navigation }) {
                     </View>
 
                     <View style={styles.filterOptionsContainer}>
-                        {/* Status Chips */}
                         <View style={styles.filterGroup}>
                             <Text style={[styles.filterLabel, { color: theme.secondaryText }]}>{t('status')}</Text>
                             <View style={styles.chipsRow}>
@@ -304,7 +261,6 @@ export default function IssuesScreen({ navigation }) {
                             </View>
                         </View>
 
-                        {/* Projects Chips (Only show top 5 or use horizontal scroll) */}
                         {filterOptions.projects.length > 0 && (
                             <View style={styles.filterGroup}>
                                 <Text style={[styles.filterLabel, { color: theme.secondaryText }]}>{t('projects')}</Text>
@@ -329,7 +285,6 @@ export default function IssuesScreen({ navigation }) {
                                 </View>
                             </View>
                         )}
-
                         {/* Created By Chips */}
                         {filterOptions.creators.length > 0 && (
                             <View style={styles.filterGroup}>
@@ -387,11 +342,9 @@ export default function IssuesScreen({ navigation }) {
                 </View>
             )}
 
-            {/* List Section */}
             {loading ? (
                 <View style={styles.centered}>
                     <ActivityIndicator size="large" color={theme.primary} />
-                    <Text style={{ color: theme.secondaryText, marginTop: 10 }}>{t('loading_issues')}</Text>
                 </View>
             ) : (
                 <IssueList
@@ -411,7 +364,6 @@ export default function IssuesScreen({ navigation }) {
                             onRefresh={handleRefresh}
                             colors={[theme.primary]}
                             tintColor={theme.primary}
-                            progressBackgroundColor={theme.card}
                         />
                     }
                 />
@@ -421,10 +373,9 @@ export default function IssuesScreen({ navigation }) {
                 visible={showIssuePopup}
                 onClose={() => setShowIssuePopup(false)}
                 values={issueForm}
-                onChange={handleIssueChange}
-                onSubmit={handleIssueSubmit}
+                onChange={(field, value) => setIssueForm(prev => ({ ...prev, [field]: value }))}
+                onSubmit={() => setShowIssuePopup(false)}
                 projects={projects}
-                onSelectDate={handleDateSelect}
                 users={users}
                 theme={theme}
                 onIssueCreated={handleIssueCreated}
@@ -434,9 +385,7 @@ export default function IssuesScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
+    container: { flex: 1 },
     headerRow: {
         paddingTop: Platform.OS === 'ios' ? 50 : 20,
         paddingHorizontal: 16,
@@ -459,11 +408,6 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         marginBottom: 20,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 10,
-        elevation: 5,
     },
     bannerTitle: {
         fontSize: 24,
@@ -474,14 +418,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         color: 'rgba(255,255,255,0.8)',
         marginTop: 4,
-    },
-    fabHeader: {
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     searchSection: {
         flexDirection: 'row',
@@ -500,11 +436,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
     },
-    searchInput: {
-        flex: 1,
-        fontSize: 15,
-        fontWeight: '500',
-    },
+    searchInput: { flex: 1, fontSize: 15, fontWeight: '500' },
     filterTrigger: {
         width: 48,
         height: 48,
@@ -525,23 +457,13 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#fff',
     },
-    badgeText: {
-        color: '#fff',
-        fontSize: 10,
-        fontWeight: 'bold',
-    },
+    badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
     filtersPanel: {
         marginHorizontal: 16,
         marginBottom: 15,
         borderRadius: 15,
         padding: 15,
         borderWidth: 1,
-        // Glassmorphism effect
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
-        elevation: 2,
     },
     filterHeader: {
         flexDirection: 'row',
@@ -549,47 +471,28 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 12,
     },
-    filterHeaderText: {
-        fontSize: 15,
-        fontWeight: 'bold',
-    },
-    filterOptionsContainer: {
-        gap: 12,
-    },
-    filterGroup: {
-        gap: 6,
-    },
+    filterHeaderText: { fontSize: 15, fontWeight: 'bold' },
+    filterOptionsContainer: { gap: 12 },
+    filterGroup: { gap: 6 },
     filterLabel: {
         fontSize: 12,
         fontWeight: '600',
         textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
-    chipsRow: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    horizontalScroll: {
-        marginHorizontal: -15,
-        paddingHorizontal: 15,
-    },
+    chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     chip: {
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 12,
         borderWidth: 1,
     },
-    chipText: {
-        fontSize: 12,
-        fontWeight: '600',
+    chipText: { fontSize: 12, fontWeight: '600' },
+    horizontalScroll: {
+        marginHorizontal: -15,
+        paddingHorizontal: 15,
     },
-    centered: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    // Required from old styles but mapped to new logic
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     issueCard: {},
     issueIcon: {},
     issueIconText: {},
@@ -597,6 +500,4 @@ const styles = StyleSheet.create({
     issueRow: {},
     issueTitleRow: {},
     issueInfo: {},
-    criticalTag: {},
-    criticalTagText: {},
 });
