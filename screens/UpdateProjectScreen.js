@@ -1,7 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
@@ -141,12 +141,10 @@ export default function UpdateProjectScreen({ route, navigation }) {
     if (showCoAdminPicker) {
       getUserConnections()
         .then((connections) => {
-          setAllConnections(connections);
-          setFilteredConnections(connections);
+          setAllConnections(connections || []);
         })
         .catch(() => {
           setAllConnections([]);
-          setFilteredConnections([]);
         });
     }
   }, [showCoAdminPicker]);

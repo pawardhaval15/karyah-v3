@@ -337,5 +337,6 @@
   "hand_over_project": "Hand Over",
   "select_new_manager": "Select new Manager",
   "Loading Notifications": "Loading Notifications...",
-  "project_details": "Project Details"  
+  "project_details": "Project Details",
+  "issues_details": "Issues Details"  
 }

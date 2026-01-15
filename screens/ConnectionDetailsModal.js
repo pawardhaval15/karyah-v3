@@ -1,5 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -12,61 +13,49 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  useWindowDimensions,
 } from 'react-native';
-import { getUserConnections, removeConnection } from '../utils/connections';
-import { useTranslation } from 'react-i18next';
-export default function ConnectionDetailsModal({ connection, onClose, onRemove, theme }) {
-  const [bio, setBio] = useState('');
-  const [dob, setDob] = useState('');
-  const [phone, setPhone] = useState('');
-  const [location, setLocation] = useState('');
-  const [loadingDetails, setLoadingDetails] = useState(true);
-  const [menuVisible, setMenuVisible] = useState(false);
+import Animated, {
+  FadeIn,
+  FadeOut,
+  SlideInUp,
+  SlideOutDown,
+} from 'react-native-reanimated';
+import { useRemoveConnection } from '../hooks/useConnections';
+
+export default function ConnectionDetailsModal({ connection, onClose, theme }) {
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
+  const isTablet = SCREEN_WIDTH >= 768;
   const { t } = useTranslation();
-  useEffect(() => {
-    const fetchDetails = async () => {
-      try {
-        const connections = await getUserConnections();
-        const matched = connections.find((c) => c.connectionId === connection.connectionId);
-        if (matched) {
-          setBio(matched.bio || '');
-          setDob(matched.dob || '');
-          setPhone(matched.phone || '');
-          setLocation(matched.location || '');
-        }
-      } catch (err) {
-        console.error('Failed to fetch user connection details:', err.message);
-      } finally {
-        setLoadingDetails(false);
-      }
-    };
-    fetchDetails();
-  }, [connection]);
+
+  // State for editable fields
+  const [bio, setBio] = useState(connection.bio || '');
+  const [dob, setDob] = useState(connection.dob || '');
+  const [phone, setPhone] = useState(connection.phone || '');
+  const [location, setLocation] = useState(connection.location || '');
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  // Mutation for removing connection
+  const removeMutation = useRemoveConnection();
 
   const handleRemove = async () => {
     setMenuVisible(false);
-    
-    // Show confirmation alert
+
     Alert.alert(
-      'Remove Connection',
-      `Are you sure you want to remove ${connection.name} from your connections?`,
+      t('remove_connection'),
+      `${t('are_you_sure_remove')} ${connection.name}?`,
       [
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Remove',
+          text: t('remove'),
           style: 'destructive',
           onPress: async () => {
             try {
-              const message = await removeConnection(connection.connectionId);
-              console.log('Connection removed:', message);
-              if (onRemove) onRemove(connection.connectionId);
+              await removeMutation.mutateAsync(connection.connectionId);
               onClose();
             } catch (err) {
               console.error('Remove failed:', err.message);
-              Alert.alert('Error', 'Failed to remove connection.');
+              Alert.alert(t('error'), t('failed_to_remove_connection'));
             }
           },
         },
@@ -75,16 +64,32 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
   };
 
   return (
-    <Modal visible transparent animationType="slide">
+    <Modal visible transparent animationType="none">
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={modalStyles.overlay}>
+        <Animated.View
+          entering={FadeIn.duration(300)}
+          exiting={FadeOut.duration(200)}
+          style={styles.overlay}
+        >
           <TouchableWithoutFeedback>
-            <View style={[modalStyles.modalCard, { backgroundColor: theme.card }]}>
-              <ScrollView>
-                <View style={modalStyles.headerRow}>
-                  <TouchableOpacity style={modalStyles.backBtn} onPress={onClose}>
+            <Animated.View
+              entering={SlideInUp.springify().damping(20).stiffness(90)}
+              exiting={SlideOutDown.duration(200)}
+              style={[
+                styles.modalCard,
+                {
+                  backgroundColor: theme.card,
+                  width: isTablet ? '60%' : '92%',
+                  height: isTablet ? '80%' : 'auto',
+                  maxHeight: '90%',
+                }
+              ]}
+            >
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.headerRow}>
+                  <TouchableOpacity style={styles.backBtn} onPress={onClose}>
                     <MaterialIcons name="arrow-back-ios" size={18} color={theme.text} />
-                    <Text style={[modalStyles.backText, { color: theme.text }]}>{t('back')}</Text>
+                    <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
                     <Feather name="more-vertical" size={24} color={theme.text} />
@@ -92,154 +97,167 @@ export default function ConnectionDetailsModal({ connection, onClose, onRemove, 
                 </View>
 
                 {menuVisible && (
-                  <View style={[modalStyles.menu, { backgroundColor: theme.secCard }]}>
-                    <TouchableOpacity style={modalStyles.menuItem} onPress={handleRemove}>
+                  <Animated.View
+                    entering={FadeIn.duration(200)}
+                    style={[styles.menu, { backgroundColor: theme.card, borderColor: theme.border, borderWidth: 1 }]}
+                  >
+                    <TouchableOpacity style={styles.menuItem} onPress={handleRemove}>
                       <Feather
                         name="user-x"
                         size={18}
-                        color={theme.dangerText}
+                        color={theme.danger}
                         style={{ marginRight: 8 }}
                       />
-                      <Text style={[modalStyles.menuItemText, { color: theme.dangerText }]}>
+                      <Text style={[styles.menuItemText, { color: theme.danger }]}>
                         {t('remove_connection')}
                       </Text>
                     </TouchableOpacity>
-                  </View>
+                  </Animated.View>
                 )}
 
-                {loadingDetails ? (
-                  <ActivityIndicator
-                    size="large"
-                    color={theme.primary}
-                    style={{ marginVertical: 40 }}
+                <View style={styles.profileSection}>
+                  <Image
+                    source={{ uri: connection.profilePhoto || 'https://via.placeholder.com/90' }}
+                    style={styles.avatar}
                   />
-                ) : (
-                  <>
-                    <View style={modalStyles.profileSection}>
-                      <Image source={{ uri: connection.profilePhoto }} style={modalStyles.avatar} />
-                      <Text style={[modalStyles.name, { color: theme.text }]}>
-                        {connection.name}
-                      </Text>
-                    </View>
+                  <Text style={[styles.name, { color: theme.text }]}>
+                    {connection.name}
+                  </Text>
+                  <Text style={{ color: theme.secondaryText, marginTop: 4 }}>
+                    {connection.email || ''}
+                  </Text>
+                </View>
 
-                    <View style={[modalStyles.card, { backgroundColor: theme.card }]}>
-                      <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                        {t('bio')}
+                <View style={styles.contentContainer}>
+                  <View style={styles.fieldSection}>
+                    <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>
+                      {t('bio')}
+                    </Text>
+                    <TextInput
+                      style={[
+                        styles.bioInput,
+                        {
+                          color: theme.text,
+                          backgroundColor: theme.background,
+                          borderColor: theme.border,
+                        },
+                      ]}
+                      placeholder={t('bio_placeholder')}
+                      placeholderTextColor={theme.secondaryText}
+                      value={bio}
+                      onChangeText={setBio}
+                      multiline
+                    />
+                  </View>
+
+                  <View style={styles.row}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>
+                        {t('date_of_birth')}
                       </Text>
                       <TextInput
                         style={[
-                          modalStyles.bioInput,
+                          styles.input,
                           {
                             color: theme.text,
-                            backgroundColor: theme.card,
+                            backgroundColor: theme.background,
                             borderColor: theme.border,
                           },
                         ]}
-                        placeholder="Tell something about yourself..."
+                        placeholder="DD/MM/YYYY"
                         placeholderTextColor={theme.secondaryText}
-                        value={bio}
-                        onChangeText={setBio}
-                        multiline
+                        value={dob}
+                        onChangeText={setDob}
                       />
-
-                      <View style={modalStyles.row}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                          <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                            {t('date_of_birth')}
-                          </Text>
-                          <TextInput
-                            style={[
-                              modalStyles.input,
-                              {
-                                color: theme.text,
-                                backgroundColor: theme.card,
-                                borderColor: theme.border,
-                              },
-                            ]}
-                            placeholder="DD/MM/YYYY"
-                            placeholderTextColor={theme.secondaryText}
-                            value={dob}
-                            onChangeText={setDob}
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                            {t('phone')}
-                          </Text>
-                          <TextInput
-                            style={[
-                              modalStyles.input,
-                              {
-                                color: theme.text,
-                                backgroundColor: theme.card,
-                                borderColor: theme.border,
-                              },
-                            ]}
-                            placeholder="Phone"
-                            placeholderTextColor={theme.secondaryText}
-                            value={phone}
-                            onChangeText={setPhone}
-                          />
-                        </View>
-                      </View>
-
-                      <Text style={[modalStyles.sectionLabel, { color: theme.secondaryText }]}>
-                        {t('location')}
-                      </Text>
-                      <View style={modalStyles.locationRow}>
-                        <Feather
-                          name="map-pin"
-                          size={18}
-                          color={theme.secondaryText}
-                          style={{ marginRight: 6 }}
-                        />
-                        <TextInput
-                          style={[
-                            modalStyles.input,
-                            {
-                              flex: 1,
-                              color: theme.text,
-                              backgroundColor: theme.card,
-                              borderColor: theme.border,
-                            },
-                          ]}
-                          placeholder="Location"
-                          placeholderTextColor={theme.secondaryText}
-                          value={location}
-                          onChangeText={setLocation}
-                        />
-                      </View>
                     </View>
-                  </>
-                )}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>
+                        {t('phone')}
+                      </Text>
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            color: theme.text,
+                            backgroundColor: theme.background,
+                            borderColor: theme.border,
+                          },
+                        ]}
+                        placeholder={t('phone')}
+                        placeholderTextColor={theme.secondaryText}
+                        value={phone}
+                        onChangeText={setPhone}
+                      />
+                    </View>
+                  </View>
+
+                  <View style={styles.fieldSection}>
+                    <Text style={[styles.sectionLabel, { color: theme.secondaryText }]}>
+                      {t('location')}
+                    </Text>
+                    <View style={styles.locationInputWrapper}>
+                      <Feather
+                        name="map-pin"
+                        size={18}
+                        color={theme.secondaryText}
+                        style={styles.locationIcon}
+                      />
+                      <TextInput
+                        style={[
+                          styles.input,
+                          {
+                            flex: 1,
+                            color: theme.text,
+                            backgroundColor: theme.background,
+                            borderColor: theme.border,
+                            paddingLeft: 40,
+                          },
+                        ]}
+                        placeholder={t('location')}
+                        placeholderTextColor={theme.secondaryText}
+                        value={location}
+                        onChangeText={setLocation}
+                      />
+                    </View>
+                  </View>
+                </View>
+                <View style={{ height: 40 }} />
               </ScrollView>
-            </View>
+
+              {removeMutation.isLoading && (
+                <View style={styles.loadingOverlay}>
+                  <ActivityIndicator size="large" color={theme.primary} />
+                </View>
+              )}
+            </Animated.View>
           </TouchableWithoutFeedback>
-        </View>
+        </Animated.View>
       </TouchableWithoutFeedback>
     </Modal>
   );
 }
 
-const modalStyles = StyleSheet.create({
+const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.18)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   modalCard: {
-    width: '92%',
-    maxHeight: '90%',
-    backgroundColor: '#fff',
-    borderRadius: 18,
+    borderRadius: 24,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 20,
+    elevation: 10,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingTop: 24,
     marginBottom: 8,
   },
@@ -249,94 +267,98 @@ const modalStyles = StyleSheet.create({
   },
   backText: {
     fontSize: 16,
-    color: '#222',
-    fontWeight: '400',
+    fontWeight: '500',
     marginLeft: 4,
   },
   menu: {
     position: 'absolute',
-    top: 54,
-    right: 24,
-
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    elevation: 6,
+    top: 60,
+    right: 20,
+    borderRadius: 12,
+    elevation: 8,
     shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 8,
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
     zIndex: 100,
-    minWidth: 170,
+    minWidth: 180,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 14,
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
   menuItemText: {
-    color: '#e53935',
-    fontWeight: '400',
+    fontWeight: '500',
     fontSize: 15,
   },
   profileSection: {
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 8,
+    marginVertical: 20,
   },
   avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 10,
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 12,
+    borderWidth: 3,
+    borderColor: '#fff',
   },
   name: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#222',
+    fontSize: 22,
+    fontWeight: '700',
     textAlign: 'center',
   },
-  card: {
-    backgroundColor: '#fff',
-    marginHorizontal: 8,
-    padding: 14,
-    borderRadius: 14,
+  contentContainer: {
+    paddingHorizontal: 20,
+  },
+  fieldSection: {
+    marginBottom: 16,
   },
   sectionLabel: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#222',
-    marginBottom: 6,
-    marginTop: 14,
+    fontSize: 13,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginTop: 8,
   },
   bioInput: {
-    backgroundColor: '#F8F9FB',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     fontSize: 15,
-    minHeight: 80,
+    minHeight: 100,
     borderWidth: 1,
-    borderColor: '#e6eaf3',
     textAlignVertical: 'top',
   },
   input: {
-    backgroundColor: '#F8F9FB',
-    borderRadius: 12,
-    padding: 12,
+    borderRadius: 16,
+    padding: 16,
     fontSize: 15,
     borderWidth: 1,
-    borderColor: '#e6eaf3',
-    fontWeight: '300',
   },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 6,
+    marginBottom: 16,
   },
-  locationRow: {
+  locationInputWrapper: {
+    position: 'relative',
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
+  locationIcon: {
+    position: 'absolute',
+    left: 14,
+    zIndex: 1,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  }
 });

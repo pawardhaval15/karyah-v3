@@ -448,7 +448,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                 </Text>
               </TouchableOpacity>
             )}
-            <Text style={[styles.bannerDesc, { color: '#e6eaf3' }]}>{t('all_issues_details')}</Text>
+            <Text style={[styles.bannerDesc, { color: '#e6eaf3' }]}>{t('issues_details')}</Text>
           </View>
         </LinearGradient>
 

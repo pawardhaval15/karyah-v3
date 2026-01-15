@@ -8,6 +8,23 @@ export const useUserConnections = () => {
             const response = await apiClient.get('api/connections/list');
             return response.data.connections || [];
         },
+        refetchInterval: 10000, // Background refresh every 10s for "instant" feel
+        staleTime: 5000,
+    });
+};
+
+export const useRemoveConnection = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (connectionId) => {
+            const response = await apiClient.delete('api/connections/remove', {
+                data: { connectionId }
+            });
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['userConnections'] });
+        },
     });
 };
 
