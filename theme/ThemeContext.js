@@ -42,6 +42,11 @@ const lightTheme = {
   normalIssueText: '#7B1FA2',
   normalIssueBadgeBg: '#7B1FA2',
   normalIssueBadgeText: '#fff',
+  // Gradients
+  criticalGradient: ['#ED8688', '#E37A7A'],
+  issueGradient: ['#FFBF76', '#FF943A'],
+  taskGradient: ['#64B0E9', '#5CA6E8'],
+  projectGradient: ['#4C4C4C', '#3E3E3E'],
   justifyContent: 'space-between',
   width: "100%",
   alignItems: 'center',
@@ -85,6 +90,11 @@ const darkTheme = {
   normalIssueText: '#A855F7',
   normalIssueBadgeBg: '#7B1FA2',
   normalIssueBadgeText: '#fff',
+  // Gradients (Kept vibrant for dark mode contrast, or adjusted slightly if needed)
+  criticalGradient: ['#D32F2F', '#C62828'],
+  issueGradient: ['#F57C00', '#EF6C00'],
+  taskGradient: ['#1976D2', '#1565C0'],
+  projectGradient: ['#424242', '#212121'],
 };
 
 // --- 2. Add New Themes (Expanding the setup) ---
@@ -233,45 +243,45 @@ const pastelTheme = {
   card: '#FDFBF7',              // Warm Off-White (Softer than #fff)
   secCard: '#F0ECE2',           // Slightly darker cream for secondary areas
   avatarBg: '#F0ECE2',
-  
+
   // Primary Actions (Task Blue)
   primary: '#5CA6E8',           // Task Darker Blue
   buttonBg: "#64B0E9",          // Task Lighter Blue
   buttonText: "#ffffff",
   secondary: '#3E3E3E',         // Project Darker Grey
   secondaryButton: '#4C4C4C',   // Project Lighter Grey
-  
+
   // Inputs & Borders
   border: '#E6E2D6',            // Blends with cream bg
   DrawerBorder: '#E6E2D6',
   inputBox: "#FDFBF7",          // Matches Card (Warm Off-White)
   SearchBar: "#F0ECE2",         // Matches secCard
-  
+
   // Danger / Critical General
   danger: '#FEF2F2',
   dangerText: '#E37A7A',        // Critical Darker Red
 
   // Critical UI colors (Mapped to your Red #ED8688/#E37A7A)
-  criticalBg: '#FCECEC',        
-  criticalBorder: '#E37A7A',    
-  criticalIconBg: '#ED8688',    
-  criticalText: '#E37A7A',      
-  criticalBadgeBg: '#ED8688',   
+  criticalBg: '#FCECEC',
+  criticalBorder: '#E37A7A',
+  criticalIconBg: '#ED8688',
+  criticalText: '#E37A7A',
+  criticalBadgeBg: '#ED8688',
   criticalBadgeText: '#ffffff',
 
   // Normal UI colors (Mapped to your Task Blue #64B0E9/#5CA6E8)
-  normalBg: '#E8F5FC',          
-  normalBorder: '#5CA6E8',      
-  normalIconBg: '#64B0E9',      
-  normalText: '#5CA6E8',        
-  normalBadgeBg: '#64B0E9',     
+  normalBg: '#E8F5FC',
+  normalBorder: '#5CA6E8',
+  normalIconBg: '#64B0E9',
+  normalText: '#5CA6E8',
+  normalBadgeBg: '#64B0E9',
   normalBadgeText: '#ffffff',
 
   // Issue UI colors (Mapped to your Issues Orange #FFBF76/#FF943A)
-  normalIssueBg: '#FFF5E5',     
-  normalIssueBorder: '#FF943A', 
-  normalIssueIconBg: '#FFBF76', 
-  normalIssueText: '#FF943A',   
+  normalIssueBg: '#FFF5E5',
+  normalIssueBorder: '#FF943A',
+  normalIssueIconBg: '#FFBF76',
+  normalIssueText: '#FF943A',
   normalIssueBadgeBg: '#FFBF76',
   normalIssueBadgeText: '#ffffff',
 

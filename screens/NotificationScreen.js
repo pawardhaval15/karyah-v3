@@ -112,7 +112,7 @@ const ConnectionRequestCard = memo(({ req, onAccept, onReject, theme, t }) => {
           <View style={styles.actionRow}>
             <TouchableOpacity
               onPress={() => onAccept(req.id)}
-              style={[styles.acceptBtn, { borderColor: theme.primary }]}
+              style={[styles.acceptBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '15' }]}
               activeOpacity={0.7}
             >
               <Text style={{ color: theme.primary, fontWeight: '600' }}>{t('accept')}</Text>
@@ -134,7 +134,7 @@ const ConnectionRequestCard = memo(({ req, onAccept, onReject, theme, t }) => {
 const NotificationCard = memo(({ item, onRead, theme }) => {
   const typeIcon = useMemo(() => {
     const type = item.type?.toLowerCase();
-    if (type === 'issue') return { icon: 'alert-circle', color: '#FF3B30' };
+    if (type === 'issue') return { icon: 'alert-circle', color: theme.dangerText || '#FF3B30' };
     if (type === 'task') return { icon: 'clipboard', color: theme.primary };
     if (type === 'project') return { icon: 'folder', color: '#FF9500' };
     return { icon: 'bell', color: theme.text };

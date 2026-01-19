@@ -1,5 +1,6 @@
 import { Poppins_400Regular, Poppins_700Bold, useFonts } from '@expo-google-fonts/poppins';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-query';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { useEffect, useState } from 'react';
@@ -11,6 +12,11 @@ import { ThemeProvider, useThemeContext } from './theme/ThemeContext';
 import { CustomNotificationProvider } from './utils/CustomNotificationManager';
 import { initI18n } from './utils/i18n';
 import usePushNotifications from './utils/usePushNotifications';
+
+// Sentry.init({
+//   dsn: 'YOUR_SENTRY_DSN_HERE',
+//   debug: true, // Sentry will try to print out useful debugging information if something goes wrong with sending the event. Set it to `false` in production
+// });
 
 // Import background message handler
 import './configure/backgroundMessageHandler';
@@ -94,7 +100,7 @@ function AppContent() {
   );
 }
 
-export default function App() {
+function App() {
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>
@@ -106,3 +112,5 @@ export default function App() {
     </SafeAreaProvider>
   );
 }
+
+export default Sentry.wrap(App);

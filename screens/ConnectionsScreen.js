@@ -182,7 +182,7 @@ export default function ConnectionsScreen({ navigation }) {
       </TouchableOpacity>
 
       <LinearGradient
-        colors={['#011F53', '#366CD9']}
+        colors={[theme.primary, theme.primary + 'CC']} // Using primary and a faded primary for a cohesive look
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={[

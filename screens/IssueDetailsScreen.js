@@ -449,7 +449,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
           );
         })()}
         <LinearGradient
-          colors={['#011F53', '#366CD9']}
+          colors={[theme.primary, theme.secondary || theme.primary + 'CC']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={{
@@ -1174,186 +1174,204 @@ export default function IssueDetailsScreen({ navigation, route }) {
         isCreator={isCreator}
       />
 
-      {/* Issue Title Modal */}
-      <Modal
+      <IssueTitleModal
         visible={showIssueTitleModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowIssueTitleModal(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowIssueTitleModal(false)}>
-          <View style={{
-            flex: 1,
-            backgroundColor: 'rgba(0,0,0,0.35)',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-            <TouchableWithoutFeedback onPress={() => { }}>
-              <View style={{
-                width: 280,
-                borderRadius: 14,
-                borderWidth: 1,
-                padding: 18,
-                alignItems: 'center',
-                elevation: 8,
-                backgroundColor: theme.card,
-                borderColor: theme.border
-              }}>
-                <Text style={{
-                  fontSize: 18,
-                  fontWeight: '700',
-                  marginBottom: 12,
-                  color: theme.text
-                }}>Issue Title</Text>
-                <Text style={{
-                  color: theme.text,
-                  fontSize: 16,
-                  textAlign: 'center',
-                  lineHeight: 22,
-                  marginBottom: 12
-                }}>
-                  {issue.isTaskBased ? (issue?.taskName || issue?.name) : issue?.issueTitle}
-                </Text>
-                <TouchableOpacity
-                  style={{
-                    marginTop: 10,
-                    alignSelf: 'center',
-                    paddingVertical: 6,
-                    paddingHorizontal: 18,
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(52, 120, 246, 0.08)',
-                  }}
-                  onPress={() => setShowIssueTitleModal(false)}>
-                  <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
-                </TouchableOpacity>
-              </View>
-            </TouchableWithoutFeedback>
-          </View>
-        </TouchableWithoutFeedback>
-      </Modal>
+        onClose={() => setShowIssueTitleModal(false)}
+        title={issue.isTaskBased ? (issue?.taskName || issue?.name) : issue?.issueTitle}
+        theme={theme}
+      />
 
-      {/* Attachment Preview Modal */}
-      <Modal
+      <DraftAttachmentPreviewModal
         visible={showAttachmentPreviewModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowAttachmentPreviewModal(false)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <View style={{
-            flex: 1,
-            marginTop: Platform.OS === 'ios' ? 50 : 25,
-            backgroundColor: theme.background,
-            borderTopLeftRadius: 20,
-            borderTopRightRadius: 20,
-          }}>
-            <View style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              paddingHorizontal: 20,
-              paddingVertical: 16,
-              borderBottomWidth: 1,
-              borderBottomColor: theme.border,
-            }}>
-              <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
-                Attachment Preview ({attachments.length})
-              </Text>
-              <TouchableOpacity
-                onPress={() => setShowAttachmentPreviewModal(false)}
-                style={{ padding: 8, borderRadius: 20, backgroundColor: theme.card }}>
-                <MaterialIcons name="close" size={20} color={theme.text} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
-              {attachments.map((att, index) => (
-                <View
-                  key={att.uri || att.name || index}
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    padding: 16,
-                    marginBottom: 12,
-                    backgroundColor: theme.card,
-                    borderRadius: 12,
-                    borderWidth: 1,
-                    borderColor: theme.border,
-                  }}>
-                  <View style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: 8,
-                    backgroundColor: theme.primary + '10',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    marginRight: 12,
-                  }}>
-                    {att.type?.startsWith('image') ? (
-                      <Image source={{ uri: att.uri }} style={{ width: 50, height: 50, borderRadius: 8 }} resizeMode="cover" />
-                    ) : att.type?.startsWith('audio') ? (
-                      <MaterialCommunityIcons name="music-note" size={24} color={theme.primary} />
-                    ) : att.type?.startsWith('video') ? (
-                      <MaterialCommunityIcons name="video" size={24} color={theme.primary} />
-                    ) : (
-                      <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.primary} />
-                    )}
-                  </View>
-
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ fontSize: 16, fontWeight: '500', color: theme.text, marginBottom: 4 }} numberOfLines={1}>
-                      {att.name || att.uri?.split('/').pop() || 'Unknown File'}
-                    </Text>
-                    <Text style={{ fontSize: 14, color: theme.secondaryText, marginBottom: 4 }}>
-                      {att.type || 'Unknown Type'}
-                    </Text>
-                    {att.size && (
-                      <Text style={{ fontSize: 12, color: theme.secondaryText }}>
-                        {(att.size / 1024 / 1024).toFixed(2)} MB
-                      </Text>
-                    )}
-                  </View>
-
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {(att.type?.startsWith('audio') || att.type?.startsWith('video')) && (
-                      <TouchableOpacity
-                        onPress={async () => {
-                          try {
-                            const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
-                            await sound.playAsync();
-                          } catch (error) {
-                            Alert.alert('Error', 'Could not play file');
-                          }
-                        }}
-                        style={{ padding: 8, borderRadius: 20, backgroundColor: theme.primary + '20' }}>
-                        <MaterialCommunityIcons name="play" size={16} color={theme.primary} />
-                      </TouchableOpacity>
-                    )}
-                    <TouchableOpacity
-                      onPress={() => {
-                        Alert.alert('Remove Attachment', 'Are you sure?', [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Remove', style: 'destructive', onPress: () => setAttachments(prev => prev.filter((_, i) => i !== index)) }
-                        ]);
-                      }}
-                      style={{ padding: 8, borderRadius: 20, backgroundColor: '#FF453A20' }}>
-                      <MaterialCommunityIcons name="delete" size={16} color="#FF453A" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ))}
-
-              {attachments.length === 0 && (
-                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                  <MaterialCommunityIcons name="file-outline" size={60} color={theme.secondaryText} />
-                  <Text style={{ fontSize: 16, color: theme.secondaryText, marginTop: 16 }}>No attachments to preview</Text>
-                </View>
-              )}
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+        onClose={() => setShowAttachmentPreviewModal(false)}
+        attachments={attachments}
+        onRemove={(index) => setAttachments(prev => prev.filter((_, i) => i !== index))}
+        theme={theme}
+      />
     </View>
   );
 }
+
+const IssueTitleModal = ({ visible, onClose, title, theme }) => (
+  <Modal
+    visible={visible}
+    transparent
+    animationType="fade"
+    onRequestClose={onClose}>
+    <TouchableWithoutFeedback onPress={onClose}>
+      <View style={{
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.35)',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <TouchableWithoutFeedback>
+          <View style={{
+            width: 280,
+            borderRadius: 14,
+            borderWidth: 1,
+            padding: 18,
+            alignItems: 'center',
+            elevation: 8,
+            backgroundColor: theme.card,
+            borderColor: theme.border
+          }}>
+            <Text style={{
+              fontSize: 18,
+              fontWeight: '700',
+              marginBottom: 12,
+              color: theme.text
+            }}>Issue Title</Text>
+            <Text style={{
+              color: theme.text,
+              fontSize: 16,
+              textAlign: 'center',
+              lineHeight: 22,
+              marginBottom: 12
+            }}>
+              {title}
+            </Text>
+            <TouchableOpacity
+              style={{
+                marginTop: 10,
+                alignSelf: 'center',
+                paddingVertical: 6,
+                paddingHorizontal: 18,
+                borderRadius: 8,
+                backgroundColor: 'rgba(52, 120, 246, 0.08)',
+              }}
+              onPress={onClose}>
+              <Text style={{ color: theme.primary, fontWeight: '500' }}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableWithoutFeedback>
+      </View>
+    </TouchableWithoutFeedback>
+  </Modal>
+);
+
+const DraftAttachmentPreviewModal = ({ visible, onClose, attachments, onRemove, theme }) => (
+  <Modal
+    visible={visible}
+    transparent
+    animationType="slide"
+    onRequestClose={onClose}>
+    <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+      <View style={{
+        flex: 1,
+        marginTop: Platform.OS === 'ios' ? 50 : 25,
+        backgroundColor: theme.background,
+        borderTopLeftRadius: 20,
+        borderTopRightRadius: 20,
+      }}>
+        <View style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: 20,
+          paddingVertical: 16,
+          borderBottomWidth: 1,
+          borderBottomColor: theme.border,
+        }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
+            Attachment Preview ({attachments.length})
+          </Text>
+          <TouchableOpacity
+            onPress={onClose}
+            style={{ padding: 8, borderRadius: 20, backgroundColor: theme.card }}>
+            <MaterialIcons name="close" size={20} color={theme.text} />
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
+          {attachments.map((att, index) => (
+            <View
+              key={att.uri || att.name || index}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                padding: 16,
+                marginBottom: 12,
+                backgroundColor: theme.card,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: theme.border,
+              }}>
+              <View style={{
+                width: 50,
+                height: 50,
+                borderRadius: 8,
+                backgroundColor: theme.primary + '10',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginRight: 12,
+              }}>
+                {att.type?.startsWith('image') ? (
+                  <Image source={{ uri: att.uri }} style={{ width: 50, height: 50, borderRadius: 8 }} resizeMode="cover" />
+                ) : att.type?.startsWith('audio') ? (
+                  <MaterialCommunityIcons name="music-note" size={24} color={theme.primary} />
+                ) : att.type?.startsWith('video') ? (
+                  <MaterialCommunityIcons name="video" size={24} color={theme.primary} />
+                ) : (
+                  <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.primary} />
+                )}
+              </View>
+
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '500', color: theme.text, marginBottom: 4 }} numberOfLines={1}>
+                  {att.name || att.uri?.split('/').pop() || 'Unknown File'}
+                </Text>
+                <Text style={{ fontSize: 14, color: theme.secondaryText, marginBottom: 4 }}>
+                  {att.type || 'Unknown Type'}
+                </Text>
+                {att.size && (
+                  <Text style={{ fontSize: 12, color: theme.secondaryText }}>
+                    {(att.size / 1024 / 1024).toFixed(2)} MB
+                  </Text>
+                )}
+              </View>
+
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {(att.type?.startsWith('audio') || att.type?.startsWith('video')) && (
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
+                        await sound.playAsync();
+                      } catch (error) {
+                        Alert.alert('Error', 'Could not play file');
+                      }
+                    }}
+                    style={{ padding: 8, borderRadius: 20, backgroundColor: theme.primary + '20' }}>
+                    <MaterialCommunityIcons name="play" size={16} color={theme.primary} />
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  onPress={() => {
+                    Alert.alert('Remove Attachment', 'Are you sure?', [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Remove', style: 'destructive', onPress: () => onRemove(index) }
+                    ]);
+                  }}
+                  style={{ padding: 8, borderRadius: 20, backgroundColor: '#FF453A20' }}>
+                  <MaterialCommunityIcons name="delete" size={16} color="#FF453A" />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+
+          {attachments.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+              <MaterialCommunityIcons name="file-outline" size={60} color={theme.secondaryText} />
+              <Text style={{ fontSize: 16, color: theme.secondaryText, marginTop: 16 }}>No attachments to preview</Text>
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </View>
+  </Modal>
+);
+
 const styles = StyleSheet.create({
   issueDetailsHeader: {
     flexDirection: 'row',

@@ -1,47 +1,56 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import ProjectFabDrawer from 'components/Project/ProjectFabDrawer';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator, Alert,
+  ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
-  Platform,
   RefreshControl,
-  StyleSheet, Text, TouchableOpacity,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   View
 } from 'react-native';
+import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 import ProjectPopup from '../components/popups/ProjectPopup';
 import ProjectTagsManagementModal from '../components/popups/ProjectTagsManagementModal';
-import ProjectBanner from '../components/Project/ProjectBanner';
-import ProjectCard from '../components/Project/ProjectCard';
+import ProjectCard from '../components/Project/ProjectCard'; // Memoized now
 import ProjectInvitesSection from '../components/Project/ProjectInvitesSection';
-import ProjectSearchBar from '../components/Project/ProjectSearchBar';
 import { useProjects, useUpdateProjectTags } from '../hooks/useProjects';
 import { useUserDetails } from '../hooks/useUser';
 import { useTheme } from '../theme/ThemeContext';
+
 export default function ProjectScreen({ navigation }) {
   const theme = useTheme();
   const { t } = useTranslation();
 
   // Data Fetching
   const { data: projects = [], isLoading: loading, refetch, isRefetching } = useProjects();
+  // console.log(projects);
   const { data: user } = useUserDetails();
   const updateTagsMutation = useUpdateProjectTags();
 
   // State
   const [search, setSearch] = useState('');
   const [showProjectPopup, setShowProjectPopup] = useState(false);
-  const [activeTab, setActiveTab] = useState('all'); // 'all', 'working', 'delayed', 'completed'
+  const [activeTab, setActiveTab] = useState('all'); // 'all', 'pending', 'completed'
   const [showTagsModal, setShowTagsModal] = useState(false);
   const [selectedProjectForTags, setSelectedProjectForTags] = useState(null);
+  const [completedExpanded, setCompletedExpanded] = useState(true);
+  const [showFilters, setShowFilters] = useState(false);
+
+  // Local Filter State
   const [filters, setFilters] = useState({
     tags: [],
+    locations: [],
   });
 
   const currentUserId = user?.id || user?.userId || user?._id;
-
-  // Screen layout
   const { width: screenWidth } = Dimensions.get('window');
   const isTablet = screenWidth >= 768;
 
@@ -78,80 +87,66 @@ export default function ProjectScreen({ navigation }) {
     refetch();
   }, [refetch]);
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
+  useFocusEffect(
+    useCallback(() => {
       refetch();
-    });
-    return unsubscribe;
-  }, [navigation, refetch]);
-  const handleTagsManagement = (project) => {
-    console.log('🔍 Debug Tags Management:', {
-      currentUserId,
-      projectUserId: project.userId,
-      projectCreatedBy: project.createdBy,
-      projectCreatorId: project.creatorId,
-      projectCreator: project.creator,
-      projectCoAdmins: project.coAdmins,
-    });
+    }, [refetch])
+  );
 
-    // Remove creator check so anyone can manage tags
-    // Remove this block:
-    // const isCreator = ...
-    // if (!isCreator) { Alert ... return; }
-
-    // Directly set project and show modal
+  const handleTagsManagement = useCallback((project) => {
     setSelectedProjectForTags(project);
     setShowTagsModal(true);
-  };
-
+  }, []);
 
   const handleSaveTags = async (projectId, newTags) => {
     try {
       await updateTagsMutation.mutateAsync({ projectId, tags: newTags });
-      console.log('Project tags saved successfully');
     } catch (error) {
       console.error('Failed to save project tags:', error);
       Alert.alert("Error", "Failed to update project tags");
-      throw error;
     }
   };
 
-  const toggleFilter = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: prev[filterType].includes(value)
-        ? prev[filterType].filter((item) => item !== value)
-        : [...prev[filterType], value],
-    }));
-  };
-
-  const clearAllFilters = () => {
-    setFilters({
-      tags: [],
+  // Filter Logic Helpers
+  const toggleFilter = (type, value) => {
+    setFilters(prev => {
+      const current = prev[type];
+      const exists = current.includes(value);
+      return {
+        ...prev,
+        [type]: exists ? current.filter(item => item !== value) : [...current, value]
+      };
     });
   };
 
-  const getActiveFiltersCount = () => {
-    return Object.values(filters).reduce((count, filterArray) => count + filterArray.length, 0);
+  const clearAllFilters = () => {
+    setFilters({ tags: [], locations: [] });
+    setSearch('');
   };
 
-  // Get unique tags for filter options
-  const getTagOptions = () => {
-    const tagOptions = [
-      ...new Set(
-        projects
-          .flatMap((project) => project.tags || [])
-          .filter(Boolean)
-      ),
-    ];
-    return tagOptions;
+  const getActiveFiltersCount = () => {
+    return filters.tags.length + filters.locations.length;
   };
+
+  // Extract Options for Filters
+  const filterOptions = useMemo(() => {
+    const allTags = new Set();
+    const allLocations = new Set();
+    projects.forEach(p => {
+      if (Array.isArray(p.tags)) p.tags.forEach(tag => allTags.add(tag));
+      if (p.location) allLocations.add(p.location);
+    });
+    return {
+      tags: Array.from(allTags),
+      locations: Array.from(allLocations)
+    };
+  }, [projects]);
 
   // Memoized Search & Filter Logic
   const filteredProjects = useMemo(() => {
     let result = projects;
 
-    // Search filter
+    // 1. Search
     if (search.trim()) {
       const lowercaseSearch = search.toLowerCase();
       result = result.filter(p => {
@@ -159,168 +154,303 @@ export default function ProjectScreen({ navigation }) {
         const descMatch = p?.description?.toLowerCase().includes(lowercaseSearch);
         const tagsMatch = p?.tags?.some(tag => tag.toLowerCase().includes(lowercaseSearch));
         const locationMatch = p?.location?.toLowerCase().includes(lowercaseSearch);
-        const categoryMatch = p?.projectCategory?.toLowerCase().includes(lowercaseSearch);
-        return nameMatch || descMatch || tagsMatch || locationMatch || categoryMatch;
+        return nameMatch || descMatch || tagsMatch || locationMatch;
       });
     }
 
-    // Tags filter
+    // 2. Filter by Tags
     if (filters.tags.length > 0) {
-      result = result.filter(project =>
-        project.tags && Array.isArray(project.tags) &&
-        filters.tags.some(filterTag => project.tags.includes(filterTag))
+      result = result.filter(p =>
+        p.tags && p.tags.some(t => filters.tags.includes(t))
+      );
+    }
+
+    // 3. Filter by Location
+    if (filters.locations.length > 0) {
+      result = result.filter(p =>
+        filters.locations.includes(p.location)
       );
     }
 
     return result;
-  }, [projects, search, filters.tags]);
+  }, [projects, search, filters]);
 
-  // Memoized Categorized Data
-  const categories = useMemo(() => {
-    const working = [];
+  // Categorize Projects (Pending vs Completed)
+  const { pendingProjects, completedProjects } = useMemo(() => {
+    const pending = [];
     const completed = [];
-    const delayed = [];
-    const now = new Date();
-
     filteredProjects.forEach(p => {
-      const end = p.endDate ? new Date(p.endDate) : null;
       if (p.progress >= 100) {
         completed.push(p);
-      } else if (end && end < now) {
-        delayed.push(p);
       } else {
-        working.push(p);
+        pending.push(p);
       }
     });
-
-    return { working, completed, delayed };
+    return { pendingProjects: pending, completedProjects: completed };
   }, [filteredProjects]);
 
-  const tabData = useMemo(() => {
-    const { working, delayed, completed } = categories;
-    if (activeTab === 'all') return [...working, ...delayed, ...completed];
-    if (activeTab === 'working') return working;
-    if (activeTab === 'delayed') return delayed;
-    if (activeTab === 'completed') return completed;
-    return [];
-  }, [activeTab, categories]);
+  // Construct List Data based on Active Tab
+  const listData = useMemo(() => {
+    if (activeTab === 'pending') {
+      return pendingProjects;
+    }
+    if (activeTab === 'completed') {
+      return completedProjects;
+    }
+    // All: show pending, then completed section header, then completed if expanded
+    const data = [...pendingProjects];
+
+    // Add Completed Header
+    if (completedProjects.length > 0) {
+      data.push({ id: 'COMPLETED_HEADER', count: completedProjects.length });
+      if (completedExpanded) {
+        data.push(...completedProjects);
+      }
+    }
+    return data;
+  }, [activeTab, pendingProjects, completedProjects, completedExpanded]);
 
   const counts = useMemo(() => ({
-    all: categories.working.length + categories.delayed.length + categories.completed.length,
-    working: categories.working.length,
-    delayed: categories.delayed.length,
-    completed: categories.completed.length,
-  }), [categories]);
+    all: filteredProjects.length, // Show count of FILTERED projects
+    pending: pendingProjects.length,
+    completed: completedProjects.length,
+  }), [filteredProjects.length, pendingProjects.length, completedProjects.length]);
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.background, paddingBottom: 40 }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home', { refresh: true })}>
-        <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
-      </TouchableOpacity>
-      <ProjectBanner onAdd={() => setShowProjectPopup(true)} theme={theme} />
-      <ProjectSearchBar value={search} onChange={setSearch} theme={theme} />
-      {/* Project Invites Section */}
-      <ProjectInvitesSection
-        theme={theme}
-        onInviteResponse={(action) => {
-          // Refresh projects list when invite is accepted
-          if (action === 'accept') {
-            refetch();
-          }
-        }}
-      />
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, marginTop: 12, marginBottom: 12, gap: 2, flexWrap: 'wrap', rowGap: 10, maxWidth: "95%" }}>
-        {[
-          {
-            key: 'all',
-            label: t('all'),
-            count: counts.all,
-            icon: <Feather name="grid" size={13} color={activeTab === 'all' ? "#fff" : theme.primary} style={{ marginRight: 4 }} />
-          },
-          {
-            key: 'working',
-            label: t('working'),
-            count: counts.working,
-            icon: <Feather name="play-circle" size={13} color={activeTab === 'working' ? "#fff" : "#039855"} style={{ marginRight: 4 }} />
-          },
-          {
-            key: 'delayed',
-            label: t('delayed'),
-            count: counts.delayed,
-            icon: <Feather name="clock" size={13} color={activeTab === 'delayed' ? "#fff" : "#E67514"} style={{ marginRight: 4 }} />
-          },
-          {
-            key: 'completed',
-            label: t('completed'),
-            count: counts.completed,
-            icon: <Feather name="check-circle" size={13} color={activeTab === 'completed' ? "#fff" : "#366CD9"} style={{ marginRight: 4 }} />
-          },
-        ].map(tab => (
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      {/* Premium Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.navigate('Home', { refresh: true })} style={styles.backBtn}>
+          <Feather name="arrow-left" size={24} color={theme.text} />
+          <Text style={[styles.headerTitle, { color: theme.text }]}>
+            {t('projects')} {filteredProjects.length !== projects.length ? `(${filteredProjects.length}/${projects.length})` : `(${projects.length})`}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.headerRightActions}>
+          <View style={[styles.searchBarContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <Feather name="search" size={18} color={theme.secondaryText} style={{ marginRight: 8 }} />
+            <TextInput
+              style={[styles.searchInput, { color: theme.text }]}
+              placeholder={t('search_projects')}
+              placeholderTextColor={theme.secondaryText}
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <MaterialIcons name="close" size={16} color={theme.secondaryText} />
+              </TouchableOpacity>
+            )}
+          </View>
           <TouchableOpacity
-            key={tab.key}
-            style={{
-              backgroundColor: activeTab === tab.key ? theme.primary : 'transparent',
-              borderColor: theme.border,
-              borderWidth: 1,
-              borderRadius: 20,
-              paddingHorizontal: 10,
-              paddingVertical: 6,
-              marginRight: 2,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-            onPress={() => setActiveTab(tab.key)}
+            style={[
+              styles.filterBtn,
+              {
+                backgroundColor: getActiveFiltersCount() > 0 ? theme.primary + '15' : theme.card,
+                borderColor: getActiveFiltersCount() > 0 ? theme.primary : theme.border
+              }
+            ]}
+            onPress={() => setShowFilters(!showFilters)}
           >
-            {tab.icon}
-            <Text style={{
-              fontSize: 13,
-              fontWeight: '500',
-              color: activeTab === tab.key ? '#fff' : theme.secondaryText,
-            }}>
-              {tab.label}
-              <Text style={{ fontSize: 14, fontWeight: '400', color: activeTab === tab.key ? '#fff' : theme.secondaryText }}>
-                {' '}{tab.count}
-              </Text>
+            <Feather
+              name="sliders"
+              size={18}
+              color={getActiveFiltersCount() > 0 ? theme.primary : theme.text}
+            />
+            {getActiveFiltersCount() > 0 && (
+              <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+                <Text style={styles.badgeText}>{getActiveFiltersCount()}</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Filter Panel */}
+      {showFilters && (
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          layout={Layout.springify()}
+          style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}
+        >
+          <View style={styles.filterHeader}>
+            <Text style={[styles.filterHeaderText, { color: theme.text }]}>{t('filters')}</Text>
+            <TouchableOpacity onPress={clearAllFilters}>
+              <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 13 }}>{t('clear_all')}</Text>
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={{ maxHeight: 200 }} nestedScrollEnabled>
+            {/* Locations Filter */}
+            {filterOptions.locations.length > 0 && (
+              <View style={[styles.filterGroup, { marginTop: 16 }]}>
+                <Text style={[styles.filterLabel, { color: theme.secondaryText }]}>{t('locations')}</Text>
+                <View style={styles.chipsRow}>
+                  {filterOptions.locations.map(loc => (
+                    <TouchableOpacity
+                      key={loc}
+                      onPress={() => toggleFilter('locations', loc)}
+                      style={[
+                        styles.chip,
+                        filters.locations.includes(loc)
+                          ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                          : { borderColor: theme.border }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.chipText,
+                        { color: filters.locations.includes(loc) ? '#fff' : theme.text }
+                      ]}>
+                        {loc}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Tags Filter */}
+            {filterOptions.tags.length > 0 && (
+              <View style={styles.filterGroup}>
+                <Text style={[styles.filterLabel, { color: theme.secondaryText }]}>{t('tags')}</Text>
+                <View style={styles.chipsRow}>
+                  {filterOptions.tags.map(tag => (
+                    <TouchableOpacity
+                      key={tag}
+                      onPress={() => toggleFilter('tags', tag)}
+                      style={[
+                        styles.chip,
+                        filters.tags.includes(tag)
+                          ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                          : { borderColor: theme.border }
+                      ]}
+                    >
+                      <Text style={[
+                        styles.chipText,
+                        { color: filters.tags.includes(tag) ? '#fff' : theme.text }
+                      ]}>
+                        {tag}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+          </ScrollView>
+        </Animated.View>
+      )}
+
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        {['all', 'pending', 'completed'].map(tab => (
+          <TouchableOpacity
+            key={tab}
+            onPress={() => setActiveTab(tab)}
+            style={[
+              styles.tabPill,
+              activeTab === tab
+                ? { backgroundColor: '#E67E22', borderColor: '#E67E22' }
+                : { backgroundColor: theme.card, borderColor: theme.border }
+            ]}
+          >
+            <Text style={[
+              styles.tabText,
+              { color: activeTab === tab ? '#fff' : theme.text }
+            ]}>
+              {t(tab)} <Text style={{ fontSize: 13, fontWeight: '700' }}>{counts[tab]}</Text>
             </Text>
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Project Invites Section */}
+      <ProjectInvitesSection
+        theme={theme}
+        onInviteResponse={(action) => {
+          if (action === 'accept') refetch();
+        }}
+        style={{ marginBottom: 10 }}
+      />
+
       {loading ? (
-        <ActivityIndicator size="large" color={theme.text} style={{ marginTop: 20 }} />
+        <ActivityIndicator size="large" color={theme.primary} style={{ marginTop: 20 }} />
       ) : (
         <FlatList
-          data={tabData}
-          keyExtractor={(item, idx) => item.id?.toString() || idx.toString()}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          numColumns={isTablet ? 2 : 1}
-          columnWrapperStyle={isTablet ? styles.row : null}
-          renderItem={({ item, index }) => {
-            let delayedDays = 0;
-            const now = new Date();
-            if (item.endDate && new Date(item.endDate) < now && (item.progress < 100)) {
-              const end = new Date(item.endDate);
-              const diffTime = now - end;
-              delayedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            }
+          data={listData}
+          keyExtractor={(item) => item.id?.toString() || item.toString()}
+          contentContainerStyle={{ paddingBottom: 80, paddingTop: 10 }}
 
+          // Performance Optimizations
+          initialNumToRender={10}
+          maxToRenderPerBatch={5}
+          windowSize={5}
+          removeClippedSubviews={true}
+
+          renderItem={({ item }) => {
+            if (item.id === 'COMPLETED_HEADER') {
+              return (
+                <View style={{ marginBottom: 16 }}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setCompletedExpanded(!completedExpanded)}
+                    style={[
+                      styles.sectionHeader,
+                      { marginBottom: 12, marginTop: 24 }
+                    ]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                      <View style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 16,
+                        backgroundColor: theme.card || '#f0f0f0',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12
+                      }}>
+                        <Feather
+                          name={completedExpanded ? "chevron-down" : "chevron-right"}
+                          size={18}
+                          color={theme.text}
+                        />
+                      </View>
+                      <Text style={[styles.sectionHeaderText, { color: theme.text }]}>
+                        {t('completed')} ({item.count})
+                      </Text>
+                    </View>
+
+                    <View style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      backgroundColor: theme.card || '#f0f0f0',
+                      borderRadius: 12,
+                    }}>
+                      <Text style={{
+                        color: theme.secondaryText,
+                        fontSize: 12,
+                        fontWeight: '600'
+                      }}>
+                        {completedExpanded ? (t('hide') || 'Hide') : (t('show') || 'Show')}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View style={{ height: 1, backgroundColor: theme.border, marginHorizontal: 20 }} />
+                </View>
+              );
+            }
             return (
-              <View style={isTablet ? styles.cardContainer : null}>
+              <Animated.View entering={FadeIn} layout={Layout.springify()}>
                 <ProjectCard
-                  key={item.id || index}
                   project={item}
                   theme={theme}
-                  delayedDays={delayedDays}
-                  endDate={item.endDate}
-                  isTablet={isTablet}
                   onTagsManagement={handleTagsManagement}
                   currentUserId={currentUserId}
                 />
-              </View>
+              </Animated.View>
             );
           }}
           ListEmptyComponent={
-            <Text style={{ marginLeft: 18, marginTop: 20, color: theme.secondaryText }}>
+            <Text style={{ textAlign: 'center', marginTop: 40, color: theme.secondaryText }}>
               {t('no_projects_found')}
             </Text>
           }
@@ -328,17 +458,21 @@ export default function ProjectScreen({ navigation }) {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={handleRefresh}
-              colors={[theme.primary]} // Android
-              tintColor={theme.primary} // iOS
+              colors={[theme.primary]}
+              tintColor={theme.primary}
             />
           }
         />
       )}
-      {/* <ProjectFabDrawer
-        onTaskSubmit={(task) => console.log('New Task:', task)}
-        onProjectSubmit={(project) => console.log('New Project:', project)}
-        theme={theme}
-      /> */}
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: theme.primary }]}
+        onPress={() => setShowProjectPopup(true)}
+      >
+        <Feather name="plus" size={24} color="#fff" />
+      </TouchableOpacity>
+
       <ProjectPopup
         visible={showProjectPopup}
         onClose={() => setShowProjectPopup(false)}
@@ -347,7 +481,6 @@ export default function ProjectScreen({ navigation }) {
         onSubmit={handleProjectSubmit}
         theme={theme}
       />
-      {/* Project Tags Management Modal */}
       <ProjectTagsManagementModal
         visible={showTagsModal}
         onClose={() => {
@@ -358,31 +491,165 @@ export default function ProjectScreen({ navigation }) {
         onSave={handleSaveTags}
         theme={theme}
       />
-    </View>
+    </SafeAreaView>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  backBtn: {
-    marginTop: Platform.OS === 'ios' ? 70 : 25,
-    marginLeft: 16,
-    marginBottom: 28,
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    justifyContent: 'space-between',
+    gap: 12,
   },
-  backText: {
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  headerTitle: {
     fontSize: 18,
-    fontWeight: '400',
-    marginLeft: 0,
+    fontWeight: '700',
   },
-  row: {
-    justifyContent: 'space-around',
-    paddingHorizontal: 8,
-  },
-  cardContainer: {
+  headerRightActions: {
     flex: 1,
-    marginHorizontal: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 8,
   },
+  searchBarContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    maxWidth: 200,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    padding: 0,
+  },
+  filterBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  filtersPanel: {
+    borderRadius: 16,
+    borderWidth: 1,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    padding: 16,
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  filterHeaderText: {
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  filterGroup: {
+    gap: 8,
+  },
+  filterLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  chipsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+    gap: 12,
+  },
+  tabPill: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  tabText: {
+    fontSize: 14,
+    fontWeight: '600',
+    textTransform: 'capitalize',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  sectionHeaderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 14,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+  }
 });

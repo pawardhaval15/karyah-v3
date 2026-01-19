@@ -15,6 +15,7 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
+import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 import IssueList from '../components/issue/IssueList';
 import IssuePopup from '../components/popups/IssuePopup';
 import { useUserConnections } from '../hooks/useConnections';
@@ -190,23 +191,16 @@ export default function IssuesScreen({ navigation }) {
                             </View>
                         )}
                     </TouchableOpacity>
-
-                    {/* Commented out Add Button by User Request */}
-                    {/* 
-                    <TouchableOpacity
-                        onPress={() => setShowIssuePopup(true)}
-                        style={[styles.actionBtn, { backgroundColor: theme.avatarBg }]}
-                        activeOpacity={0.7}
-                    >
-                        <Feather name="plus-circle" size={18} color={theme.primary} />
-                        <Text style={[styles.actionBtnText, { color: theme.primary }]}>{t('add')}</Text>
-                    </TouchableOpacity> 
-                    */}
                 </View>
             </View>
 
             {showFilters && (
-                <View style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Animated.View
+                    entering={FadeIn.duration(200)}
+                    exiting={FadeOut.duration(200)}
+                    layout={Layout.springify()}
+                    style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}
+                >
                     <View style={styles.filterHeader}>
                         <Text style={[styles.filterHeaderText, { color: theme.text }]}>{t('filters')}</Text>
                         <TouchableOpacity onPress={clearAllFilters}>
@@ -263,7 +257,7 @@ export default function IssuesScreen({ navigation }) {
                             )}
                         </View>
                     </ScrollView>
-                </View>
+                </Animated.View>
             )}
 
             {loading ? (

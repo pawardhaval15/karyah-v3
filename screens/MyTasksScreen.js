@@ -1,43 +1,70 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   FlatList,
-  Platform,
   RefreshControl,
+  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
+import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
 import TagsManagementModal from '../components/popups/TagsManagementModal';
-import CustomCircularProgress from '../components/task details/CustomCircularProgress';
-import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
+import TaskList from '../components/Task/TaskList';
+import { useMyTasks, useTaskMutations, useTasksCreatedByMe } from '../hooks/useTasks';
+import { useTaskStore } from '../store/taskStore';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { bulkAssignTasks, getTasksByProjectId, updateTaskDetails } from '../utils/task';
-import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
+import { getTasksByProjectId } from '../utils/task';
 import { getWorklistsByProjectId } from '../utils/worklist';
+
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
-  const [search, setSearch] = useState('');
-  const [modalTaskId, setModalTaskId] = useState(null);
-  const [activeTab, setActiveTab] = useState('mytasks');
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
+  // Store
+  const {
+    searchQuery,
+    setSearchQuery,
+    activeTab,
+    setActiveTab,
+    showFilters,
+    setShowFilters,
+    filters,
+    toggleFilter,
+    clearAllFilters,
+    getActiveFiltersCount
+  } = useTaskStore();
+
+  // Queries
+  const { data: myTasks = [], isLoading: loadingMyTasks, refetch: refetchMyTasks } = useMyTasks();
+  const { data: createdTasks = [], isLoading: loadingCreated, refetch: refetchCreated } = useTasksCreatedByMe();
+
+  // useEffect(() => {
+  //   if (myTasks) {
+  //     console.log("mytasks data updated:", JSON.stringify(myTasks, null, 2));
+  //   }
+  // }, [myTasks]);
+
+  // Mutations
+  const { bulkAssign, updateTags, invalidateTasks } = useTaskMutations();
+
+  // Local State (Forms & UI that doesn't need global persistence)
   const [showAddTaskPopup, setShowAddTaskPopup] = useState(false);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [projects, setProjects] = useState([]);
   const [users, setUsers] = useState([]);
   const [worklists, setWorklists] = useState([]);
-  const { t } = useTranslation();
   const [projectTasks, setProjectTasks] = useState([]);
   const [addTaskForm, setAddTaskForm] = useState({
     taskName: '',
@@ -49,10 +76,10 @@ export default function MyTasksScreen({ navigation }) {
     taskAssign: '',
     taskDesc: '',
     projectId: '',
-    tags: [], // Add tags field as array
-    isIssue: false, // Add isIssue field
+    tags: [],
+    isIssue: false,
   });
-  const [refreshing, setRefreshing] = useState(false);
+
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedTasks, setSelectedTasks] = useState([]);
   const [showBulkAssignPopup, setShowBulkAssignPopup] = useState(false);
@@ -60,179 +87,159 @@ export default function MyTasksScreen({ navigation }) {
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [showTagsModal, setShowTagsModal] = useState(false);
   const [selectedTaskForTags, setSelectedTaskForTags] = useState(null);
-  // Filter states
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    status: [],
-    progress: [],
-    projects: [],
-    assignedTo: [],
-    locations: [],
-    tags: [], // Add tags filter
-    mode: [],
-    category: [],
-  });
-  // Filter Options State
-  const [statuses, setStatuses] = useState([]);
-  const [projectOptions, setProjectOptions] = useState([]);
-  const [assignedOptions, setAssignedOptions] = useState([]);
-  const [locations, setLocations] = useState([]);
-  const [tagOptions, setTagOptions] = useState([]);
-  // New Options
-  const [modeOptions, setModeOptions] = useState([]);
-  const [categoryOptions, setCategoryOptions] = useState([]);
-  const [taskCounts, setTaskCounts] = useState({
-    mytasks: 0,
-    createdby: 0,
-  });
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadTasks(); // This already fetches based on activeTab
-    setRefreshing(false);
-  };
-  // Fetch tasks whenever tab changes
+
+  // Derived State
+  const tasks = activeTab === 'mytasks' ? myTasks : createdTasks;
+  const loading = loadingMyTasks || loadingCreated;
+
+  const taskCounts = useMemo(() => ({
+    mytasks: myTasks.length,
+    createdby: createdTasks.length
+  }), [myTasks, createdTasks]);
+
+  // Sort tasks: Chronological sequence (Overdue -> Upcoming -> No Date)
+  // Pending tasks first, then Completed tasks
+  const sortedTasks = useMemo(() => {
+    const data = [...tasks];
+    return data.sort((a, b) => {
+      const isCompletedA = a.progress === 100 || a.status === 'Completed';
+      const isCompletedB = b.progress === 100 || b.status === 'Completed';
+
+      // 1. Separation: Pending first, Completed last
+      if (isCompletedA && !isCompletedB) return 1;
+      if (!isCompletedA && isCompletedB) return -1;
+
+      // 2. Sorting Logic (applies to both Pending vs Pending AND Completed vs Completed)
+      // Priority: Has Date (Overdue/Upcoming) > No Date
+      // Within Has Date: Ascending (Oldest/Overdue first -> Future)
+
+      const dateAStr = a.endDate || a.dueDate;
+      const dateBStr = b.endDate || b.dueDate;
+      const dateA = dateAStr ? new Date(dateAStr).getTime() : null;
+      const dateB = dateBStr ? new Date(dateBStr).getTime() : null;
+
+      const hasDateA = dateA && !isNaN(dateA);
+      const hasDateB = dateB && !isNaN(dateB);
+
+      if (hasDateA && hasDateB) {
+        return dateA - dateB;
+      }
+      if (hasDateA && !hasDateB) return -1;
+      if (!hasDateA && hasDateB) return 1;
+
+      // 3. Both no date: Sort by creation (newest first)
+      return new Date(b.createdAt || 0) - new Date(a.createdAt || 0);
+    });
+  }, [tasks]);
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      refetchMyTasks(),
+      refetchCreated(),
+      // Also refresh projects/users if needed
+      fetchProjectsByUser().then(setProjects),
+      fetchUserConnections().then(setUsers)
+    ]);
+  }, [refetchMyTasks, refetchCreated]);
+
   useFocusEffect(
-    React.useCallback(() => {
-      loadTasks();
-      loadTaskCounts(); // Load counts for both tabs
-      // Exit selection mode when switching tabs (but only reset, don't reload)
+    useCallback(() => {
+      // Optional: Refetch on focus to ensure data is fresh
+      refetchMyTasks();
+      refetchCreated();
       setIsSelectionMode(false);
       setSelectedTasks([]);
-      // Clear filters when switching tabs
-      clearAllFilters();
-
-      setShowFilters(false);
-    }, [activeTab])
+    }, [refetchMyTasks, refetchCreated])
   );
-  // Load task counts for both tabs
-  const loadTaskCounts = async () => {
-    try {
-      const [myTasksData, createdByMeData] = await Promise.all([
-        fetchMyTasks(),
-        fetchTasksCreatedByMe(),
-      ]);
-      setTaskCounts({
-        mytasks: myTasksData.length,
-        createdby: createdByMeData.length,
-      });
-      console.log(' Task loaded:', {
-        mytasks: myTasksData
-        // createdby: createdByMeData.length
-      });
-    } catch (error) {
-      // If there's an error, keep existing counts
-      console.error('Error loading task counts:', error);
-    }
-  };
-  // Load tasks from API
-  const loadTasks = async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      let data = [];
-      if (activeTab === 'mytasks') {
-        data = await fetchMyTasks();
-        setTaskCounts((prev) => ({ ...prev, mytasks: data.length }));
-      } else {
-        data = await fetchTasksCreatedByMe();
-        setTaskCounts((prev) => ({ ...prev, createdby: data.length }));
-      }
-      // SORT HERE: Move completed (100%) tasks to the end
-      data.sort((a, b) => {
-        const aProgress = a.progress || 0;
-        const bProgress = b.progress || 0;
-        if (aProgress === 100 && bProgress !== 100) return 1;
-        if (aProgress !== 100 && bProgress === 100) return -1;
-        return 0; // maintain relative order otherwise
-      });
-      setTasks(data);
-    } catch (error) {
-      setErrorMsg(error.message || 'Failed to load tasks');
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
+  // Fetch projects and users on mount
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const loadAuxData = async () => {
       try {
-        const token = await AsyncStorage.getItem('token');
-
-        const [projects, connections] = await Promise.all([
+        const [p, u] = await Promise.all([
           fetchProjectsByUser(),
-          fetchUserConnections(),
+          fetchUserConnections()
         ]);
-
-        setProjects(projects || []);
-        setUsers(connections || []);
-
-        if (addTaskForm.projectId) {
-          const worklistData = await getWorklistsByProjectId(addTaskForm.projectId, token);
-          setWorklists(worklistData || []);
-          // Fetch tasks by projectId
-          const tasks = await getTasksByProjectId(addTaskForm.projectId);
-          setProjectTasks(tasks || []);
-        } else {
-          setWorklists([]);
-          setProjectTasks([]); // Reset if no project selected
-        }
-      } catch (e) {
-        setProjects([]);
-        setUsers([]);
-        setWorklists([]);
-        setProjectTasks([]);
-      } finally {
-        setLoading(false);
+        setProjects(p || []);
+        setUsers(u || []);
+      } catch (err) {
+        console.error('Failed to load projects/users', err);
       }
     };
-    fetchData();
+    loadAuxData();
+  }, []);
+
+  useEffect(() => {
+    const fetchProjectDetails = async () => {
+      if (!addTaskForm.projectId) {
+        setWorklists([]);
+        setProjectTasks([]);
+        return;
+      }
+
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const [w, t] = await Promise.all([
+          getWorklistsByProjectId(addTaskForm.projectId, token),
+          getTasksByProjectId(addTaskForm.projectId)
+        ]);
+        setWorklists(w || []);
+        setProjectTasks(t || []);
+      } catch (e) {
+        console.error('Failed to fetch project details:', e);
+        setWorklists([]);
+        setProjectTasks([]);
+      }
+    };
+    fetchProjectDetails();
   }, [addTaskForm.projectId]);
 
-  const filteredTasks = tasks.filter((task) => {
-    // 1. Search (Global)
-    const taskNameMatch = (task.name || task.taskName || '').toLowerCase().includes(search.toLowerCase());
-    const projectName = (task.project?.name || task.project?.projectName || task.projectTitle || '').toLowerCase();
-    const searchMatch = taskNameMatch || projectName.includes(search.toLowerCase());
+  // Filtered Tasks
+  const filteredTasks = useMemo(() => {
+    return sortedTasks.filter((task) => {
+      // 1. Search (Global)
+      const taskNameMatch = (task.name || task.taskName || '').toLowerCase().includes(searchQuery.toLowerCase());
+      const projectName = (task.project?.name || task.project?.projectName || task.projectTitle || '').toLowerCase();
+      const searchMatch = taskNameMatch || projectName.includes(searchQuery.toLowerCase());
 
-    // 2. Status Filter (Handle nulls)
-    const taskStatus = task.status || (task.mode === 'WORKFLOW' ? 'Active Workflow' : 'Pending');
-    const statusMatch = filters.status.length === 0 || filters.status.includes(taskStatus);
+      // 2. Status Filter
+      const taskStatus = task.status || (task.mode === 'WORKFLOW' ? 'Active Workflow' : 'Pending');
+      const statusMatch = filters.status.length === 0 || filters.status.includes(taskStatus);
 
-    // 3. Project Filter
-    const taskProjectName = task.project?.name || task.project?.projectName || 'No Project';
-    const projectMatch = filters.projects.length === 0 || filters.projects.includes(taskProjectName);
+      // 3. Project Filter
+      const taskProjectName = task.project?.name || task.project?.projectName || 'No Project';
+      const projectMatch = filters.projects.length === 0 || filters.projects.includes(taskProjectName);
 
-    // 4. Assigned/Creator Filter
-    let assignedMatch = true;
-    if (filters.assignedTo.length > 0) {
-      if (activeTab === 'mytasks') {
-        const creatorName = task.creator?.name || task.creator?.username || task.creatorName;
-        assignedMatch = filters.assignedTo.includes(creatorName);
-      } else {
-        if (task.assignedUserDetails && task.assignedUserDetails.length > 0) {
-          assignedMatch = task.assignedUserDetails.some((user) => filters.assignedTo.includes(user.name));
+      // 4. Assigned/Creator Filter
+      let assignedMatch = true;
+      if (filters.assignedTo.length > 0) {
+        if (activeTab === 'mytasks') {
+          const creatorName = task.creator?.name || task.creator?.username || task.creatorName;
+          assignedMatch = filters.assignedTo.includes(creatorName);
         } else {
-          assignedMatch = false;
+          if (task.assignedUserDetails && task.assignedUserDetails.length > 0) {
+            assignedMatch = task.assignedUserDetails.some((user) => filters.assignedTo.includes(user.name));
+          } else {
+            assignedMatch = false;
+          }
         }
       }
-    }
 
-    // 5. Location Filter
-    const locationMatch = filters.locations.length === 0 || filters.locations.includes(task.project?.location);
+      // 5. Location Filter
+      const locationMatch = filters.locations.length === 0 || filters.locations.includes(task.project?.location);
 
-    // 6. Tags Filter
-    const tagsMatch = filters.tags.length === 0 || (task.tags && task.tags.some(tag => filters.tags.includes(tag)));
+      // 6. Tags Filter
+      const tagsMatch = filters.tags.length === 0 || (task.tags && task.tags.some(tag => filters.tags.includes(tag)));
 
-    // 7. NEW: Category Filter
-    const categoryMatch = !filters.category || filters.category.length === 0 || filters.category.includes(task.category);
+      // 7. Category Filter
+      const categoryMatch = !filters.category || filters.category.length === 0 || filters.category.includes(task.category);
 
-    // 8. NEW: Mode Filter
-    const modeMatch = !filters.mode || filters.mode.length === 0 || filters.mode.includes(task.mode);
+      // 8. Mode Filter
+      const modeMatch = !filters.mode || filters.mode.length === 0 || filters.mode.includes(task.mode);
 
-    return searchMatch && statusMatch && projectMatch && assignedMatch && locationMatch && tagsMatch && categoryMatch && modeMatch;
-  });
+      return searchMatch && statusMatch && projectMatch && assignedMatch && locationMatch && tagsMatch && categoryMatch && modeMatch;
+    });
+  }, [sortedTasks, searchQuery, filters, activeTab]);
 
   // Filter users based on search query and hide selected users
   const filteredUsers = users.filter((user) => {
@@ -266,10 +273,6 @@ export default function MyTasksScreen({ navigation }) {
     }
   };
 
-  const handleSubtaskPress = (taskId) => {
-    setModalTaskId(taskId === modalTaskId ? null : taskId);
-  };
-
   const toggleSelectionMode = () => {
     setIsSelectionMode(!isSelectionMode);
     setSelectedTasks([]);
@@ -298,19 +301,17 @@ export default function MyTasksScreen({ navigation }) {
       return;
     }
 
-    // Double check we have tasks selected
     if (selectedTasks.length === 0) {
       alert('No tasks selected. Please go back and select tasks first.');
       return;
     }
 
     try {
-      setLoading(true);
-      // Call the bulk assign API
-      const result = await bulkAssignTasks(selectedTasks, bulkAssignUsers);
-      // Refresh the tasks list
-      await loadTasks();
-      // Reset selection state
+      await bulkAssign.mutateAsync({
+        taskIds: selectedTasks,
+        userIds: bulkAssignUsers
+      });
+
       setIsSelectionMode(false);
       setSelectedTasks([]);
       setShowBulkAssignPopup(false);
@@ -321,8 +322,6 @@ export default function MyTasksScreen({ navigation }) {
     } catch (error) {
       console.error(' Bulk assign failed:', error);
       alert('Failed to assign tasks: ' + error.message);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -333,408 +332,188 @@ export default function MyTasksScreen({ navigation }) {
 
   const handleSaveTags = async (taskId, newTags) => {
     try {
-      console.log(' Saving tags:', { taskId, newTags });
-
-      // Get current task to see existing tags
-      const currentTask = tasks.find((task) => task.id === taskId || task.taskId === taskId);
-      const currentTags = currentTask?.tags || [];
-
-      console.log(' Current tags:', currentTags);
-      console.log(' New tags:', newTags);
-
-      // Clean newTags to remove any empty strings or invalid tags
       const cleanedTags = newTags.filter(
         (tag) => tag && typeof tag === 'string' && tag.trim().length > 0
       );
-      console.log(' Cleaned tags:', cleanedTags);
 
-      // If tags are the same, no need to update
-      if (JSON.stringify(currentTags.sort()) === JSON.stringify(cleanedTags.sort())) {
-        console.log(' Tags unchanged, skipping update');
-        return Promise.resolve();
-      }
-
-      // Use updateTaskDetails for both adding and clearing tags (now that it sends JSON properly)
-      console.log(' Updating tags via updateTaskDetails...');
-      const result = await updateTaskDetails(taskId, { tags: cleanedTags });
-
-      // Update local state with the exact tags we set
-      setTasks((prevTasks) =>
-        prevTasks.map((task) =>
-          task.id === taskId || task.taskId === taskId ? { ...task, tags: cleanedTags } : task
-        )
-      );
+      await updateTags.mutateAsync({
+        taskId,
+        tags: cleanedTags
+      });
 
       console.log('Tags saved successfully');
-      return Promise.resolve();
     } catch (error) {
       console.error(' Failed to save tags:', error);
       throw error;
     }
   };
 
-  const toggleFilter = (filterType, value) => {
-    setFilters((prev) => ({
-      ...prev,
-      [filterType]: prev[filterType].includes(value)
-        ? prev[filterType].filter((item) => item !== value)
-        : [...prev[filterType], value],
-    }));
-  };
-
-  const clearAllFilters = () => {
-    setFilters({
-      status: [],
-      progress: [],
-      projects: [],
-      assignedTo: [],
+  // Filter Options
+  const {
+    statuses,
+    projectOptions,
+    assignedOptions,
+    locations,
+    tagOptions,
+    modeOptions,
+    categoryOptions
+  } = useMemo(() => {
+    const defaultOptions = {
+      statuses: [],
+      projectOptions: [],
+      assignedOptions: [],
       locations: [],
-      tags: [],
-      mode: [],
-      category: [],
-    });
-  };
+      tagOptions: [],
+      modeOptions: [],
+      categoryOptions: []
+    };
 
-  const getActiveFiltersCount = () => {
-    return Object.values(filters).reduce((count, filterArray) => count + (filterArray?.length || 0), 0);
-  };
+    if (tasks.length === 0) return defaultOptions;
 
-  // Get unique values for filter options
-  useEffect(() => {
-    if (tasks.length > 0) {
-      // 1. Status: Handle nulls for Workflow tasks
-      const uniqueStatuses = [
-        ...new Set(
-          tasks.map((t) => t.status || (t.mode === 'WORKFLOW' ? 'Active Workflow' : 'Pending'))
-        ),
-      ].filter(Boolean);
+    const uniqueStatuses = new Set();
+    const uniqueProjects = new Set();
+    const uniquePeople = new Set();
+    const uniqueLocations = new Set();
+    const uniqueTags = new Set();
+    const uniqueCategories = new Set();
+    const uniqueModes = new Set();
 
-      // 2. Projects: Handle [Object] structure
-      const uniqueProjects = [
-        ...new Set(
-          tasks.map((t) => t.project?.name || t.project?.projectName || 'No Project')
-        ),
-      ].filter(Boolean);
+    tasks.forEach(t => {
+      // Status
+      uniqueStatuses.add(t.status || (t.mode === 'WORKFLOW' ? 'Active Workflow' : 'Pending'));
 
-      // 3. Assigned/Creator: Handle [Object] structure
-      let uniquePeople = [];
+      // Project
+      const projName = t.project?.name || t.project?.projectName || 'No Project';
+      uniqueProjects.add(projName);
+
+      // Assigned/Creator
       if (activeTab === 'mytasks') {
-        uniquePeople = [...new Set(tasks.map((t) => t.creator?.name || t.creator?.username || t.creatorName))];
+        const name = t.creator?.name || t.creator?.username || t.creatorName;
+        if (name) uniquePeople.add(name);
       } else {
-        const allAssigned = tasks.flatMap(t => t.assignedUserDetails ? t.assignedUserDetails.map(u => u.name) : []);
-        uniquePeople = [...new Set(allAssigned)];
+        if (t.assignedUserDetails) {
+          t.assignedUserDetails.forEach(u => u.name && uniquePeople.add(u.name));
+        }
       }
 
-      // 4. Locations
-      const uniqueLocations = [
-        ...new Set(tasks.map(t => t.project?.location).filter(Boolean))
-      ];
+      // Location
+      if (t.project?.location) uniqueLocations.add(t.project.location);
 
-      // 5. Tags
-      const uniqueTags = [...new Set(tasks.flatMap((t) => t.tags || []).filter(Boolean))];
+      // Tags
+      if (t.tags) t.tags.forEach(tag => tag && uniqueTags.add(tag));
 
-      // 6. NEW: Categories
-      const uniqueCategories = [...new Set(tasks.map(t => t.category).filter(Boolean))];
+      // Category & Mode
+      if (t.category) uniqueCategories.add(t.category);
+      if (t.mode) uniqueModes.add(t.mode);
+    });
 
-      // 7. NEW: Modes
-      const uniqueModes = [...new Set(tasks.map(t => t.mode).filter(Boolean))];
-
-      setStatuses(uniqueStatuses);
-      setProjectOptions(uniqueProjects);
-      setAssignedOptions(uniquePeople.filter(Boolean));
-      setLocations(uniqueLocations);
-      setTagOptions(uniqueTags);
-      setCategoryOptions(uniqueCategories);
-      setModeOptions(uniqueModes);
-    }
+    return {
+      statuses: Array.from(uniqueStatuses),
+      projectOptions: Array.from(uniqueProjects),
+      assignedOptions: Array.from(uniquePeople),
+      locations: Array.from(uniqueLocations),
+      tagOptions: Array.from(uniqueTags),
+      categoryOptions: Array.from(uniqueCategories),
+      modeOptions: Array.from(uniqueModes)
+    };
   }, [tasks, activeTab]);
 
-  // const { statuses, projectOptions, assignedOptions, locations, tagOptions } = getFilterOptions();
-  const closeModal = () => setModalTaskId(null);
-
-  const renderItem = ({ item, index }) => {
-    const taskName = item.name || item.taskName || 'Untitled Task';
-    const taskId = item.id || item.taskId || item._id || `task_${index}`;
-    const isSelected = selectedTasks.includes(taskId);
-
-    // Show "Assigned By" for my tasks; "Assigned To" for created by me
-    const assignedInfoLabel = activeTab === 'mytasks' ? 'Assigned By:' : 'Assigned To:';
-    // Get creator name or assigned user names
-    const assignedInfoValue =
-      activeTab === 'mytasks'
-        ? item.creatorName || (item.creator && item.creator.name) || 'Unknown'
-        : (item.assignedUserDetails && item.assignedUserDetails.map((u) => u.name).join(', ')) ||
-        'Unassigned';
-
-    return (
-      <>
-        <TouchableOpacity
-          onPress={() => {
-            if (isSelectionMode) {
-              toggleTaskSelection(taskId);
-            } else {
-              // Only navigate if we have a valid taskId
-              const validTaskId = item.id || item.taskId || item._id;
-              if (validTaskId) {
-                navigation.navigate('TaskDetails', { taskId: validTaskId });
-              }
-            }
-          }}
-          style={[
-            styles.taskCard,
-            {
-              backgroundColor: theme.card,
-              borderColor: isSelected ? theme.primary : theme.border,
-              borderWidth: isSelected ? 2 : 1,
-            },
-          ]}>
-          {isSelectionMode && (
-            <View
-              style={[
-                styles.selectionCircle,
-                {
-                  backgroundColor: isSelected ? theme.primary : 'transparent',
-                  borderColor: theme.primary,
-                },
-              ]}>
-              {isSelected && <MaterialIcons name="check" size={12} color="#fff" />}
-            </View>
-          )}
-          {/* Compact Row Layout */}
-          <View style={styles.compactCardRow}>
-            {/* Avatar */}
-            <View
-              style={[
-                styles.compactAvatar,
-                {
-                  backgroundColor: theme.primary + '15',
-                  borderColor: theme.primary + '20',
-                },
-              ]}>
-              <Text style={[styles.compactAvatarText, { color: theme.primary }]}>
-                {(taskName.charAt(0) || '?').toUpperCase()}
-              </Text>
-            </View>
-            {/* Main Content */}
-            <View style={styles.compactContent}>
-              {/* Title and Progress Row */}
-              <View style={styles.titleProgressRow}>
-                <View
-                  style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-                  {/* Issue Indicator Red Dot */}
-                  {item.isIssue && (
-                    <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: '#FF4444',
-                        marginRight: 6,
-                      }}
-                    />
-                  )}
-                  <Text
-                    numberOfLines={1}
-                    ellipsizeMode="tail"
-                    style={[styles.compactTitle, { color: theme.text, flex: 1 }]}>
-                    {taskName}
-                  </Text>
-                </View>
-                <View style={styles.progressContainer}>
-                  <CustomCircularProgress percentage={item.progress || 0} />
-                </View>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-                {/* Project and Location Group */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', flexGrow: 1, marginRight: 12 }}>
-                  <MaterialIcons name="folder" size={13} color={theme.primary} style={{ marginRight: 4 }} />
-                  <Text
-                    style={{ color: theme.secondaryText, fontSize: 12 }}
-                  >
-                    {item.projectName ||
-                      item.project?.projectName ||
-                      item.project?.name ||
-                      item.projectTitle ||
-                      item.project ||
-                      'No Project'}
-                  </Text>
-                  {((item.project && item.project.location) || '').length > 0 && (
-                    <>
-                      <Text style={{ color: theme.secondaryText, fontSize: 12, marginHorizontal: 2 }}>{'•'}</Text>
-                      <MaterialIcons name="location-on" size={13} color={theme.secondaryText} style={{ marginRight: 2 }} />
-                      <Text
-                        style={{ color: theme.secondaryText, fontSize: 12 }}
-                      >
-                        {item.project.location}
-                      </Text>
-                    </>
-                  )}
-                </View>
-                {/* Assigned Info Group (unchanged): */}
-                {/* <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1, minWidth: 0, maxWidth: '40%' }}>
-                    <MaterialIcons name={activeTab === 'mytasks' ? 'person' : 'group'} size={13} color={theme.primary} style={{ marginLeft: 8, marginRight: 3 }} />
-                    <Text style={{ color: theme.secondaryText, fontSize: 12, flexShrink: 1 }} numberOfLines={1} ellipsizeMode="tail">
-                      {assignedInfoLabel}
-                    </Text>
-                    <Text style={{ color: theme.text, fontSize: 12, marginLeft: 2, flexShrink: 1, maxWidth: 60 }} numberOfLines={1} ellipsizeMode="tail">
-                      {assignedInfoValue}
-                    </Text>
-                  </View> */}
-              </View>
-              {/* Compact Tags */}
-              {/* {item.tags && Array.isArray(item.tags) && item.tags.length > 0 && (
-                <View style={styles.compactTagsContainer}>
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={styles.compactTagsScroll}>
-                    {item.tags.slice(0, 3).map((tag, tagIndex) => (
-                      <View
-                        key={tagIndex}
-                        style={[
-                          styles.compactTagChip,
-                          {
-                            backgroundColor: theme.avatarBg,
-                          },
-                        ]}>
-                        <Text style={[styles.compactTagText, { color: theme.secondaryText }]}>
-                          {tag}
-                        </Text>
-                      </View>
-                    ))}
-                    {item.tags.length > 3 && (
-                      <View
-                        style={[
-                          styles.compactTagChip,
-                          {
-                            backgroundColor: theme.background,
-                          },
-                        ]}>
-                        <Text style={[styles.compactTagText, { color: theme.secondaryText }]}>
-                          +{item.tags.length - 3}
-                        </Text>
-                      </View>
-                    )}
-                  </ScrollView>
-                </View>
-              )} */}
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.compactActionButton,
-                {
-                  backgroundColor: theme.primary + '10',
-                  borderColor: theme.primary + '20',
-                },
-              ]}
-              onPress={() => handleTagsManagement(item)}>
-              <MaterialIcons name="local-offer" size={16} color={theme.primary} />
-            </TouchableOpacity>
-          </View>
-        </TouchableOpacity>
-
-        {modalTaskId === taskId && !isSelectionMode && (
-          <InlineSubtaskModal
-            task={item}
-            onClose={closeModal}
-            onSubtaskPress={(subtaskId) =>
-              navigation.navigate('TaskDetails', { taskId: subtaskId })
-            }
-            theme={theme}
-          />
-        )}
-      </>
-    );
-  };
-
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.navigate('Home')}>
-        <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
-      </TouchableOpacity>
-
-      <LinearGradient
-        colors={[theme.secondary, theme.primary]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.banner}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>
-            {isSelectionMode ? `${selectedTasks.length} Selected` : t('my_tasks')}
-          </Text>
-          <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerDesc}>
-            {isSelectionMode
-              ? t('select_tasks_to_assign')
-              : t('all_tasks_assigned_to_you_or_created_by_you_are_listed_here')}
-          </Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('Home')}
+            style={styles.backBtn}
+            activeOpacity={0.7}>
+            <Feather name="arrow-left" size={22} color={theme.text} />
+            <Text style={[styles.headerTitle, { color: theme.text }]}>
+              {isSelectionMode ? `${selectedTasks.length} Selected` : t('my_tasks')}
+            </Text>
+          </TouchableOpacity>
         </View>
-        {isSelectionMode ? (
-          <View style={styles.selectionActions}>
-            <TouchableOpacity
-              style={[
-                styles.bannerAction,
-                { marginRight: 8, backgroundColor: 'rgba(255,255,255,0.2)' },
-              ]}
-              onPress={handleBulkAssign}
-              disabled={selectedTasks.length === 0}>
-              <MaterialIcons name="group-add" size={18} color="#fff" />
-              <Text style={[styles.bannerActionText, { marginLeft: 4 }]}>{t('assign')}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.bannerAction, { backgroundColor: 'rgba(255,255,255,0.1)' }]}
-              onPress={toggleSelectionMode}>
-              <MaterialIcons name="close" size={18} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.normalActions}>
-            {activeTab === 'createdby' && (
+
+        <View style={styles.headerRightActions}>
+          {isSelectionMode ? (
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={handleBulkAssign}
+                disabled={selectedTasks.length === 0}
+                style={{ padding: 8 }}>
+                <MaterialIcons
+                  name="group-add"
+                  size={22}
+                  color={selectedTasks.length === 0 ? theme.secondaryText : theme.primary}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={toggleSelectionMode} style={{ padding: 8 }}>
+                <MaterialIcons name="close" size={22} color={theme.text} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <>
+              <View
+                style={[
+                  styles.compactSearchBar,
+                  { backgroundColor: theme.card, borderColor: theme.border },
+                ]}>
+                <MaterialIcons
+                  name="search"
+                  size={18}
+                  color={theme.secondaryText}
+                  style={{ marginRight: 6 }}
+                />
+                <TextInput
+                  style={[styles.compactSearchInput, { color: theme.text }]}
+                  placeholder={t('search_tasks')}
+                  placeholderTextColor={theme.secondaryText}
+                  value={searchQuery}
+                  onChangeText={setSearchQuery}
+                />
+                {searchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setSearchQuery('')}>
+                    <MaterialIcons name="close" size={16} color={theme.secondaryText} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
               <TouchableOpacity
                 style={[
-                  styles.bannerAction,
-                  { marginRight: 8, backgroundColor: 'rgba(255,255,255,0.1)' },
+                  styles.compactFilterTrigger,
+                  {
+                    borderColor: getActiveFiltersCount() > 0 ? theme.primary : theme.border,
+                    backgroundColor:
+                      getActiveFiltersCount() > 0 ? theme.primary + '10' : theme.card,
+                  },
                 ]}
-                onPress={toggleSelectionMode}>
-                <MaterialIcons name="checklist" size={18} color="#fff" />
+                onPress={() => setShowFilters(!showFilters)}>
+                <Feather
+                  name="sliders"
+                  size={18}
+                  color={getActiveFiltersCount() > 0 ? theme.primary : theme.secondaryText}
+                />
+                {getActiveFiltersCount() > 0 && (
+                  <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+                    <Text style={styles.badgeText}>{getActiveFiltersCount()}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
-            )}
-            <TouchableOpacity style={styles.bannerAction} onPress={() => setShowAddTaskPopup(true)}>
-              <Text style={styles.bannerActionText}>{t('tasks')}</Text>
-              <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
-            </TouchableOpacity>
-          </View>
-        )}
-      </LinearGradient>
-      {/* Search */}
-      <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
-        <TextInput
-          style={[styles.searchInput, { color: theme.text }]}
-          placeholder={t('search_tasks')}
-          placeholderTextColor={theme.secondaryText}
-          value={search}
-          onChangeText={setSearch}
-        />
-        <TouchableOpacity
-          style={[
-            styles.filterButton,
-            {
-              backgroundColor: getActiveFiltersCount() > 0 ? theme.primary + '15' : 'transparent',
-              borderColor: getActiveFiltersCount() > 0 ? theme.primary : theme.border,
-            },
-          ]}
-          onPress={() => setShowFilters(!showFilters)}>
-          <MaterialIcons
-            name="tune"
-            size={20}
-            color={getActiveFiltersCount() > 0 ? theme.primary : theme.secondaryText}
-          />
-          {getActiveFiltersCount() > 0 && (
-            <View style={[styles.filterBadge, { backgroundColor: theme.primary }]}>
-              <Text style={styles.filterBadgeText}>{getActiveFiltersCount()}</Text>
-            </View>
+
+              <TouchableOpacity
+                style={[styles.actionBtn, { backgroundColor: theme.avatarBg }]}
+                onPress={() => setShowAddTaskPopup(true)}>
+                <Feather name="plus" size={18} color={theme.primary} />
+              </TouchableOpacity>
+              {activeTab === 'createdby' && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: theme.avatarBg }]}
+                  onPress={toggleSelectionMode}>
+                  <MaterialIcons name="checklist" size={18} color={theme.primary} />
+                </TouchableOpacity>
+              )}
+            </>
           )}
-        </TouchableOpacity>
+        </View>
       </View>
       {/* Legend for Issue Indicator */}
       {/* <View style={styles.legendContainer}>
@@ -820,7 +599,10 @@ export default function MyTasksScreen({ navigation }) {
       </View>
       {/* Filters Panel */}
       {showFilters && (
-        <View
+        <Animated.View
+          entering={FadeIn.duration(200)}
+          exiting={FadeOut.duration(200)}
+          layout={Layout.springify()}
           style={[styles.filtersPanel, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <View style={styles.filterHeader}>
             <Text style={[styles.filterHeaderText, { color: theme.text }]}>{t('filters')}</Text>
@@ -878,49 +660,6 @@ export default function MyTasksScreen({ navigation }) {
                 </ScrollView>
               </View>
             )}
-            {/* Progress Filter */}
-            {/* <View style={styles.compactFilterSection}>
-              <Text style={[styles.compactFilterTitle, { color: theme.text }]}>Progress</Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.horizontalScroll}>
-                <View style={styles.compactChipsRow}>
-                  {[
-                    { key: 'not-started', label: 'Not Started' },
-                    { key: 'in-progress', label: 'In Progress' },
-                    { key: 'completed', label: 'Completed' },
-                  ].map((progressOption) => (
-                    <TouchableOpacity
-                      key={progressOption.key}
-                      style={[
-                        styles.compactChip,
-                        {
-                          backgroundColor: filters.progress.includes(progressOption.key)
-                            ? theme.primary
-                            : 'transparent',
-                          borderColor: filters.progress.includes(progressOption.key)
-                            ? theme.primary
-                            : theme.border,
-                        },
-                      ]}
-                      onPress={() => toggleFilter('progress', progressOption.key)}>
-                      <Text
-                        style={[
-                          styles.compactChipText,
-                          {
-                            color: filters.progress.includes(progressOption.key)
-                              ? '#fff'
-                              : theme.text,
-                          },
-                        ]}>
-                        {progressOption.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </ScrollView>
-            </View> */}
             {/* Projects Filter */}
             {projectOptions.length > 0 && (
               <View style={styles.compactFilterSection}>
@@ -1086,7 +825,7 @@ export default function MyTasksScreen({ navigation }) {
               </View>
             )}
           </ScrollView>
-        </View>
+        </Animated.View>
       )}
       {/* Task List or Loading/Error */}
       {loading ? (
@@ -1101,35 +840,43 @@ export default function MyTasksScreen({ navigation }) {
           }}>
           {errorMsg}
         </Text>
-      ) : filteredTasks.length === 0 ? (
-        <Text style={{ textAlign: 'center', color: theme.secondaryText, marginTop: 40 }}>
-          {getActiveFiltersCount() > 0 ? 'No tasks match the selected filters.' : 'No tasks found.'}
-        </Text>
       ) : (
-        <>
-          {getActiveFiltersCount() > 0 && (
-            <Text style={[styles.filteredResultsText, { color: theme.secondaryText }]}>
-              Showing {filteredTasks.length} of {tasks.length} tasks
-            </Text>
-          )}
-          <FlatList
-            data={filteredTasks}
-            keyExtractor={(item, index) => {
-              const key = item.taskId || item.id || item._id || `index_${index}`;
-              return String(key);
-            }}
-            contentContainerStyle={{ paddingBottom: 24 }}
-            renderItem={renderItem}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={handleRefresh}
-                colors={[theme.primary]} // For Android
-                tintColor={theme.primary} // For iOS
-              />
+        <TaskList
+          tasks={filteredTasks}
+          theme={theme}
+          isSelectionMode={isSelectionMode}
+          selectedTasks={selectedTasks}
+          onToggleSelection={toggleTaskSelection}
+          onTaskPress={(item) => {
+            const validTaskId = item.id || item.taskId || item._id;
+            if (validTaskId) {
+              navigation.navigate('TaskDetails', { taskId: validTaskId });
             }
-          />
-        </>
+          }}
+          onSubtaskNavigate={(subtaskId) => navigation.navigate('TaskDetails', { taskId: subtaskId })}
+          onTagsManagement={handleTagsManagement}
+          activeTab={activeTab}
+          refreshControl={
+            <RefreshControl
+              refreshing={loadingMyTasks || loadingCreated}
+              onRefresh={handleRefresh}
+              colors={[theme.primary]}
+              tintColor={theme.primary}
+            />
+          }
+          ListHeaderComponent={
+            getActiveFiltersCount() > 0 ? (
+              <Text style={[styles.filteredResultsText, { color: theme.secondaryText }]}>
+                Showing {filteredTasks.length} of {tasks.length} tasks
+              </Text>
+            ) : null
+          }
+          ListEmptyComponent={
+            <Text style={{ textAlign: 'center', color: theme.secondaryText, marginTop: 40 }}>
+              {getActiveFiltersCount() > 0 ? 'No tasks match the selected filters.' : 'No tasks found.'}
+            </Text>
+          }
+        />
       )}
       <AddTaskPopup
         visible={showAddTaskPopup}
@@ -1345,7 +1092,7 @@ export default function MyTasksScreen({ navigation }) {
         onSave={handleSaveTags}
         theme={theme}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -1355,60 +1102,85 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   container: { flex: 1 },
-  backBtn: {
-    marginTop: Platform.OS === 'ios' ? 70 : 25,
-    marginLeft: 16,
-    marginBottom: 28,
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     gap: 6,
   },
-  backText: {
-    fontSize: 18,
-    fontWeight: '400',
+  headerLeft: {
+    flexShrink: 1,
+    maxWidth: '40%',
   },
-  banner: {
-    borderRadius: 16,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    padding: 18,
+  backBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    overflow: 'hidden',
-    minHeight: 110,
+    gap: 6,
   },
-  bannerTitle: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: '600',
-    marginBottom: 2,
+  headerTitle: {
+    fontSize: 16,
+    fontWeight: '800',
   },
-  bannerDesc: {
-    fontSize: 14,
-    fontWeight: '400',
-    maxWidth: '80%',
-    color: '#e6eaf3',
-  },
-  bannerAction: {
+  headerRightActions: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    gap: 6,
+    justifyContent: 'flex-end',
+  },
+  compactSearchBar: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 10,
+    height: 38,
+    borderWidth: 1,
   },
-  bannerActionText: {
-    color: '#fff',
-    fontWeight: '400',
-    fontSize: 15,
+  compactSearchInput: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+    padding: 0,
+    height: '100%',
+  },
+  compactFilterTrigger: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  badgeText: { color: '#fff', fontSize: 10, fontWeight: 'bold' },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+    height: 38,
+    justifyContent: 'center',
   },
   tabRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
     marginTop: 0,
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 12,
   },
   tabCountBadge: {
@@ -1439,13 +1211,7 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    display: 'none',
   },
   searchIcon: {
     marginRight: 8,
@@ -1501,13 +1267,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   filtersPanel: {
-    marginHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    marginHorizontal: 20,
+    marginBottom: 15,
+    borderRadius: 20,
+    padding: 16,
     borderWidth: 1,
-    maxHeight: 180,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.03,
+    shadowRadius: 10,
+    elevation: 2,
   },
   filterHeader: {
     flexDirection: 'row',
@@ -1579,152 +1348,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginVertical: 8,
     fontStyle: 'italic',
-  },
-  // Compact Task Card styles
-  taskCard: {
-    borderRadius: 12,
-    marginHorizontal: 12,
-    marginBottom: 4,
-    paddingTop: 6,
-    paddingBottom: 8,
-    paddingHorizontal: 8,
-    position: 'relative',
-  },
-  compactCardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  compactAvatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 8,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 8,
-    // marginTop: 0,    
-  },
-  compactAvatarText: {
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  compactContent: {
-    flex: 1,
-    paddingRight: 8,
-  },
-  titleProgressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 0,
-  },
-  compactTitle: {
-    fontWeight: '600',
-    fontSize: 14,
-    flex: 1,
-    marginRight: 6,
-    lineHeight: 14,
-    marginTop: 0,
-    marginBottom: 0,
-  },
-  compactProgressContainer: {
-    alignItems: 'center',
-  },
-  compactProgressText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  compactInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginTop: 4,
-    flexWrap: 'wrap',
-  },
-
-  compactProject: {
-    fontSize: 11,
-    fontWeight: '500',
-    maxWidth: 100,
-  },
-  compactSeparator: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  compactLocation: {
-    fontSize: 11,
-    fontWeight: '400',
-    maxWidth: 70,
-  },
-  compactAssignmentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  compactAssignLabel: {
-    fontSize: 10,
-    fontWeight: '500',
-    marginRight: 4,
-  },
-  compactAssignValue: {
-    fontSize: 10,
-    fontWeight: '600',
-    flex: 1,
-  },
-  compactActionButton: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-  },
-  // Compact Tags styles
-  compactTagsContainer: {
-    marginTop: 6,
-  },
-  compactTagsScroll: {
-    flexGrow: 0,
-  },
-  compactTagChip: {
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 0,
-    marginRight: 2,
-    minHeight: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  compactTagText: {
-    fontSize: 10,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  progressCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 10,
-  },
-  progressText: {
-    fontWeight: '600',
-    fontSize: 12,
-  },
-  selectionCircle: {
-    position: 'absolute',
-    top: 6,
-    left: 6,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
   },
   selectionActions: {
     flexDirection: 'row',

@@ -100,59 +100,59 @@ const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
   const loading = parentLoading || statsLoading;
 
   const statData = useMemo(() => {
-  if (!apiData) return [];
+    if (!apiData) return [];
 
-  return [
-    {
-      id: 'critical_issues',
-      title: t('critical_issues'),
-      value: apiData.critical?.unresolved ?? 0,
-      total: apiData.critical?.total ?? 0,
-      percent: apiData.critical?.total
-        ? Math.round((apiData.critical.unresolved / apiData.critical.total) * 100)
-        : 0,
-      extrasLine: `Resolved: ${apiData.critical?.resolved ?? 0}`,
-      gradientColors: ['#ED8688', '#E37A7A'], // 🔴 Critical
-      screen: 'IssuesScreen',
-    },
-    {
-      id: 'issues',
-      title: t('issues'),
-      value: apiData.issues?.unresolved ?? 0,
-      total: apiData.issues?.total ?? 0,
-      percent: apiData.issues?.total
-        ? Math.round((apiData.issues.unresolved / apiData.issues.total) * 100)
-        : 0,
-      extrasLine: `Resolved: ${apiData.issues?.resolved ?? 0}`,
-      gradientColors: ['#FFBF76', '#FF943A'], // 🟡 Issues
-      screen: 'IssuesScreen',
-    },
-    {
-      id: 'tasks',
-      title: t('tasks'),
-      value: (apiData.tasks?.inProgress ?? 0) + (apiData.tasks?.pending ?? 0),
-      total: apiData.tasks?.total ?? 0,
-      percent: apiData.tasks?.total
-        ? Math.round((apiData.tasks.completed / apiData.tasks.total) * 100)
-        : 0,
-      extrasLine: `Pending: ${apiData.tasks?.pending ?? 0} • Done: ${apiData.tasks?.completed ?? 0}`,
-      gradientColors: ['#64B0E9', '#5CA6E8'], // 🔵 Task
-      screen: 'MyTasksScreen',
-    },
-    {
-      id: 'projects',
-      title: t('projects'),
-      value: (apiData.projects?.inProgress ?? 0) + (apiData.projects?.pending ?? 0),
-      total: apiData.projects?.total ?? 0,
-      percent: apiData.projects?.total
-        ? Math.round((apiData.projects.completed / apiData.projects.total) * 100)
-        : 0,
-      extrasLine: `Pending: ${apiData.projects?.pending ?? 0} • Done: ${apiData.projects?.completed ?? 0}`,
-      gradientColors: ['#4C4C4C', '#3E3E3E'], // ⚫ Project
-      screen: 'ProjectScreen',
-    },
-  ];
-}, [apiData, t]);
+    return [
+      {
+        id: 'critical_issues',
+        title: t('critical_issues'),
+        value: apiData.critical?.unresolved ?? 0,
+        total: apiData.critical?.total ?? 0,
+        percent: apiData.critical?.total
+          ? Math.round((apiData.critical.unresolved / apiData.critical.total) * 100)
+          : 0,
+        extrasLine: `Resolved: ${apiData.critical?.resolved ?? 0}`,
+        gradientColors: theme.criticalGradient, // 🔴 Critical
+        screen: 'IssuesScreen',
+      },
+      {
+        id: 'issues',
+        title: t('issues'),
+        value: apiData.issues?.unresolved ?? 0,
+        total: apiData.issues?.total ?? 0,
+        percent: apiData.issues?.total
+          ? Math.round((apiData.issues.unresolved / apiData.issues.total) * 100)
+          : 0,
+        extrasLine: `Resolved: ${apiData.issues?.resolved ?? 0}`,
+        gradientColors: theme.issueGradient, // 🟡 Issues
+        screen: 'IssuesScreen',
+      },
+      {
+        id: 'tasks',
+        title: t('tasks'),
+        value: (apiData.tasks?.inProgress ?? 0) + (apiData.tasks?.pending ?? 0),
+        total: apiData.tasks?.total ?? 0,
+        percent: apiData.tasks?.total
+          ? Math.round((apiData.tasks.completed / apiData.tasks.total) * 100)
+          : 0,
+        extrasLine: `Pending: ${apiData.tasks?.pending ?? 0} • Done: ${apiData.tasks?.completed ?? 0}`,
+        gradientColors: theme.taskGradient, // 🔵 Task
+        screen: 'MyTasksScreen',
+      },
+      {
+        id: 'projects',
+        title: t('projects'),
+        value: (apiData.projects?.inProgress ?? 0) + (apiData.projects?.pending ?? 0),
+        total: apiData.projects?.total ?? 0,
+        percent: apiData.projects?.total
+          ? Math.round((apiData.projects.completed / apiData.projects.total) * 100)
+          : 0,
+        extrasLine: `Pending: ${apiData.projects?.pending ?? 0} • Done: ${apiData.projects?.completed ?? 0}`,
+        gradientColors: theme.projectGradient, // ⚫ Project
+        screen: 'ProjectScreen',
+      },
+    ];
+  }, [apiData, t]);
 
 
   const renderItem = useCallback(
