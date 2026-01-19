@@ -43,7 +43,7 @@ const lightTheme = {
   normalIssueBadgeBg: '#7B1FA2',
   normalIssueBadgeText: '#fff',
   justifyContent: 'space-between',
-  width:"100%",
+  width: "100%",
   alignItems: 'center',
 };
 
@@ -144,24 +144,141 @@ const draculaTheme = {
 
 // --- NEW CREAM THEME ---
 const creamTheme = {
-  ...lightTheme, // Inherit basic structure from light
-  background: '#FAF3E1', // Cream/Beige
-  text: '#222222', // Black/Charcoal
-  secondaryText: '#5d5d5d', // Dark Grey for contrast on cream
-  card: '#FFFFFF', // White cards pop nicely on cream
-  secCard: '#F5E7C6', // Light Tan/Sand
-  avatarBg: '#F5E7C6',
-  border: '#E8DFC5', // Slightly darker cream for borders
-  DrawerBorder: '#E8DFC5',
+  ...lightTheme,
+
+  /* ===== Base ===== */
+  background: '#f8f4e8',          // Cream background
+  text: '#2A2A2A',                // Normal readable text
+  secondaryText: '#6A6A6A',
+
+  /* ===== Cards ===== */
+  card: '#FFFFFF',
+  secCard: '#FBF1DB',
+  avatarBg: '#EFE3C8',
+
+  /* ===== Borders ===== */
+  border: '#E5DCC7',
+  DrawerBorder: '#E5DCC7',
+
+  /* ===== Inputs ===== */
   inputBox: '#FFFFFF',
-  SearchBar: '#F5E7C6', // Sand color for search bar
-  primary: '#FF6D1F', // Vibrant Orange
-  secondary: '#222222',
-  secondaryButton: '#222222',
-  buttonBg: '#FFF0E0', // Very light orange/cream mix
-  buttonText: '#FF6D1F',
-  danger: '#FFF5F5',
+  SearchBar: '#EFE3C8',
+
+  /* =================================================
+     🌈 GLOBAL ACTIVE / TAB COLOR
+     (default = Issues color, NOT BLACK)
+  ================================================= */
+  primary: '#FF943A',             // Active tab / FAB / focus
+  secondary: '#FFBF76',
+  secondaryButton: '#FF943A',
+
+  buttonBg: '#FFF2E0',
+  buttonText: '#FF943A',
+
+  /* =================================================
+     🔴 CRITICAL
+  ================================================= */
+  criticalGradient: ['#ED8688', '#E37A7A'],
+  criticalBg: '#FFE9E9',
+  criticalText: '#9B2C2C',
+  criticalBorder: '#ED8688',
+  criticalBadgeBg: '#E37A7A',
+  criticalBadgeText: '#FFFFFF',
+
+  /* =================================================
+     🟡 ISSUES (DEFAULT TAB COLOR)
+  ================================================= */
+  issueGradient: ['#FFBF76', '#FF943A'],
+  issueBg: '#FFF2E0',
+  issueText: '#8A5A00',
+  issueBorder: '#FFBF76',
+  issueBadgeBg: '#FF943A',
+  issueBadgeText: '#FFFFFF',
+
+  /* =================================================
+     🔵 TASK
+  ================================================= */
+  taskGradient: ['#64B0E9', '#5CA6E8'],
+  taskBg: '#EAF4FD',
+  taskText: '#1E5A8A',
+  taskBorder: '#64B0E9',
+  taskBadgeBg: '#5CA6E8',
+  taskBadgeText: '#FFFFFF',
+
+  /* =================================================
+     ⚫ PROJECT (DARK BUT NOT BRAND)
+  ================================================= */
+  projectGradient: ['#4C4C4C', '#3E3E3E'],
+  projectBg: '#EFEFEF',
+  projectText: '#2A2A2A',
+  projectBorder: '#4C4C4C',
+  projectBadgeBg: '#3E3E3E',
+  projectBadgeText: '#FFFFFF',
+
+  /* ===== Danger ===== */
+  danger: '#FFF1F1',
   dangerText: '#D32F2F',
+
+  /* ===== Layout ===== */
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  width: '100%',
+};
+
+const pastelTheme = {
+  // Base UI
+  background: '#f8f4e8',        // Main Cream Background
+  text: '#3E3E3E',              // Project Darker Grey
+  secondaryText: '#4C4C4C',     // Project Lighter Grey
+  card: '#FDFBF7',              // Warm Off-White (Softer than #fff)
+  secCard: '#F0ECE2',           // Slightly darker cream for secondary areas
+  avatarBg: '#F0ECE2',
+  
+  // Primary Actions (Task Blue)
+  primary: '#5CA6E8',           // Task Darker Blue
+  buttonBg: "#64B0E9",          // Task Lighter Blue
+  buttonText: "#ffffff",
+  secondary: '#3E3E3E',         // Project Darker Grey
+  secondaryButton: '#4C4C4C',   // Project Lighter Grey
+  
+  // Inputs & Borders
+  border: '#E6E2D6',            // Blends with cream bg
+  DrawerBorder: '#E6E2D6',
+  inputBox: "#FDFBF7",          // Matches Card (Warm Off-White)
+  SearchBar: "#F0ECE2",         // Matches secCard
+  
+  // Danger / Critical General
+  danger: '#FEF2F2',
+  dangerText: '#E37A7A',        // Critical Darker Red
+
+  // Critical UI colors (Mapped to your Red #ED8688/#E37A7A)
+  criticalBg: '#FCECEC',        
+  criticalBorder: '#E37A7A',    
+  criticalIconBg: '#ED8688',    
+  criticalText: '#E37A7A',      
+  criticalBadgeBg: '#ED8688',   
+  criticalBadgeText: '#ffffff',
+
+  // Normal UI colors (Mapped to your Task Blue #64B0E9/#5CA6E8)
+  normalBg: '#E8F5FC',          
+  normalBorder: '#5CA6E8',      
+  normalIconBg: '#64B0E9',      
+  normalText: '#5CA6E8',        
+  normalBadgeBg: '#64B0E9',     
+  normalBadgeText: '#ffffff',
+
+  // Issue UI colors (Mapped to your Issues Orange #FFBF76/#FF943A)
+  normalIssueBg: '#FFF5E5',     
+  normalIssueBorder: '#FF943A', 
+  normalIssueIconBg: '#FFBF76', 
+  normalIssueText: '#FF943A',   
+  normalIssueBadgeBg: '#FFBF76',
+  normalIssueBadgeText: '#ffffff',
+
+  // Layout props (Inherited)
+  justifyContent: 'space-between',
+  width: "100%",
+  alignItems: 'center',
 };
 
 // --- 3. Consolidate into a Map ---
@@ -174,20 +291,21 @@ export const themes = {
   solarized: solarizedTheme,
   dracula: draculaTheme,
   cream: creamTheme, // <--- Added here
+  pastel: pastelTheme, // <--- Added here
 };
 
 const ThemeContext = createContext({
   theme: lightTheme,
   colorMode: 'light',
-  setColorMode: () => {},
+  setColorMode: () => { },
 });
 
 export function ThemeProvider({ children }) {
   const systemScheme = useColorScheme();
-  
+
   // Determine default mode based on system, strictly 'light' or 'dark' initially
   const defaultMode = (systemScheme === 'dark' || systemScheme === 'light') ? systemScheme : 'light';
-  
+
   const [colorMode, setColorModeState] = useState(defaultMode);
   const [userPreference, setUserPreference] = useState(null);
 

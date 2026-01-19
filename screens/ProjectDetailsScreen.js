@@ -30,7 +30,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { getUserIdFromToken } from '../utils/auth';
 import { fetchUserConnections } from '../utils/issues';
 
-import { deleteProjectById, getProjectById, transferProjectOwnership, leaveProject } from '../utils/project';
+import { deleteProjectById, getProjectById, leaveProject, transferProjectOwnership } from '../utils/project';
 import { createWorklist, deleteWorklist, getProjectWorklistsProgress, getWorklistsByProjectId, updateWorklist } from '../utils/worklist';
 export default function ProjectDetailsScreen({ navigation, route }) {
   const [showCoAdminPopup, setShowCoAdminPopup] = useState(false);
