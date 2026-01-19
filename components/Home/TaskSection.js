@@ -46,6 +46,7 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
   const unresolvedIssues = useMemo(() => {
     return issuesRec.filter(issue => {
       const status = String(issue.status || '').toLowerCase();
+      // Include 'reopen' specifically, exclude 'completed' and 'resolved'
       return status !== 'completed' && status !== 'resolved';
     });
   }, [issuesRec]);
@@ -72,7 +73,7 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
       const progress = item.percent || item.progress || 0;
 
       if (activeTab === 'issues') {
-        const isCompleted = status === 'completed' || status === 'resolved' || progress === 100;
+        const isCompleted = (status === 'completed' || status === 'resolved' || progress === 100) && status !== 'reopen';
         return !isCompleted;
       } else {
         const isCompleted = status === 'completed' || progress === 100;

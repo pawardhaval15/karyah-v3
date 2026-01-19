@@ -64,8 +64,10 @@ const IssueItem = memo(({ item, index, onPressIssue, theme, styles, t, currentUs
 
   const statusColors = useMemo(() => {
     if (item.isCritical) return { icon: '#FF3B30', bg: 'rgba(255, 59, 48, 0.1)', border: '#FF3B30' };
-    if (item.status === 'Completed') return { icon: '#34C759', bg: 'rgba(52, 199, 89, 0.1)', border: '#34C759' };
-    if (item.status === 'Pending') return { icon: '#FF9500', bg: 'rgba(255, 149, 0, 0.1)', border: '#FF9500' };
+    const s = String(item.status || '').toLowerCase();
+    if (s === 'completed') return { icon: '#34C759', bg: 'rgba(52, 199, 89, 0.1)', border: '#34C759' };
+    if (s === 'reopen') return { icon: '#FF3B30', bg: 'rgba(255, 59, 48, 0.1)', border: '#FF3B30' };
+    if (s === 'pending') return { icon: '#FF9500', bg: 'rgba(255, 149, 0, 0.1)', border: '#FF9500' };
     return { icon: theme.primary, bg: theme.avatarBg, border: theme.primary };
   }, [item.status, item.isCritical, theme]);
 
@@ -79,6 +81,7 @@ const IssueItem = memo(({ item, index, onPressIssue, theme, styles, t, currentUs
   const statusStyle = useMemo(() => {
     const s = item.status?.toLowerCase();
     if (s === 'completed') return { bg: '#34C759', text: '#FFFFFF' };
+    if (s === 'reopen') return { bg: '#FF3B30', text: '#FFFFFF' };
     if (s === 'pending') return { bg: '#FF9500', text: '#FFFFFF' };
     if (s === 'in progress') return { bg: '#007AFF', text: '#FFFFFF' };
     return { bg: theme.avatarBg, text: theme.text };
@@ -304,7 +307,7 @@ export default function IssueList({
       <FlatList
         data={[
           { key: 'all', label: t('all'), count: issues.length },
-          { key: 'pending', label: t('pending'), count: issues.filter(i => i.status === 'Pending').length },
+          { key: 'pending', label: t('pending'), count: issues.filter(i => i.status !== 'Completed').length },
           { key: 'completed', label: t('completed'), count: issues.filter(i => i.status === 'Completed').length },
         ]}
         horizontal

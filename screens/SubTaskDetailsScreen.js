@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider'; // Add this import
 import AttachmentSheet from 'components/popups/AttachmentSheet';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { jwtDecode } from 'jwt-decode';
 import { useEffect, useRef, useState } from 'react';
@@ -27,12 +28,13 @@ import {
     deleteTask,
     getTaskDetailsById,
     getTasksByProjectId,
+    holdTask,
+    moveTaskToNextStage,
+    reopenTask,
     updateTask,
     updateTaskDetails,
     updateTaskFlags,
     updateTaskProgress,
-    moveTaskToNextStage,
-    holdTask, reopenTask,
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
@@ -347,7 +349,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                 setProjects(projects || []);
                 setUsers(connections || []);
                 if (UpdateTaskScreen.projectId) {
-                    const { getWorklistsByProjectId } = await import('../utils/worklist');
                     const worklistData = await getWorklistsByProjectId(UpdateTaskScreen.projectId, token);
                     setWorklists(worklistData || []);
                     // Fetch tasks by projectId
@@ -1257,9 +1258,13 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                                             {att.type && att.type.startsWith('audio') ? (
                                                 <TouchableOpacity
                                                     onPress={async () => {
-                                                        const { Sound } = await import('expo-av');
-                                                        const { sound } = await Sound.createAsync({ uri: att.uri });
-                                                        await sound.playAsync();
+                                                        try {
+                                                            const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
+                                                            await sound.playAsync();
+                                                        } catch (error) {
+                                                            console.error('Failed to play audio:', error);
+                                                            Alert.alert('Error', 'Could not play audio file');
+                                                        }
                                                     }}
                                                     style={{ marginRight: 8 }}>
                                                     <MaterialCommunityIcons
@@ -1339,7 +1344,7 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                         setShowAttachmentSheet(false);
                     }}
                 />
-                
+
                 {/* Resolved Attachments Section - Only show for issue tasks with resolved attachments */}
                 {task.isIssue &&
                     Array.isArray(task.resolvedImages) &&

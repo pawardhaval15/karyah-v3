@@ -2,7 +2,6 @@
 
 import { Platform } from 'react-native';
 import apiClient from './apiClient';
-
 /**
  * Fetch issues assigned to the current user.
  */
@@ -56,9 +55,7 @@ export const updateIssue = async (payload) => {
             });
         });
 
-        const response = await apiClient.put(`api/issues/${issueId}`, formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-        });
+        const response = await apiClient.put(`api/issues/${issueId}`, formData);
         return response.data;
     } else {
         const response = await apiClient.put(`api/issues/${issueId}`, payload);
@@ -97,9 +94,7 @@ export const createIssue = async (issueData) => {
         });
     }
 
-    const response = await apiClient.post('api/issues/create', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await apiClient.post('api/issues/create', formData);
     return response.data;
 };
 
@@ -129,9 +124,7 @@ export const resolveIssueByAssignedUser = async ({ issueId, issueStatus, resolve
         });
     });
 
-    const response = await apiClient.put(`api/issues/${issueId}/resolve`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const response = await apiClient.put(`api/issues/${issueId}/resolve`, formData);
     return response.data;
 };
 

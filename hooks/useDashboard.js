@@ -6,7 +6,7 @@ export const useDashboardStats = () => {
         queryKey: ['dashboardStats'],
         queryFn: async () => {
             const response = await apiClient.get('api/projects/dashboard/counts');
-            console.log(response.data);
+            // console.log(response.data);
             return response.data;
         },
         staleTime: 10000,

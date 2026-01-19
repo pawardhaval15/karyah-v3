@@ -1,20 +1,22 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import GradientButton from 'components/Login/GradientButton';
+import { Audio } from 'expo-av';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator,
-    Alert,
-    Image,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  ActivityIndicator,
+  Alert,
+  Image,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { createIssue } from '../../utils/issues'; // adjust path as needed
@@ -24,7 +26,6 @@ import FilePreviewModal from './FilePreviewModal';
 import ProjectPopup from './ProjectPopup';
 import useAttachmentPicker from './useAttachmentPicker';
 import useAudioRecorder from './useAudioRecorder';
-import { useTranslation } from 'react-i18next';
 export default function IssuePopup({
   visible,
   onClose,
@@ -48,7 +49,7 @@ export default function IssuePopup({
   const [recording, setRecording] = useState(null);
   const [loading, setLoading] = useState(false); // <-- Add loading state
   const [showAddProjectPopup, setShowAddProjectPopup] = useState(false);
-const { t } = useTranslation();
+  const { t } = useTranslation();
   const handleSubmit = async () => {
     if (!values.projectId) {
       alert('Please select a project.');
@@ -218,14 +219,14 @@ const { t } = useTranslation();
                 placeholderTextColor={theme.secondaryText}
                 editable={false}
               />
-              
+
               {/* Preview Button */}
               {attachments.length > 0 && (
                 <TouchableOpacity
                   onPress={() => setShowPreviewModal(true)}
-                  style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
                     backgroundColor: theme.primary + '20',
                     paddingHorizontal: 8,
                     paddingVertical: 4,
@@ -233,17 +234,17 @@ const { t } = useTranslation();
                     marginRight: 8
                   }}>
                   <Feather name="eye" size={16} color={theme.primary} />
-                  <Text style={{ 
-                    color: theme.primary, 
-                    fontSize: 12, 
+                  <Text style={{
+                    color: theme.primary,
+                    fontSize: 12,
                     fontWeight: '500',
-                    marginLeft: 4 
+                    marginLeft: 4
                   }}>
                     {t('previewAttachments')} ({attachments.length})
                   </Text>
                 </TouchableOpacity>
               )}
-              
+
               <Feather name="paperclip" size={20} color="#888" style={styles.inputIcon} onPress={() => setShowAttachmentSheet(true)} />
               <MaterialCommunityIcons
                 name={isRecording ? "microphone" : "microphone-outline"}
@@ -294,9 +295,13 @@ const { t } = useTranslation();
                           {att.type && att.type.startsWith('audio') ? (
                             <TouchableOpacity
                               onPress={async () => {
-                                const { Sound } = await import('expo-av');
-                                const { sound } = await Sound.createAsync({ uri: att.uri });
-                                await sound.playAsync();
+                                try {
+                                  const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
+                                  await sound.playAsync();
+                                } catch (error) {
+                                  console.error('Failed to play audio:', error);
+                                  Alert.alert('Error', 'Could not play audio file');
+                                }
                               }}
                               style={{ marginRight: 8 }}
                             >

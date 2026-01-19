@@ -1,28 +1,29 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { useState } from 'react';
 import {
-    Alert,
-    Dimensions,
-    FlatList,
-    Image,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
 } from 'react-native';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
-export default function FilePreviewModal({ 
-  visible, 
-  onClose, 
-  attachments, 
-  onRemoveFile, 
+export default function FilePreviewModal({
+  visible,
+  onClose,
+  attachments,
+  onRemoveFile,
   theme,
   getFileType,
   getFileIcon,
-  getFormattedSize 
+  getFormattedSize
 }) {
   const [selectedFileIndex, setSelectedFileIndex] = useState(0);
   const [showFullPreview, setShowFullPreview] = useState(false);
@@ -31,7 +32,6 @@ export default function FilePreviewModal({
 
   const playAudio = async (file) => {
     try {
-      const { Audio } = await import('expo-av');
       const { sound } = await Audio.Sound.createAsync({ uri: file.uri });
       await sound.playAsync();
       Alert.alert('Playing Audio', `Playing: ${file.name}`);
@@ -43,7 +43,7 @@ export default function FilePreviewModal({
   const renderFilePreview = (file) => {
     const fileType = getFileType(file);
     console.log('File preview - Type:', fileType, 'File:', file);
-    
+
     switch (fileType) {
       case 'image':
         return (
@@ -128,7 +128,7 @@ export default function FilePreviewModal({
         // Check if it might be an image based on URI or name even if type detection failed
         const fileName = file.name || file.uri || '';
         const isImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
-        
+
         if (isImageExtension) {
           return (
             <TouchableOpacity
@@ -151,13 +151,13 @@ export default function FilePreviewModal({
             </TouchableOpacity>
           );
         }
-        
+
         return (
           <View style={[styles.noPreview, { backgroundColor: theme.card }]}>
-            <MaterialCommunityIcons 
-              name={getFileIcon(file)} 
-              size={64} 
-              color={theme.secondaryText} 
+            <MaterialCommunityIcons
+              name={getFileIcon(file)}
+              size={64}
+              color={theme.secondaryText}
             />
             <Text style={[styles.noPreviewText, { color: theme.text }]}>
               {fileType.charAt(0).toUpperCase() + fileType.slice(1)} File
@@ -178,12 +178,12 @@ export default function FilePreviewModal({
     const fileName = item.name || item.uri || '';
     const isImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
     const isImage = fileType === 'image' || isImageExtension;
-    
+
     return (
       <TouchableOpacity
         style={[
           styles.fileListItem,
-          { 
+          {
             backgroundColor: index === selectedFileIndex ? `${theme.primary}20` : theme.card,
             borderColor: index === selectedFileIndex ? theme.primary : theme.border,
           }
@@ -202,21 +202,21 @@ export default function FilePreviewModal({
               resizeMode="cover"
             />
           ) : (
-            <MaterialCommunityIcons 
-              name={getFileIcon(item)} 
-              size={24} 
-              color={index === selectedFileIndex ? theme.primary : theme.secondaryText} 
+            <MaterialCommunityIcons
+              name={getFileIcon(item)}
+              size={24}
+              color={index === selectedFileIndex ? theme.primary : theme.secondaryText}
             />
           )}
           <View style={styles.fileInfo}>
-            <Text 
+            <Text
               style={[
-                styles.fileListName, 
-                { 
+                styles.fileListName,
+                {
                   color: index === selectedFileIndex ? theme.primary : theme.text,
                   fontWeight: index === selectedFileIndex ? '600' : '400'
                 }
-              ]} 
+              ]}
               numberOfLines={1}>
               {item.name}
             </Text>
@@ -232,8 +232,8 @@ export default function FilePreviewModal({
               `Are you sure you want to remove "${item.name}"?`,
               [
                 { text: 'Cancel', style: 'cancel' },
-                { 
-                  text: 'Remove', 
+                {
+                  text: 'Remove',
                   style: 'destructive',
                   onPress: () => {
                     onRemoveFile(index);
@@ -303,12 +303,12 @@ export default function FilePreviewModal({
             {/* Footer */}
             <View style={[styles.footer, { borderTopColor: theme.border }]}>
               <Text style={[styles.footerText, { color: theme.secondaryText }]}>
-                Total: {attachments.length} file{attachments.length > 1 ? 's' : ''} • 
+                Total: {attachments.length} file{attachments.length > 1 ? 's' : ''} •
                 Size: {(() => {
                   const totalSize = attachments.reduce((total, file) => total + (file.size || 0), 0);
                   const hasExistingFiles = attachments.some(file => file.isExisting && (!file.size || file.size === 0));
-                  return totalSize > 0 ? getFormattedSize(totalSize) + (hasExistingFiles ? ' + existing files' : '') : 
-                         hasExistingFiles ? 'Contains existing files' : 'Unknown size';
+                  return totalSize > 0 ? getFormattedSize(totalSize) + (hasExistingFiles ? ' + existing files' : '') :
+                    hasExistingFiles ? 'Contains existing files' : 'Unknown size';
                 })()}
               </Text>
               <TouchableOpacity
@@ -328,29 +328,29 @@ export default function FilePreviewModal({
         const isImageExtension = /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(fileName);
         return fileType === 'image' || isImageExtension;
       })() && (
-        <Modal
-          visible={true}
-          animationType="fade"
-          transparent
-          onRequestClose={() => setShowFullPreview(false)}>
-          <View style={styles.fullPreviewContainer}>
-            <TouchableOpacity
-              style={styles.fullPreviewClose}
-              onPress={() => setShowFullPreview(false)}>
-              <Feather name="x" size={24} color="white" />
-            </TouchableOpacity>
-            <Image
-              source={{ uri: selectedFile.uri }}
-              style={styles.fullPreviewImage}
-              resizeMode="contain"
-            />
-            <View style={styles.fullPreviewInfo}>
-              <Text style={styles.fullPreviewName}>{selectedFile.name}</Text>
-              <Text style={styles.fullPreviewSize}>{getFormattedSize(selectedFile.size)}</Text>
+          <Modal
+            visible={true}
+            animationType="fade"
+            transparent
+            onRequestClose={() => setShowFullPreview(false)}>
+            <View style={styles.fullPreviewContainer}>
+              <TouchableOpacity
+                style={styles.fullPreviewClose}
+                onPress={() => setShowFullPreview(false)}>
+                <Feather name="x" size={24} color="white" />
+              </TouchableOpacity>
+              <Image
+                source={{ uri: selectedFile.uri }}
+                style={styles.fullPreviewImage}
+                resizeMode="contain"
+              />
+              <View style={styles.fullPreviewInfo}>
+                <Text style={styles.fullPreviewName}>{selectedFile.name}</Text>
+                <Text style={styles.fullPreviewSize}>{getFormattedSize(selectedFile.size)}</Text>
+              </View>
             </View>
-          </View>
-        </Modal>
-      )}
+          </Modal>
+        )}
     </>
   );
 }

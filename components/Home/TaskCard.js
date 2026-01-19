@@ -73,7 +73,7 @@ const TaskCard = ({
   const statusLower = String(issueStatus || '').toLowerCase();
 
   // Hide resolved/completed issues
-  if (isIssue && (statusLower === 'completed' || statusLower === 'resolved' || (percent || 0) === 100)) {
+  if (isIssue && (statusLower === 'completed' || statusLower === 'resolved' || ((percent || 0) === 100 && statusLower !== 'reopen'))) {
     return null;
   }
 

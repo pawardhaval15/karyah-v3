@@ -1,31 +1,28 @@
-import React, { useState } from 'react';
-import {
-    Modal,
-    View,
-    TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-    Text,
-    Image,
-    TextInput,
-    Alert,
-    Switch,
-    Platform,
-} from 'react-native';
-import { Ionicons, Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import GradientButton from 'components/Login/GradientButton';
-import CustomPickerDrawer from './CustomPickerDrawer';
-import AttachmentSheet from './AttachmentSheet';
-import * as ImagePicker from 'expo-image-picker';
-import * as DocumentPicker from 'expo-document-picker';
-import * as MediaLibrary from 'expo-media-library';
-import { Audio } from 'expo-av';
-import { createIssue } from '../../utils/issues'; // adjust path as needed
+import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import GradientButton from 'components/Login/GradientButton';
+import { Audio } from 'expo-av';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import {
+    Alert,
+    Image,
+    Modal,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Switch,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { createIssue } from '../../utils/issues'; // adjust path as needed
+import AttachmentSheet from './AttachmentSheet';
+import CustomPickerDrawer from './CustomPickerDrawer';
 import useAttachmentPicker from './useAttachmentPicker';
 import useAudioRecorder from './useAudioRecorder';
-import { useTranslation } from 'react-i18next';
 export default function ProjectIssuePopup({
     visible,
     onClose,
@@ -39,7 +36,7 @@ export default function ProjectIssuePopup({
 
 }) {
     const theme = useTheme();
-  const { t } = useTranslation();
+    const { t } = useTranslation();
     const [showProjectPicker, setShowProjectPicker] = useState(false);
     const [showUserPicker, setShowUserPicker] = useState(false);
     const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
@@ -270,9 +267,13 @@ export default function ProjectIssuePopup({
                                                     {att.type && att.type.startsWith('audio') ? (
                                                         <TouchableOpacity
                                                             onPress={async () => {
-                                                                const { Sound } = await import('expo-av');
-                                                                const { sound } = await Sound.createAsync({ uri: att.uri });
-                                                                await sound.playAsync();
+                                                                try {
+                                                                    const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
+                                                                    await sound.playAsync();
+                                                                } catch (error) {
+                                                                    console.error('Failed to play audio:', error);
+                                                                    Alert.alert('Error', 'Could not play audio file');
+                                                                }
                                                             }}
                                                             style={{ marginRight: 8 }}
                                                         >

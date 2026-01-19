@@ -1,6 +1,7 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -67,6 +68,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
     issueTitle: '',
     description: '',
     dueDate: '',
+    isCritical: false,
   });
 
   // Simplified state for other UI elements
@@ -93,9 +95,10 @@ export default function IssueDetailsScreen({ navigation, route }) {
   useEffect(() => {
     if (issue) {
       setEditFields({
-        issueTitle: issue.isTaskBased ? (issue.taskName || '') : (issue.issueTitle || ''),
+        issueTitle: issue.isTaskBased ? (issue.taskName || issue.name || '') : (issue.issueTitle || ''),
         description: issue.description || '',
-        dueDate: issue.isTaskBased ? (issue.endDate || '') : (issue.dueDate || ''),
+        dueDate: issue.isTaskBased ? (issue.endDate || issue.dueDate || '') : (issue.dueDate || ''),
+        isCritical: !!issue.isCritical,
       });
     }
   }, [issue]);
@@ -183,8 +186,15 @@ export default function IssueDetailsScreen({ navigation, route }) {
       return;
     }
     try {
+      console.log('Submitting Resolution:', {
+        issueId: issueId || issue?.id || issue?.taskId || issue?.issueId,
+        isTaskBased: issue.isTaskBased,
+        remarks: remark.trim(),
+        attachmentCount: attachments.length
+      });
+
       await resolveMutation.mutateAsync({
-        issueId: issue.isTaskBased ? issue.taskId : issue.issueId,
+        issueId: issueId || issue?.id || issue?.taskId || issue?.issueId,
         isTaskBased: issue.isTaskBased,
         resolveData: {
           remarks: remark.trim(),
@@ -193,7 +203,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
       });
       Alert.alert('Success', 'Issue completed successfully');
       navigation.goBack();
+      console.log('Issue resolved successfully');
     } catch (error) {
+      console.error('Submission Error:', error);
       Alert.alert('Error', error.message || 'Failed to submit resolution');
     }
   };
@@ -288,14 +300,32 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     return;
                   }
                   try {
+                    // Normalize assignedUserId as per user request logic
+                    let assignedUserId = '';
+                    if (issue.assignTo) {
+                      if (
+                        typeof issue.assignTo === 'object' &&
+                        (issue.assignTo.userId || issue.assignTo.id)
+                      ) {
+                        assignedUserId = String(issue.assignTo.userId || issue.assignTo.id);
+                      } else if (
+                        typeof issue.assignTo === 'number' ||
+                        /^\d+$/.test(issue.assignTo)
+                      ) {
+                        assignedUserId = String(issue.assignTo);
+                      }
+                    }
+
                     await updateMutation.mutateAsync({
-                      issueId: issue.isTaskBased ? issue.taskId : issue.issueId,
+                      issueId: issueId || issue?.id || issue?.taskId || issue?.issueId,
                       isTaskBased: issue.isTaskBased,
                       updateData: {
                         issueTitle: editFields.issueTitle.trim(),
                         description: editFields.description.trim(),
                         dueDate: editFields.dueDate,
+                        isCritical: editFields.isCritical,
                         unresolvedImages: attachments,
+                        ...(assignedUserId ? { assignTo: assignedUserId } : {}),
                       }
                     });
 
@@ -391,7 +421,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                             onPress: async () => {
                               try {
                                 await deleteMutation.mutateAsync({
-                                  issueId: issue.isTaskBased ? issue.taskId : issue.issueId,
+                                  issueId: issueId || issue?.id || issue?.taskId || issue?.issueId,
                                   isTaskBased: issue.isTaskBased
                                 });
                                 navigation.navigate('IssuesScreen', { refresh: true });
@@ -444,7 +474,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             ) : (
               <TouchableOpacity onPress={() => setShowIssueTitleModal(true)}>
                 <Text style={{ color: '#fff', fontSize: 22, fontWeight: '600' }} numberOfLines={2} ellipsizeMode="tail">
-                  {issue.isTaskBased ? issue.taskName : issue.issueTitle}
+                  {issue.isTaskBased ? (issue.taskName || issue.name) : issue.issueTitle}
                 </Text>
               </TouchableOpacity>
             )}
@@ -960,8 +990,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                             {att.type?.startsWith('audio') && (
                               <TouchableOpacity
                                 onPress={async () => {
-                                  const { Sound } = await import('expo-av');
-                                  const { sound } = await Sound.createAsync({ uri: att.uri });
+                                  const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
                                   await sound.playAsync();
                                 }}
                                 style={{ marginRight: 8 }}>
@@ -1139,7 +1168,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
             refreshIssueData();
           }
         }}
-        taskId={issue.isTaskBased ? issue.taskId : (issue?.issueId || issueId)}
+        taskId={issueId || issue?.id || issue?.taskId || issue?.issueId}
         currentAssignees={issue.isTaskBased ? (issue?.assignedUserDetails || []) : (issue?.assignTo ? [issue.assignTo] : [])}
         theme={theme}
         isCreator={isCreator}
@@ -1182,7 +1211,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                   lineHeight: 22,
                   marginBottom: 12
                 }}>
-                  {issue.isTaskBased ? issue?.taskName : issue?.issueTitle}
+                  {issue.isTaskBased ? (issue?.taskName || issue?.name) : issue?.issueTitle}
                 </Text>
                 <TouchableOpacity
                   style={{
@@ -1216,7 +1245,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
             borderTopLeftRadius: 20,
             borderTopRightRadius: 20,
           }}>
-            {/* Header */}
             <View style={{
               flexDirection: 'row',
               alignItems: 'center',
@@ -1226,25 +1254,16 @@ export default function IssueDetailsScreen({ navigation, route }) {
               borderBottomWidth: 1,
               borderBottomColor: theme.border,
             }}>
-              <Text style={{
-                fontSize: 18,
-                fontWeight: '600',
-                color: theme.text
-              }}>
+              <Text style={{ fontSize: 18, fontWeight: '600', color: theme.text }}>
                 Attachment Preview ({attachments.length})
               </Text>
               <TouchableOpacity
                 onPress={() => setShowAttachmentPreviewModal(false)}
-                style={{
-                  padding: 8,
-                  borderRadius: 20,
-                  backgroundColor: theme.card,
-                }}>
+                style={{ padding: 8, borderRadius: 20, backgroundColor: theme.card }}>
                 <MaterialIcons name="close" size={20} color={theme.text} />
               </TouchableOpacity>
             </View>
 
-            {/* Attachment List */}
             <ScrollView style={{ flex: 1, paddingHorizontal: 20, paddingTop: 16 }}>
               {attachments.map((att, index) => (
                 <View
@@ -1259,8 +1278,6 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     borderWidth: 1,
                     borderColor: theme.border,
                   }}>
-
-                  {/* File Icon/Preview */}
                   <View style={{
                     width: 50,
                     height: 50,
@@ -1271,15 +1288,7 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     marginRight: 12,
                   }}>
                     {att.type?.startsWith('image') ? (
-                      <Image
-                        source={{ uri: att.uri }}
-                        style={{
-                          width: 50,
-                          height: 50,
-                          borderRadius: 8,
-                        }}
-                        resizeMode="cover"
-                      />
+                      <Image source={{ uri: att.uri }} style={{ width: 50, height: 50, borderRadius: 8 }} resizeMode="cover" />
                     ) : att.type?.startsWith('audio') ? (
                       <MaterialCommunityIcons name="music-note" size={24} color={theme.primary} />
                     ) : att.type?.startsWith('video') ? (
@@ -1289,79 +1298,43 @@ export default function IssueDetailsScreen({ navigation, route }) {
                     )}
                   </View>
 
-                  {/* File Info */}
                   <View style={{ flex: 1 }}>
-                    <Text style={{
-                      fontSize: 16,
-                      fontWeight: '500',
-                      color: theme.text,
-                      marginBottom: 4,
-                    }} numberOfLines={1}>
+                    <Text style={{ fontSize: 16, fontWeight: '500', color: theme.text, marginBottom: 4 }} numberOfLines={1}>
                       {att.name || att.uri?.split('/').pop() || 'Unknown File'}
                     </Text>
-                    <Text style={{
-                      fontSize: 14,
-                      color: theme.secondaryText,
-                      marginBottom: 4,
-                    }}>
+                    <Text style={{ fontSize: 14, color: theme.secondaryText, marginBottom: 4 }}>
                       {att.type || 'Unknown Type'}
                     </Text>
                     {att.size && (
-                      <Text style={{
-                        fontSize: 12,
-                        color: theme.secondaryText,
-                      }}>
+                      <Text style={{ fontSize: 12, color: theme.secondaryText }}>
                         {(att.size / 1024 / 1024).toFixed(2)} MB
                       </Text>
                     )}
                   </View>
 
-                  {/* Action Buttons */}
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {/* Play button for audio/video */}
                     {(att.type?.startsWith('audio') || att.type?.startsWith('video')) && (
                       <TouchableOpacity
                         onPress={async () => {
                           try {
-                            const { Sound } = await import('expo-av');
-                            const { sound } = await Sound.createAsync({ uri: att.uri });
+                            const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
                             await sound.playAsync();
                           } catch (error) {
                             Alert.alert('Error', 'Could not play file');
                           }
                         }}
-                        style={{
-                          padding: 8,
-                          borderRadius: 20,
-                          backgroundColor: theme.primary + '20',
-                        }}>
+                        style={{ padding: 8, borderRadius: 20, backgroundColor: theme.primary + '20' }}>
                         <MaterialCommunityIcons name="play" size={16} color={theme.primary} />
                       </TouchableOpacity>
                     )}
-
-                    {/* Remove button */}
                     <TouchableOpacity
                       onPress={() => {
-                        Alert.alert(
-                          'Remove Attachment',
-                          'Are you sure you want to remove this attachment?',
-                          [
-                            { text: 'Cancel', style: 'cancel' },
-                            {
-                              text: 'Remove',
-                              style: 'destructive',
-                              onPress: () => {
-                                setAttachments(prev => prev.filter((_, i) => i !== index));
-                              }
-                            }
-                          ]
-                        );
+                        Alert.alert('Remove Attachment', 'Are you sure?', [
+                          { text: 'Cancel', style: 'cancel' },
+                          { text: 'Remove', style: 'destructive', onPress: () => setAttachments(prev => prev.filter((_, i) => i !== index)) }
+                        ]);
                       }}
-                      style={{
-                        padding: 8,
-                        borderRadius: 20,
-                        backgroundColor: '#FF453A20',
-                      }}>
+                      style={{ padding: 8, borderRadius: 20, backgroundColor: '#FF453A20' }}>
                       <MaterialCommunityIcons name="delete" size={16} color="#FF453A" />
                     </TouchableOpacity>
                   </View>
@@ -1369,18 +1342,9 @@ export default function IssueDetailsScreen({ navigation, route }) {
               ))}
 
               {attachments.length === 0 && (
-                <View style={{
-                  alignItems: 'center',
-                  paddingVertical: 40,
-                }}>
+                <View style={{ alignItems: 'center', paddingVertical: 40 }}>
                   <MaterialCommunityIcons name="file-outline" size={60} color={theme.secondaryText} />
-                  <Text style={{
-                    fontSize: 16,
-                    color: theme.secondaryText,
-                    marginTop: 16,
-                  }}>
-                    No attachments to preview
-                  </Text>
+                  <Text style={{ fontSize: 16, color: theme.secondaryText, marginTop: 16 }}>No attachments to preview</Text>
                 </View>
               )}
             </ScrollView>

@@ -325,7 +325,6 @@ export default function TaskDetailsScreen({ route, navigation }) {
         setProjects(projects || []);
         setUsers(connections || []);
         if (UpdateTaskScreen.projectId) {
-          const { getWorklistsByProjectId } = await import('../utils/worklist');
           const worklistData = await getWorklistsByProjectId(UpdateTaskScreen.projectId, token);
           setWorklists(worklistData || []);
           // Fetch tasks by projectId

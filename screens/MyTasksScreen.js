@@ -16,14 +16,15 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import CustomCircularProgress from '../components/task details/CustomCircularProgress';
-import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import AddTaskPopup from '../components/popups/AddTaskPopup';
 import TagsManagementModal from '../components/popups/TagsManagementModal';
+import CustomCircularProgress from '../components/task details/CustomCircularProgress';
+import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
 import { bulkAssignTasks, getTasksByProjectId, updateTaskDetails } from '../utils/task';
 import { fetchMyTasks, fetchTasksCreatedByMe } from '../utils/taskUtils';
+import { getWorklistsByProjectId } from '../utils/worklist';
 export default function MyTasksScreen({ navigation }) {
   const theme = useTheme();
   const [search, setSearch] = useState('');
@@ -168,7 +169,6 @@ export default function MyTasksScreen({ navigation }) {
         setUsers(connections || []);
 
         if (addTaskForm.projectId) {
-          const { getWorklistsByProjectId } = await import('../utils/worklist');
           const worklistData = await getWorklistsByProjectId(addTaskForm.projectId, token);
           setWorklists(worklistData || []);
           // Fetch tasks by projectId

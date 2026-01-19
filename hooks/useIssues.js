@@ -1,5 +1,32 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Platform } from 'react-native';
 import apiClient from '../utils/apiClient';
+import { API_URL } from '../utils/config';
+import { updateIssue } from '../utils/issues';
+import { updateTask, updateTaskDetails } from '../utils/task';
+
+const normalizeFileForUpload = (file, index = 0) => {
+    if (!file || !file.uri) return null;
+
+    let uri = file.uri;
+    if (Platform.OS === 'android' && !uri.startsWith('file://')) {
+        uri = `file://${uri}`;
+    }
+
+    let mimeType = file.type || file.mimeType || 'application/octet-stream';
+    if (mimeType && !mimeType.includes('/')) {
+        if (mimeType === 'image') mimeType = 'image/jpeg';
+        else if (mimeType === 'video') mimeType = 'video/mp4';
+        else mimeType = 'application/octet-stream';
+    }
+
+    return {
+        uri,
+        name: file.name || (uri.split('/').pop() || `resolved-${index}`),
+        type: mimeType || 'application/octet-stream',
+    };
+};
 
 // Fetch issues by user (tasks marked as issues)
 export const useIssues = () => {
@@ -44,19 +71,14 @@ export const useCreateIssue = () => {
             // Append images
             if (issueData.unresolvedImages && Array.isArray(issueData.unresolvedImages)) {
                 issueData.unresolvedImages.forEach((file, idx) => {
-                    if (file.uri) {
-                        formData.append('unresolvedImages', {
-                            uri: file.uri,
-                            name: file.name || `issue_image_${idx}.jpg`,
-                            type: file.type || 'image/jpeg',
-                        });
+                    const normalized = normalizeFileForUpload(file, idx);
+                    if (normalized) {
+                        formData.append('unresolvedImages', normalized);
                     }
                 });
             }
 
-            const response = await apiClient.post('api/issues/create', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
+            const response = await apiClient.post('api/issues/create', formData);
             return response.data;
         },
         onSuccess: () => {
@@ -90,27 +112,67 @@ export const useIssueDetails = (issueId) => {
         queryKey: ['issue', issueId],
         queryFn: async () => {
             if (!issueId) return null;
+            const token = await AsyncStorage.getItem('token');
+            console.log(`useIssueDetails: Fetching details for ${issueId}...`);
+
             try {
-                // Try fetching as a task first
-                const response = await apiClient.get(`api/tasks/details/${issueId}`);
-                const taskData = response.data.task;
-                if (taskData && taskData.isIssue) {
-                    return { ...taskData, isTaskBased: true };
+                // Try fetching as a task first (api/tasks/details/${issueId})
+                const url = `${API_URL}api/tasks/details/${issueId}`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { Authorization: `Bearer ${token}` }),
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const taskData = data.task;
+                    if (taskData) {
+                        console.log(`useIssueDetails: Successfully fetched as task-based issue`, {
+                            id: taskData.id || taskData._id || taskData.taskId,
+                            status: taskData.status,
+                            isIssue: taskData.isIssue,
+                            imageCount: taskData.images?.length,
+                            resolvedImageCount: (taskData.resolvedImages?.length || 0) + " (Checking 'images' field too: " + (taskData.images?.length || 0) + ")"
+                        });
+                        return { ...taskData, isTaskBased: true };
+                    }
                 }
-                throw new Error('Not a task-based issue');
+                throw new Error('Not a task-based issue or fetch failed');
             } catch (error) {
-                // Fallback to traditional issue fetch
-                const response = await apiClient.get(`api/issues/details/${issueId}`);
-                return { ...response.data.issue, isTaskBased: false };
+                // Fallback to traditional issue fetch (api/issues/details/${issueId})
+                console.log(`useIssueDetails: Falling back to traditional issue fetch for ${issueId}...`);
+                const url = `${API_URL}api/issues/details/${issueId}`;
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(token && { Authorization: `Bearer ${token}` }),
+                    },
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const issueData = data.issue;
+                    console.log(`useIssueDetails: Successfully fetched as traditional issue`, {
+                        id: issueData.issueId || issueData.id,
+                        status: issueData.issueStatus,
+                        unresolvedImageCount: issueData.unresolvedImages?.length,
+                        resolvedImageCount: issueData.resolvedImages?.length
+                    });
+                    return { ...issueData, isTaskBased: false };
+                }
+                throw new Error('Failed to fetch issue details');
             }
         },
         enabled: !!issueId,
-        // Pre-populate with data from the issues list cache for "instant" feel
         placeholderData: () => {
             return queryClient.getQueryData(['issues'])?.find((i) => i.id === issueId || i.taskId === issueId || i.issueId === issueId);
         },
         refetchOnWindowFocus: true,
-        staleTime: 0, // Always check for fresh data on focus, but do it silently
+        staleTime: 0,
     });
 };
 
@@ -119,45 +181,92 @@ export const useResolveIssue = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: async ({ issueId, isTaskBased, resolveData }) => {
+            console.log('useResolveIssue mutationFn called with:', { issueId, isTaskBased, resolveData });
+            const token = await AsyncStorage.getItem('token');
+            const formData = new FormData();
+
             if (isTaskBased) {
-                const formData = new FormData();
-                if (resolveData.remarks) formData.append('remarks', resolveData.remarks);
+                const url = `${API_URL}api/tasks/${issueId}/resolve`;
 
+                // Add remarks if provided
+                if (resolveData.remarks) {
+                    formData.append('remarks', resolveData.remarks);
+                }
+
+                // Add resolved images if provided
                 if (resolveData.resolvedImages && Array.isArray(resolveData.resolvedImages)) {
-                    resolveData.resolvedImages.forEach((file, idx) => {
-                        formData.append('images', {
-                            uri: file.uri,
-                            name: file.name || `resolved_${idx}.jpg`,
-                            type: file.type || 'image/jpeg',
-                        });
+                    console.log(`Appending ${resolveData.resolvedImages.length} files to Task Resolve FormData (using 'images' field)`);
+                    resolveData.resolvedImages.forEach((img, idx) => {
+                        if (img && img.uri) {
+                            const uri = img.uri.startsWith('file://') ? img.uri : `file://${img.uri}`;
+
+                            // Fix MIME type
+                            let mimeType = img.type;
+                            if (mimeType && !mimeType.includes('/')) {
+                                if (mimeType === 'image') mimeType = 'image/jpeg';
+                                else if (mimeType === 'video') mimeType = 'video/mp4';
+                                else mimeType = 'application/octet-stream';
+                            }
+
+                            // Use 'images' as the field name to match backend multer configuration
+                            formData.append('images', {
+                                uri,
+                                name: img.name || `resolved-${idx}`,
+                                type: mimeType || 'application/octet-stream',
+                            });
+                        }
                     });
                 }
 
-                // For task-based issues, we use the resolve endpoint if available, 
-                // or update status to Completed
-                const response = await apiClient.put(`api/tasks/${issueId}/resolve`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
+                // Add imagesToRemove if provided (as in user snippet)
+                if (resolveData.imagesToRemove && Array.isArray(resolveData.imagesToRemove)) {
+                    resolveData.imagesToRemove.forEach(index => {
+                        formData.append('imagesToRemove', String(index));
+                    });
+                }
+
+                const response = await fetch(url, {
+                    method: 'PATCH',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: formData,
                 });
-                return response.data;
+
+                const responseText = await response.text();
+                const data = JSON.parse(responseText);
+                if (!response.ok) throw new Error(data.message || 'Failed to resolve task');
+                return data;
             } else {
-                const formData = new FormData();
+                // Traditional issue resolution logic (keeping as PUT as per usual)
+                const url = `${API_URL}api/issues/${issueId}/resolve`;
                 formData.append('issueStatus', 'completed');
-                formData.append('remarks', resolveData.remarks || '');
+                if (resolveData.remarks) {
+                    formData.append('remarks', resolveData.remarks);
+                }
 
                 if (resolveData.resolvedImages && Array.isArray(resolveData.resolvedImages)) {
+                    console.log(`Appending ${resolveData.resolvedImages.length} files to Issue Resolve FormData (using 'resolvedImages' field)`);
                     resolveData.resolvedImages.forEach((file, idx) => {
-                        formData.append('resolvedImages', {
-                            uri: file.uri,
-                            name: file.name || `resolved_${idx}.jpg`,
-                            type: file.type || 'image/jpeg',
-                        });
+                        const normalized = normalizeFileForUpload(file, idx);
+                        if (normalized) {
+                            formData.append('resolvedImages', normalized);
+                        }
                     });
                 }
 
-                const response = await apiClient.put(`api/issues/${issueId}/resolve`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    body: formData,
                 });
-                return response.data;
+
+                const responseText = await response.text();
+                const data = JSON.parse(responseText);
+                if (!response.ok) throw new Error(data.message || 'Failed to resolve issue');
+                return data;
             }
         },
         onSuccess: (data, variables) => {
@@ -188,37 +297,27 @@ export const useUpdateIssue = () => {
     return useMutation({
         mutationFn: async ({ issueId, isTaskBased, updateData }) => {
             if (isTaskBased) {
-                // Task-based update
-                const payload = {
-                    name: updateData.issueTitle,
-                    description: updateData.description,
-                    endDate: updateData.dueDate,
-                };
-                const response = await apiClient.patch(`api/tasks/${issueId}`, payload);
-                return response.data;
-            } else {
-                // Traditional issue update
-                const formData = new FormData();
-                Object.entries(updateData).forEach(([key, value]) => {
-                    if (value !== undefined && key !== 'unresolvedImages') {
-                        formData.append(key, value);
-                    }
-                });
-
-                if (updateData.unresolvedImages && Array.isArray(updateData.unresolvedImages)) {
-                    updateData.unresolvedImages.forEach((file, idx) => {
-                        formData.append('unresolvedImages', {
-                            uri: file.uri,
-                            name: file.name || `edit_${idx}.jpg`,
-                            type: file.type || 'image/jpeg',
-                        });
+                if (updateData.unresolvedImages && updateData.unresolvedImages.length > 0) {
+                    return await updateTaskDetails(issueId, {
+                        name: updateData.issueTitle,
+                        description: updateData.description,
+                        endDate: updateData.dueDate,
+                        attachments: updateData.unresolvedImages,
+                        isCritical: updateData.isCritical,
+                    });
+                } else {
+                    return await updateTask(issueId, {
+                        taskName: updateData.issueTitle,
+                        description: updateData.description,
+                        endDate: updateData.dueDate,
+                        isCritical: updateData.isCritical,
                     });
                 }
-
-                const response = await apiClient.put(`api/issues/${issueId}`, formData, {
-                    headers: { 'Content-Type': 'multipart/form-data' },
+            } else {
+                return await updateIssue({
+                    ...updateData,
+                    issueId,
                 });
-                return response.data;
             }
         },
         onSuccess: (data, variables) => {
