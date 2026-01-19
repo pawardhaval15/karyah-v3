@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Keyboard,
@@ -19,18 +20,20 @@ import {
 } from 'react-native';
 import GradientButton from '../components/Login/GradientButton';
 import DateBox from '../components/task details/DateBox';
+import { useProjectDetails, useUpdateProject } from '../hooks/useProjects';
 import { useTheme } from '../theme/ThemeContext';
 import categoriesData from '../utils/categories.json';
 import { getUserConnections, searchUsers } from '../utils/connections';
-import { getProjectById, updateProject } from '../utils/project';
 
 export default function UpdateProjectScreen({ route, navigation }) {
   const { projectId } = route.params;
   const theme = useTheme();
   const { t } = useTranslation();
-  const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [allConnections, setAllConnections] = useState([]);
+
+  // React Query Hooks for optimized data fetching and mutations
+  const { data: project, isLoading: projectLoading } = useProjectDetails(projectId);
+  const updateProjectMutation = useUpdateProject();
+
   const [values, setValues] = useState({
     projectName: '',
     projectDesc: '',
@@ -41,160 +44,134 @@ export default function UpdateProjectScreen({ route, navigation }) {
   });
   const [selectedCoAdmins, setSelectedCoAdmins] = useState([]);
   const [searchText, setSearchText] = useState('');
-  const [allUsers, setAllUsers] = useState([]);
+  const [allConnections, setAllConnections] = useState([]);
+  const [searchedUsers, setSearchedUsers] = useState([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const [showCoAdminPicker, setShowCoAdminPicker] = useState(false);
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
 
+  // Sync state with project data when it loads
+  useEffect(() => {
+    if (project) {
+      setValues({
+        projectName: project.projectName || '',
+        projectDesc: project.description || '',
+        projectCategory: project.projectCategory || '',
+        location: project.location || '',
+        startDate: project.startDate || '',
+        endDate: project.endDate || '',
+      });
+      setSelectedCoAdmins(project.coAdmins?.map((u) => u.userId || u.id) || []);
+    }
+  }, [project]);
+
+  // Optimized user merging logic: pool from original project co-admins, local connections, and search results
   const mergedUsers = useMemo(() => {
-    if (!searchText) return [];
-    const searchLower = searchText.toLowerCase();
-
-    // Filter local connections
-    const filteredConns = allConnections.filter(conn =>
-      conn.name?.toLowerCase().includes(searchLower)
-    ).map(conn => ({ ...conn, connectionStatus: 'accepted' }));
-
-    // Merge with searched users, avoiding duplicates
     const userMap = new Map();
-    filteredConns.forEach(conn => userMap.set(conn.userId || conn.id, conn));
-    allUsers.forEach(user => {
-      const userId = user.userId || user.id;
-      if (!userMap.has(userId)) userMap.set(userId, user);
+
+    // 1. Add current project co-admins to base pool (ensures they stay visible even if not in connections)
+    (project?.coAdmins || []).forEach(ca => {
+      const id = ca.userId || ca.id;
+      userMap.set(String(id), { ...ca, connectionStatus: 'accepted' });
     });
 
-    return Array.from(userMap.values());
-  }, [allConnections, allUsers, searchText]);
+    // 2. Add local connections
+    allConnections.forEach(conn => {
+      const id = conn.userId || conn.id;
+      if (!userMap.has(String(id))) {
+        userMap.set(String(id), { ...conn, connectionStatus: 'accepted' });
+      }
+    });
 
-  // Category suggestions state
+    // 3. Add searched users
+    searchedUsers.forEach(user => {
+      const id = user.userId || user.id;
+      if (!userMap.has(String(id))) {
+        userMap.set(String(id), user);
+      }
+    });
+
+    const allPool = Array.from(userMap.values());
+
+    // If no search text, show selected users first, then others
+    if (!searchText.trim()) {
+      return allPool.sort((a, b) => {
+        const aSel = selectedCoAdmins.some(sid => sid == (a.userId || a.id));
+        const bSel = selectedCoAdmins.some(sid => sid == (b.userId || b.id));
+        if (aSel && !bSel) return -1;
+        if (!aSel && bSel) return 1;
+        return 0;
+      });
+    }
+
+    const searchLower = searchText.toLowerCase();
+    return allPool.filter(u =>
+      (u.name || '').toLowerCase().includes(searchLower) ||
+      String(u.userId || u.id).includes(searchText)
+    );
+  }, [project, allConnections, searchedUsers, searchText, selectedCoAdmins]);
+
+  // Category search logic
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState([]);
 
-  // Filter categories and subcategories based on search text
-  const filterCategories = (searchText) => {
-    if (!searchText || !searchText.trim()) {
+  const filterCategories = (text) => {
+    if (!text?.trim()) {
       setShowCategorySuggestions(false);
-      setCategorySuggestions([]);
       return;
     }
-
+    const search = text.toLowerCase();
     const filtered = [];
-    const search = searchText.toLowerCase();
-
     categoriesData.categories.forEach(cat => {
-      // Check if category name matches
       if (cat.name.toLowerCase().includes(search)) {
-        filtered.push({
-          text: cat.name,
-          type: 'category',
-          subtext: 'Main Category'
-        });
+        filtered.push({ text: cat.name, type: 'category', subtext: 'Main Category' });
       }
-
-      // Check subcategories
       cat.subcategories.forEach(sub => {
         if (sub.toLowerCase().includes(search)) {
-          filtered.push({
-            text: sub,
-            type: 'subcategory',
-            subtext: `${cat.name}`
-          });
+          filtered.push({ text: sub, type: 'subcategory', subtext: cat.name });
         }
       });
     });
-
-    setCategorySuggestions(filtered.slice(0, 8)); // Limit to 8 suggestions
+    setCategorySuggestions(filtered.slice(0, 8));
     setShowCategorySuggestions(filtered.length > 0);
-  };
-
-  // Handle category input change
-  const handleCategoryChange = (text) => {
-    const safeText = text || '';
-    handleChange('projectCategory', safeText);
-    filterCategories(safeText);
-  };
-
-  // Handle category suggestion selection
-  const handleCategorySuggestionSelect = (suggestion) => {
-    handleChange('projectCategory', suggestion.text);
-    setShowCategorySuggestions(false);
-    setCategorySuggestions([]);
   };
 
   useFocusEffect(
     useCallback(() => {
-      const showSubscription = Keyboard.addListener('keyboardDidShow', () => {
-        setKeyboardVisible(true);
-      });
-      const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
-        setKeyboardVisible(false);
-      });
-
+      const showSub = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true));
+      const hideSub = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false));
       return () => {
-        showSubscription.remove();
-        hideSubscription.remove();
+        showSub.remove();
+        hideSub.remove();
       };
     }, [])
   );
 
   useEffect(() => {
     if (showCoAdminPicker) {
-      getUserConnections()
-        .then((connections) => {
-          setAllConnections(connections || []);
-        })
-        .catch(() => {
-          setAllConnections([]);
-        });
+      getUserConnections().then(setAllConnections).catch(() => setAllConnections([]));
     }
   }, [showCoAdminPicker]);
 
-  // Enhanced search functionality
   useEffect(() => {
     if (!searchText.trim() || searchText.length < 2) {
-      setAllUsers([]);
+      setSearchedUsers([]);
       return;
     }
-
     const performSearch = async () => {
       try {
         setSearchingUsers(true);
         const users = await searchUsers(searchText);
-        setAllUsers(users || []);
+        setSearchedUsers(users || []);
       } catch (error) {
-        console.log('SearchUsers API error:', error.message);
-        setAllUsers([]);
+        setSearchedUsers([]);
       } finally {
         setSearchingUsers(false);
       }
     };
-
-    const debounceTimer = setTimeout(performSearch, 400);
-    return () => clearTimeout(debounceTimer);
+    const timer = setTimeout(performSearch, 400);
+    return () => clearTimeout(timer);
   }, [searchText]);
-
-  useEffect(() => {
-    const fetchProject = async () => {
-      try {
-        const res = await getProjectById(projectId);
-        setProject(res);
-        setValues({
-          projectName: res.projectName,
-          projectDesc: res.description,
-          projectCategory: res.projectCategory,
-          location: res.location,
-          startDate: res.startDate,
-          endDate: res.endDate,
-        });
-        setSelectedCoAdmins(res.coAdmins?.map((u) => u.userId) || []);
-      } catch (err) {
-        Alert.alert('Error', 'Failed to load project.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchProject();
-  }, []);
 
   const handleChange = (field, value) => {
     setValues((prev) => ({ ...prev, [field]: value }));
@@ -202,77 +179,65 @@ export default function UpdateProjectScreen({ route, navigation }) {
 
   const handleUpdate = async () => {
     try {
-      await updateProject(projectId, {
-        ...values,
-        description: values.projectDesc,
-        coAdminIds: selectedCoAdmins,
+      await updateProjectMutation.mutateAsync({
+        projectId,
+        projectData: {
+          ...values,
+          description: values.projectDesc,
+          coAdminIds: selectedCoAdmins,
+        },
       });
       Alert.alert('Success', 'Project updated successfully.');
-      // Instead of goBack, replace to ProjectDetailsScreen to force refresh
       navigation.replace('ProjectDetailsScreen', { projectId, refresh: true });
     } catch (err) {
-      Alert.alert('Error', 'Failed to update project.');
+      Alert.alert('Error', err.message || 'Failed to update project.');
     }
   };
 
-  // Enhanced user selection logic - allow direct selection of any user
-  const handleUserSelection = async (user) => {
-    const userId = user.userId || user.id;
-
-    // Check if user is already selected (handle both string and number types)
-    const isSelected =
-      selectedCoAdmins.includes(userId) ||
-      selectedCoAdmins.includes(String(userId)) ||
-      selectedCoAdmins.includes(Number(userId));
-
-    if (isSelected) {
-      // Remove from selection
-      setSelectedCoAdmins((prev) =>
-        prev.filter((id) => id !== userId && id !== String(userId) && id !== Number(userId))
-      );
-    } else {
-      // Add user to selection directly (no connection requirement)
-      setSelectedCoAdmins((prev) => [...prev, userId]);
-    }
+  const handleUserSelection = (user) => {
+    const id = user.userId || user.id;
+    setSelectedCoAdmins((prev) =>
+      prev.some(i => i == id) ? prev.filter((i) => i != id) : [...prev, id]
+    );
   };
 
-  if (loading || !project) {
+  if (projectLoading && !project) {
     return (
-      <View
-        style={{
-          flex: 1,
-          justifyContent: 'center',
-          alignItems: 'center',
-          backgroundColor: theme.background,
-        }}>
-        <Text style={{ color: theme.text }}>Loading...</Text>
+      <View style={[styles.centered, { backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={{ color: theme.text, marginTop: 12, fontWeight: '600' }}>{t('loading')}...</Text>
       </View>
     );
   }
+
+  if (!project) return null;
 
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       style={{ flex: 1, backgroundColor: theme.background }}>
-      <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 120 }} keyboardShouldPersistTaps="handled">
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
+          <MaterialIcons name="arrow-back-ios" size={18} color={theme.text} />
           <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
         </TouchableOpacity>
-        {/* Header Card */}
+
         <LinearGradient
           colors={[theme.secondary, theme.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.headerCard}>
-          <View>
-            <Text style={styles.projectName}>{project.projectName}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.projectName}>{values.projectName || project.projectName}</Text>
             <Text style={styles.dueDate}>
               {t('due_date')} : {values.endDate?.split('T')[0] || '-'}
             </Text>
           </View>
+          <View style={styles.headerIcon}>
+            <Feather name="edit-3" size={24} color="#fff" opacity={0.5} />
+          </View>
         </LinearGradient>
-        {/* Date Row */}
+
         <View style={styles.dateRow}>
           <DateBox
             label={t('start_date')}
@@ -287,7 +252,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
             theme={theme}
           />
         </View>
-        {/* Editable Fields */}
+
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.inputLabel, { color: theme.text }]}>{t('project_name')}</Text>
           <TextInput
@@ -298,6 +263,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
             style={[styles.inputValue, { color: theme.text }]}
           />
         </View>
+
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.inputLabel, { color: theme.text }]}>{t('category')}</Text>
           <View style={styles.categoryInputContainer}>
@@ -305,46 +271,39 @@ export default function UpdateProjectScreen({ route, navigation }) {
               value={values.projectCategory}
               placeholder={t('category')}
               placeholderTextColor={theme.secondaryText}
-              onChangeText={handleCategoryChange}
-              onFocus={() => filterCategories(values.projectCategory)}
-              onBlur={() => {
-                // Delay hiding suggestions to allow selection
-                setTimeout(() => setShowCategorySuggestions(false), 150);
+              onChangeText={(text) => {
+                handleChange('projectCategory', text);
+                filterCategories(text);
               }}
+              onFocus={() => filterCategories(values.projectCategory)}
+              onBlur={() => setTimeout(() => setShowCategorySuggestions(false), 200)}
               style={[styles.inputValue, { color: theme.text }]}
             />
-            {showCategorySuggestions && categorySuggestions.length > 0 && (
-              <ScrollView
-                style={[styles.suggestionsContainer, {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                }]}
-                keyboardShouldPersistTaps="handled"
-                nestedScrollEnabled={true}
-              >
-                {categorySuggestions.map((suggestion, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.suggestionItem, {
-                      borderBottomColor: theme.border,
-                      backgroundColor: theme.card
-                    }]}
-                    onPress={() => handleCategorySuggestionSelect(suggestion)}
-                  >
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.suggestionText, { color: theme.text }]}>
-                        {suggestion.text}
-                      </Text>
-                      <Text style={[styles.suggestionSubtext, { color: theme.secondaryText }]}>
-                        {suggestion.subtext}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
+            {showCategorySuggestions && (
+              <View style={[styles.suggestionsContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  nestedScrollEnabled>
+                  {categorySuggestions.map((s, i) => (
+                    <TouchableOpacity
+                      key={i}
+                      style={[styles.suggestionItem, { borderBottomColor: theme.border }]}
+                      onPress={() => {
+                        handleChange('projectCategory', s.text);
+                        setShowCategorySuggestions(false);
+                      }}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.suggestionText, { color: theme.text }]}>{s.text}</Text>
+                        <Text style={[styles.suggestionSubtext, { color: theme.secondaryText }]}>{s.subtext}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
             )}
           </View>
         </View>
+
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.inputLabel, { color: theme.text }]}>{t('location')}</Text>
           <TextInput
@@ -355,6 +314,7 @@ export default function UpdateProjectScreen({ route, navigation }) {
             style={[styles.inputValue, { color: theme.text }]}
           />
         </View>
+
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
           <Text style={[styles.inputLabel, { color: theme.text }]}>{t('description')}</Text>
           <TextInput
@@ -363,226 +323,114 @@ export default function UpdateProjectScreen({ route, navigation }) {
             placeholderTextColor={theme.secondaryText}
             onChangeText={(text) => handleChange('projectDesc', text)}
             multiline
-            scrollEnabled
-            style={[
-              styles.inputValue,
-              {
-                color: theme.text,
-                minHeight: 60, // minimum height so users can type comfortably
-                maxHeight: 140, // maximum height enabling internal scrolling after this
-                textAlignVertical: 'top', // aligns text to top in Android for multiline
-              },
-            ]}
+            style={[styles.inputValue, { color: theme.text, minHeight: 80, textAlignVertical: 'top' }]}
           />
         </View>
-        {/* Co-Admins */}
+
         <View style={[styles.fieldBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
-          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>
-            {t('co_admins')}
-          </Text>
+          <Text style={[styles.inputLabel, { color: theme.text, marginBottom: 8 }]}>{t('co_admins')}</Text>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setShowCoAdminPicker(true)}
-            style={{
-              flexDirection: 'row',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              minHeight: 40,
-              paddingRight: 15,
-            }}>
-            {selectedCoAdmins.length === 0 && (
-              <Text style={{ color: theme.secondaryText }}>{t('select_co_admins')}</Text>
-            )}
-            {selectedCoAdmins.map((id, idx) => {
-              const user =
-                (project.coAdmins || []).find((u) => u.userId === id) ||
-                allConnections.find((u) => (u.userId || u.id) === id);
-              const photo =
-                user?.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
-              return (
-                <Image
-                  key={id}
-                  source={{ uri: photo }}
-                  style={{
-                    width: 40,
-                    height: 40,
-                    borderRadius: 20,
-                    marginRight: -10,
-                    borderWidth: 2,
-                    borderColor: theme.primary,
-                    backgroundColor: '#fff',
-                  }}
-                />
-              );
-            })}
-            <Feather
-              name="chevron-right"
-              size={20}
-              color={theme.secondaryText}
-              style={{ marginLeft: 8 }}
-            />
+            style={styles.coAdminPreview}>
+            {selectedCoAdmins.length === 0 && <Text style={{ color: theme.secondaryText }}>{t('select_co_admins')}</Text>}
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {selectedCoAdmins.map((id) => {
+                const u = (project?.coAdmins || []).concat(allConnections).find(x => (x.userId || x.id) == id);
+                return (
+                  <View key={id} style={[styles.adminChip, { backgroundColor: theme.primary + '15' }]}>
+                    <Image
+                      source={{ uri: u?.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }}
+                      style={styles.adminChipAvatar}
+                    />
+                    <Text style={[styles.adminChipName, { color: theme.text }]} numberOfLines={1}>{u?.name || 'User'}</Text>
+                  </View>
+                );
+              })}
+              <View style={[styles.addBtnCircle, { backgroundColor: theme.primary + '20' }]}>
+                <Feather name="plus" size={16} color={theme.primary} />
+              </View>
+            </View>
           </TouchableOpacity>
         </View>
-        <Modal
-          visible={showCoAdminPicker}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setShowCoAdminPicker(false)}>
-          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-              keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
-              style={{ flex: 1, justifyContent: 'flex-end', width: '100%' }}>
-              <View
-                style={{
-                  backgroundColor: theme.card,
-                  borderTopLeftRadius: 24,
-                  borderTopRightRadius: 24,
-                  padding: 20,
-                  minHeight: 350,
-                  maxHeight: '70%',
-                }}>
-                <Text
-                  style={{ color: theme.text, fontWeight: 'bold', fontSize: 16, marginBottom: 12 }}>
-                  {t('select_co_admins')}
-                </Text>
-                {selectedCoAdmins.length > 0 && (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    style={{ marginBottom: 8, minHeight: 54 }}
-                    contentContainerStyle={{ alignItems: 'center', paddingVertical: 0 }}>
-                    {selectedCoAdmins.map((userId, idx) => {
-                      const user = allConnections.find((u) => (u.userId || u.id) === userId);
-                      if (!user) return null;
+
+        <Modal visible={showCoAdminPicker} animationType="slide" transparent>
+          <View style={styles.modalOverlay}>
+            <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+              <View style={styles.modalHeader}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>{t('select_co_admins')}</Text>
+                <TouchableOpacity onPress={() => setShowCoAdminPicker(false)} style={styles.closeBtn}>
+                  <MaterialIcons name="close" size={24} color={theme.text} />
+                </TouchableOpacity>
+              </View>
+
+              {selectedCoAdmins.length > 0 && (
+                <View style={styles.selectedContainer}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectedUsersRow}>
+                    {selectedCoAdmins.map((id) => {
+                      const u = (project?.coAdmins || []).concat(allConnections).find(x => (x.userId || x.id) == id);
                       return (
-                        <TouchableOpacity
-                          key={userId}
-                          onPress={() =>
-                            setSelectedCoAdmins((prev) => prev.filter((id) => id !== userId))
-                          }
-                          style={{
-                            alignItems: 'center',
-                            marginLeft: idx === 0 ? 0 : 6, // overlap avatars
-                            position: 'relative',
-                          }}>
-                          <Image
-                            source={{
-                              uri:
-                                user.profilePhoto ||
-                                'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                            }}
-                            style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 20,
-                              borderWidth: 2,
-                              borderColor: theme.primary,
-                            }}
-                          />
-                          <Feather
-                            name="x-circle"
-                            size={16}
-                            color={theme.primary}
-                            style={{ position: 'absolute', top: -6, right: -6 }}
-                          />
+                        <TouchableOpacity key={id} onPress={() => handleUserSelection({ id })} style={styles.selectedUserChip}>
+                          <Image source={{ uri: u?.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }} style={styles.chipAvatar} />
+                          <View style={styles.chipCloseWrapper}>
+                            <Feather name="x" size={12} color="#fff" />
+                          </View>
+                          <Text style={[styles.chipName, { color: theme.text }]} numberOfLines={1}>{u?.name || 'User'}</Text>
                         </TouchableOpacity>
                       );
                     })}
                   </ScrollView>
-                )}
+                </View>
+              )}
+
+              <View style={[styles.searchWrapper, { backgroundColor: theme.SearchBar, borderColor: theme.border }]}>
+                <Feather name="search" size={18} color={theme.secondaryText} style={{ marginRight: 10 }} />
                 <TextInput
-                  placeholder={t('search_users_or_connections') || 'Search users or connections'}
+                  placeholder={t('search_users_or_connections')}
                   placeholderTextColor={theme.secondaryText}
                   value={searchText}
                   onChangeText={setSearchText}
-                  style={{
-                    color: theme.text,
-                    backgroundColor: theme.SearchBar,
-                    borderRadius: 14,
-                    paddingHorizontal: 12,
-                    paddingVertical: 16,
-                    marginBottom: 4,
-                    borderColor: theme.border,
-                    borderWidth: 1,
-                  }}
+                  style={[styles.searchInputInModal, { color: theme.text }]}
                 />
-
-                <ScrollView keyboardShouldPersistTaps="handled">
-                  {searchingUsers && (
-                    <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 10 }} />
-                  )}
-
-                  {mergedUsers.length > 0 && (
-                    mergedUsers.map((item) => {
-                      const userId = item.userId || item.id;
-                      return (
-                        <TouchableOpacity
-                          key={userId}
-                          onPress={() => handleUserSelection(item)}
-                          style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            paddingVertical: 10,
-                            borderBottomWidth: 0.5,
-                            borderColor: theme.border,
-                            opacity: item.connectionStatus === 'accepted' ? 1 : 0.6
-                          }}>
-                          <Image
-                            source={{
-                              uri:
-                                item.profilePhoto ||
-                                'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-                            }}
-                            style={{ width: 36, height: 36, borderRadius: 18, marginRight: 10 }}
-                          />
-                          <View style={{ flex: 1 }}>
-                            <Text style={{ color: theme.text, fontWeight: '500' }}>{item.name}</Text>
-                            <Text style={{ fontSize: 10, color: item.connectionStatus === 'accepted' ? theme.primary : '#FFA500' }}>
-                              {item.connectionStatus === 'accepted' ? 'Connected' : 'Not Connected'}
-                            </Text>
-                          </View>
-                          {selectedCoAdmins.includes(userId) && (
-                            <Feather name="check-circle" size={20} color={theme.primary} />
-                          )}
-                        </TouchableOpacity>
-                      );
-                    })
-                  )}
-
-                  {searchText.trim() !== '' && mergedUsers.length === 0 && !searchingUsers && (
-                    <Text
-                      style={{
-                        color: theme.secondaryText,
-                        textAlign: 'center',
-                        marginTop: 20,
-                      }}>
-                      No users found.
-                    </Text>
-                  )}
-                </ScrollView>
-                <TouchableOpacity
-                  style={{
-                    marginTop: 18,
-                    alignSelf: 'center',
-                    backgroundColor: theme.primary,
-                    borderRadius: 12,
-                    paddingHorizontal: 32,
-                    paddingVertical: 12,
-                  }}
-                  onPress={() => setShowCoAdminPicker(false)}>
-                  <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                    {t('done')}
-                  </Text>
-                </TouchableOpacity>
               </View>
-            </KeyboardAvoidingView>
+
+              <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
+                {searchingUsers && <ActivityIndicator size="small" color={theme.primary} style={{ marginVertical: 20 }} />}
+                {mergedUsers.map((item) => {
+                  const id = item.userId || item.id;
+                  const isSelected = selectedCoAdmins.some(sid => sid == id);
+                  return (
+                    <TouchableOpacity key={id} onPress={() => handleUserSelection(item)} style={[styles.userListItem, { borderColor: theme.border }]}>
+                      <Image source={{ uri: item.profilePhoto || 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png' }} style={styles.listItemAvatar} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: theme.text, fontWeight: '600', fontSize: 16 }}>{item.name || 'User'}</Text>
+                        <Text style={{ fontSize: 12, color: item.connectionStatus === 'accepted' ? theme.primary : '#FFA500', marginTop: 2 }}>
+                          {item.connectionStatus === 'accepted' ? 'Connected' : 'External User'}
+                        </Text>
+                      </View>
+                      <View style={[styles.checkCircle, isSelected && { backgroundColor: theme.primary, borderColor: theme.primary }]}>
+                        {isSelected && <Feather name="check" size={14} color="#fff" />}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              <View style={styles.modalFooter}>
+                <GradientButton title={t('done')} onPress={() => setShowCoAdminPicker(false)} theme={theme} />
+              </View>
+            </View>
           </View>
         </Modal>
       </ScrollView>
+
       {!isKeyboardVisible && (
         <View style={styles.fixedButtonContainer}>
-          <GradientButton title={t('save_changes')} onPress={handleUpdate} theme={theme} />
+          {updateProjectMutation.isPending ? (
+            <ActivityIndicator size="large" color={theme.primary} />
+          ) : (
+            <GradientButton title={t('save_changes')} onPress={handleUpdate} theme={theme} />
+          )}
         </View>
       )}
     </KeyboardAvoidingView>
@@ -590,115 +438,43 @@ export default function UpdateProjectScreen({ route, navigation }) {
 }
 
 const styles = StyleSheet.create({
-  backBtn: {
-    paddingTop: Platform.OS === 'ios' ? 70 : 25,
-    marginLeft: 16,
-    marginBottom: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  backText: {
-    fontSize: 18,
-    color: '#222',
-    fontWeight: '400',
-    marginLeft: 0,
-  },
-  headerCard: {
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 24,
-    marginBottom: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    minHeight: 110,
-  },
-  projectName: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  dueDate: {
-    color: '#fff',
-    fontSize: 13,
-    opacity: 0.85,
-    fontWeight: '400',
-  },
-  dateRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginHorizontal: 22,
-    marginBottom: 12,
-    gap: 8,
-  },
-  fieldBox: {
-    flexDirection: 'column',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    borderWidth: 1,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 14,
-    minHeight: 54,
-    paddingVertical: 8,
-  },
-  inputLabel: {
-    color: '#222',
-    fontWeight: '400',
-    fontSize: 14,
-    marginBottom: 2,
-  },
-  inputValue: {
-    color: '#444',
-    fontSize: 15,
-    fontWeight: '400',
-    paddingVertical: 4,
-    paddingHorizontal: 0,
-  },
-  fixedButtonContainer: {
-    position: 'absolute',
-    bottom: 20,
-    left: 16,
-    right: 16,
-    zIndex: 10,
-    elevation: 5,
-  },
-  categoryInputContainer: {
-    position: 'relative',
-    width: '100%',
-  },
-  suggestionsContainer: {
-    position: 'absolute',
-    top: '100%',
-    left: -14,
-    right: -14,
-    maxHeight: 250,
-    borderWidth: 1,
-    borderRadius: 14,
-    marginTop: 0,
-    zIndex: 1000,
-    elevation: 10,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderBottomWidth: 0.5,
-    minHeight: 60,
-  },
-  suggestionText: {
-    fontSize: 15,
-    fontWeight: '500',
-    lineHeight: 20,
-  },
-  suggestionSubtext: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    marginTop: 4,
-    opacity: 0.8,
-  },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { paddingTop: Platform.OS === 'ios' ? 60 : 25, marginLeft: 20, flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10 },
+  backText: { fontSize: 17, fontWeight: '600' },
+  headerCard: { marginHorizontal: 20, borderRadius: 24, padding: 24, marginBottom: 20, minHeight: 120, flexDirection: 'row', alignItems: 'center', elevation: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8 },
+  projectName: { color: '#fff', fontSize: 24, fontWeight: '800', marginBottom: 6 },
+  dueDate: { color: '#fff', fontSize: 14, opacity: 0.9, fontWeight: '500' },
+  headerIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
+  dateRow: { flexDirection: 'row', justifyContent: 'space-between', marginHorizontal: 20, marginBottom: 16, gap: 12 },
+  fieldBox: { backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, marginHorizontal: 20, marginBottom: 16, paddingHorizontal: 18, paddingVertical: 12, elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4 },
+  inputLabel: { fontWeight: '700', fontSize: 12, textTransform: 'uppercase', opacity: 0.5, marginBottom: 6, letterSpacing: 0.5 },
+  inputValue: { fontSize: 16, fontWeight: '600', paddingVertical: 6 },
+  fixedButtonContainer: { position: 'absolute', bottom: 30, left: 20, right: 20, elevation: 10 },
+  categoryInputContainer: { position: 'relative', width: '100%' },
+  suggestionsContainer: { position: 'absolute', top: 45, left: -18, right: -18, maxHeight: 220, borderWidth: 1, borderRadius: 16, zIndex: 1000, elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.2, shadowRadius: 10 },
+  suggestionItem: { padding: 15, borderBottomWidth: 0.5 },
+  suggestionText: { fontSize: 16, fontWeight: '700' },
+  suggestionSubtext: { fontSize: 13, opacity: 0.7, marginTop: 2 },
+  coAdminPreview: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', paddingVertical: 4 },
+  adminChip: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingRight: 12, paddingLeft: 4, paddingVertical: 4 },
+  adminChipAvatar: { width: 32, height: 32, borderRadius: 16, marginRight: 8, borderWidth: 1, borderColor: '#fff' },
+  adminChipName: { fontSize: 13, fontWeight: '700' },
+  addBtnCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: '#366CD9' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalContent: { borderTopLeftRadius: 36, borderTopRightRadius: 36, padding: 24, height: '88%', elevation: 20 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
+  modalTitle: { fontSize: 22, fontWeight: '800' },
+  closeBtn: { padding: 4 },
+  selectedContainer: { marginBottom: 20 },
+  selectedUsersRow: { maxHeight: 90 },
+  selectedUserChip: { width: 70, alignItems: 'center', marginRight: 15 },
+  chipAvatar: { width: 56, height: 56, borderRadius: 28, borderWidth: 2, borderColor: '#366CD9' },
+  chipCloseWrapper: { position: 'absolute', top: 0, right: 0, backgroundColor: '#366CD9', width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  chipName: { fontSize: 11, fontWeight: '600', marginTop: 4, textAlign: 'center' },
+  searchWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 20, paddingHorizontal: 16, marginBottom: 20, borderWidth: 1, height: 56 },
+  searchInputInModal: { flex: 1, fontSize: 16, fontWeight: '500' },
+  userListItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 15, borderBottomWidth: 0.5 },
+  listItemAvatar: { width: 48, height: 48, borderRadius: 24, marginRight: 16 },
+  checkCircle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#ddd', alignItems: 'center', justifyContent: 'center' },
+  modalFooter: { marginTop: 10, paddingBottom: Platform.OS === 'ios' ? 20 : 0 }
 });

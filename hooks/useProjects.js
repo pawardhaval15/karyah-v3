@@ -58,3 +58,30 @@ export const useProjectInvites = () => {
         refetchInterval: 10000,
     });
 };
+// Hook for project details
+export const useProjectDetails = (projectId) => {
+    return useQuery({
+        queryKey: ['project', projectId],
+        queryFn: async () => {
+            const response = await apiClient.get(`api/projects/${projectId}`);
+            return response.data.project;
+        },
+        enabled: !!projectId,
+        staleTime: 5000,
+    });
+};
+
+// Hook for updating a project
+export const useUpdateProject = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ projectId, projectData }) => {
+            const response = await apiClient.put(`api/projects/${projectId}`, projectData);
+            return response.data.project;
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['project', variables.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+        },
+    });
+};
