@@ -165,7 +165,7 @@ const creamTheme = {
   SearchBar: '#EFE3C8',
 
   /* =================================================
-     🌈 GLOBAL ACTIVE / TAB COLOR
+     GLOBAL ACTIVE / TAB COLOR
      (default = Issues color, NOT BLACK)
   ================================================= */
   primary: '#FF943A',             // Active tab / FAB / focus
