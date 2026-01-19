@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import Animated, { FadeInLeft } from 'react-native-reanimated';
 import { useUserDetails } from '../../hooks/useUser';
-import { useThemeContext } from '../../theme/ThemeContext';
+import { themes, useThemeContext } from '../../theme/ThemeContext';
 import { API_URL } from '../../utils/config';
 
 const DrawerItem = memo(({
@@ -53,41 +53,45 @@ const DrawerItem = memo(({
   );
 });
 
-function ThemeToggle({ colorMode, setColorMode }) {
+function ThemeSelector({ colorMode, setColorMode, theme }) {
   return (
-    <TouchableOpacity
-      onPress={() => setColorMode(colorMode === 'dark' ? 'light' : 'dark')}
-      activeOpacity={0.9}
-      style={[styles.customSwitch, { backgroundColor: colorMode === 'dark' ? '#333' : '#ddd' }]}
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.themeScrollContent}
     >
-      <Feather
-        name="sun"
-        size={12}
-        color={colorMode === 'dark' ? '#888' : '#FFA000'}
-        style={styles.iconLeft}
-      />
-      <Feather
-        name="moon"
-        size={12}
-        color={colorMode === 'dark' ? '#FFD600' : '#888'}
-        style={styles.iconRight}
-      />
-      <View
-        style={[
-          styles.thumb,
-          {
-            left: colorMode === 'dark' ? 26 : 2,
-            backgroundColor: colorMode === 'dark' ? '#FFD600' : '#FFA000',
-          },
-        ]}
-      >
-        <Feather
-          name={colorMode === 'dark' ? 'moon' : 'sun'}
-          size={10}
-          color={colorMode === 'dark' ? '#000' : '#fff'}
-        />
-      </View>
-    </TouchableOpacity>
+      {Object.keys(themes).map((key) => {
+        const isSelected = colorMode === key;
+        const themeColors = themes[key];
+        return (
+          <TouchableOpacity
+            key={key}
+            onPress={() => setColorMode(key)}
+            activeOpacity={0.8}
+            style={[
+              styles.themeChip,
+              {
+                backgroundColor: themeColors.background,
+                borderColor: isSelected ? theme.primary : theme.border,
+              }
+            ]}
+          >
+            <View style={[styles.themeColorDot, { backgroundColor: themeColors.primary }]} />
+            <Text
+              style={[
+                styles.themeChipLabel,
+                {
+                  color: themeColors.text,
+                  fontWeight: isSelected ? '700' : '400'
+                }
+              ]}
+            >
+              {key.charAt(0).toUpperCase() + key.slice(1)}
+            </Text>
+          </TouchableOpacity>
+        );
+      })}
+    </ScrollView>
   );
 }
 
@@ -350,9 +354,9 @@ export default function CustomDrawer({ onClose, theme }) {
         )}
       </View>
 
-      <View style={[styles.themeToggleContainerModern, { borderTopColor: theme.border }]}>
-        <Text style={[styles.themeLabel, { color: theme.secondaryText }]}>Mode</Text>
-        <ThemeToggle colorMode={colorMode} setColorMode={setColorMode} />
+      <View style={[styles.themeSectionModern, { borderTopColor: theme.border }]}>
+        <Text style={[styles.themeLabel, { color: theme.secondaryText, marginBottom: 8 }]}>Appearance</Text>
+        <ThemeSelector colorMode={colorMode} setColorMode={setColorMode} theme={theme} />
       </View>
     </View>
   );
@@ -386,19 +390,41 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginBottom: 8,
   },
-  themeToggleContainerModern: {
+  themeSectionModern: {
     paddingVertical: 14,
-    paddingHorizontal: 24,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    paddingHorizontal: 20,
     borderTopWidth: 1,
     marginTop: 4,
-    marginHorizontal: -20,
+  },
+  themeScrollContent: {
+    paddingRight: 20,
+    gap: 8,
+  },
+  themeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 2,
+    marginRight: 8,
+    minWidth: 90,
+    justifyContent: 'center',
+  },
+  themeColorDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  themeChipLabel: {
+    fontSize: 13,
   },
   themeLabel: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   userSection: {
     flexDirection: 'row',

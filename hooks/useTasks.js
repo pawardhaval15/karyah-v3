@@ -19,7 +19,7 @@ export const useIssuesByUser = () => {
         queryFn: async () => {
             const response = await apiClient.get('api/tasks/issues-by-user');
             const issues = response.data.issues || [];
-            console.log('useIssuesByUser: Fetched issues data:', issues);
+            // console.log('useIssuesByUser: Fetched issues data:', issues);
             return issues;
         },
         refetchInterval: 15000,
