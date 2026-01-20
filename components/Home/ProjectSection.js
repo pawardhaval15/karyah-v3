@@ -1,7 +1,7 @@
 import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
-import { useProjects } from '../../hooks/useProjects';
+import { useProjectStatistics } from '../../hooks/useProjects';
 import ProjectProgressCard from './ProjectProgressCard';
 
 // Helper outside to avoid re-creation
@@ -16,68 +16,58 @@ const formatMinimalDateRange = (start, end) => {
     return `${startStr} – ${endStr}`;
 };
 
-const CARD_WIDTH = 240;
+const CARD_WIDTH = 220;
 const CARD_MARGIN = 10;
 const ITEM_SIZE = CARD_WIDTH + CARD_MARGIN;
 
 const ProjectSection = memo(({ navigation, theme, loading: parentLoading }) => {
     const { t } = useTranslation();
-    const { data: projects = [], isLoading: projectsLoading } = useProjects();
+    const { data: projectStats = [], isLoading: statsLoading } = useProjectStatistics();
 
-    const loading = parentLoading || projectsLoading;
+    const loading = parentLoading || statsLoading;
 
     const displayProjects = useMemo(() => {
-        if (!projects) return [];
+        if (!projectStats || !Array.isArray(projectStats)) return [];
 
         // 1. Filter: Only pending or in-progress (exclude completed/100%)
-        const filtered = projects.filter(p => {
-            const status = String(p.status || '').toLowerCase();
-            const progress = p.progress || 0;
+        const filtered = projectStats.filter(p => {
+            const status = String(p.projectStatus || p.status || '').toLowerCase();
+            const progress = p.overallProjectProgress || p.progress || 0;
             const isCompleted = status === 'completed' || status === 'finished' || progress >= 100;
             return !isCompleted;
         });
 
-        // 2. Sort: Chronological sequence (Overdue first, then Upcoming, then others)
-        // This puts earliest end dates at the top
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
+        // 2. Sort: Chronological sequence (Earliest end dates first)
         return [...filtered].sort((a, b) => {
             const dateA = a.endDate ? new Date(a.endDate) : null;
             const dateB = b.endDate ? new Date(b.endDate) : null;
 
-            // Sort by date ascending (earlier dates first)
             if (dateA && dateB) return dateA - dateB;
-            if (dateA && !dateB) return -1; // Specific date beats no date
+            if (dateA && !dateB) return -1;
             if (!dateA && dateB) return 1;
 
-            // If neither has end date, sort by start date descending (newest projects)
             const startA = a.startDate ? new Date(a.startDate) : 0;
             const startB = b.startDate ? new Date(b.startDate) : 0;
             return startB - startA;
         });
-    }, [projects]);
+    }, [projectStats]);
 
-    const renderProjectItem = useCallback(({ item }) => (
-        <ProjectProgressCard
-            title={item.projectName}
-            timeline={formatMinimalDateRange(item.startDate, item.endDate)}
-            assignedBy={t('you')}
-            avatars={[
-                ...(item.mainUserProfilePhoto ? [item.mainUserProfilePhoto] : []),
-                ...(Array.isArray(item.coAdminProfilePhotos)
-                    ? item.coAdminProfilePhotos
-                        .map(photoObj => photoObj?.profilePhoto)
-                        .filter(Boolean)
-                    : [])
-            ]}
-            progress={item.progress}
-            theme={theme}
-            project={item}
-            creatorName={item.mainUserName || t('unknown')}
-            location={item.location}
-        />
-    ), [theme, t]);
+    const renderProjectItem = useCallback(({ item }) => {
+        return (
+            <ProjectProgressCard
+                title={item.projectName}
+                timeline={formatMinimalDateRange(item.startDate, item.endDate)}
+                assignedBy={t('you')}
+                avatars={[]} // Pass empty or fetch if needed separately, as stats API might not have photos
+                progress={item.overallProjectProgress || item.progress}
+                theme={theme}
+                project={item} // Pass the item as project object
+                creatorName={item.mainUserName || t('unknown')}
+                location={item.location}
+                stats={item} // The item ITSELF is the stats object now
+            />
+        );
+    }, [theme, t]);
 
     const getItemLayout = useCallback((data, index) => ({
         length: ITEM_SIZE,

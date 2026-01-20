@@ -85,3 +85,24 @@ export const useUpdateProject = () => {
         },
     });
 };
+
+// Hook for project statistics
+export const useProjectStatistics = () => {
+    return useQuery({
+        queryKey: ['projectStatistics'],
+        queryFn: async () => {
+            const timestamp = new Date().toLocaleTimeString();
+            console.log(`[${timestamp}] 📊 Fetching Project Statistics...`);
+
+            const response = await apiClient.get('api/projects/statistics');
+            const projectStats = response.data && response.data.data ? response.data.data : [];
+
+            // console.log(`[${timestamp}] Received stats for ${projectStats.length} projects`);
+            // console.log('Detailed Statistics Payload:', JSON.stringify(projectStats, null, 2));
+
+            return projectStats;
+        },
+        refetchInterval: 30000, // Refresh every 30s
+        staleTime: 15000,
+    });
+};
