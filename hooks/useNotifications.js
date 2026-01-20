@@ -5,11 +5,12 @@ export const useNotifications = () => {
     return useQuery({
         queryKey: ['notifications'],
         queryFn: async () => {
-            const response = await apiClient.get('api/notifications');
+            const response = await apiClient.get(`api/notifications?_t=${Date.now()}`);
             return response.data || [];
         },
-        refetchInterval: 10000,   // Faster polling for 'instant' updates
-        staleTime: 5000,
+        refetchInterval: 5000,   // Rapid polling for cross-device sync
+        staleTime: 0,
+        gcTime: 0,
     });
 };
 

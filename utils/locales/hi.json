@@ -320,6 +320,7 @@
   "select_new_manager": "नया प्रबंधक चुनें",
   "Loading Notifications": "सूचनाएं लोड हो रही हैं",
   "project_details": "परियोजना विवरण",
-  "issues_details": "मुद्दा विवरण"
-
+  "issues_details": "मुद्दा विवरण",
+  "logout_confirm": "क्या आप वाकई साइन आउट करना चाहते हैं?",
+  "preferences": "प्राथमिकताएं"
 }

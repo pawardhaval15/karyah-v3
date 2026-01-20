@@ -1,7 +1,7 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
@@ -16,148 +16,60 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import CustomCircularProgress from '../components/task details/CustomCircularProgress';
+import { useWorklists } from '../hooks/useWorklists';
+import { useWorklistUIStore } from '../store/worklistUIStore';
 import { useTheme } from '../theme/ThemeContext';
-import {
-  createWorklist,
-  deleteWorklist,
-  getProjectWorklistsProgress,
-  getWorklistsByProjectId,
-  updateWorklist,
-} from '../utils/worklist'; // make sure updateWorklist and deleteWorklist are exported
-import { useTranslation } from 'react-i18next';
-// WorklistCard component with Progress Display
-function WorklistCard({ worklist, navigation, theme, project, onDelete, onEdit, progress }) {
-  const handleCardPress = () => {
+
+// --- Memoized Components ---
+
+const WorklistCard = memo(({ worklist, navigation, theme, project, progress, t }) => {
+  const handleCardPress = useCallback(() => {
     navigation.navigate('TaskListScreen', { worklist, project });
-  };
-  const { t } = useTranslation();
+  }, [navigation, worklist, project]);
+
   return (
-    <TouchableOpacity
-      style={[styles.worklistCard, { backgroundColor: theme.card, borderColor: theme.border }]}
-      onPress={handleCardPress}>
-      <View style={[styles.worklistIcon, { backgroundColor: theme.avatarBg }]}>
-        <Text style={[styles.worklistIconText, { color: theme.primary }]}>
-          {worklist.name[0]?.toUpperCase() || '?'}
-        </Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.worklistName, { color: theme.text }]}>{worklist.name}</Text>
-        <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
-          {progress?.totalTasks || 0} {t('tasks')}
-        </Text>
-      </View>
-      {/* Circular Progress Component */}
-      <View style={{ marginLeft: 10 }}>
-        <CustomCircularProgress
-          size={48}
-          strokeWidth={4}
-          percentage={progress?.progress || 0}
-        />
-      </View>
-    </TouchableOpacity>
+    <Animated.View entering={FadeInDown.duration(400)}>
+      <TouchableOpacity
+        style={[styles.worklistCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+        activeOpacity={0.7}
+        onPress={handleCardPress}>
+        <View style={[styles.worklistIcon, { backgroundColor: theme.avatarBg }]}>
+          <Text style={[styles.worklistIconText, { color: theme.primary }]}>
+            {worklist.name[0]?.toUpperCase() || '?'}
+          </Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.worklistName, { color: theme.text }]}>{worklist.name}</Text>
+          <Text style={{ color: theme.secondaryText, fontSize: 12, marginTop: 2 }}>
+            {progress?.totalTasks || 0} {t('tasks')}
+          </Text>
+        </View>
+        <View style={{ marginLeft: 10 }}>
+          <CustomCircularProgress
+            size={48}
+            strokeWidth={4}
+            percentage={progress?.progress || 0}
+          />
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
-}
+});
 
-export default function WorklistScreen({ navigation, route }) {
-  const theme = useTheme();
-  const [search, setSearch] = useState('');
-  const [worklists, setWorklists] = useState([]);
-  const [worklistsProgress, setWorklistsProgress] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  // Add states for modals and editing
-  const [isModalVisible, setIsModalVisible] = useState(false);
-  const [newWorklistName, setNewWorklistName] = useState('');
-  const { t } = useTranslation();
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [selectedWorklist, setSelectedWorklist] = useState(null);
-  const [editedWorklistName, setEditedWorklistName] = useState('');
-  const [showProjectNameModal, setShowProjectNameModal] = useState(false);
+const WorklistBanner = memo(({ projectName, onAdd, onProjectNamePress, theme, t }) => {
+  const gradientColors = theme.projectGradient || [theme.secondary, theme.primary];
 
-  const project = route.params?.project;
-  const projectId = project?.id;
-  const projectName = project?.projectName || 'Project Name';
-
-  const fetchWorklists = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const [worklistData, progressData] = await Promise.all([
-        getWorklistsByProjectId(projectId, token),
-        getProjectWorklistsProgress(projectId, token),
-      ]);
-      setWorklists(worklistData);
-      setWorklistsProgress(progressData);
-    } catch (error) {
-      console.error('Failed to fetch worklists:', error.message);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const getWorklistProgress = (worklistId) => {
-    return worklistsProgress.find((p) => p.worklistId === worklistId);
-  };
-
-  useEffect(() => {
-    if (projectId) {
-      fetchWorklists();
-    }
-  }, [projectId]);
-
-  // Listen for route parameter changes to refresh after deletion
-  useEffect(() => {
-    if (route.params?.refresh) {
-      fetchWorklists();
-    }
-  }, [route.params?.refresh]);
-
-  // Handler for Pull-to-Refresh
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchWorklists();
-  };
-
-  const filtered = worklists
-    .filter((w) => w.name?.toLowerCase().includes(search.toLowerCase()))
-    .sort((b, a) => new Date(b.createdAt) - new Date(a.createdAt));
-
-  // Create new Worklist handlers
-  const handleAddWorklist = () => {
-    setIsModalVisible(true);
-  };
-  const handleCreateWorklist = async () => {
-    if (!newWorklistName.trim()) {
-      Alert.alert('Validation', 'Please enter a worklist name.');
-      return;
-    }
-
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const created = await createWorklist(projectId, newWorklistName.trim(), token);
-      setWorklists((prev) => [...prev, created]);
-
-      // Refresh progress data
-      const progressData = await getProjectWorklistsProgress(projectId, token);
-      setWorklistsProgress(progressData);
-
-      setIsModalVisible(false);
-      setNewWorklistName('');
-    } catch (error) {
-      console.error('Failed to create worklist:', error.message);
-      Alert.alert('Error', error.message);
-    }
-  };
-  function WorklistBanner({ projectName, onAdd, onProjectNamePress, theme }) {
-    return (
+  return (
+    <Animated.View entering={FadeInRight.duration(500)}>
       <LinearGradient
-        colors={['#011F53', '#366CD9']}
+        colors={gradientColors}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.banner}>
         <View style={{ flex: 1 }}>
-          <TouchableOpacity onPress={onProjectNamePress}>
+          <TouchableOpacity onPress={onProjectNamePress} activeOpacity={0.8}>
             <Text numberOfLines={2} ellipsizeMode="tail" style={styles.bannerTitle}>
               {projectName}
             </Text>
@@ -169,11 +81,89 @@ export default function WorklistScreen({ navigation, route }) {
           <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
         </TouchableOpacity>
       </LinearGradient>
-    );
-  }
+    </Animated.View>
+  );
+});
 
-  // Delete worklist handler with confirmation
-  const handleDeleteWorklist = (id) => {
+// --- Main Screen ---
+
+export default function WorklistScreen({ navigation, route }) {
+  const theme = useTheme();
+  const { t } = useTranslation();
+
+  const project = route.params?.project;
+  const projectId = project?.id;
+  const projectName = project?.projectName || 'Project Name';
+
+  // --- Zustand Store ---
+  const {
+    search,
+    setSearch,
+    isCreateModalVisible,
+    setCreateModalVisible,
+    isEditModalVisible,
+    setEditModalVisible,
+    isProjectNameModalVisible,
+    setProjectNameModalVisible,
+    selectedWorklist,
+    setSelectedWorklist,
+    newWorklistName,
+    setNewWorklistName,
+    editedWorklistName,
+    setEditedWorklistName,
+    resetCreateForm,
+    resetEditForm,
+  } = useWorklistUIStore();
+
+  // --- React Query Hook ---
+  const {
+    worklists,
+    worklistsProgress,
+    isLoading,
+    isRefreshing,
+    refetch,
+    createWorklist: createWorklistMutation,
+    updateWorklist: updateWorklistMutation,
+    deleteWorklist: deleteWorklistMutation,
+    isCreating,
+    isUpdating,
+  } = useWorklists(projectId);
+
+  // --- Handlers ---
+
+  const handleRefresh = useCallback(() => {
+    refetch();
+  }, [refetch]);
+
+  const handleCreateWorklist = useCallback(async () => {
+    if (!newWorklistName.trim()) {
+      Alert.alert('Validation', 'Please enter a worklist name.');
+      return;
+    }
+
+    try {
+      await createWorklistMutation({ name: newWorklistName.trim() });
+      resetCreateForm();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to create worklist');
+    }
+  }, [newWorklistName, createWorklistMutation, resetCreateForm]);
+
+  const handleUpdateWorklist = useCallback(async () => {
+    if (!editedWorklistName.trim()) {
+      Alert.alert('Validation', 'Please enter a worklist name.');
+      return;
+    }
+
+    try {
+      await updateWorklistMutation({ id: selectedWorklist.id, name: editedWorklistName.trim() });
+      resetEditForm();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to update worklist');
+    }
+  }, [editedWorklistName, selectedWorklist, updateWorklistMutation, resetEditForm]);
+
+  const handleDeleteWorklist = useCallback((id) => {
     Alert.alert(
       'Delete Worklist',
       'Deleting this worklist will also delete all its associated tasks. Do you still want to proceed?',
@@ -184,49 +174,40 @@ export default function WorklistScreen({ navigation, route }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('token');
-              await deleteWorklist(id, token);
-              setWorklists((prev) => prev.filter((w) => w.id !== id));
+              await deleteWorklistMutation(id);
             } catch (error) {
-              console.error('Failed to delete worklist:', error.message);
               Alert.alert('Error', 'Failed to delete worklist.');
             }
           },
         },
       ]
     );
-  };
+  }, [deleteWorklistMutation]);
 
-  // Edit worklist modal open
-  const openEditModal = (worklist) => {
+  const openEditModal = useCallback((worklist) => {
     setSelectedWorklist(worklist);
     setEditedWorklistName(worklist.name);
     setEditModalVisible(true);
-  };
+  }, [setSelectedWorklist, setEditedWorklistName, setEditModalVisible]);
 
-  // Handle worklist update
-  const handleUpdateWorklist = async () => {
-    if (!editedWorklistName.trim()) {
-      Alert.alert('Validation', 'Please enter a worklist name.');
-      return;
-    }
+  // --- Memoized Values ---
 
-    try {
-      const token = await AsyncStorage.getItem('token');
-      const updated = await updateWorklist(selectedWorklist.id, editedWorklistName.trim(), token);
-      setWorklists((prev) => prev.map((w) => (w.id === updated.id ? updated : w)));
-      setEditModalVisible(false);
-      setSelectedWorklist(null);
-      setEditedWorklistName('');
-    } catch (error) {
-      console.error('Failed to update worklist:', error.message);
-      Alert.alert('Error', error.message || 'Failed to update worklist.');
-    }
-  };
+  const filteredWorklists = useMemo(() => {
+    if (!worklists) return [];
+    return worklists
+      .filter((w) => w.name?.toLowerCase().includes(search.toLowerCase()))
+      .sort((b, a) => new Date(b.createdAt) - new Date(a.createdAt));
+  }, [worklists, search]);
 
-  if (loading) {
+  const getWorklistProgress = useCallback((worklistId) => {
+    return worklistsProgress.find((p) => p.worklistId === worklistId);
+  }, [worklistsProgress]);
+
+  // --- Render ---
+
+  if (isLoading && !isRefreshing) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}>
         <ActivityIndicator size="large" color={theme.primary} />
         <Text style={{ color: theme.text, marginTop: 10 }}>Loading worklists...</Text>
       </View>
@@ -235,114 +216,91 @@ export default function WorklistScreen({ navigation, route }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+      <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
         <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
         <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
       </TouchableOpacity>
 
       <WorklistBanner
         projectName={projectName}
-        onAdd={handleAddWorklist}
-        onProjectNamePress={() => setShowProjectNameModal(true)}
+        onAdd={() => setCreateModalVisible(true)}
+        onProjectNamePress={() => setProjectNameModalVisible(true)}
         theme={theme}
+        t={t}
       />
 
       {/* Create Worklist Modal */}
       <Modal
-        visible={isModalVisible}
+        visible={isCreateModalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => setIsModalVisible(false)}>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: '#00000088',
-          }}>
-          <View
-            style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              {t('create_new_worklist')}
-            </Text>
-
-            <TextInput
-              placeholder={t('worklist_name')}
-              placeholderTextColor={theme.secondaryText}
-              value={newWorklistName}
-              onChangeText={setNewWorklistName}
-              style={{
-                borderWidth: 1,
-                borderColor: theme.border,
-                borderRadius: 10,
-                padding: 12,
-                fontSize: 16,
-                marginBottom: 16,
-                color: theme.text,
-              }}
-            />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-              <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleCreateWorklist}>
-                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>
-                  {t('create')}
-                </Text>
-              </TouchableOpacity>
-            </View>
+        onRequestClose={resetCreateForm}>
+        <TouchableWithoutFeedback onPress={resetCreateForm}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>{t('create_new_worklist')}</Text>
+                <TextInput
+                  placeholder={t('worklist_name')}
+                  placeholderTextColor={theme.secondaryText}
+                  value={newWorklistName}
+                  onChangeText={setNewWorklistName}
+                  style={[styles.modalInput, { borderColor: theme.border, color: theme.text }]}
+                  autoFocus
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity onPress={resetCreateForm}>
+                    <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleCreateWorklist} disabled={isCreating}>
+                    {isCreating ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('create')}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Edit Worklist Modal */}
       <Modal
-        visible={editModalVisible}
+        visible={isEditModalVisible}
         animationType="slide"
         transparent
-        onRequestClose={() => setEditModalVisible(false)}>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: '#00000088',
-          }}>
-          <View
-            style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              {t('edit_worklist')}
-            </Text>
-
-            <TextInput
-              placeholder={t('worklist_name')}
-              placeholderTextColor={theme.secondaryText}
-              value={editedWorklistName}
-              onChangeText={setEditedWorklistName}
-              style={{
-                borderWidth: 1,
-                borderColor: theme.border,
-                borderRadius: 10,
-                padding: 12,
-                fontSize: 16,
-                marginBottom: 16,
-                color: theme.text,
-              }}
-            />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleUpdateWorklist}>
-                <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save_changes')}</Text>
-              </TouchableOpacity>
-            </View>
+        onRequestClose={resetEditForm}>
+        <TouchableWithoutFeedback onPress={resetEditForm}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+                <Text style={[styles.modalTitle, { color: theme.text }]}>{t('edit_worklist')}</Text>
+                <TextInput
+                  placeholder={t('worklist_name')}
+                  placeholderTextColor={theme.secondaryText}
+                  value={editedWorklistName}
+                  onChangeText={setEditedWorklistName}
+                  style={[styles.modalInput, { borderColor: theme.border, color: theme.text }]}
+                  autoFocus
+                />
+                <View style={styles.modalActions}>
+                  <TouchableOpacity onPress={resetEditForm}>
+                    <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleUpdateWorklist} disabled={isUpdating}>
+                    {isUpdating ? (
+                      <ActivityIndicator size="small" color={theme.primary} />
+                    ) : (
+                      <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save_changes')}</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableWithoutFeedback>
           </View>
-        </View>
+        </TouchableWithoutFeedback>
       </Modal>
 
       {/* Search bar */}
@@ -359,7 +317,7 @@ export default function WorklistScreen({ navigation, route }) {
 
       {/* Worklist list */}
       <FlatList
-        data={filtered}
+        data={filteredWorklists}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ paddingBottom: 24 }}
         renderItem={({ item }) => (
@@ -371,73 +329,41 @@ export default function WorklistScreen({ navigation, route }) {
             onDelete={handleDeleteWorklist}
             onEdit={openEditModal}
             progress={getWorklistProgress(item.id)}
+            t={t}
           />
         )}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[theme.primary]} // Android spinner color
-            tintColor={theme.primary} // iOS spinner color
+            refreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
+        ListEmptyComponent={() => (
+          !isLoading && (
+            <View style={styles.emptyContainer}>
+              <Text style={{ color: theme.secondaryText }}>{t('no_worklists_found')}</Text>
+            </View>
+          )
+        )}
       />
 
       {/* Project Name Modal */}
       <Modal
-        visible={showProjectNameModal}
+        visible={isProjectNameModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setShowProjectNameModal(false)}>
-        <TouchableWithoutFeedback onPress={() => setShowProjectNameModal(false)}>
-          <View
-            style={{
-              flex: 1,
-              backgroundColor: 'rgba(0,0,0,0.35)',
-              justifyContent: 'center',
-              alignItems: 'center',
-            }}>
-            <TouchableWithoutFeedback onPress={() => { }}>
-              <View
-                style={{
-                  width: 280,
-                  borderRadius: 14,
-                  borderWidth: 1,
-                  padding: 18,
-                  alignItems: 'center',
-                  elevation: 8,
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                }}>
-                <Text
-                  style={{
-                    fontSize: 18,
-                    fontWeight: '700',
-                    marginBottom: 12,
-                    color: theme.text,
-                  }}>
-                  {t('project_name')}
-                </Text>
-                <Text
-                  style={{
-                    color: theme.text,
-                    fontSize: 16,
-                    textAlign: 'center',
-                    lineHeight: 22,
-                    marginBottom: 12,
-                  }}>
-                  {projectName}
-                </Text>
+        onRequestClose={() => setProjectNameModalVisible(false)}>
+        <TouchableWithoutFeedback onPress={() => setProjectNameModalVisible(false)}>
+          <View style={styles.modalOverlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.projectNameModal, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.projectNameTitle, { color: theme.text }]}>{t('project_name')}</Text>
+                <Text style={[styles.projectNameText, { color: theme.text }]}>{projectName}</Text>
                 <TouchableOpacity
-                  style={{
-                    marginTop: 10,
-                    alignSelf: 'center',
-                    paddingVertical: 6,
-                    paddingHorizontal: 18,
-                    borderRadius: 8,
-                    backgroundColor: 'rgba(52, 120, 246, 0.08)',
-                  }}
-                  onPress={() => setShowProjectNameModal(false)}>
+                  style={[styles.closeBtn, { backgroundColor: theme.buttonBg }]}
+                  onPress={() => setProjectNameModalVisible(false)}>
                   <Text style={{ color: theme.primary, fontWeight: '500' }}>{t('close')}</Text>
                 </TouchableOpacity>
               </View>
@@ -453,7 +379,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-
   backBtn: {
     paddingTop: Platform.OS === 'ios' ? 60 : 20,
     marginLeft: 16,
@@ -476,6 +401,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     overflow: 'hidden',
     minHeight: 110,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   bannerTitle: {
     color: '#fff',
@@ -484,7 +414,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   bannerDesc: {
-    color: '#e6eaf3',
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 14,
     fontWeight: '400',
     maxWidth: '80%',
@@ -492,14 +422,14 @@ const styles = StyleSheet.create({
   bannerAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   bannerActionText: {
     color: '#fff',
-    fontWeight: '400',
+    fontWeight: '500',
     fontSize: 15,
   },
   searchBarContainer: {
@@ -527,6 +457,11 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     padding: 16,
     borderWidth: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
   },
   worklistIcon: {
     width: 44,
@@ -544,5 +479,63 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     fontSize: 16,
     marginBottom: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '85%',
+    padding: 24,
+    borderRadius: 16,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 20,
+    alignItems: 'center',
+  },
+  projectNameModal: {
+    width: 300,
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 8,
+  },
+  projectNameTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 12,
+  },
+  projectNameText: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 24,
+    marginBottom: 20,
+  },
+  closeBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 40,
   },
 });

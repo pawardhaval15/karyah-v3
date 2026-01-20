@@ -1,13 +1,11 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
-import React, { useEffect, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   FlatList,
   Modal,
   Platform,
@@ -16,213 +14,153 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
+import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import InlineSubtaskModal from '../components/Task/InlineSubtaskModal';
 import TaskCard from '../components/Task/TaskCard';
 import TaskPopup from '../components/popups/TaskPopup';
+import { useUserConnections } from '../hooks/useConnections';
+import { useTaskMutations, useTasksByProject, useTasksByWorklist, useWorklistProgress } from '../hooks/useTasks';
+import { useTaskListUIStore } from '../store/taskListUIStore';
 import { useTheme } from '../theme/ThemeContext';
-import { fetchUserConnections } from '../utils/issues';
-import { getProjectById } from '../utils/project';
-import { getTasksByProjectId, getTasksByWorklistId } from '../utils/task';
-import { deleteWorklist, getProjectWorklistsProgress, updateWorklist } from '../utils/worklist';
+
+// --- Memoized Components ---
+
+const TaskItem = memo(({ item, modalTaskId, handleSubtaskPress, navigation, theme, closeModal }) => {
+  const onTaskPress = useCallback(() => {
+    navigation.navigate('TaskDetails', { task: item });
+  }, [navigation, item]);
+
+  const onSubtaskPressDetail = useCallback((subtaskName) => {
+    navigation.navigate('TaskDetails', {
+      task: { ...item, title: subtaskName },
+    });
+  }, [navigation, item]);
+
+  return (
+    <Animated.View entering={FadeInDown.duration(400)}>
+      <TaskCard
+        task={item}
+        onSubtaskPress={() => handleSubtaskPress(item.id)}
+        onTaskPress={onTaskPress}
+        theme={theme}
+      />
+      {modalTaskId === item.id && (
+        <InlineSubtaskModal
+          task={item}
+          onClose={closeModal}
+          theme={theme}
+          onSubtaskPress={onSubtaskPressDetail}
+        />
+      )}
+    </Animated.View>
+  );
+});
+
+// --- Main Screen ---
+
 export default function TaskListScreen({ navigation, route }) {
   const theme = useTheme();
-  const [search, setSearch] = useState('');
-  const [modalTaskId, setModalTaskId] = useState(null);
-  const [showTaskPopup, setShowTaskPopup] = useState(false);
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [taskForm, setTaskForm] = useState({
-    taskName: '',
-    description: '',
-    assignedTo: '',
-    dueDate: '',
-    progress: 0,
-    isIssue: false,
-  });
-  const [projectName, setProjectName] = useState('');
+  const { t } = useTranslation();
+
   const { project, worklist } = route.params || {};
   const projectId = project?.id || worklist?.projectId;
   const worklistId = worklist?.id;
   const worklistName = worklist?.name || 'Worklist';
-  const [refreshing, setRefreshing] = useState(false);
-  const [projectTasks, setProjectTasks] = useState([]); // ALL tasks in the project
-  const { t } = useTranslation();
-  // New state variables for worklist menu
-  const [showWorklistMenu, setShowWorklistMenu] = useState(false);
-  const [editModalVisible, setEditModalVisible] = useState(false);
-  const [editedWorklistName, setEditedWorklistName] = useState('');
-  const [worklistProgress, setWorklistProgress] = useState(null);
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await Promise.all([
-      fetchTasks(),
-      fetchAllProjectTasks(),
-      fetchWorklistProgress(),
-    ]);
-    setRefreshing(false);
-  };
+  // --- Zustand Store ---
+  const {
+    search,
+    setSearch,
+    modalTaskId,
+    setModalTaskId,
+    showTaskPopup,
+    setShowTaskPopup,
+    showWorklistMenu,
+    setShowWorklistMenu,
+    editModalVisible,
+    setEditModalVisible,
+    editedWorklistName,
+    setEditedWorklistName,
+    taskForm,
+    setTaskForm,
+    resetTaskForm,
+  } = useTaskListUIStore();
+
+  // --- React Query ---
+  const { data: tasks = [], isLoading: tasksLoading, refetch: refetchTasks, isRefetching } = useTasksByWorklist(worklistId);
+  const { data: projectTasks = [] } = useTasksByProject(projectId);
+  const { data: worklistProgressData, refetch: refetchProgress } = useWorklistProgress(projectId, worklistId);
+  const { data: users = [] } = useUserConnections();
+
+  const {
+    createTask: createTaskMutation,
+    updateWorklist: updateWorklistMutation,
+    deleteWorklist: deleteWorklistMutation,
+  } = useTaskMutations();
+
+  // --- Handlers ---
+
+  const onRefresh = useCallback(async () => {
+    refetchTasks();
+    refetchProgress();
+  }, [refetchTasks, refetchProgress]);
 
   useFocusEffect(
-    React.useCallback(() => {
-      if (worklistId && projectId) {
-        fetchTasks();
-        fetchAllProjectTasks();
-        fetchWorklistProgress();
-      }
-    }, [worklistId, projectId])
+    useCallback(() => {
+      onRefresh();
+    }, [onRefresh])
   );
 
-  useEffect(() => {
-    const fetchProject = async () => {
-      if (projectId) {
-        try {
-          const projectData = await getProjectById(projectId);
-          setProjectName(projectData.name || projectData.projectName || 'Project');
-        } catch (err) {
-          console.error('Failed to fetch project:', err.message);
-          setProjectName('Project Not Found');
-        }
-      }
-    };
-    fetchProject();
-  }, [projectId]);
-
-  const fetchTasks = async () => {
-    try {
-      if (!worklistId) {
-        console.warn('No worklistId provided');
-        setTasks([]);
-        return;
-      }
-      const fetchedTasks = await getTasksByWorklistId(worklistId);
-      setTasks(fetchedTasks || []);
-    } catch (err) {
-      console.error('Failed to load tasks:', err.message);
-      setTasks([]);
-    }
-  };
-
-  const fetchAllProjectTasks = async () => {
-    try {
-      if (!projectId) {
-        console.warn('No projectId provided');
-        setProjectTasks([]);
-        return;
-      }
-      const allProjectTasks = await getTasksByProjectId(projectId);
-      setProjectTasks(allProjectTasks || []);
-    } catch (err) {
-      console.error('Failed to load project tasks:', err.message);
-      setProjectTasks([]);
-    }
-  };
-
-  const fetchWorklistProgress = async () => {
-    try {
-      if (!projectId || !worklistId) {
-        console.warn('No projectId or worklistId provided for progress');
-        return;
-      }
-      const token = await AsyncStorage.getItem('token');
-      const progressData = await getProjectWorklistsProgress(projectId, token);
-      const currentWorklistProgress = progressData.find(p => p.worklistId === worklistId);
-      setWorklistProgress(currentWorklistProgress);
-    } catch (err) {
-      console.error('Failed to load worklist progress:', err.message);
-      setWorklistProgress(null);
-    }
-  };
-
-  // Initial load
-  useEffect(() => {
-    const init = async () => {
-      if (!worklistId || !projectId) return;
-
-      setLoading(true);
-      try {
-        await Promise.all([
-          fetchTasks(), 
-          fetchAllProjectTasks(),
-          fetchWorklistProgress()
-        ]);
-      } catch (err) {
-        console.error('Initial load failed:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    init();
-  }, [worklistId, projectId]);
-
-  const filtered = tasks.filter((t) => t.name?.toLowerCase().includes(search.toLowerCase()));
-  // Sort: incomplete at top, completed (100%) at bottom
-  const sortedTasks = filtered.slice().sort((a, b) => {
-    const aCompleted = a.progress === 100;
-    const bCompleted = b.progress === 100;
-    if (aCompleted && !bCompleted) return 1;
-    if (!aCompleted && bCompleted) return -1;
-    return 0;
-  });
-
-  // Calculate worklist progress locally (fallback)
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(task => task.progress === 100).length;
-  const localProgress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-
-  // Use API progress if available, otherwise fall back to local calculation
-  const currentProgress = worklistProgress?.progress ?? localProgress;
-
-  // Get progress color - single blue color
-  const getProgressColor = () => {
-    return '#366CD9'; // Always blue, matching the banner gradient
-  };
-
-  const handleSubtaskPress = (taskId) => {
+  const handleSubtaskPress = useCallback((taskId) => {
     setModalTaskId(taskId === modalTaskId ? null : taskId);
-  };
+  }, [modalTaskId, setModalTaskId]);
 
-  const handleTaskChange = (field, value) => {
-    setTaskForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const closeModal = useCallback(() => setModalTaskId(null), [setModalTaskId]);
 
-  const [users, setUsers] = useState([]);
+  const handleTaskChange = useCallback((field, value) => {
+    setTaskForm({ [field]: value });
+  }, [setTaskForm]);
 
-  useEffect(() => {
-    const fetchConnections = async () => {
-      try {
-        const data = await fetchUserConnections();
-        setUsers(data || []);
-      } catch (err) {
-        console.error('Error fetching users:', err.message);
-      }
-    };
-    fetchConnections();
-  }, []);
+  const handleTaskSubmit = useCallback(async () => {
+    try {
+      await createTaskMutation.mutateAsync({
+        ...taskForm,
+        projectId,
+        worklistId,
+      });
+      resetTaskForm();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to create task');
+    }
+  }, [taskForm, projectId, worklistId, createTaskMutation, resetTaskForm]);
 
-  const handleTaskSubmit = () => {
-    // implement API call to create task
-    setShowTaskPopup(false);
-    setTaskForm({
-      taskName: '',
-      description: '',
-      assignedTo: '',
-      dueDate: '',
-      isIssue: false,
-    });
-  };
-
-  // Worklist menu handlers
-  const handleEditWorklist = () => {
+  const handleEditWorklist = useCallback(() => {
     setShowWorklistMenu(false);
     setEditedWorklistName(worklistName);
     setEditModalVisible(true);
-  };
+  }, [worklistName, setShowWorklistMenu, setEditedWorklistName, setEditModalVisible]);
 
-  const handleDeleteWorklist = () => {
+  const handleUpdateWorklist = useCallback(async () => {
+    if (!editedWorklistName.trim()) {
+      Alert.alert('Validation', 'Please enter a worklist name.');
+      return;
+    }
+    try {
+      await updateWorklistMutation.mutateAsync({ id: worklistId, name: editedWorklistName.trim() });
+      setEditModalVisible(false);
+      setEditedWorklistName('');
+      navigation.setParams({
+        ...route.params,
+        worklist: { ...worklist, name: editedWorklistName.trim() },
+      });
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to update worklist.');
+    }
+  }, [editedWorklistName, worklistId, worklist, updateWorklistMutation, setEditModalVisible, setEditedWorklistName, navigation, route.params]);
+
+  const handleDeleteWorklist = useCallback(() => {
     setShowWorklistMenu(false);
     Alert.alert(
       'Delete Worklist',
@@ -234,133 +172,115 @@ export default function TaskListScreen({ navigation, route }) {
           style: 'destructive',
           onPress: async () => {
             try {
-              const token = await AsyncStorage.getItem('token');
-              await deleteWorklist(worklistId, token);
-              
-              // Navigate back and trigger refresh on the previous screen
-              navigation.navigate('WorklistScreen', { 
-                project: project,
-                refresh: Date.now() // Add timestamp to trigger refresh
-              });
+              await deleteWorklistMutation.mutateAsync(worklistId);
+              navigation.navigate('WorklistScreen', { project });
             } catch (error) {
-              console.error('Failed to delete worklist:', error.message);
               Alert.alert('Error', 'Failed to delete worklist.');
             }
           },
         },
       ]
     );
-  };
+  }, [worklistId, project, deleteWorklistMutation, navigation, setShowWorklistMenu]);
 
-  const handleUpdateWorklist = async () => {
-    if (!editedWorklistName.trim()) {
-      Alert.alert('Validation', 'Please enter a worklist name.');
-      return;
-    }
+  // --- Memoized Values ---
 
-    try {
-      const token = await AsyncStorage.getItem('token');
-      await updateWorklist(worklistId, editedWorklistName.trim(), token);
-      setEditModalVisible(false);
-      setEditedWorklistName('');
-      // Update the route params with new name
-      navigation.setParams({
-        ...route.params,
-        worklist: { ...worklist, name: editedWorklistName.trim() },
+  const sortedTasks = useMemo(() => {
+    return tasks
+      .filter((t) => t.name?.toLowerCase().includes(search.toLowerCase()))
+      .sort((a, b) => {
+        const aCompleted = a.progress === 100;
+        const bCompleted = b.progress === 100;
+        if (aCompleted && !bCompleted) return 1;
+        if (!aCompleted && bCompleted) return -1;
+        return 0;
       });
-    } catch (error) {
-      console.error('Failed to update worklist:', error.message);
-      Alert.alert('Error', error.message || 'Failed to update worklist.');
-    }
-  };
-  const closeModal = () => setModalTaskId(null);
-  const renderItem = ({ item }) => (
-    <>
-      <TaskCard
-        task={item}
-        onSubtaskPress={() => handleSubtaskPress(item.id)}
-        onTaskPress={() => navigation.navigate('TaskDetails', { task: item })}
-        theme={theme}
-      />
-      {modalTaskId === item.id && (
-        <InlineSubtaskModal
-          task={item}
-          onClose={closeModal}
-          theme={theme}
-          onSubtaskPress={(subtaskName) =>
-            navigation.navigate('TaskDetails', {
-              task: { ...item, title: subtaskName },
-            })
-          }
-        />
-      )}
-    </>
-  );
+  }, [tasks, search]);
+
+  const progressInfo = useMemo(() => {
+    const total = tasks.length;
+    const completed = tasks.filter(t => t.progress === 100).length;
+    const localPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+    return {
+      total: worklistProgressData?.totalTasks ?? total,
+      completed: worklistProgressData?.completedTasks ?? completed,
+      percent: worklistProgressData?.progress ?? localPercent,
+    };
+  }, [tasks, worklistProgressData]);
+
+  const renderItem = useCallback(({ item }) => (
+    <TaskItem
+      item={item}
+      modalTaskId={modalTaskId}
+      handleSubtaskPress={handleSubtaskPress}
+      navigation={navigation}
+      theme={theme}
+      closeModal={closeModal}
+    />
+  ), [modalTaskId, handleSubtaskPress, navigation, theme, closeModal]);
+
+  // --- Render ---
+
+  if (tasksLoading && !isRefetching) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', backgroundColor: theme.background }]}>
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={{ color: theme.text, marginTop: 10 }}>Loading tasks...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      
-      <View style={{ 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingTop: Platform.OS === 'ios' ? 60 : 20,
-        paddingBottom: 0
-      }}>
-        <TouchableOpacity 
-          style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }} 
-          onPress={() => navigation.goBack()}
-        >
+      <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? 60 : 20 }]}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
           <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          onPress={() => setShowWorklistMenu(true)} 
-          style={{ padding: 8 }}
-        >
+
+        <TouchableOpacity onPress={() => setShowWorklistMenu(true)} style={{ padding: 8 }}>
           <Feather name="more-vertical" size={20} color={theme.text} />
         </TouchableOpacity>
       </View>
 
-      <LinearGradient
-        colors={['#011F53', '#366CD9']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.banner}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.bannerTitle}>{worklistName}</Text>
-          <Text style={styles.bannerDesc}>
-            {worklistProgress?.totalTasks || totalTasks} {t('tasks', { count: worklistProgress?.totalTasks || totalTasks })} • {worklistProgress?.completedTasks || completedTasks} {t('completed')} • {currentProgress}% {t('done')}
-          </Text>
-        </View>
-        <TouchableOpacity style={styles.bannerAction} onPress={() => setShowTaskPopup(true)}>
-          <Text style={styles.bannerActionText}>{t('task')}</Text>
-          <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
-        </TouchableOpacity>
-      </LinearGradient>
+      <Animated.View entering={FadeInRight.duration(500)}>
+        <LinearGradient
+          colors={[theme.secondary, theme.primary]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.banner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.bannerTitle}>{worklistName}</Text>
+            <Text style={styles.bannerDesc}>
+              {progressInfo.total} {t('tasks', { count: progressInfo.total })} • {progressInfo.completed} {t('completed')} • {progressInfo.percent}% {t('done')}
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.bannerAction} onPress={() => setShowTaskPopup(true)}>
+            <Text style={styles.bannerActionText}>{t('task')}</Text>
+            <Feather name="plus" size={18} color="#fff" style={{ marginLeft: 4 }} />
+          </TouchableOpacity>
+        </LinearGradient>
+      </Animated.View>
 
-      {/* Progress Section */}
       <View style={styles.progressSection}>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <View style={styles.progressHeader}>
           <Text style={[styles.progressLabel, { color: theme.text }]}>
-            {t('progress')} ({worklistProgress?.completedTasks || completedTasks}/{worklistProgress?.totalTasks || totalTasks})
+            {t('progress')} ({progressInfo.completed}/{progressInfo.total})
           </Text>
           <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: getProgressColor() }]} />
-            <Text style={[styles.statusText, { color: getProgressColor() }]}>
-              {currentProgress}%
+            <View style={[styles.statusDot, { backgroundColor: theme.primary }]} />
+            <Text style={[styles.statusText, { color: theme.primary }]}>
+              {progressInfo.percent}%
             </Text>
           </View>
         </View>
       </View>
 
-      {/* Progress Bar */}
-      <View style={styles.progressBarBg}>
-        <View style={[styles.progressBar, { 
-          width: `${currentProgress}%`, 
-          backgroundColor: getProgressColor() 
+      <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
+        <View style={[styles.progressBar, {
+          width: `${progressInfo.percent}%`,
+          backgroundColor: theme.primary
         }]} />
       </View>
 
@@ -374,157 +294,79 @@ export default function TaskListScreen({ navigation, route }) {
           onChangeText={setSearch}
         />
       </View>
-      {loading ? (
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={{ color: theme.text, marginTop: 10 }}>Loading tasks...</Text>
-        </View>
-      ) : sortedTasks.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <MaterialIcons name="error-outline" size={42} color="#AAA" />
-          <Text style={styles.emptyText}>{t('no_tasks_found', { worklistName })}</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={sortedTasks}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingBottom: 24 }}
-          renderItem={renderItem}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.primary]} // Android
-              tintColor={theme.primary} // iOS
-            />
-          }
-        />
-      )}
+
+      <FlatList
+        data={sortedTasks}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={{ paddingBottom: 24 }}
+        renderItem={renderItem}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
+        ListEmptyComponent={() => (
+          !tasksLoading && (
+            <View style={styles.emptyContainer}>
+              <MaterialIcons name="error-outline" size={42} color={theme.secondaryText} />
+              <Text style={[styles.emptyText, { color: theme.secondaryText }]}>
+                {t('no_tasks_found', { worklistName })}
+              </Text>
+            </View>
+          )
+        )}
+      />
+
       <TaskPopup
         visible={showTaskPopup}
-        onClose={() => setShowTaskPopup(false)}
+        onClose={resetTaskForm}
         values={taskForm}
         onChange={handleTaskChange}
         onSubmit={handleTaskSubmit}
         theme={theme}
         projectId={projectId}
-        projectName={projectName}
+        projectName={project?.name || worklistName}
         worklistId={worklistId}
         worklistName={worklistName}
         users={users}
         projectTasks={projectTasks}
       />
 
-      {/* Worklist Menu Modal */}
-      {showWorklistMenu && (
-        <Modal
-          visible={showWorklistMenu}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowWorklistMenu(false)}>
-          <TouchableOpacity
-            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }}
-            activeOpacity={1}
-            onPress={() => setShowWorklistMenu(false)}>
-            <View
-              style={{
-                position: 'absolute',
-                top: Platform.OS === 'ios' ? 80 : 35,
-                right: 20,
-                backgroundColor: theme.card,
-                borderRadius: 10,
-                paddingVertical: 8,
-                shadowColor: '#000',
-                shadowOpacity: 0.1,
-                shadowOffset: { width: 0, height: 1 },
-                shadowRadius: 6,
-                elevation: 6,
-                minWidth: 140,
-                borderWidth: 1,
-                borderColor: theme.border,
-              }}>
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                }}
-                onPress={handleEditWorklist}>
-                <MaterialIcons
-                  name="edit"
-                  size={18}
-                  color={theme.primary}
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 15 }}>
-                  {t('edit_worklist')}
-                </Text>
-              </TouchableOpacity>
+      {/* Menu / Edit Modals Implementation Simplified with Zustand */}
+      <Modal visible={showWorklistMenu} transparent animationType="fade" onRequestClose={() => setShowWorklistMenu(false)}>
+        <TouchableOpacity style={styles.menuDim} activeOpacity={1} onPress={() => setShowWorklistMenu(false)}>
+          <View style={[styles.menuContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+            <TouchableOpacity style={styles.menuItem} onPress={handleEditWorklist}>
+              <MaterialIcons name="edit" size={18} color={theme.primary} style={{ marginRight: 8 }} />
+              <Text style={{ color: theme.primary, fontWeight: '500', fontSize: 15 }}>{t('edit_worklist')}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.menuItem} onPress={handleDeleteWorklist}>
+              <MaterialIcons name="delete-outline" size={18} color="#E53935" style={{ marginRight: 8 }} />
+              <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>{t('delete_worklist')}</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
-              <TouchableOpacity
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 12,
-                  paddingHorizontal: 16,
-                }}
-                onPress={handleDeleteWorklist}>
-                <MaterialIcons
-                  name="delete-outline"
-                  size={18}
-                  color="#E53935"
-                  style={{ marginRight: 8 }}
-                />
-                <Text style={{ color: '#E53935', fontWeight: '500', fontSize: 15 }}>
-                  {t('delete_worklist')}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        </Modal>
-      )}
-
-      {/* Edit Worklist Modal */}
-      <Modal
-        visible={editModalVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setEditModalVisible(false)}>
-        <View
-          style={{
-            flex: 1,
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: '#00000088',
-          }}>
-          <View
-            style={{ width: '85%', backgroundColor: theme.card, padding: 20, borderRadius: 12 }}>
-            <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: theme.text }}>
-              {t('edit_worklist')}
-            </Text>
-
+      <Modal visible={editModalVisible} animationType="slide" transparent onRequestClose={() => setEditModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <Text style={[styles.modalTitle, { color: theme.text }]}>{t('edit_worklist')}</Text>
             <TextInput
               placeholder={t('worklist_name')}
               placeholderTextColor={theme.secondaryText}
               value={editedWorklistName}
               onChangeText={setEditedWorklistName}
-              style={{
-                borderWidth: 1,
-                borderColor: theme.border,
-                borderRadius: 10,
-                padding: 12,
-                fontSize: 16,
-                marginBottom: 16,
-                color: theme.text,
-              }}
+              style={[styles.modalInput, { borderColor: theme.border, color: theme.text }]}
+              autoFocus
             />
-
-            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 12 }}>
+            <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
                 <Text style={{ color: theme.secondaryText, fontSize: 16 }}>{t('cancel')}</Text>
               </TouchableOpacity>
-
               <TouchableOpacity onPress={handleUpdateWorklist}>
                 <Text style={{ color: theme.primary, fontSize: 16, fontWeight: '600' }}>{t('save')}</Text>
               </TouchableOpacity>
@@ -536,15 +378,28 @@ export default function TaskListScreen({ navigation, route }) {
   );
 }
 
-const { width: screenWidth } = Dimensions.get('window');
-const isTablet = screenWidth >= 768;
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  backBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+  },
+  backText: {
+    fontSize: 18,
+    fontWeight: '400',
+  },
   banner: {
     borderRadius: 16,
     marginHorizontal: 16,
-    marginTop: 12,
     marginBottom: 12,
     padding: 18,
     flexDirection: 'row',
@@ -552,21 +407,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     overflow: 'hidden',
     minHeight: 110,
-  },
-  emptyContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyText: {
-    color: '#AAA',
-    fontSize: 14,
-    fontWeight: '300',
-    marginTop: 8,
-  },
-  backText: {
-    fontSize: 18,
-    fontWeight: '400',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   bannerTitle: {
     color: '#fff',
@@ -575,7 +420,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   bannerDesc: {
-    color: '#e6eaf3',
+    color: 'rgba(255,255,255,0.85)',
     fontSize: 14,
     fontWeight: '400',
     maxWidth: '80%',
@@ -583,37 +428,25 @@ const styles = StyleSheet.create({
   bannerAction: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   bannerActionText: {
     color: '#fff',
-    fontWeight: '400',
+    fontWeight: '500',
     fontSize: 15,
-  },
-  searchBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '400',
-  },
-  searchIcon: {
-    marginRight: 8,
   },
   progressSection: {
     marginHorizontal: 16,
     marginBottom: 8,
     marginTop: 12,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   progressLabel: {
     fontWeight: '400',
@@ -634,15 +467,96 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   progressBarBg: {
-    width: '92%',
     height: 6,
-    backgroundColor: '#ECF0FF',
     borderRadius: 6,
-    marginHorizontal: '4%',
-    marginBottom: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
   },
   progressBar: {
     height: 6,
     borderRadius: 6,
+  },
+  searchBarContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 16,
+    fontWeight: '400',
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 60,
+  },
+  emptyText: {
+    fontSize: 14,
+    fontWeight: '300',
+    marginTop: 8,
+    textAlign: 'center',
+    paddingHorizontal: 40,
+  },
+  menuDim: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  menuContainer: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 100 : 55,
+    right: 20,
+    borderRadius: 12,
+    paddingVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 10,
+    elevation: 6,
+    minWidth: 160,
+    borderWidth: 1,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    width: '85%',
+    padding: 24,
+    borderRadius: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    marginBottom: 16,
+  },
+  modalInput: {
+    borderWidth: 1,
+    borderRadius: 10,
+    padding: 12,
+    fontSize: 16,
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 20,
+    alignItems: 'center',
   },
 });

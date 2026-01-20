@@ -1,12 +1,12 @@
 import { Feather, MaterialCommunityIcons, MaterialIcons, Octicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import * as FileSystem from 'expo-file-system';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Alert,
   Dimensions,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -14,86 +14,135 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInLeft } from 'react-native-reanimated';
-import { useUserDetails } from '../../hooks/useUser';
+import Animated, {
+  FadeInLeft,
+  FadeInUp
+} from 'react-native-reanimated';
+import { useLogout, useUserDetails } from '../../hooks/useUser';
+import { useDrawerUIStore } from '../../store/drawerUIStore';
 import { themes, useThemeContext } from '../../theme/ThemeContext';
-import { API_URL } from '../../utils/config';
+
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// --- Helper Components ---
 
 const DrawerItem = memo(({
   icon,
   label,
-  labelStyle,
   onPress,
   theme,
-  rightComponent,
   showBorder = false,
-}) => {
-  return (
-    <TouchableOpacity
+  isDanger = false,
+}) => (
+  <TouchableOpacity
+    style={[
+      styles.item,
+      showBorder && { borderBottomWidth: 1, borderBottomColor: theme.border },
+    ]}
+    onPress={onPress}
+    activeOpacity={0.6}
+  >
+    <View style={styles.iconContainer}>{icon}</View>
+    <Text
       style={[
-        styles.item,
-        { backgroundColor: 'transparent' },
-        showBorder && { borderBottomWidth: 1, borderBottomColor: theme.border },
+        styles.itemLabel,
+        { color: isDanger ? '#FF5252' : theme.text }
       ]}
-      onPress={onPress}
-      activeOpacity={0.7}
     >
-      <View style={styles.iconContainer}>{icon}</View>
-      <Text
-        style={[
-          styles.itemLabel,
-          typeof labelStyle === 'object' ? labelStyle : {},
-          { color: labelStyle && labelStyle.color ? labelStyle.color : theme.text },
-        ]}
-      >
-        {String(label)}
-      </Text>
-      {rightComponent && <View style={styles.rightComponent}>{rightComponent}</View>}
-    </TouchableOpacity>
+      {label}
+    </Text>
+    <Feather name="chevron-right" size={14} color={theme.secondaryText} style={{ opacity: 0.5 }} />
+  </TouchableOpacity>
+));
+
+const ThemeChip = memo(({ themeKey, isSelected, onPress, themeColors, currentTheme }) => (
+  <TouchableOpacity
+    onPress={() => onPress(themeKey)}
+    activeOpacity={0.8}
+    style={[
+      styles.themeChip,
+      {
+        backgroundColor: themeColors.background,
+        borderColor: isSelected ? currentTheme.primary : currentTheme.border,
+      }
+    ]}
+  >
+    <View style={[styles.themeColorDot, { backgroundColor: themeColors.primary }]} />
+    <Text
+      style={[
+        styles.themeChipLabel,
+        {
+          color: themeColors.text,
+          fontWeight: isSelected ? '700' : '400'
+        }
+      ]}
+    >
+      {themeKey.charAt(0).toUpperCase() + themeKey.slice(1)}
+    </Text>
+  </TouchableOpacity>
+));
+
+// --- Language Popup Modal ---
+
+const LanguagePopup = memo(({ visible, onClose, theme, languages, currentLang, onSelect }) => {
+  const { t } = useTranslation();
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.centeredOverlay}>
+        <Animated.View
+          entering={FadeInUp.duration(300)}
+          style={[
+            styles.popupContent,
+            { backgroundColor: theme.card, borderColor: theme.border }
+          ]}
+        >
+          <Text style={[styles.popupTitle, { color: theme.text }]}>{t('select_language')}</Text>
+
+          <View style={styles.popupList}>
+            {languages.map(({ code, label }) => {
+              const isSelected = currentLang === code;
+              return (
+                <TouchableOpacity
+                  key={code}
+                  onPress={() => onSelect(code)}
+                  activeOpacity={0.7}
+                  style={[
+                    styles.popupItem,
+                    {
+                      backgroundColor: isSelected ? theme.primary + '10' : 'transparent',
+                      borderColor: isSelected ? theme.primary : 'transparent',
+                      borderWidth: 1
+                    }
+                  ]}
+                >
+                  <Text style={[
+                    styles.popupLabel,
+                    { color: theme.text, fontWeight: isSelected ? '700' : '400' }
+                  ]}>
+                    {label}
+                  </Text>
+                  {isSelected && <MaterialIcons name="check" size={20} color={theme.primary} />}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            onPress={onClose}
+            style={[styles.popupCancelBtn, { backgroundColor: theme.primary + '10' }]}
+          >
+            <Text style={{ color: theme.primary, fontWeight: '700' }}>{t('cancel')}</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 });
 
-function ThemeSelector({ colorMode, setColorMode, theme }) {
-  return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.themeScrollContent}
-    >
-      {Object.keys(themes).map((key) => {
-        const isSelected = colorMode === key;
-        const themeColors = themes[key];
-        return (
-          <TouchableOpacity
-            key={key}
-            onPress={() => setColorMode(key)}
-            activeOpacity={0.8}
-            style={[
-              styles.themeChip,
-              {
-                backgroundColor: themeColors.background,
-                borderColor: isSelected ? theme.primary : theme.border,
-              }
-            ]}
-          >
-            <View style={[styles.themeColorDot, { backgroundColor: themeColors.primary }]} />
-            <Text
-              style={[
-                styles.themeChipLabel,
-                {
-                  color: themeColors.text,
-                  fontWeight: isSelected ? '700' : '400'
-                }
-              ]}
-            >
-              {key.charAt(0).toUpperCase() + key.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        );
-      })}
-    </ScrollView>
-  );
-}
+// --- Main Drawer ---
 
 export default function CustomDrawer({ onClose, theme }) {
   const navigation = useNavigation();
@@ -101,66 +150,16 @@ export default function CustomDrawer({ onClose, theme }) {
   const { colorMode, setColorMode } = useThemeContext();
   const { t, i18n } = useTranslation();
 
+  const { showLanguageModal, setShowLanguageModal } = useDrawerUIStore();
+  const { data: user } = useUserDetails();
+  const logoutMutation = useLogout(navigation);
+
   const isProfessionalDashboard = route.name === 'ProfessionalDashboard';
   const helpUrl = 'https://wa.me/919619555596?text=Hi%20Team%20Karyah!';
-  const [showLanguageModal, setShowLanguageModal] = useState(false);
-
-  // Use hook for user details
-  const { data: user } = useUserDetails();
 
   const userName = useMemo(() => {
-    if (user && (user.name || user.userId || user.email)) {
-      return String(user.name || user.userId || user.email);
-    }
-    return 'User';
+    return user?.name || user?.userId || user?.email || 'User';
   }, [user]);
-
-  const changeLanguage = useCallback((lng) => {
-    i18n.changeLanguage(lng);
-  }, [i18n]);
-
-  const handleLogout = useCallback(async () => {
-    try {
-      const deviceTokenKey = `fcm_token_${Platform.OS}`;
-      const deviceToken = await AsyncStorage.getItem(deviceTokenKey);
-      const userToken = await AsyncStorage.getItem('token');
-
-      if (deviceToken && userToken) {
-        try {
-          // We invoke fetch directly here as this is a cleanup operation
-          fetch(`${API_URL}api/devices/deviceToken`, {
-            method: 'DELETE',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${userToken}`,
-            },
-            body: JSON.stringify({ deviceToken }),
-          }).catch(console.error);
-          await AsyncStorage.removeItem(deviceTokenKey);
-        } catch (error) {
-          console.error('Error deleting device token:', error);
-        }
-      }
-
-      await AsyncStorage.removeItem('token');
-      try {
-        await FileSystem.deleteAsync(FileSystem.cacheDirectory, { idempotent: true });
-      } catch (cacheErr) {
-        console.error('Error clearing cache:', cacheErr);
-      }
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'PinLogin' }],
-      });
-    } catch (err) {
-      console.error('Logout failed:', err);
-    }
-  }, [navigation]);
-
-  const handleNavigation = useCallback((screen) => {
-    navigation.navigate(screen);
-    onClose && onClose();
-  }, [navigation, onClose]);
 
   const languages = useMemo(() => [
     { code: 'en', label: 'English' },
@@ -168,13 +167,48 @@ export default function CustomDrawer({ onClose, theme }) {
     { code: 'mr', label: 'Marathi' },
   ], []);
 
+  const changeLanguage = useCallback((lng) => {
+    i18n.changeLanguage(lng);
+    setShowLanguageModal(false);
+    onClose && onClose();
+    // Smooth reset to home to apply language changes globally
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Home' }],
+    });
+  }, [i18n, navigation, onClose, setShowLanguageModal]);
+
+  const handleLogout = useCallback(() => {
+    Alert.alert(
+      t('logout'),
+      t('logout_confirm'), // You might need to add this key to translations
+      [
+        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('logout'),
+          style: 'destructive',
+          onPress: () => logoutMutation.mutate()
+        },
+      ]
+    );
+  }, [t, logoutMutation]);
+
+  const handleNavigation = useCallback((screen) => {
+    navigation.navigate(screen);
+    onClose && onClose();
+  }, [navigation, onClose]);
+
   return (
-    <View style={[styles.drawer, { backgroundColor: theme.background, flex: 1 }]}>
+    <View style={[styles.drawer, { backgroundColor: theme.background }]}>
+      {/* Header Section */}
       <Animated.View
-        entering={FadeInLeft.duration(300)}
+        entering={FadeInLeft.delay(100).duration(400)}
         style={[styles.header, { borderBottomColor: theme.border }]}
       >
-        <View style={styles.userSection}>
+        <TouchableOpacity
+          style={styles.userSection}
+          onPress={() => handleNavigation('UserProfileScreen')}
+        >
           <View
             style={[
               styles.avatarCircle,
@@ -182,223 +216,228 @@ export default function CustomDrawer({ onClose, theme }) {
             ]}
           >
             <Text style={[styles.avatarText, { color: theme.primary }]}>
-              {userName?.charAt(0).toUpperCase()}
+              {userName.charAt(0).toUpperCase()}
             </Text>
           </View>
           <View style={styles.userInfo}>
-            <Text
-              numberOfLines={1}
-              ellipsizeMode="tail"
-              style={[styles.title, { color: theme.text }]}
-            >
+            <Text numberOfLines={1} style={[styles.title, { color: theme.text }]}>
               {userName}
             </Text>
             <Text style={[styles.subtitle, { color: theme.secondaryText }]}>{t('welcome_to_karyah')}</Text>
           </View>
-        </View>
-        <TouchableOpacity
-          onPress={onClose}
-          style={[styles.closeBtn, { backgroundColor: theme.card }]}
-        >
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: theme.card }]}>
           <Feather name="x" size={20} color={theme.text} />
         </TouchableOpacity>
       </Animated.View>
 
-      <View style={{ flex: 1 }}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('main_menu')}</Text>
-            <DrawerItem
-              onPress={() => handleNavigation('ProjectScreen')}
-              icon={<Octicons name="project" size={20} color={theme.primary} />}
-              label={t('projects')}
-              theme={theme}
-              showBorder={true}
-            />
-            <DrawerItem
-              icon={<Feather name="alert-circle" size={20} color="#FF5252" />}
-              label={t('issues')}
-              onPress={() => handleNavigation('IssuesScreen')}
-              theme={theme}
-              showBorder={true}
-            />
-            <DrawerItem
-              icon={<Feather name="list" size={20} color="#4CAF50" />}
-              label={t('tasks')}
-              onPress={() => handleNavigation('MyTasksScreen')}
-              theme={theme}
-              showBorder={true}
-            />
-            <DrawerItem
-              icon={
-                <MaterialCommunityIcons
-                  name="account-multiple-plus-outline"
-                  size={20}
-                  color="#FF9800"
-                />
-              }
-              label={t('connections')}
-              onPress={() => handleNavigation('ConnectionsScreen')}
-              theme={theme}
-            />
-          </View>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        {/* Main Navigation */}
+        <Animated.View entering={FadeInUp.delay(200).duration(400)} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('main_menu')}</Text>
+          <DrawerItem
+            onPress={() => handleNavigation('ProjectScreen')}
+            icon={<Octicons name="project" size={18} color={theme.primary} />}
+            label={t('projects')}
+            theme={theme}
+            showBorder
+          />
+          <DrawerItem
+            onPress={() => handleNavigation('IssuesScreen')}
+            icon={<Feather name="alert-circle" size={18} color="#FF5252" />}
+            label={t('issues')}
+            theme={theme}
+            showBorder
+          />
+          <DrawerItem
+            onPress={() => handleNavigation('MyTasksScreen')}
+            icon={<Feather name="list" size={18} color="#4CAF50" />}
+            label={t('tasks')}
+            theme={theme}
+            showBorder
+          />
+          <DrawerItem
+            onPress={() => handleNavigation('ConnectionsScreen')}
+            icon={<MaterialCommunityIcons name="account-multiple-plus-outline" size={18} color="#FF9800" />}
+            label={t('connections')}
+            theme={theme}
+          />
+        </Animated.View>
 
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('dashboard')}</Text>
-            {isProfessionalDashboard ? (
-              <DrawerItem
-                icon={<MaterialIcons name="dashboard" size={20} color="#009688" />}
-                label={t('overview')}
-                onPress={() => handleNavigation('Home')}
-                theme={theme}
-              />
-            ) : (
-              <DrawerItem
-                icon={<MaterialIcons name="analytics" size={20} color="#009688" />}
-                label={t('Pro Dashboard')}
-                onPress={() => handleNavigation('ProfessionalDashboard')}
-                theme={theme}
-              />
-            )}
-          </View>
+        {/* Dashboard Section */}
+        <Animated.View entering={FadeInUp.delay(300).duration(400)} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('dashboard')}</Text>
+          <DrawerItem
+            onPress={() => handleNavigation(isProfessionalDashboard ? 'Home' : 'ProfessionalDashboard')}
+            icon={<MaterialIcons name={isProfessionalDashboard ? "dashboard" : "analytics"} size={18} color="#009688" />}
+            label={isProfessionalDashboard ? t('overview') : t('Pro Dashboard')}
+            theme={theme}
+          />
+        </Animated.View>
 
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('account')}</Text>
+        {/* Support & Account */}
+        <Animated.View entering={FadeInUp.delay(400).duration(400)} style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.secondaryText }]}>{t('preferences')}</Text>
+          <DrawerItem
+            onPress={() => setShowLanguageModal(true)}
+            icon={<MaterialIcons name="language" size={18} color={theme.primary} />}
+            label={t('select_language')}
+            theme={theme}
+            showBorder
+          />
+          <DrawerItem
+            onPress={() => {
+              Linking.openURL(helpUrl).catch(console.error);
+              onClose();
+            }}
+            icon={<MaterialIcons name="help-outline" size={18} color={theme.primary} />}
+            label={t('help_support')}
+            theme={theme}
+            showBorder
+          />
+          <DrawerItem
+            onPress={() => handleNavigation('SettingsScreen')}
+            icon={<Feather name="settings" size={18} color="#607D8B" />}
+            label={t('settings')}
+            theme={theme}
+            showBorder
+          />
+          <DrawerItem
+            onPress={handleLogout}
+            icon={<Feather name="log-out" size={18} color="#FF5252" />}
+            label={t('logout')}
+            theme={theme}
+            isDanger
+          />
+        </Animated.View>
+      </ScrollView>
 
-            <DrawerItem
-              icon={<Feather name="user" size={20} color="#9C27B0" />}
-              label={t('profile')}
-              onPress={() => handleNavigation('UserProfileScreen')}
-              theme={theme}
-              showBorder={true}
+      {/* Modern Theme Selector */}
+      <View style={[styles.footer, { borderTopColor: theme.border }]}>
+        <Text style={[styles.themeLabel, { color: theme.secondaryText }]}>Theme Appearance</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.themeRow}>
+          {Object.keys(themes).map((key) => (
+            <ThemeChip
+              key={key}
+              themeKey={key}
+              isSelected={colorMode === key}
+              onPress={setColorMode}
+              themeColors={themes[key]}
+              currentTheme={theme}
             />
-            <DrawerItem
-              icon={<Feather name="settings" size={20} color="#607D8B" />}
-              label={t('settings')}
-              onPress={() => handleNavigation('SettingsScreen')}
-              theme={theme}
-              showBorder={true}
-            />
-            <DrawerItem
-              icon={<MaterialIcons name="language" size={20} color={theme.primary} />}
-              label={t('select_language')}
-              onPress={() => setShowLanguageModal(true)}
-              theme={theme}
-              showBorder={true}
-            />
-            <DrawerItem
-              icon={<MaterialIcons name="help-outline" size={20} color={theme.primary} />}
-              label={t('help_support')}
-              showBorder={true}
-              onPress={() => {
-                Linking.openURL(helpUrl).catch(console.error);
-                onClose();
-              }}
-              theme={theme}
-            />
-            <DrawerItem
-              icon={<Feather name="log-out" size={20} color="#FF5722" />}
-              label={t('logout')}
-              onPress={() => {
-                handleLogout();
-                onClose && onClose();
-              }}
-              theme={theme}
-            />
-          </View>
+          ))}
         </ScrollView>
-
-        {/* Language Modal */}
-        {showLanguageModal && (
-          <View style={styles.languageModalOverlay}>
-            <View style={[styles.languageModal, { backgroundColor: theme.card }]}>
-              <Text style={[styles.sectionTitle, { color: theme.text, marginBottom: 12 }]}>
-                Select Language
-              </Text>
-              {languages.map(({ code, label }) => (
-                <TouchableOpacity
-                  key={code}
-                  onPress={() => {
-                    changeLanguage(code);
-                    setShowLanguageModal(false);
-                    onClose && onClose();
-                    navigation.reset({
-                      index: 0,
-                      routes: [{ name: 'Home' }],
-                    });
-                  }}
-                  style={[
-                    styles.languageOption,
-                    {
-                      backgroundColor:
-                        i18n.language === code ? theme.primary + '20' : 'transparent',
-                    },
-                  ]}
-                >
-                  <Text style={{ color: theme.text, fontWeight: i18n.language === code ? '700' : '400' }}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                onPress={() => setShowLanguageModal(false)}
-                style={[styles.closeBtn, { marginTop: 12, borderWidth: 1, borderColor: theme.border, justifyContent: 'center', alignItems: 'center' }]}
-              >
-                <Text style={{ color: theme.primary, fontWeight: '600' }}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
       </View>
 
-      <View style={[styles.themeSectionModern, { borderTopColor: theme.border }]}>
-        <Text style={[styles.themeLabel, { color: theme.secondaryText, marginBottom: 8 }]}>Appearance</Text>
-        <ThemeSelector colorMode={colorMode} setColorMode={setColorMode} theme={theme} />
-      </View>
+      {/* Refined Language Picker */}
+      <LanguagePopup
+        visible={showLanguageModal}
+        onClose={() => setShowLanguageModal(false)}
+        theme={theme}
+        languages={languages}
+        currentLang={i18n.language}
+        onSelect={changeLanguage}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  languageModalOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
+  drawer: {
+    flex: 1,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+  },
+  header: {
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 1001,
-  },
-  languageModal: {
-    width: '80%',
-    borderRadius: 12,
-    padding: 20,
-    elevation: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-  },
-  languageOption: {
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 8,
-  },
-  themeSectionModern: {
-    paddingVertical: 14,
     paddingHorizontal: 20,
-    borderTopWidth: 1,
-    marginTop: 4,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
   },
-  themeScrollContent: {
-    paddingRight: 20,
-    gap: 8,
+  userSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+  },
+  avatarText: {
+    fontSize: 20,
+    fontWeight: '700',
+  },
+  userInfo: {
+    marginLeft: 14,
+    flex: 1,
+  },
+  title: {
+    fontSize: 17,
+    fontWeight: '700',
+  },
+  subtitle: {
+    fontSize: 12,
+    marginTop: 2,
+  },
+  closeBtn: {
+    padding: 8,
+    borderRadius: 12,
+  },
+  scrollContent: {
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  section: {
+    marginBottom: 24,
+    paddingHorizontal: 16,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginLeft: 4,
+    opacity: 0.6,
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+  },
+  iconContainer: {
+    width: 32,
+    alignItems: 'center',
+  },
+  itemLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: 8,
+  },
+  footer: {
+    padding: 20,
+    borderTopWidth: 1,
+  },
+  themeLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    marginBottom: 12,
+  },
+  themeRow: {
+    flexDirection: 'row',
   },
   themeChip: {
     flexDirection: 'row',
@@ -407,156 +446,60 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 2,
-    marginRight: 8,
-    minWidth: 90,
-    justifyContent: 'center',
+    marginRight: 10,
+    minWidth: 95,
   },
   themeColorDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 6,
+    marginRight: 8,
   },
   themeChipLabel: {
     fontSize: 13,
   },
-  themeLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  userSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  centeredOverlay: {
     flex: 1,
-  },
-  userInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  menuSection: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1,
-    marginBottom: 8,
-    marginLeft: 4,
-    textTransform: 'uppercase',
-  },
-  iconContainer: {
-    width: 40,
-    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 2000,
   },
-  avatarCircle: {
-    width: 42,
-    height: 42,
+  popupContent: {
+    width: '85%',
+    maxWidth: 320,
     borderRadius: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  subtitle: {
-    fontSize: 12,
-    fontWeight: '400',
-    opacity: 0.8,
-    marginTop: 1,
-  },
-  closeBtn: {
-    padding: 8,
-    borderRadius: 20,
-    marginLeft: 12,
-  },
-  rightComponent: {
-    marginLeft: 'auto',
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  customSwitch: {
-    width: 50,
-    height: 26,
-    borderRadius: 13,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 6,
-    position: 'relative',
-  },
-  thumb: {
-    position: 'absolute',
-    top: 2,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1,
-    elevation: 3,
-  },
-  iconLeft: {
-    position: 'absolute',
-    left: 6,
-    zIndex: 0,
-  },
-  iconRight: {
-    position: 'absolute',
-    right: 6,
-    zIndex: 0,
-  },
-  drawer: {
-    width: Platform.OS === 'ios' ? 280 : 280,
-    backgroundColor: '#f7f8fa',
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingHorizontal: 20,
-    zIndex: 1000,
+    padding: 24,
+    borderWidth: 1,
     elevation: 20,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 2 },
-    height: Dimensions.get('window').height,
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 'auto',
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    shadowOffset: { width: 0, height: 10 },
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  popupTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
     marginBottom: 20,
-    justifyContent: 'space-between',
-    paddingBottom: 16,
-    borderBottomWidth: 1,
   },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#222',
+  popupList: {
+    gap: 8,
   },
-  item: {
+  popupItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    borderRadius: 8,
-    marginBottom: 2,
+    justifyContent: 'space-between',
+    padding: 16,
+    borderRadius: 12,
   },
-  itemLabel: {
-    fontSize: 15,
-    color: '#222',
-    fontWeight: '500',
-    letterSpacing: 0.2,
-    flex: 1,
+  popupLabel: {
+    fontSize: 16,
   },
-  scrollContainer: {
-    paddingBottom: 8,
-    flexGrow: 1,
+  popupCancelBtn: {
+    marginTop: 20,
+    padding: 14,
+    borderRadius: 16,
+    alignItems: 'center',
   },
 });

@@ -1,4 +1,5 @@
 import { Feather } from '@expo/vector-icons';
+import { useQueryClient } from '@tanstack/react-query';
 import { Audio } from 'expo-av';
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -111,14 +112,14 @@ const ConnectionRequestCard = memo(({ req, onAccept, onReject, theme, t }) => {
           <Text style={[styles.timeText, { color: theme.secondaryText }]}>{formatDateTime(req.createdAt)}</Text>
           <View style={styles.actionRow}>
             <TouchableOpacity
-              onPress={() => onAccept(req.id)}
+              onPress={() => onAccept(req.id || req._id)}
               style={[styles.acceptBtn, { borderColor: theme.primary, backgroundColor: theme.primary + '15' }]}
               activeOpacity={0.7}
             >
               <Text style={{ color: theme.primary, fontWeight: '600' }}>{t('accept')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => onReject(req.id)}
+              onPress={() => onReject(req.id || req._id)}
               style={[styles.rejectBtn, { backgroundColor: theme.danger, borderColor: theme.dangerText }]}
               activeOpacity={0.7}
             >
@@ -185,6 +186,7 @@ const NotificationScreen = ({ navigation, route }) => {
   const { data: notifications = [], isLoading: notifsLoading, refetch: refetchNotifs, isFetching: isRefreshingNotifs } = useNotifications();
   const { data: pendingRequests = [], isLoading: requestsLoading, refetch: refetchRequests, isFetching: isRefreshingReqs } = usePendingRequests();
 
+  const queryClient = useQueryClient();
   const markAsRead = useMarkNotificationAsRead();
   const markAllAsRead = useMarkAllNotificationsAsRead();
   const acceptReq = useAcceptConnection();
@@ -222,12 +224,35 @@ const NotificationScreen = ({ navigation, route }) => {
       const { sound } = await Audio.Sound.createAsync(require('../assets/sounds/refresh.wav'));
       await sound.playAsync();
     } catch { }
-    await Promise.all([refetchNotifs(), refetchRequests()]);
+
+    // Use invalidateQueries + refetch for maximum cross-device consistency
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['notifications'] }),
+      queryClient.invalidateQueries({ queryKey: ['pendingRequests'] }),
+      refetchNotifs(),
+      refetchRequests()
+    ]);
+
     setHomeRefreshing(false);
-  }, [refetchNotifs, refetchRequests, setHomeRefreshing]);
+  }, [refetchNotifs, refetchRequests, setHomeRefreshing, queryClient]);
+
+  // Proactive refetch on tab switch for "instant" feel
+  useEffect(() => {
+    if (activeTab === 'CONNECTIONS') refetchRequests();
+    else refetchNotifs();
+  }, [activeTab, refetchNotifs, refetchRequests]);
+
+  // Fallback to 'ALL' if the active tab is removed from the bar (e.g. last connection accepted)
+  useEffect(() => {
+    const isTabVisible = activeTabs.some(tab => tab.key === activeTab);
+    if (!isTabVisible && activeTab !== 'ALL') {
+      setActiveTab('ALL');
+    }
+  }, [activeTabs, activeTab]);
 
   const handleRead = useCallback(async (n) => {
-    if (!n.read) await markAsRead.mutateAsync(n.id);
+    const id = n.id || n._id;
+    if (!n.read && id) await markAsRead.mutateAsync(id);
     const screenMap = { task: 'MyTasksScreen', issue: 'IssuesScreen', project: 'ProjectScreen' };
     const target = screenMap[n.type?.toLowerCase()];
     if (target) navigation.navigate(target, n.params || {});

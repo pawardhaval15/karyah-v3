@@ -338,5 +338,7 @@
   "select_new_manager": "Select new Manager",
   "Loading Notifications": "Loading Notifications...",
   "project_details": "Project Details",
-  "issues_details": "Issues Details"  
+  "issues_details": "Issues Details",
+  "logout_confirm": "Are you sure you want to sign out?",
+  "preferences": "PREFERENCES"
 }

@@ -5,11 +5,12 @@ export const useUserConnections = () => {
     return useQuery({
         queryKey: ['userConnections'],
         queryFn: async () => {
-            const response = await apiClient.get('api/connections/list');
+            const response = await apiClient.get(`api/connections/list?_t=${Date.now()}`);
             return response.data.connections || [];
         },
-        refetchInterval: 10000, // Background refresh every 10s for "instant" feel
-        staleTime: 5000,
+        refetchInterval: 5000,
+        staleTime: 0,
+        gcTime: 0, // Don't keep old data in cache
     });
 };
 
@@ -57,11 +58,12 @@ export const usePendingRequests = () => {
     return useQuery({
         queryKey: ['pendingRequests'],
         queryFn: async () => {
-            const response = await apiClient.get('api/connections/pending-requests');
+            const response = await apiClient.get(`api/connections/pending-requests?_t=${Date.now()}`);
             return response.data.pendingRequests || [];
         },
-        refetchInterval: 15000, // Faster polling (15s)
-        staleTime: 10000,
+        refetchInterval: 5000, // Sync faster across devices (5s)
+        staleTime: 0,
+        gcTime: 0,
     });
 };
 
@@ -72,11 +74,34 @@ export const useAcceptConnection = () => {
             const response = await apiClient.post('api/connections/accept-request', { connectionId });
             return response.data;
         },
+        onMutate: async (connectionId) => {
+            // Cancel any outgoing refetches (so they don't overwrite our optimistic update)
+            await queryClient.cancelQueries({ queryKey: ['pendingRequests'] });
+
+            // Snapshot the previous value
+            const previousRequests = queryClient.getQueryData(['pendingRequests']);
+
+            // Optimistically update to the new value
+            queryClient.setQueryData(['pendingRequests'], (old) =>
+                old ? old.filter(req => (req.id || req._id) !== connectionId) : []
+            );
+
+            return { previousRequests };
+        },
+        onError: (err, connectionId, context) => {
+            // Rollback if mutation fails
+            if (context?.previousRequests) {
+                queryClient.setQueryData(['pendingRequests'], context.previousRequests);
+            }
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
             queryClient.invalidateQueries({ queryKey: ['userConnections'] });
-            queryClient.invalidateQueries({ queryKey: ['notifications'] }); // Notifications might change too
+            queryClient.invalidateQueries({ queryKey: ['notifications'] });
         },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
+        }
     });
 };
 
@@ -87,8 +112,26 @@ export const useRejectConnection = () => {
             const response = await apiClient.post('api/connections/reject-request', { connectionId });
             return response.data;
         },
+        onMutate: async (connectionId) => {
+            await queryClient.cancelQueries({ queryKey: ['pendingRequests'] });
+            const previousRequests = queryClient.getQueryData(['pendingRequests']);
+
+            queryClient.setQueryData(['pendingRequests'], (old) =>
+                old ? old.filter(req => (req.id || req._id) !== connectionId) : []
+            );
+
+            return { previousRequests };
+        },
+        onError: (err, connectionId, context) => {
+            if (context?.previousRequests) {
+                queryClient.setQueryData(['pendingRequests'], context.previousRequests);
+            }
+        },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
         },
+        onSettled: () => {
+            queryClient.invalidateQueries({ queryKey: ['pendingRequests'] });
+        }
     });
 };
