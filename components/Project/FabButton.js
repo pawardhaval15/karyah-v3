@@ -1,13 +1,12 @@
-import React from 'react';
-import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, TouchableOpacity } from 'react-native';
 
-export default function FabButton({ onPress }) {
+export default function FabButton({ onPress, theme }) {
     return (
         <TouchableOpacity activeOpacity={0.85} onPress={onPress}>
             <LinearGradient
-                colors={['#011F53', '#366CD9']}
+                colors={[theme.secondary, theme.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.fabCircle}>
@@ -25,7 +24,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         elevation: 8,
-        shadowColor: '#011F53',
+        shadowColor: '#000',
         shadowOpacity: 0.12,
         shadowRadius: 12,
         shadowOffset: { width: 0, height: 4 },

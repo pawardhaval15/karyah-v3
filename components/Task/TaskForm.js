@@ -3,7 +3,7 @@ import DateBox from 'components/task details/DateBox';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View, LayoutAnimation, Platform, UIManager } from 'react-native';
+import { Alert, LayoutAnimation, Platform, StyleSheet, Switch, Text, TextInput, TouchableOpacity, UIManager, View } from 'react-native';
 import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
 import AttachmentSheet from '../popups/AttachmentSheet';
@@ -596,7 +596,7 @@ export default function TaskForm({
       )}
       {/* --- Submit Button --- */}
       <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate}>
-        <LinearGradient colors={['#011F53', '#366CD9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.drawerBtnGradient}>
+        <LinearGradient colors={[theme.secondary, theme.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.drawerBtnGradient}>
           <Text style={styles.drawerBtnText}>{t("add_task")}</Text>
         </LinearGradient>
       </TouchableOpacity>
@@ -633,8 +633,7 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: 11,
-    color: '#666',
-    // color: theme.secondaryText,
+    color: theme.secondaryText,
     fontWeight: '500',
     lineHeight: 17,
     flex: 1,

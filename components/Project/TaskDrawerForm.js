@@ -1,4 +1,4 @@
-import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import DateBox from 'components/task details/DateBox';
@@ -8,7 +8,6 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
-  Image,
   LayoutAnimation,
   Platform,
   StyleSheet,
@@ -637,7 +636,7 @@ export default function TaskDrawerForm({
       )}
       {/* --- Submit Button --- */}
       <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate} disabled={loading}>
-        <LinearGradient colors={['#011F53', '#366CD9']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.drawerBtnGradient}>
+        <LinearGradient colors={[theme.secondary, theme.primary]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.drawerBtnGradient}>
           <Text style={styles.drawerBtnText}>{loading ? 'Creating...' : t('add_task')}</Text>
         </LinearGradient>
       </TouchableOpacity>

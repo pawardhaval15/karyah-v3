@@ -1,30 +1,28 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, TouchableOpacity, Text, Animated, Dimensions } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function ProjectFab({ onTaskPress, onProjectPress }) {
     const [open, setOpen] = useState(false);
+    const theme = useTheme();
 
     return (
         <View style={styles.fabContainer}>
             {open && (
                 <View style={styles.popupContainer}>
-                    <View style={styles.popupBox}>
+                    <View style={[styles.popupBox, { backgroundColor: theme.card }]}>
                         <TouchableOpacity style={styles.popupBtn} onPress={() => { setOpen(false); onTaskPress && onTaskPress(); }}>
-                            <Text style={styles.popupText}>Task</Text>
+                            <Text style={[styles.popupText, { color: theme.text }]}>Task</Text>
                         </TouchableOpacity>
-                        <View style={styles.divider} />
+                        <View style={[styles.divider, { backgroundColor: theme.border }]} />
                         <TouchableOpacity style={styles.popupBtn} onPress={() => { setOpen(false); onProjectPress && onProjectPress(); }}>
-                            <Text style={styles.popupText}>Project</Text>
+                            <Text style={[styles.popupText, { color: theme.text }]}>Project</Text>
                         </TouchableOpacity>
                     </View>
-                    <View style={styles.popupArrowDown} />
+                    <View style={[styles.popupArrowDown, { borderTopColor: theme.card }]} />
                 </View>
             )}
             <TouchableOpacity activeOpacity={0.85} onPress={() => setOpen(!open)}>
                 <LinearGradient
-                    colors={['#011F53', '#366CD9']}
+                    colors={[theme.secondary, theme.primary]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.fabCircle}>
@@ -50,7 +48,6 @@ const styles = StyleSheet.create({
         width: 60,
         height: 60,
         borderRadius: 30,
-        backgroundColor: '#7EDDD3',
         alignItems: 'center',
         justifyContent: 'center',
     },

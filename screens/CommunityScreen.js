@@ -1,22 +1,21 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import React from 'react';
-import { useEffect, useState } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     Dimensions,
     FlatList,
+    Platform, RefreshControl,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
     View,
-    StyleSheet,
-    Platform, RefreshControl,
 } from 'react-native';
-import CreateCommunityModal from '../components/Community/AddCommunity'
+import CreateCommunityModal from '../components/Community/AddCommunity';
 import { useTheme } from '../theme/ThemeContext';
-import { fetchCommunitiesByOrganization, fetchUserDetails, createCommunity } from '../utils/community';
-import { useTranslation } from 'react-i18next';
+import { createCommunity, fetchCommunitiesByOrganization, fetchUserDetails } from '../utils/community';
 
 export default function CommunityScreen({ navigation, route }) {
     const theme = useTheme();
@@ -54,56 +53,56 @@ export default function CommunityScreen({ navigation, route }) {
     );
 
     useEffect(() => {
-  const fetchUserAndCommunities = async () => {
-    try {
-      const user = await fetchUserDetails();
-      if (user && (user.name || user.userId || user.email)) {
-        setUserName(String(user.name || user.userId || user.email));
-      } else {
-        setUserName('User');
-      }
-      let orgId = null;
-      let role = 'Member'; // Default role
-      
-      if (
-        user.OrganizationUsers &&
-        Array.isArray(user.OrganizationUsers) &&
-        user.OrganizationUsers.length > 0
-      ) {
-        const activeOrgUser = user.OrganizationUsers.find(
-          (ou) => ou.status === 'Active' && ou.Organization && ou.Organization.id,
-        );
-        if (activeOrgUser) {
-          orgId = activeOrgUser.Organization.id;
-          role = activeOrgUser.role || 'Member'; // Capture role for button check
-        }
-      }
-      setUserRole(role); // Save to state
-      
-      if (orgId) {
-        console.log(`Fetching communities for organizationId: ${orgId}...`);
-        setOrganizationId(orgId);
-        const data = await fetchCommunitiesByOrganization(orgId);
-        console.log('Communities fetched from API:', data);
-        setCommunities(data || []);
-        console.log('Communities set in state:', data);
-      } else {
-        console.warn('User does not belong to any active organization');
-        setCommunities([]);
-      }
-      // Log full user object with nested details expanded
-      console.log('User details:', JSON.stringify(user, null, 2));
-    } catch (error) {
-      console.error('Failed to fetch user or communities:', error.message);
-      setUserName('User');
-      setCommunities([]);
-      setUserRole('Member');
-    } finally {
-      setLoading(false);
-    }
-  };
-  fetchUserAndCommunities();
-}, []);
+        const fetchUserAndCommunities = async () => {
+            try {
+                const user = await fetchUserDetails();
+                if (user && (user.name || user.userId || user.email)) {
+                    setUserName(String(user.name || user.userId || user.email));
+                } else {
+                    setUserName('User');
+                }
+                let orgId = null;
+                let role = 'Member'; // Default role
+
+                if (
+                    user.OrganizationUsers &&
+                    Array.isArray(user.OrganizationUsers) &&
+                    user.OrganizationUsers.length > 0
+                ) {
+                    const activeOrgUser = user.OrganizationUsers.find(
+                        (ou) => ou.status === 'Active' && ou.Organization && ou.Organization.id,
+                    );
+                    if (activeOrgUser) {
+                        orgId = activeOrgUser.Organization.id;
+                        role = activeOrgUser.role || 'Member'; // Capture role for button check
+                    }
+                }
+                setUserRole(role); // Save to state
+
+                if (orgId) {
+                    console.log(`Fetching communities for organizationId: ${orgId}...`);
+                    setOrganizationId(orgId);
+                    const data = await fetchCommunitiesByOrganization(orgId);
+                    console.log('Communities fetched from API:', data);
+                    setCommunities(data || []);
+                    console.log('Communities set in state:', data);
+                } else {
+                    console.warn('User does not belong to any active organization');
+                    setCommunities([]);
+                }
+                // Log full user object with nested details expanded
+                console.log('User details:', JSON.stringify(user, null, 2));
+            } catch (error) {
+                console.error('Failed to fetch user or communities:', error.message);
+                setUserName('User');
+                setCommunities([]);
+                setUserRole('Member');
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchUserAndCommunities();
+    }, []);
 
 
     const filteredCommunities = communities.filter((comm) =>
@@ -128,7 +127,7 @@ export default function CommunityScreen({ navigation, route }) {
                 <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
             </TouchableOpacity>
             <LinearGradient
-                colors={['#011F53', '#366CD9']}
+                colors={[theme.secondary, theme.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={[
@@ -162,26 +161,26 @@ export default function CommunityScreen({ navigation, route }) {
                         {`${t('all_your_communities')}, ${userName}`}
                     </Text>
                 </View>
-{userRole === "Owner" && (
-  <TouchableOpacity
-    style={[
-      styles.bannerAction,
-      {
-        borderRadius: isTablet ? 14 : 12,
-        paddingHorizontal: isTablet ? 20 : 16,
-        paddingVertical: isTablet ? 12 : 8,
-      },
-    ]}
-    onPress={() => setCreateModalVisible(true)}>
-    <Text style={[styles.bannerActionText, { fontSize: isTablet ? 16 : 15 }]}>{t('add')}</Text>
-    <Feather
-      name="users"
-      size={isTablet ? 20 : 18}
-      color="#fff"
-      style={{ marginLeft: isTablet ? 6 : 4 }}
-    />
-  </TouchableOpacity>
-)}
+                {userRole === "Owner" && (
+                    <TouchableOpacity
+                        style={[
+                            styles.bannerAction,
+                            {
+                                borderRadius: isTablet ? 14 : 12,
+                                paddingHorizontal: isTablet ? 20 : 16,
+                                paddingVertical: isTablet ? 12 : 8,
+                            },
+                        ]}
+                        onPress={() => setCreateModalVisible(true)}>
+                        <Text style={[styles.bannerActionText, { fontSize: isTablet ? 16 : 15 }]}>{t('add')}</Text>
+                        <Feather
+                            name="users"
+                            size={isTablet ? 20 : 18}
+                            color="#fff"
+                            style={{ marginLeft: isTablet ? 6 : 4 }}
+                        />
+                    </TouchableOpacity>
+                )}
 
             </LinearGradient>
             <View
@@ -264,8 +263,8 @@ export default function CommunityScreen({ navigation, route }) {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}        // <--- This must match the defined function above
-                        colors={['#366CD9']}
-                        tintColor={'#366CD9'}
+                        colors={[theme.primary]}
+                        tintColor={theme.primary}
                     />
                 }
             />

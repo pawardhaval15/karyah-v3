@@ -1,12 +1,11 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '../../theme/ThemeContext';
 
 export default function GradientButton({ onPress, title }) {
+  const theme = useTheme();
   return (
     <TouchableOpacity style={styles.button} onPress={onPress}>
       <LinearGradient
-        colors={['#011F53', '#366CD9']}
+        colors={[theme.secondary, theme.primary]}
         style={styles.button}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}

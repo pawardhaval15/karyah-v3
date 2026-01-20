@@ -1,33 +1,33 @@
 ""// 📄 screens/ResolveIssueScreen.js
 
-import React, { useEffect, useState } from 'react';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useEffect, useState } from 'react';
 import {
-    View,
+    ActivityIndicator,
+    Alert,
+    Image,
+    Modal,
+    ScrollView,
+    StyleSheet,
     Text,
     TextInput,
     TouchableOpacity,
-    Image,
-    ScrollView,
-    ActivityIndicator,
-    Alert,
-    StyleSheet,
-    Modal,
+    View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRoute, useNavigation } from '@react-navigation/native';
 // import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { fetchIssueById, resolveIssueByAssignedUser } from '../utils/issues';
+import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Platform } from 'react-native';
+import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
+import GradientButton from '../components/Login/GradientButton';
+import AttachmentSheet from '../components/popups/AttachmentSheet';
 import useAttachmentPicker from '../components/popups/useAttachmentPicker';
 import useAudioRecorder from '../components/popups/useAudioRecorder';
-import AttachmentSheet from '../components/popups/AttachmentSheet';
-import GradientButton from '../components/Login/GradientButton';
-import { useTheme } from '../theme/ThemeContext';
-import FieldBox from '../components/task details/FieldBox';
 import DateBox from '../components/project details/DateBox';
-import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
+import FieldBox from '../components/task details/FieldBox';
+import { useTheme } from '../theme/ThemeContext';
+import { fetchIssueById, resolveIssueByAssignedUser } from '../utils/issues';
 const userImg = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
-import { Platform } from 'react-native';
-import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 const ResolveIssueScreen = () => {
     const { params } = useRoute();
     const navigation = useNavigation();
@@ -117,7 +117,7 @@ const ResolveIssueScreen = () => {
             </TouchableOpacity>
 
             <LinearGradient
-                colors={['#011F53', '#366CD9']}
+                colors={[theme.secondary, theme.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={{
@@ -142,7 +142,7 @@ const ResolveIssueScreen = () => {
 
 
 
-            <Text style={styles.inputBox}>{issue.issueTitle}</Text>
+            <Text style={[styles.inputBox, { backgroundColor: theme.card, borderColor: theme.border, color: theme.text }]}>{issue.issueTitle}</Text>
             <FieldBox label="Description" value={issue.description || ''} editable={false} multiline={true} theme={theme} />
             <FieldBox
                 label="Added Attachments"
@@ -176,8 +176,8 @@ const ResolveIssueScreen = () => {
             />
 
 
-            <View style={styles.row}>
-                <Text style={styles.inputBox}>{issue.creatorName || 'N/A'}</Text>
+            <View style={[styles.row, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.inputBox, { backgroundColor: 'transparent', borderWidth: 0, margin: 0, paddingLeft: 0, color: theme.text }]}>{issue.creatorName || 'N/A'}</Text>
                 <Image source={{ uri: userImg }} style={styles.avatar} />
             </View>
 
@@ -186,15 +186,15 @@ const ResolveIssueScreen = () => {
                 <DateBox label="End Date" value={new Date(issue.dueDate)} theme={theme} />
             </View>
 
-            <Text style={styles.sectionTitle}>Resolve Issue</Text>
+            <Text style={[styles.sectionTitle, { color: theme.text }]}>Resolve Issue</Text>
 
-            <View style={styles.attachmentBox}>
-                <Text style={styles.attachmentText}>Add Attachments</Text>
-                <Feather name="paperclip" size={20} color="#888" style={styles.inputIcon} onPress={() => setShowAttachmentSheet(true)} />
+            <View style={[styles.attachmentBox, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                <Text style={[styles.attachmentText, { color: theme.secondaryText }]}>Add Attachments</Text>
+                <Feather name="paperclip" size={20} color={theme.secondaryText} style={styles.inputIcon} onPress={() => setShowAttachmentSheet(true)} />
                 <MaterialCommunityIcons
                     name={isRecording ? 'microphone' : 'microphone-outline'}
                     size={20}
-                    color={isRecording ? '#E53935' : '#888'}
+                    color={isRecording ? '#E53935' : theme.secondaryText}
                     style={styles.inputIcon}
                     onPress={isRecording ? stopRecording : startRecording}
                 />
@@ -204,17 +204,17 @@ const ResolveIssueScreen = () => {
             {attachments.length > 0 && (
                 <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
                     {attachments.map((att, index) => (
-                        <View key={index} style={styles.attachmentItem}>
+                        <View key={index} style={[styles.attachmentItem, { backgroundColor: theme.secCard }]}>
                             {att.type?.startsWith('image') && (
                                 <Image source={{ uri: att.uri }} style={styles.attachmentPreview} />
                             )}
                             {att.type?.startsWith('audio') && (
-                                <MaterialCommunityIcons name="play-circle-outline" size={28} color="#1D4ED8" />
+                                <MaterialCommunityIcons name="play-circle-outline" size={28} color={theme.primary} />
                             )}
                             {!att.type?.startsWith('image') && !att.type?.startsWith('audio') && (
-                                <MaterialCommunityIcons name="file-document-outline" size={28} color="#888" />
+                                <MaterialCommunityIcons name="file-document-outline" size={28} color={theme.secondaryText} />
                             )}
-                            <Text numberOfLines={1} style={styles.attachmentName}>
+                            <Text numberOfLines={1} style={[styles.attachmentName, { color: theme.text }]}>
                                 {att.name || att.uri.split('/').pop()}
                             </Text>
                             <TouchableOpacity onPress={() => {
@@ -227,11 +227,12 @@ const ResolveIssueScreen = () => {
                 </View>
             )}
 
-            <View style={styles.inputBoxMultiline}>
+            <View style={[styles.inputBoxMultiline, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <TextInput
                     multiline
-                    style={styles.textArea}
+                    style={[styles.textArea, { color: theme.text }]}
                     placeholder="Describe how the issue was resolved..."
+                    placeholderTextColor={theme.secondaryText}
                     value={remarks}
                     onChangeText={setRemarks}
                 />

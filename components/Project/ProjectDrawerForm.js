@@ -251,7 +251,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
               />
               <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
                 <LinearGradient
-                  colors={['#011F53', '#366CD9']}
+                  colors={[theme.secondary, theme.primary]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
                   style={styles.drawerBtnGradient}>
@@ -444,7 +444,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
           />
           <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
             <LinearGradient
-              colors={['#011F53', '#366CD9']}
+              colors={[theme.secondary, theme.primary]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.drawerBtnGradient}>
@@ -801,7 +801,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                     />
                     <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
                       <LinearGradient
-                        colors={['#011F53', '#366CD9']}
+                        colors={[theme.secondary, theme.primary]}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={styles.drawerBtnGradient}>

@@ -9,15 +9,14 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
-  Image,
+  LayoutAnimation,
+  Platform,
   StyleSheet,
   Switch,
   Text,
   TouchableOpacity,
-  View,
-  LayoutAnimation,
-  Platform,
-  UIManager
+  UIManager,
+  View
 } from 'react-native';
 import { getProjectById } from '../../utils/project';
 import { createTask } from '../../utils/task';
@@ -738,7 +737,7 @@ export default function AddTaskForm({
       {/* Submit Button */}
       <TouchableOpacity style={styles.drawerBtn} onPress={handleTaskCreate} disabled={loading}>
         <LinearGradient
-          colors={['#011F53', '#366CD9']}
+          colors={[theme.secondary, theme.primary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.drawerBtnGradient}

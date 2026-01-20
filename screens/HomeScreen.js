@@ -148,8 +148,8 @@ export default function HomeScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={[theme.primary || '#366CD9']}
-            tintColor={theme.primary || '#366CD9'}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
       >

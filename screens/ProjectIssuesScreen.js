@@ -1,9 +1,10 @@
 import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
     ActivityIndicator,
+    Platform,
     StyleSheet,
     Text,
     TextInput,
@@ -13,13 +14,11 @@ import {
 import IssueList from '../components/issue/IssueList';
 import ProjectIssuePopup from '../components/popups/ProjectIssuePopup';
 import { useTheme } from '../theme/ThemeContext';
-import { getIssuesByProjectId, fetchCreatedByMeIssues, fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
-import { Platform } from 'react-native';
 import { getUserNameFromToken } from '../utils/auth';
-import { useTranslation } from 'react-i18next';
+import { fetchCreatedByMeIssues, fetchProjectsByUser, fetchUserConnections, getIssuesByProjectId } from '../utils/issues';
 export default function ProjectIssuesScreen({ navigation, route }) {
     const { projectId } = route.params || {};
-  const { t } = useTranslation();
+    const { t } = useTranslation();
     const theme = useTheme();
     const [search, setSearch] = useState('');
     const [activeTab, setActiveTab] = useState('all');  // This covers "all", "critical", "resolved", "unresolved", "pending_approval"
@@ -194,7 +193,7 @@ export default function ProjectIssuesScreen({ navigation, route }) {
             </TouchableOpacity>
 
             <LinearGradient
-                colors={['#011F53', '#366CD9']}
+                colors={[theme.secondary, theme.primary]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.banner}

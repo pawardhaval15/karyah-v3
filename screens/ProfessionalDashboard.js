@@ -87,7 +87,7 @@ export default function ProfessionalDashboard({ navigation }) {
     // Function to render the appropriate bar chart based on selected data type
     const renderChart = () => {
         const chartKey = `${selectedChart}-bar-${refreshKey}`;
-        
+
         if (selectedChart === 'projects') {
             return (
                 <ProjectsSnagLineChart
@@ -157,8 +157,8 @@ export default function ProfessionalDashboard({ navigation }) {
                     <RefreshControl
                         refreshing={refreshing}
                         onRefresh={onRefresh}
-                        colors={[theme.primary || '#366CD9']}
-                        tintColor={theme.primary || '#366CD9'}
+                        colors={[theme.primary]}
+                        tintColor={theme.primary}
                     />
                 }
             >
@@ -172,7 +172,7 @@ export default function ProfessionalDashboard({ navigation }) {
                             <TouchableOpacity
                                 style={[
                                     styles.capsuleButton,
-                                    { 
+                                    {
                                         backgroundColor: selectedChart === 'projects' ? theme.primary : 'transparent',
                                     },
                                 ]}
@@ -189,7 +189,7 @@ export default function ProfessionalDashboard({ navigation }) {
                             <TouchableOpacity
                                 style={[
                                     styles.capsuleButton,
-                                    { 
+                                    {
                                         backgroundColor: selectedChart === 'issues' ? theme.primary : 'transparent',
                                     },
                                 ]}
