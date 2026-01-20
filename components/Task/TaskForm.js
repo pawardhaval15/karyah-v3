@@ -292,7 +292,7 @@ export default function TaskForm({
       {/* * Note: Leave "Assign To" blank to auto-assign to yourself */}
       <View style={styles.noteContainer}>
         <Feather name="info" size={14} color={theme.secondaryText} style={styles.noteIcon} />
-        <Text style={styles.noteText}>
+        <Text style={[styles.noteText, { color: theme.secondaryText }]}>
           * Leave &quot;Assign To&quot; blank to auto-assign to yourself
         </Text>
       </View>
@@ -633,7 +633,6 @@ const styles = StyleSheet.create({
   },
   noteText: {
     fontSize: 11,
-    color: theme.secondaryText,
     fontWeight: '500',
     lineHeight: 17,
     flex: 1,

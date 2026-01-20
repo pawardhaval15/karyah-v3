@@ -1,3 +1,5 @@
+import { LinearGradient } from 'expo-linear-gradient';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 
 export default function GradientButton({ onPress, title }) {

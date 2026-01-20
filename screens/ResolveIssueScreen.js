@@ -1,4 +1,4 @@
-""// 📄 screens/ResolveIssueScreen.js
+// 📄 screens/ResolveIssueScreen.js
 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
