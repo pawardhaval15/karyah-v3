@@ -133,8 +133,8 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     sectionTitle: {
-        fontSize: 16,
+        fontSize: 12,
         fontWeight: '500',
-        marginTop: 6,
+        marginTop: 1,
     },
 });

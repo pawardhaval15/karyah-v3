@@ -6,6 +6,7 @@ export const useNotifications = () => {
         queryKey: ['notifications'],
         queryFn: async () => {
             const response = await apiClient.get(`api/notifications?_t=${Date.now()}`);
+            // console.log(response.data);
             return response.data || [];
         },
         refetchInterval: 5000,   // Rapid polling for cross-device sync

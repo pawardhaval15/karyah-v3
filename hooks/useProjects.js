@@ -92,7 +92,7 @@ export const useProjectStatistics = () => {
         queryKey: ['projectStatistics'],
         queryFn: async () => {
             const timestamp = new Date().toLocaleTimeString();
-            console.log(`[${timestamp}] 📊 Fetching Project Statistics...`);
+            // console.log(`[${timestamp}] 📊 Fetching Project Statistics...`);
 
             const response = await apiClient.get('api/projects/statistics');
             const projectStats = response.data && response.data.data ? response.data.data : [];

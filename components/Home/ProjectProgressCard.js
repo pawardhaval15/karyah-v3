@@ -1,9 +1,19 @@
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { memo } from 'react';
+import { memo, useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeInRight, Layout } from 'react-native-reanimated';
+import Animated, {
+  FadeInRight,
+  Layout,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 function formatShortDateRange(timeline) {
   if (!timeline) return '';
@@ -12,11 +22,35 @@ function formatShortDateRange(timeline) {
     (m) => m.slice(0, 3)
   );
 }
+
 const ProjectStatsCircle = memo(({ progress, count, theme, color, size = 34 }) => {
   const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const strokeDashoffset = circumference - (Math.min(100, Math.max(0, progress)) / 100) * circumference;
+
+  const animatedProgress = useSharedValue(0);
+  const countScale = useSharedValue(1);
+
+  useEffect(() => {
+    animatedProgress.value = withTiming(progress, { duration: 1000 });
+  }, [progress]);
+
+  useEffect(() => {
+    countScale.value = withSpring(1.2, { damping: 10, stiffness: 100 }, () => {
+      countScale.value = withSpring(1);
+    });
+  }, [count]);
+
+  const animatedProps = useAnimatedProps(() => {
+    const offset = circumference - (Math.min(100, Math.max(0, animatedProgress.value)) / 100) * circumference;
+    return {
+      strokeDashoffset: offset,
+    };
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: countScale.value }],
+  }));
 
   return (
     <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
@@ -29,22 +63,22 @@ const ProjectStatsCircle = memo(({ progress, count, theme, color, size = 34 }) =
           strokeWidth={strokeWidth}
           fill="transparent"
         />
-        <Circle
+        <AnimatedCircle
           cx={size / 2}
           cy={size / 2}
           r={radius}
           stroke={color || theme.primary}
           strokeWidth={strokeWidth}
           strokeDasharray={`${circumference} ${circumference}`}
-          strokeDashoffset={strokeDashoffset}
+          animatedProps={animatedProps}
           strokeLinecap="round"
           fill="transparent"
         />
       </Svg>
       <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
-        <Text style={{ fontSize: 10, fontWeight: '800', color: theme.text }}>
+        <Animated.Text style={[{ fontSize: 10, fontWeight: '800', color: theme.text }, animatedTextStyle]}>
           {count}
-        </Text>
+        </Animated.Text>
       </View>
     </View>
   );
@@ -78,8 +112,8 @@ const ProjectProgressCard = memo(({
 
   return (
     <Animated.View
-      entering={FadeInRight.duration(300).springify().damping(15)}
-      layout={Layout.duration(200)}
+      entering={FadeInRight.duration(400).springify().damping(15)}
+      layout={Layout.springify().damping(15)}
     >
       <TouchableOpacity
         onPress={() => navigation.navigate('ProjectDetailsScreen', { project })}
@@ -121,25 +155,31 @@ const ProjectProgressCard = memo(({
           </View>
 
           <View style={styles.statsRow}>
-            <View style={styles.circlesGroup}>
-              <ProjectStatsCircle
-                progress={criticalProgress}
-                count={criticalCount}
-                color={criticalColor}
-                theme={theme}
-              />
-              <ProjectStatsCircle
-                progress={issueProgress}
-                count={issueCount}
-                color={issueColor}
-                theme={theme}
-              />
-              <ProjectStatsCircle
-                progress={taskProgress}
-                count={taskCount}
-                color={taskColor}
-                theme={theme}
-              />
+            <View style={styles.circlesGroup} layout={Layout.springify().damping(15)}>
+              {criticalCount > 0 && (
+                <ProjectStatsCircle
+                  progress={criticalProgress}
+                  count={criticalCount}
+                  color={criticalColor}
+                  theme={theme}
+                />
+              )}
+              {issueCount > 0 && (
+                <ProjectStatsCircle
+                  progress={issueProgress}
+                  count={issueCount}
+                  color={issueColor}
+                  theme={theme}
+                />
+              )}
+              {taskCount > 0 && (
+                <ProjectStatsCircle
+                  progress={taskProgress}
+                  count={taskCount}
+                  color={taskColor}
+                  theme={theme}
+                />
+              )}
             </View>
           </View>
         </View>
@@ -157,19 +197,19 @@ const styles = StyleSheet.create({
     padding: 12,
     marginRight: 10,
     width: 220,
-    minHeight: 85,
+    height: 95, // Fixed height for uniformity
   },
   contentColumn: {
     flex: 1,
     justifyContent: 'space-between',
   },
   headerInfo: {
-    marginBottom: 8,
+    // Top-aligned content
   },
   title: {
     fontWeight: '700',
-    fontSize: 15,
-    marginBottom: 4,
+    fontSize: 14,
+    marginBottom: 2,
     letterSpacing: -0.3,
   },
   metaRow: {
@@ -195,7 +235,8 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    height: 34, // Matches circle size to reserve space
+    marginTop: 6,
   },
   circlesGroup: {
     flexDirection: 'row',
