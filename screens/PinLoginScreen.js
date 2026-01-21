@@ -1,5 +1,4 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRef, useState } from 'react';
 import {
   Alert,
   Dimensions,
@@ -7,7 +6,6 @@ import {
   Keyboard,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   TouchableWithoutFeedback,
@@ -19,57 +17,38 @@ import LoginPanel from '../components/Login/LoginPanel';
 import { loginWithPin } from '../utils/auth';
 
 export default function PinLoginScreen({ navigation }) {
-  const [identifier, setIdentifier] = useState('');
-  const [pin, setPin] = useState(['', '', '', '']);
-  const pinRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
-  const [step, setStep] = useState(1); // 👈 new state
+  const theme = useTheme();
+  const {
+    mobile, otp, setLoginStep
+  } = useAuthStore();
 
-  const handlePinChange = (value, index) => {
-    if (/^\d?$/.test(value)) {
-      const newPin = [...pin];
-      newPin[index] = value;
-      setPin(newPin);
+  const handleContinue = useCallback(async () => {
+    const enteredPin = otp.join('');
 
-      if (value && index < pinRefs.length - 1) {
-        pinRefs[index + 1].current.focus();
-      }
-      if (!value && index > 0) {
-        pinRefs[index - 1].current.focus();
-      }
-    }
-  };
-
-  const handlePinKeyPress = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && !pin[index] && index > 0) {
-      pinRefs[index - 1].current.focus();
-    }
-  };
-
-  const handleContinue = async () => {
-    const enteredPin = pin.join('');
-
-    if (!identifier || enteredPin.length !== 4) {
-      Alert.alert("Error", "Please enter identifier and complete 4-digit PIN.");
+    if (!mobile || enteredPin.length !== 4) {
+      Alert.alert("Error", "Please enter mobile number/email and complete 4-digit PIN.");
       return;
     }
 
     try {
-      const res = await loginWithPin(identifier, enteredPin);
+      const res = await loginWithPin(mobile, enteredPin);
       await AsyncStorage.setItem('token', res.token);
 
-      if (res.redirectTo === 'dashboard') {
+      if (res.redirectTo === 'dashboard' || res.user?.isRegistered) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Home' }],
         });
-
       } else {
-        navigation.navigate('RegistrationForm');
+        navigation.navigate('RegistrationForm', {
+          user: res.user || {},
+          identifier: mobile,
+        });
       }
     } catch (err) {
-      Alert.alert("Login Failed", err.message);
+      Alert.alert("Login Failed", err.message || "Invalid PIN");
     }
-  };
+  }, [mobile, otp, navigation]);
 
   return (
     <ImageBackground
@@ -94,28 +73,19 @@ export default function PinLoginScreen({ navigation }) {
               <View style={styles.spacer} />
 
               <View style={styles.bottomSection}>
-                <SafeAreaView style={[styles.panelContainer, { backgroundColor: '#fff' }]}>
+                <View style={[styles.panelContainer, { backgroundColor: theme.background }]}>
                   <LoginPanel
                     title="Login with PIN"
-                    showMobileInput={true}
-                    mobile={identifier}
-                    setMobile={setIdentifier}
-                    otp={pin}
-                    otpRefs={pinRefs}
-                    handleOtpChange={handlePinChange}
-                    handleOtpKeyPress={handlePinKeyPress}
-                    handleContinue={handleContinue}
-                    navigation={navigation}
+                    onContinue={handleContinue}
                     inputPlaceholder="Mobile Number / Email"
-                    inputLabel="Enter PIN :"
                     footerText="Forgot PIN?"
-                    footerLinkText="Go back to OTP login"
-                    onFooterLinkPress={() => navigation.replace('Login')}
-                    forceStep={step}
-                    setStep={setStep}
-                    showStepFlow={true}
+                    footerLinkText="Back to OTP login"
+                    onFooterLinkPress={() => {
+                      setLoginStep(1);
+                      navigation.replace('Login');
+                    }}
                   />
-                </SafeAreaView>
+                </View>
               </View>
             </View>
           </TouchableWithoutFeedback>

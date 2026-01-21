@@ -52,7 +52,9 @@ const LoginPanel = memo(({
       }
       setIsSendingOtp(true);
       try {
-        await onSendOtp();
+        if (onSendOtp) {
+          await onSendOtp();
+        }
         setLoginStep(2);
         setTimer(60);
       } catch (error) {
@@ -69,7 +71,9 @@ const LoginPanel = memo(({
     if (timer > 0 || isResending) return;
     setIsResending(true);
     try {
-      await onSendOtp();
+      if (onSendOtp) {
+        await onSendOtp();
+      }
       setTimer(60);
     } catch (err) {
       Alert.alert("Error", err.message);

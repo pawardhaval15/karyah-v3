@@ -93,6 +93,16 @@ export default function RegistrationForm({ route, navigation }) {
     }
   }, [identifier]);
 
+  // Safety check: If user is already registered, go to Home
+  useEffect(() => {
+    if (user.isRegistered) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    }
+  }, [user.isRegistered, navigation]);
+
   const handleChange = useCallback((key, value) => {
     setForm(prev => ({ ...prev, [key]: value }));
   }, []);
