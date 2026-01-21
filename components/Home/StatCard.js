@@ -112,7 +112,7 @@ const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
           ? Math.round((apiData.critical.unresolved / apiData.critical.total) * 100)
           : 0,
         extrasLine: `Resolved: ${apiData.critical?.resolved ?? 0}`,
-        gradientColors: theme.criticalGradient, // 🔴 Critical
+        gradientColors: theme.criticalGradient,
         screen: 'IssuesScreen',
       },
       {
@@ -124,7 +124,7 @@ const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
           ? Math.round((apiData.issues.unresolved / apiData.issues.total) * 100)
           : 0,
         extrasLine: `Resolved: ${apiData.issues?.resolved ?? 0}`,
-        gradientColors: theme.issueGradient, // 🟡 Issues
+        gradientColors: theme.issueGradient,
         screen: 'IssuesScreen',
       },
       {
@@ -136,7 +136,7 @@ const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
           ? Math.round((apiData.tasks.completed / apiData.tasks.total) * 100)
           : 0,
         extrasLine: `Pending: ${apiData.tasks?.pending ?? 0} • Done: ${apiData.tasks?.completed ?? 0}`,
-        gradientColors: theme.taskGradient, // 🔵 Task
+        gradientColors: theme.taskGradient,
         screen: 'MyTasksScreen',
       },
       {
@@ -148,7 +148,7 @@ const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
           ? Math.round((apiData.projects.completed / apiData.projects.total) * 100)
           : 0,
         extrasLine: `Pending: ${apiData.projects?.pending ?? 0} • Done: ${apiData.projects?.completed ?? 0}`,
-        gradientColors: theme.projectGradient, // ⚫ Project
+        gradientColors: theme.projectGradient,
         screen: 'ProjectScreen',
       },
     ];

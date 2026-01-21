@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Dimensions, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather';
 import { useIssuesByUser, useMyTasks } from '../../hooks/useTasks';
 import { useTheme } from '../../theme/ThemeContext';
@@ -12,7 +12,7 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
 
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('issues'); // Default to tasks to avoid empty issue state switch blink
+  const [activeTab, setActiveTab] = useState('issues'); // Default to issues
 
   // Debounce search input to avoid heavy re-renders on every keystroke
   useEffect(() => {
@@ -46,7 +46,6 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
   const unresolvedIssues = useMemo(() => {
     return issuesRec.filter(issue => {
       const status = String(issue.status || '').toLowerCase();
-      // Include 'reopen' specifically, exclude 'completed' and 'resolved'
       return status !== 'completed' && status !== 'resolved';
     });
   }, [issuesRec]);
@@ -95,17 +94,15 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
       });
     }
 
-    // 3. Sorting (Optimized with pre-calculated date diffs)
+    // 3. Sorting
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const sorted = [...filtered].map(item => {
-      // Pre-calculate date for sorting efficiency
       const dateVal = new Date(item.endDate || item.dueDate || item.date || 0);
       const diff = dateVal.getTime() ? (dateVal - today) / (1000 * 60 * 60 * 24) : null;
       return { ...item, _sortDiff: diff };
     }).sort((a, b) => {
-      // Critical first for issues
       if (activeTab === 'issues') {
         if (a.isCritical && !b.isCritical) return -1;
         if (!a.isCritical && b.isCritical) return 1;
@@ -119,7 +116,7 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
 
       if (isOverdueA && !isOverdueB) return -1;
       if (!isOverdueA && isOverdueB) return 1;
-      if (isOverdueA && isOverdueB) return diffA - diffB; // smallest number (most overdue) first
+      if (isOverdueA && isOverdueB) return diffA - diffB;
 
       if (diffA !== null && diffB !== null) return diffA - diffB;
       if (diffA === null && diffB !== null) return 1;
@@ -127,11 +124,37 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
       return 0;
     });
 
-    // 4. Limit results (Home summary should be concise)
     return sorted.slice(0, 8);
-
   }, [sourceData, debouncedSearch, activeTab]);
 
+  const renderItem = useCallback(({ item, index }) => (
+    <TouchableOpacity
+      style={styles.cardWrapper}
+      activeOpacity={0.8}
+      onPress={() => handleCardPress(item)}
+    >
+      <View style={{ position: 'relative' }}>
+        <TaskCard
+          title={item.taskName || item.title || item.issueTitle || item.name || t('untitled')}
+          project={item.project?.projectName || item.project || item.projectName}
+          location={item.location || item.project?.location}
+          percent={item.percent || item.progress || 0}
+          desc={item.desc || item.description}
+          date={item.date || item.dueDate || item.endDate}
+          theme={theme}
+          creatorName={item.creatorName || item.createdBy || item.creator?.name}
+          isIssue={activeTab === 'issues'}
+          issueStatus={item.status}
+          isCritical={item.isCritical}
+        />
+        {/* {activeTab === 'issues' && item.isCritical && (
+          <View style={styles.criticalDot} />
+        )} */}
+      </View>
+    </TouchableOpacity>
+  ), [handleCardPress, activeTab, theme, t]);
+
+  const keyExtractor = useCallback((item, idx) => (item.id || item.taskId || idx).toString(), []);
 
   if (loading) {
     return (
@@ -154,101 +177,66 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
       </View>
 
       {/* Tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabRow}>
-        {unresolvedIssues.length > 0 && (
-          <TouchableOpacity
-            style={[
-              styles.tabButton,
-              { borderColor: theme.border },
-              activeTab === 'issues' && { backgroundColor: theme.primary },
-            ]}
-            onPress={() => setActiveTab('issues')}>
-            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-              <Feather
-                name="alert-circle"
-                size={16}
-                color={activeTab === 'issues' ? '#fff' : '#FF5252'}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={[
-                  styles.tabText,
-                  { color: theme.text },
-                  activeTab === 'issues' && styles.activeTabText,
-                ]}>
-                {t('issues')}
-              </Text>
-              <View
-                style={{
-                  minWidth: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: activeTab === 'issues' ? 'rgba(255,255,255,0.3)' : '#FF525230',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginLeft: 6,
-                  paddingHorizontal: 5,
-                }}>
-                <Text
-                  style={{
-                    color: activeTab === 'issues' ? '#fff' : '#FF5252',
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                  }}>
-                  {unresolvedIssues.length}
-                </Text>
-              </View>
-            </View>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity
-          style={[
-            styles.tabButton,
-            { borderColor: theme.border },
-            activeTab === 'tasks' && { backgroundColor: theme.primary },
+      <View style={{ marginBottom: 12 }}>
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={[
+            ...(unresolvedIssues.length > 0 ? [{ id: 'issues', label: t('issues'), icon: 'alert-circle', color: '#FF5252', count: unresolvedIssues.length }] : []),
+            { id: 'tasks', label: t('tasks'), icon: 'check-square', color: '#4CAF50', count: incompleteTasks.length }
           ]}
-          onPress={() => setActiveTab('tasks')}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <Feather
-              name="check-square"
-              size={16}
-              color={activeTab === 'tasks' ? '#fff' : '#4CAF50'}
-              style={{ marginRight: 6 }}
-            />
-            <Text
+          contentContainerStyle={styles.tabRow}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity
               style={[
-                styles.tabText,
-                { color: theme.text },
-                activeTab === 'tasks' && styles.activeTabText,
-              ]}>
-              {t('tasks')}
-            </Text>
-            {incompleteTasks.length > 0 && (
-              <View
-                style={{
-                  minWidth: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: activeTab === 'tasks' ? 'rgba(255,255,255,0.3)' : '#4CAF5030',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginLeft: 6,
-                  paddingHorizontal: 5,
-                }}>
+                styles.tabButton,
+                { borderColor: theme.border },
+                activeTab === item.id && { backgroundColor: theme.primary },
+              ]}
+              onPress={() => setActiveTab(item.id)}>
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Feather
+                  name={item.icon}
+                  size={16}
+                  color={activeTab === item.id ? '#fff' : item.color}
+                  style={{ marginRight: 6 }}
+                />
                 <Text
-                  style={{
-                    color: activeTab === 'tasks' ? '#fff' : '#4CAF50',
-                    fontSize: 11,
-                    fontWeight: 'bold',
-                  }}>
-                  {incompleteTasks.length}
+                  style={[
+                    styles.tabText,
+                    { color: theme.text },
+                    activeTab === item.id && styles.activeTabText,
+                  ]}>
+                  {item.label}
                 </Text>
+                {item.count > 0 && (
+                  <View
+                    style={{
+                      minWidth: 18,
+                      height: 18,
+                      borderRadius: 9,
+                      backgroundColor: activeTab === item.id ? 'rgba(255,255,255,0.3)' : `${item.color}30`,
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      marginLeft: 6,
+                      paddingHorizontal: 5,
+                    }}>
+                    <Text
+                      style={{
+                        color: activeTab === item.id ? '#fff' : item.color,
+                        fontSize: 11,
+                        fontWeight: 'bold',
+                      }}>
+                      {item.count}
+                    </Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-        </TouchableOpacity>
-      </ScrollView>
+            </TouchableOpacity>
+          )}
+        />
+      </View>
 
       {/* Search */}
       <View style={[styles.searchBarContainer, { backgroundColor: theme.SearchBar }]}>
@@ -261,35 +249,18 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
         />
       </View>
 
-      {/* Grid Content */}
-      <View style={styles.gridContainer}>
-        {displayData.map((item, idx) => (
-          <TouchableOpacity
-            key={(item.id || item.taskId || idx) + '_item'}
-            style={styles.cardWrapper}
-            activeOpacity={0.8}
-            onPress={() => handleCardPress(item)}
-          >
-            <View style={{ position: 'relative' }}>
-              <TaskCard
-                title={item.taskName || item.title || item.issueTitle || item.name || t('untitled')}
-                project={item.project?.projectName || item.project || item.projectName}
-                percent={item.percent || item.progress || 0}
-                desc={item.desc || item.description}
-                date={item.date || item.dueDate || item.endDate}
-                theme={theme}
-                creatorName={item.creatorName || item.createdBy || item.creator?.name}
-                isIssue={activeTab === 'issues'}
-                issueStatus={item.status}
-                isCritical={item.isCritical}
-              />
-              {activeTab === 'issues' && item.isCritical && (
-                <View style={styles.criticalDot} />
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* List Content */}
+      <FlatList
+        data={displayData}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        scrollEnabled={false}
+        contentContainerStyle={styles.listContainer}
+        initialNumToRender={8}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={false}
+      />
     </View>
   );
 };
@@ -297,56 +268,48 @@ const TaskSection = ({ navigation, loading: parentLoading }) => {
 export default memo(TaskSection);
 
 const { width: screenWidth } = Dimensions.get('window');
-const isTablet = screenWidth >= 768;
 
 const styles = StyleSheet.create({
-  gridContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: isTablet ? 10 : 6,
-    paddingHorizontal: isTablet ? 20 : 20,
-    paddingBottom: isTablet ? 24 : 20,
+  listContainer: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    gap: 10,
   },
   cardWrapper: {
-    width: isTablet ? '23%' : '48%',
-    marginBottom: 6,
+    width: '100%',
+    marginBottom: 0,
   },
   sectionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginHorizontal: isTablet ? 20 : 20,
+    marginHorizontal: 20,
     marginBottom: 0,
   },
   sectionTitle: {
-    fontSize: isTablet ? 18 : 16,
+    fontSize: 14,
     fontWeight: '500',
-    color: '#363942',
   },
   viewAll: {
-    color: '#366CD9',
     fontWeight: '400',
     fontSize: 14,
   },
   tabRow: {
     flexDirection: 'row',
     justifyContent: 'flex-start',
-    marginTop: isTablet ? 16 : 12,
-    marginHorizontal: isTablet ? 20 : 20,
-    marginBottom: isTablet ? 16 : 12,
+    paddingHorizontal: 20,
+    marginTop: 12,
   },
   tabButton: {
-    paddingVertical: isTablet ? 10 : 8,
-    paddingHorizontal: isTablet ? 20 : 10,
-    borderRadius: isTablet ? 20 : 20,
-    marginRight: isTablet ? 0 : 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginRight: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
   },
   tabText: {
-    fontSize: isTablet ? 16 : 14,
+    fontSize: 14,
     fontWeight: '400',
-    color: '#666',
   },
   activeTabText: {
     color: '#fff',
@@ -354,18 +317,16 @@ const styles = StyleSheet.create({
   searchBarContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f7f7f7',
-    borderRadius: isTablet ? 16 : 12,
-    marginHorizontal: isTablet ? 20 : 20,
-    marginBottom: isTablet ? 16 : 12,
-    paddingHorizontal: isTablet ? 20 : 16,
-    paddingVertical: isTablet ? 16 : 12,
+    borderRadius: 12,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
   },
   searchInput: {
     flex: 1,
-    fontSize: isTablet ? 16 : 16,
+    fontSize: 16,
     fontWeight: '400',
-    color: '#363942',
     paddingVertical: 0,
   },
   criticalDot: {

@@ -186,7 +186,7 @@ const creamTheme = {
   buttonText: '#FF943A',
 
   /* =================================================
-     🔴 CRITICAL
+     CRITICAL
   ================================================= */
   criticalGradient: ['#ED8688', '#E37A7A'],
   criticalBg: '#FFE9E9',
@@ -196,7 +196,7 @@ const creamTheme = {
   criticalBadgeText: '#FFFFFF',
 
   /* =================================================
-     🟡 ISSUES (DEFAULT TAB COLOR)
+     ISSUES (DEFAULT TAB COLOR)
   ================================================= */
   issueGradient: ['#FFBF76', '#FF943A'],
   issueBg: '#FFF2E0',
@@ -206,7 +206,7 @@ const creamTheme = {
   issueBadgeText: '#FFFFFF',
 
   /* =================================================
-     🔵 TASK
+     TASK
   ================================================= */
   taskGradient: ['#64B0E9', '#5CA6E8'],
   taskBg: '#EAF4FD',
@@ -216,13 +216,13 @@ const creamTheme = {
   taskBadgeText: '#FFFFFF',
 
   /* =================================================
-     ⚫ PROJECT (DARK BUT NOT BRAND)
+     PROJECT (DARK BUT NOT BRAND)
   ================================================= */
-  projectGradient: ['#4C4C4C', '#3E3E3E'],
+  projectGradient: ['#855E42', '#5E402B'], // Light Chocolate -> Darker Chocolate
   projectBg: '#EFEFEF',
   projectText: '#2A2A2A',
-  projectBorder: '#4C4C4C',
-  projectBadgeBg: '#3E3E3E',
+  projectBorder: '#855E42', // Updated border to match the theme
+  projectBadgeBg: '#855E42',
   projectBadgeText: '#FFFFFF',
 
   /* ===== Danger ===== */

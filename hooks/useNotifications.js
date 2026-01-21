@@ -22,7 +22,18 @@ export const useMarkNotificationAsRead = () => {
             const response = await apiClient.put('api/notifications/read', { notificationId });
             return response.data;
         },
-        onSuccess: () => {
+        onMutate: async (id) => {
+            await queryClient.cancelQueries({ queryKey: ['notifications'] });
+            const previousNotifications = queryClient.getQueryData(['notifications']);
+            queryClient.setQueryData(['notifications'], (old) =>
+                old?.map(n => (n.id === id || n._id === id) ? { ...n, read: true } : n)
+            );
+            return { previousNotifications };
+        },
+        onError: (err, id, context) => {
+            queryClient.setQueryData(['notifications'], context.previousNotifications);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         },
     });
@@ -35,7 +46,18 @@ export const useMarkAllNotificationsAsRead = () => {
             const response = await apiClient.put('api/notifications/read-all');
             return response.data;
         },
-        onSuccess: () => {
+        onMutate: async () => {
+            await queryClient.cancelQueries({ queryKey: ['notifications'] });
+            const previousNotifications = queryClient.getQueryData(['notifications']);
+            queryClient.setQueryData(['notifications'], (old) =>
+                old?.map(n => ({ ...n, read: true }))
+            );
+            return { previousNotifications };
+        },
+        onError: (err, variables, context) => {
+            queryClient.setQueryData(['notifications'], context.previousNotifications);
+        },
+        onSettled: () => {
             queryClient.invalidateQueries({ queryKey: ['notifications'] });
         },
     });

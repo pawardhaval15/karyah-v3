@@ -1,7 +1,16 @@
 import { Feather } from '@expo/vector-icons';
-import { memo, useMemo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { FadeInUp, Layout } from 'react-native-reanimated';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+  FadeInUp,
+  Layout,
+  useAnimatedProps,
+  useSharedValue,
+  withTiming
+} from 'react-native-reanimated';
+import Svg, { Circle } from 'react-native-svg';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // Pure helper function moved outside to avoid re-creation
 const getInitials = (name) => {
@@ -15,9 +24,60 @@ const getInitials = (name) => {
     .slice(0, 2);
 };
 
+const ProgressRing = memo(({ progress, color, theme, size = 40 }) => {
+  const strokeWidth = 4;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+
+  const animatedProgress = useSharedValue(0);
+
+  useEffect(() => {
+    animatedProgress.value = withTiming(progress, { duration: 1000 });
+  }, [progress]);
+
+  const animatedProps = useAnimatedProps(() => {
+    const offset = circumference - (Math.min(100, Math.max(0, animatedProgress.value)) / 100) * circumference;
+    return {
+      strokeDashoffset: offset,
+    };
+  });
+
+  return (
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={theme.dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <AnimatedCircle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color || theme.primary}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${circumference} ${circumference}`}
+          animatedProps={animatedProps}
+          strokeLinecap="round"
+          fill="transparent"
+        />
+      </Svg>
+      <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Text style={{ fontSize: 9, fontWeight: '700', color: theme.text }}>
+          {progress}%
+        </Text>
+      </View>
+    </View>
+  );
+});
+
 const TaskCard = ({
   title,
   project,
+  location,
   percent,
   theme,
   isIssue,
@@ -28,7 +88,7 @@ const TaskCard = ({
 }) => {
   const [showCreatorTooltip, setShowCreatorTooltip] = useState(false);
 
-  // Memoize due date status calculation to avoid expensive Date operations on every render
+  // Memoize due date status calculation
   const dueDateStatus = useMemo(() => {
     if (!date) return null;
 
@@ -95,113 +155,95 @@ const TaskCard = ({
           borderColor: theme.border,
         }
       ]}>
-        <View style={styles.content}>
-          <View style={styles.row}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-              <Text
-                style={[styles.taskTitle, { color: theme.text, flex: 1 }]}
-                numberOfLines={1}
-                ellipsizeMode="tail">
-                {title}
-              </Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              {/* Creator initials circle */}
-              {creatorName && (
-                <TouchableOpacity
-                  onPress={() => setShowCreatorTooltip(!showCreatorTooltip)}
-                  style={[styles.initialsCircle, { backgroundColor: theme.primary }]}
-                  activeOpacity={0.7}>
-                  <Text style={styles.initialsText}>{initials}</Text>
-                </TouchableOpacity>
+        <View style={styles.contentRow}>
+          {/* Left Content Column */}
+          <View style={styles.leftColumn}>
+            <Text
+              style={[styles.taskTitle, { color: theme.text }]}
+              numberOfLines={1}
+              ellipsizeMode="tail">
+              {title}
+            </Text>
+
+            <View style={styles.metaRow}>
+              <View style={styles.metaItem}>
+                <Feather name="folder" size={12} color={theme.secondaryText} style={styles.metaIcon} />
+                <Text style={[styles.metaText, { color: theme.secondaryText }]} numberOfLines={1}>
+                  {project || 'No Project'}
+                </Text>
+              </View>
+              {location && (
+                <View style={[styles.metaItem, { marginLeft: 10 }]}>
+                  <Feather name="map-pin" size={12} color={theme.secondaryText} style={styles.metaIcon} />
+                  <Text style={[styles.metaText, { color: theme.secondaryText }]} numberOfLines={1}>
+                    {location}
+                  </Text>
+                </View>
               )}
-              {isIssue ? null : (
-                <Text style={[styles.progressText, { color: theme.secondaryText }]}>{percent}%</Text>
-              )}
             </View>
-          </View>
 
-          {/* Creator tooltip */}
-          {showCreatorTooltip && creatorName && (
-            <View style={[styles.tooltip, { backgroundColor: theme.background, borderColor: theme.border }]}>
-              <Text style={[styles.tooltipText, { color: theme.text }]}>{creatorName}</Text>
-            </View>
-          )}
-
-          <View style={{ width: '100%' }}>
-            {/* First row: Project name and due date */}
-            <View
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 4,
-              }}>
-              <Text
-                style={[styles.taskSubTitle, { color: theme.secondaryText, flex: 1 }]}
-                numberOfLines={1}
-                ellipsizeMode="tail">
-                {project}
-              </Text>
-
-              {/* Show due date for both issues and tasks */}
+            <View style={styles.bottomRow}>
               {dueDateStatus ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
+                <View style={styles.dateContainer}>
                   <Feather
                     name="calendar"
                     size={12}
                     color={dueDateStatus.color}
-                    style={{ marginRight: 2 }}
+                    style={{ marginRight: 4 }}
                   />
                   <Text
                     style={{
                       color: dueDateStatus.color,
                       fontSize: 11,
                       fontWeight: '500',
-                      maxWidth: 80,
-                    }}
-                    numberOfLines={1}
-                    ellipsizeMode="tail">
+                    }}>
                     {dueDateStatus.text}
                   </Text>
                 </View>
               ) : (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 6 }}>
+                <View style={styles.dateContainer}>
                   <Feather
                     name="calendar"
                     size={12}
                     color={theme.secondaryText}
-                    style={{ marginRight: 2 }}
+                    style={{ marginRight: 4 }}
                   />
-                  <Text
-                    style={{
-                      color: theme.secondaryText,
-                      fontSize: 11,
-                      fontWeight: '400',
-                      maxWidth: 60,
-                    }}
-                    numberOfLines={1}
-                    ellipsizeMode="tail">
+                  <Text style={[styles.metaText, { color: theme.secondaryText }]}>
                     No due date
                   </Text>
                 </View>
               )}
             </View>
           </View>
-        </View>
 
-        {/* Progress bar */}
-        <View style={[styles.progressBarContainer, { backgroundColor: theme.border }]}>
-          <View
-            style={[
-              styles.progressBar,
-              {
-                width: `${isIssue ? 100 : percent}%`,
-                backgroundColor:
-                  isIssue && isCritical ? '#FF0000' : isIssue ? '#FF5252' : theme.primary,
-              },
-            ]}
-          />
+          {/* Right Action/Badge Column */}
+          <View style={styles.rightColumn}>
+            <View style={styles.ringContainer}>
+              {isIssue ? (
+                <View style={[
+                  styles.statusBadge,
+                  {
+                    backgroundColor: isCritical
+                      ? (theme.criticalBadgeBg || '#FF525220')
+                      : (theme.issueBadgeBg || theme.normalIssueBadgeBg || '#FF943A20')
+                  }
+                ]}>
+                  <Text style={[
+                    styles.statusBadgeText,
+                    {
+                      color: isCritical
+                        ? (theme.criticalBadgeText || '#FFFFFF')
+                        : (theme.issueBadgeText || theme.normalIssueBadgeText || '#FFFFFF')
+                    }
+                  ]}>
+                    {issueStatus || 'Open'}
+                  </Text>
+                </View>
+              ) : (
+                <ProgressRing progress={percent} color={theme.primary} theme={theme} />
+              )}
+            </View>
+          </View>
         </View>
       </View>
     </Animated.View>
@@ -210,104 +252,111 @@ const TaskCard = ({
 
 export default memo(TaskCard);
 
-const CARD_HEIGHT = 68;
-
 const styles = StyleSheet.create({
   card: {
-    borderRadius: 10,
+    borderRadius: 14,
     borderWidth: 1,
-    marginBottom: 0,
     overflow: 'hidden',
-    alignItems: 'stretch',
     backgroundColor: '#fff',
-    height: CARD_HEIGHT,
-    justifyContent: 'space-between',
-    position: 'relative',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    marginBottom: 2,
   },
-  content: {
-    flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    justifyContent: 'center',
-  },
-  row: {
+  contentRow: {
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 2,
-    marginBottom: 2,
+  },
+  leftColumn: {
+    flex: 1,
+    paddingRight: 10,
   },
   taskTitle: {
     fontSize: 15,
-    fontWeight: '500',
-    flex: 1,
-    marginRight: 0,
-    paddingBottom: 4,
+    fontWeight: '700',
+    marginBottom: 4,
+    letterSpacing: -0.2,
   },
-  taskSubTitle: {
-    fontSize: 12,
-    fontWeight: '400',
-    flexShrink: 1,
-    maxWidth: '100%',
-    textAlign: 'left',
-  },
-  progressText: {
-    fontWeight: '400',
-    fontSize: 12,
-    alignSelf: 'flex-end',
-    marginTop: 0,
-    marginRight: 0,
-    marginBottom: 0,
-  },
-  progressBarContainer: {
+  metaRow: {
     flexDirection: 'row',
-    height: 2,
-    width: '100%',
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    overflow: 'hidden',
-    backgroundColor: '#eee',
+    alignItems: 'center',
+    marginBottom: 6,
   },
-  progressBar: {
-    height: 2,
-    borderRadius: 0,
+  metaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    maxWidth: '50%',
   },
-  initialsCircle: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  metaIcon: {
+    marginRight: 4,
+  },
+  metaText: {
+    fontSize: 12,
+    fontWeight: '400',
+  },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rightColumn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minWidth: 50,
+  },
+  ringContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  statusBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
+  initialsCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   initialsText: {
-    color: '#FFFFFF',
-    fontSize: 8,
-    fontWeight: '600',
+    fontSize: 9,
+    fontWeight: '800',
   },
   tooltip: {
     position: 'absolute',
-    top: 25,
-    right: 8,
+    bottom: 45,
+    right: 0,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    zIndex: 10,
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 100,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowRadius: 8,
   },
   tooltipText: {
-    fontSize: 11,
-    fontWeight: '500',
-    color: '#333',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

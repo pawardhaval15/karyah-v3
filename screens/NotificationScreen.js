@@ -195,10 +195,10 @@ const NotificationScreen = ({ navigation, route }) => {
   const isLoadingInitial = (notifsLoading || requestsLoading) && notifications.length === 0 && pendingRequests.length === 0;
 
   const tabFilters = useMemo(() => [
-    { key: 'ALL', label: t('all'), count: notifications.length },
-    { key: 'CRITICAL', label: t('critical'), count: notifications.filter(n => n.type?.toLowerCase() === 'issue').length },
-    { key: 'TASK', label: t('task'), count: notifications.filter(n => n.type === 'task' || n.type === 'task_message').length },
-    { key: 'PROJECT', label: t('project'), count: notifications.filter(n => ['coadmin_added', 'project_updated', 'discussion'].includes(n.type)).length },
+    { key: 'ALL', label: t('all'), count: notifications.filter(n => !n.read).length },
+    { key: 'CRITICAL', label: t('critical'), count: notifications.filter(n => n.type?.toLowerCase() === 'issue' && !n.read).length },
+    { key: 'TASK', label: t('task'), count: notifications.filter(n => (n.type === 'task' || n.type === 'task_message') && !n.read).length },
+    { key: 'PROJECT', label: t('project'), count: notifications.filter(n => ['coadmin_added', 'project_updated', 'discussion'].includes(n.type) && !n.read).length },
     { key: 'CONNECTIONS', label: t('connections'), count: pendingRequests.length },
   ], [notifications, pendingRequests, t]);
 
@@ -296,8 +296,8 @@ const NotificationScreen = ({ navigation, route }) => {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => markAllAsRead.mutate()}
-          disabled={notifications.length === 0}
-          style={[styles.readAllBtn, { backgroundColor: theme.avatarBg }]}
+          disabled={notifications.filter(n => !n.read).length === 0}
+          style={[styles.readAllBtn, { backgroundColor: theme.avatarBg, opacity: notifications.filter(n => !n.read).length === 0 ? 0.5 : 1 }]}
           activeOpacity={0.7}
         >
           <Feather name="check-circle" size={18} color={theme.primary} />
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     paddingVertical: 15,
   },
   backBtn: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerTitle: { fontSize: 24, fontWeight: '800' },
+  headerTitle: { fontSize: 18, fontWeight: '800' },
   readAllBtn: {
     flexDirection: 'row',
     alignItems: 'center',
