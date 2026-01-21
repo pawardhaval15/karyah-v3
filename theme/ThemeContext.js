@@ -305,16 +305,16 @@ export const themes = {
 };
 
 const ThemeContext = createContext({
-  theme: lightTheme,
-  colorMode: 'light',
+  theme: creamTheme,
+  colorMode: 'cream',
   setColorMode: () => { },
 });
 
 export function ThemeProvider({ children }) {
   const systemScheme = useColorScheme();
 
-  // Determine default mode based on system, strictly 'light' or 'dark' initially
-  const defaultMode = (systemScheme === 'dark' || systemScheme === 'light') ? systemScheme : 'light';
+  // Force 'cream' as the default theme
+  const defaultMode = 'cream';
 
   const [colorMode, setColorModeState] = useState(defaultMode);
   const [userPreference, setUserPreference] = useState(null);

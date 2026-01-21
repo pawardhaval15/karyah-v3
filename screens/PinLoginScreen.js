@@ -1,16 +1,18 @@
-import React, { useState, useRef } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRef, useState } from 'react';
 import {
+  Alert,
+  Dimensions,
+  ImageBackground,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
-  ImageBackground,
-  View,
   SafeAreaView,
   ScrollView,
-  Keyboard,
+  StyleSheet,
   TouchableWithoutFeedback,
-  Alert
+  View
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import Header from '../components/Login/Header';
 import LoginPanel from '../components/Login/LoginPanel';
@@ -72,33 +74,27 @@ export default function PinLoginScreen({ navigation }) {
   return (
     <ImageBackground
       source={require('../assets/bg1.jpg')}
-      style={{ flex: 1, justifyContent: 'flex-end', position: 'relative' }}
+      style={styles.background}
       resizeMode="cover"
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={{ flex: 1 }}>
-          <Header />
-          <KeyboardAvoidingView
-            style={{ flex: 1, width: '100%' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
-          >
-            <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-              <ScrollView
-                style={{ width: '100%', flexGrow: 0, zIndex: 999 }}
-                contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                keyboardShouldPersistTaps="handled"
-              >
-                <SafeAreaView style={{
-                  flex: 1,
-                  width: '100%',
-                  backgroundColor: '#fff',
-                  borderTopLeftRadius: 24,
-                  borderTopRightRadius: 24,
-                  zIndex: 10,
-                  elevation: 10,
-                  paddingBottom: 25,
-                }}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.innerContainer}>
+              <Header style={styles.headerStyle} />
+
+              <View style={styles.spacer} />
+
+              <View style={styles.bottomSection}>
+                <SafeAreaView style={[styles.panelContainer, { backgroundColor: '#fff' }]}>
                   <LoginPanel
                     title="Login with PIN"
                     showMobileInput={true}
@@ -111,7 +107,7 @@ export default function PinLoginScreen({ navigation }) {
                     handleContinue={handleContinue}
                     navigation={navigation}
                     inputPlaceholder="Mobile Number / Email"
-                    inputLabel="Enter PIN :" // <-- Make sure this is set!
+                    inputLabel="Enter PIN :"
                     footerText="Forgot PIN?"
                     footerLinkText="Go back to OTP login"
                     onFooterLinkPress={() => navigation.replace('Login')}
@@ -120,11 +116,46 @@ export default function PinLoginScreen({ navigation }) {
                     showStepFlow={true}
                   />
                 </SafeAreaView>
-              </ScrollView>
+              </View>
             </View>
-          </KeyboardAvoidingView>
-        </View>
-      </TouchableWithoutFeedback>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ImageBackground>
   );
 }
+
+const styles = StyleSheet.create({
+  background: {
+    flex: 1,
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  innerContainer: {
+    flex: 1,
+    width: '100%',
+    alignItems: 'center',
+  },
+  headerStyle: {
+    marginTop: Dimensions.get('window').height * 0.15,
+  },
+  spacer: {
+    flex: 1,
+    minHeight: 40,
+  },
+  bottomSection: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  panelContainer: {
+    width: '100%',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    elevation: 10,
+    paddingBottom: 25,
+  },
+});

@@ -1,43 +1,66 @@
+import { memo } from 'react';
+import { Dimensions, StyleSheet, Text, TextInput, View } from 'react-native';
 
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isTablet = SCREEN_WIDTH >= 768;
 
-// Accept timer, isResending, handleResendOtp as optional props for OTP screens
-export default function OTPInput({ otp, otpRefs, onChange, onKeyPress, timer, isResending, handleResendOtp }) {
+const OTPInput = memo(({
+  otp,
+  otpRefs,
+  onChange,
+  onKeyPress,
+  timer,
+  isResending,
+  handleResendOtp,
+  theme
+}) => {
   return (
-    <View style={styles.otpContainer}>
-      {otp.map((digit, idx) => (
-        <TextInput
-          ref={otpRefs[idx]}
-          key={idx}
-          style={styles.otpInput}
-          maxLength={1}
-          keyboardType="numeric"
-          value={digit}
-          onChangeText={(value) => {
-            // If user pastes or types all 4 digits at once, fill all boxes
-            if (value && value.length === otp.length) {
-              value.split('').forEach((v, i) => {
-                onChange(v, i);
-              });
-              // Focus last box
-              otpRefs[otp.length - 1]?.current?.focus();
-            } else {
-              onChange(value, idx);
-            }
-          }}
-          onKeyPress={(e) => onKeyPress(e, idx)}
-        />
-      ))}
-      {/* Only show timer row if timer prop is provided (OTP screen) */}
+    <View style={styles.container}>
+      <View style={styles.otpContainer}>
+        {otp.map((digit, idx) => (
+          <TextInput
+            ref={otpRefs[idx]}
+            key={idx}
+            style={[
+              styles.otpInput,
+              {
+                backgroundColor: theme.card,
+                borderColor: theme.border,
+                color: theme.text
+              }
+            ]}
+            maxLength={1}
+            keyboardType="numeric"
+            value={digit}
+            onChangeText={(value) => {
+              if (value && value.length === otp.length) {
+                value.split('').forEach((v, i) => onChange(v, i));
+                otpRefs[otp.length - 1]?.current?.focus();
+              } else {
+                onChange(value, idx);
+              }
+            }}
+            onKeyPress={(e) => onKeyPress(e, idx)}
+            placeholderTextColor={theme.secondaryText}
+          />
+        ))}
+      </View>
+
       {typeof timer === 'number' && handleResendOtp && (
         <View style={styles.otpTimerRow}>
-          <Text style={styles.otpTimerText}>
+          <Text style={[styles.otpTimerText, { color: theme.secondaryText }]}>
             {timer > 0
               ? `Resend OTP in 0:${timer < 10 ? `0${timer}` : timer}`
               : 'Didn\'t receive the code?'}
           </Text>
           <Text
-            style={[styles.resendBtn, { opacity: timer > 0 || isResending ? 0.5 : 1 }]}
+            style={[
+              styles.resendBtn,
+              {
+                color: theme.primary,
+                opacity: timer > 0 || isResending ? 0.5 : 1
+              }
+            ]}
             onPress={handleResendOtp}
             disabled={timer > 0 || isResending}
           >
@@ -47,56 +70,44 @@ export default function OTPInput({ otp, otpRefs, onChange, onKeyPress, timer, is
       )}
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
+  container: {
+    width: '100%',
+    alignItems: 'center',
+  },
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginBottom: 4,
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-    maxWidth: '100%',
-    width: '100%',
-    paddingVertical: 0,
+    marginBottom: 20,
+    gap: isTablet ? 16 : 10,
   },
   otpInput: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 14,
-    width: 52,
-    height: 52,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    width: isTablet ? 64 : 54,
+    height: isTablet ? 64 : 54,
     textAlign: 'center',
-    fontSize: 16,
-    color: '#000',
-  },
-
-  otpInfoText: {
-    color: '#666',
-    fontSize: 13,
-    marginBottom: 10,
-    textAlign: 'center',
+    fontSize: isTablet ? 20 : 18,
+    fontWeight: '600',
   },
   otpTimerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 10,
-    gap: 10,
+    marginTop: 4,
+    marginBottom: 20,
   },
   otpTimerText: {
-    color: '#888',
-    fontSize: 13,
+    fontSize: 14,
     marginRight: 8,
   },
   resendBtn: {
-    color: '#366CD9',
-    fontWeight: '600',
-    fontSize: 13,
+    fontWeight: '700',
+    fontSize: 14,
     textDecorationLine: 'underline',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
   },
 });
+
+export default OTPInput;

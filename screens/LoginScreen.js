@@ -1,12 +1,13 @@
-import { useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { memo, useCallback } from 'react';
 import {
   Alert,
+  Dimensions,
   ImageBackground,
   Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
-  SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,62 +15,37 @@ import {
   TouchableWithoutFeedback,
   View
 } from 'react-native';
-
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import Header from '../components/Login/Header';
 import LoginPanel from '../components/Login/LoginPanel';
+import { useCheckIdentifier, useVerifyOtp } from '../hooks/useAuth';
+import { useAuthStore } from '../store/authStore';
 import { useTheme } from '../theme/ThemeContext';
-import { checkEmailOrMobile, verifyOtp } from '../utils/auth';
-export default function LoginScreen({ navigation }) {
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const isTablet = SCREEN_WIDTH >= 768;
+
+const LoginScreen = ({ navigation }) => {
   const theme = useTheme();
+  const {
+    mobile, otp, showTerms, setShowTerms,
+    setIsNewUser, resetAuthStore, setLoginStep
+  } = useAuthStore();
 
-  const [mobile, setMobile] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '']);
-  const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
-  const [showTerms, setShowTerms] = useState(false);
-  const [isNewUser, setIsNewUser] = useState(false);
+  const checkIdentifierMutation = useCheckIdentifier();
+  const verifyOtpMutation = useVerifyOtp();
 
-  const handleOtpChange = (value, index) => {
-    if (/^\d?$/.test(value)) {
-      const newOtp = [...otp];
-      newOtp[index] = value;
-      setOtp(newOtp);
-
-      if (value && index < otpRefs.length - 1) {
-        otpRefs[index + 1].current.focus();
-      }
-      if (!value && index > 0) {
-        otpRefs[index - 1].current.focus();
-      }
-    }
-  };
-
-  const handleOtpKeyPress = (e, index) => {
-    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
-      otpRefs[index - 1].current.focus();
-    }
-  };
-
-  const handleSendOtp = async () => {
-    if (!mobile) {
-      Alert.alert("Error", "Please enter mobile number or email.");
-      return;
-    }
-
+  const handleSendOtp = useCallback(async () => {
     try {
-      const res = await checkEmailOrMobile(mobile);
-      if (res.isRegistered === false) {
-        setIsNewUser(true);
-      } else {
-        setIsNewUser(false);
-      }
-      Alert.alert("Success", res.message);
+      const res = await checkIdentifierMutation.mutateAsync(mobile);
+      setIsNewUser(!res.isRegistered);
+      Alert.alert("Success", res.message || "OTP sent successfully!");
     } catch (err) {
-      Alert.alert("Error", err.message);
+      throw err;
     }
-  };
+  }, [mobile, checkIdentifierMutation, setIsNewUser]);
 
-  const handleContinue = async () => {
+  const handleContinue = useCallback(async () => {
     const enteredOtp = otp.join('');
     if (!mobile || enteredOtp.length !== 4) {
       Alert.alert("Error", "Please enter mobile number and complete OTP.");
@@ -77,235 +53,220 @@ export default function LoginScreen({ navigation }) {
     }
 
     try {
-      const res = await verifyOtp(mobile, enteredOtp);
+      const res = await verifyOtpMutation.mutateAsync({ identifier: mobile, otp: enteredOtp });
       await AsyncStorage.setItem('token', res.token);
-      console.log("OTP verified successfully:", res);
 
-      // Check if user is new or explicitly redirected to registration
-      if (isNewUser || res.redirectTo === 'registrationForm') {
+      if (!res.user?.isRegistered || res.redirectTo === 'registrationForm') {
         navigation.navigate('RegistrationForm', {
-          user: res.user,
-          identifier: mobile, // Pass identifier for pre-filling
+          user: res.user || {},
+          identifier: mobile,
         });
       } else {
-        // Default to Home/Dashboard
         navigation.reset({
           index: 0,
           routes: [{ name: 'Home' }],
         });
       }
     } catch (err) {
-      Alert.alert("OTP Verification Failed", err.message);
+      Alert.alert("Verification Failed", err.message || "Invalid OTP");
     }
-  };
+  }, [mobile, otp, verifyOtpMutation, navigation]);
 
   return (
     <ImageBackground
       source={require('../assets/bg1.jpg')}
-      style={{ flex: 1, justifyContent: 'flex-end', position: 'relative' }}
+      style={styles.background}
       resizeMode="cover"
     >
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-        <View style={{ flex: 1 }}>
-          <Header />
-          <KeyboardAvoidingView
-            style={{ flex: 1, width: '100%' }}
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
-          >
-            <View style={{ flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
-              <ScrollView
-                style={{ width: '100%', flexGrow: 0, zIndex: 999 }}
-                contentContainerStyle={{ flexGrow: 1, justifyContent: 'flex-end' }}
-                keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+          bounces={true}
+        >
+          <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+            <View style={styles.innerContainer}>
+              <Header style={styles.headerStyle} />
+
+              <View style={styles.spacer} />
+
+              <Animated.View
+                entering={FadeInUp.duration(600)}
+                style={[
+                  styles.panelContainer,
+                  { backgroundColor: theme.background }
+                ]}
               >
-                <SafeAreaView style={{
-                  width: '100%',
-                  backgroundColor: '#fff',
-                  borderTopLeftRadius: 24,
-                  borderTopRightRadius: 24,
-                  zIndex: 10,
-                  elevation: 10,
-                  paddingBottom: 25,
-                }}>
-                  <LoginPanel
-                    title="Get Started !"
-                    showMobileInput={true}
-                    mobile={mobile}
-                    setMobile={setMobile}
-                    otp={otp}
-                    otpRefs={otpRefs}
-                    handleOtpChange={handleOtpChange}
-                    handleOtpKeyPress={handleOtpKeyPress}
-                    handleContinue={handleContinue}
-                    onSendOtp={handleSendOtp}
-                    navigation={navigation}
-                    inputLabel="Enter OTP :"
-                    inputPlaceholder="Mobile Number / Email"
-                    footerText="Already a registered user?"
-                    footerLinkText="Login with PIN."
+                <LoginPanel
+                  onContinue={handleContinue}
+                  onSendOtp={handleSendOtp}
+                  onFooterLinkPress={() => navigation.navigate('PinLogin')}
+                />
 
-                    onFooterLinkPress={() => navigation.navigate('PinLogin')}
-                  />
-                  <TouchableOpacity onPress={() => setShowTerms(true)} style={{ padding: 4, alignItems: 'center' }}>
-                    <Text style={{ color: theme.primary, textDecorationLine: 'underline' }}>
-                      Terms and Conditions!
-                    </Text>
-                  </TouchableOpacity>
-                  {/* Terms & Conditions Modal */}
-                  <Modal
-                    visible={showTerms}
-                    animationType="slide"
-                    transparent={true}
-                    onRequestClose={() => setShowTerms(false)}
-                  >
-                    <View style={styles.modalBackdrop}>
-                      <View style={[styles.modalContainer, { backgroundColor: theme.card }]}>
-                        <ScrollView contentContainerStyle={styles.contentContainer}>
-                          <Text style={[styles.heading, { color: theme.text }]}>Privacy Policy</Text>
-                          <Text style={[styles.subHeading, { color: theme.text }]}>
-                            Effective Date: January 2025
-                          </Text>
-
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            Welcome to Karyah! This Privacy Policy explains how we collect, use, and protect your personal information when you use our application.
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Information We Collect</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            - Personal information (name, email address, phone number)
-                            {'\n'}- Task and project information you enter in the app
-                            {'\n'}- Device information and usage statistics
-                            {'\n'}- Location data (with your permission)
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>How We Use Your Information</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            - Provide, maintain, and improve our services
-                            {'\n'}- Communicate with you about your account
-                            {'\n'}- Develop new features based on user behavior
-                            {'\n'}- Protect against fraudulent or unauthorized activity
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Information Sharing</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            We do not sell your personal information. We may share information with:
-                            {'\n'}- Service providers who help operate our app
-                            {'\n'}- Law enforcement when required by law
-                            {'\n'}- Business partners with your consent
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Data Security</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            We implement reasonable security measures to protect your information from unauthorized access or disclosure.
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Your Rights</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            - Access your personal information
-                            {'\n'}- Correct inaccurate information
-                            {'\n'}- Delete your account and data
-                            {'\n'}- Opt out of marketing communications
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Children's Privacy</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            Our services are not intended for children under the age of 13.
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Changes to This Policy</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            We may update this Privacy Policy from time to time. We will notify you of any significant changes.
-                          </Text>
-
-                          <Text style={[styles.sectionTitle, { color: theme.text }]}>Contact Us</Text>
-                          <Text style={[styles.paragraph, { color: theme.text }]}>
-                            If you have questions about this Privacy Policy, please contact us at: support@karyah.com
-                          </Text>
-                        </ScrollView>
-
-                        <TouchableOpacity
-                          style={[styles.closeButton, { backgroundColor: theme.primary }]}
-                          onPress={() => setShowTerms(false)}
-                        >
-                          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 16 }}>Close</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  </Modal>
-                </SafeAreaView>
-              </ScrollView>
+                <TouchableOpacity
+                  onPress={() => setShowTerms(true)}
+                  style={styles.termsTrigger}
+                >
+                  <Text style={[styles.termsText, { color: theme.primary }]}>
+                    Terms and Conditions
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
             </View>
-          </KeyboardAvoidingView>
+          </TouchableWithoutFeedback>
+        </ScrollView>
+      </KeyboardAvoidingView>
+
+      {/* Terms & Conditions Modal */}
+      <Modal
+        visible={showTerms}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowTerms(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <Animated.View
+            entering={FadeInDown.duration(500)}
+            style={[styles.modalContainer, { backgroundColor: theme.card }]}
+          >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.modalScroll}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Privacy Policy</Text>
+              <Text style={[styles.modalSubtitle, { color: theme.secondaryText }]}>
+                Effective Date: January 2025
+              </Text>
+
+              <PolicySection theme={theme} title="Information We Collect" content="- Personal information (name, email, phone)\n- Task and project data\n- Device stats & location" />
+              <PolicySection theme={theme} title="How We Use Your Info" content="- Provide and improve Karyah services\n- Account security and updates\n- Fraud prevention" />
+              <PolicySection theme={theme} title="Data Security" content="We implement industry-standard encryption to protect your data across all Karyah services." />
+
+              <Text style={[styles.contactText, { color: theme.secondaryText }]}>
+                Questions? Contact us at support@karyah.com
+              </Text>
+            </ScrollView>
+
+            <TouchableOpacity
+              style={[styles.closeButton, { backgroundColor: theme.primary }]}
+              onPress={() => setShowTerms(false)}
+            >
+              <Text style={styles.closeButtonText}>Close</Text>
+            </TouchableOpacity>
+          </Animated.View>
         </View>
-      </TouchableWithoutFeedback>
+      </Modal>
     </ImageBackground>
   );
-} const styles = StyleSheet.create({
-  // Backdrop for modal overlay
-  safeArea: {
+};
+
+const PolicySection = memo(({ theme, title, content }) => (
+  <View style={styles.section}>
+    <Text style={[styles.sectionTitle, { color: theme.text }]}>{title}</Text>
+    <Text style={[styles.sectionContent, { color: theme.secondaryText }]}>{content.replace(/\\n/g, '\n')}</Text>
+  </View>
+));
+
+const styles = StyleSheet.create({
+  background: {
     flex: 1,
-    backgroundColor: '#000000AA', // semi-transparent backdrop
-    justifyContent: 'center',
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+  },
+  innerContainer: {
+    flex: 1,
+    width: '100%',
     alignItems: 'center',
   },
-
+  headerStyle: {
+    marginTop: SCREEN_HEIGHT * 0.15,
+  },
+  spacer: {
+    flex: 1,
+    minHeight: 40,
+  },
+  panelContainer: {
+    width: '100%',
+    maxWidth: isTablet ? 600 : '100%',
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+  },
+  termsTrigger: {
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  termsText: {
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+    fontSize: 14,
+  },
   modalBackdrop: {
     flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#00000088', // Use semi-transparent for backdrop
   },
   modalContainer: {
-    width: '90%',
+    width: isTablet ? '60%' : '90%',
     maxHeight: '80%',
-    borderRadius: 14,
-    padding: 20,
-    backgroundColor: '#fff', // Fallback if theme.card missing
+    borderRadius: 24,
+    padding: 24,
+    overflow: 'hidden',
   },
-
-  // ScrollView content inside modal
-  contentContainer: {
-    paddingBottom: 24,
+  modalScroll: {
+    paddingBottom: 20,
   },
-
-  // Headings and text styles
-  heading: {
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 12,
-  },
-  subHeading: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    marginTop: 20,
+  modalTitle: {
+    fontSize: 26,
+    fontWeight: '800',
     marginBottom: 8,
   },
-  paragraph: {
-    fontSize: 16,
-    lineHeight: 24,
+  modalSubtitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 24,
   },
-
-  // Close / Agree button styles
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  sectionContent: {
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  contactText: {
+    fontSize: 14,
+    fontStyle: 'italic',
+    marginTop: 10,
+    textAlign: 'center',
+  },
   closeButton: {
-    paddingVertical: 14,
+    marginTop: 20,
+    height: 54,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  agreeButton: {
-    marginTop: 12,
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  agreeButtonText: {
+  closeButtonText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
   },
 });
+
+export default memo(LoginScreen);

@@ -1,9 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-export default function Header() {
+export default function Header({ style }) {
   return (
-    <View style={styles.header}>
+    <View style={[styles.header, style]}>
       <Text style={styles.headerTitle}>KARYAH:</Text>
       <Text style={styles.headerSubtitle}>|| Sarvgun Sampann ||</Text>
     </View>
@@ -12,11 +11,9 @@ export default function Header() {
 
 const styles = StyleSheet.create({
   header: {
-    position: 'absolute',
-    top: 280,
     width: '100%',
     alignItems: 'center',
-    zIndex: 10,
+    zIndex: 1,
   },
   headerTitle: {
     color: '#fff',

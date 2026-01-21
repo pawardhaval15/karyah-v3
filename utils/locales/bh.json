@@ -15,6 +15,8 @@
   "language": "भाषा",
   "select_language": "भाषा चुनीं",
   "cancel": "रद्द करीं",
+  "complete_registration": "आपन रजिस्ट्रेशन पूरा करीं",
+  "registration_subtitle": "शुरू करे खातिर आपन बारे में थोड़ा अउरी बताईं।",
   "welcome_to_karyah": "कार्याह में रउरा स्वागत बा",
   "mode": "मोड",
   "search_placeholder": "परियोजना, काम, खोजीं...",
@@ -108,6 +110,10 @@
   "no_phone": "फोन ना बा",
   "no_dob": "जन्मतिथि ना बा",
   "no_address": "पता ना बा",
+  "set_pin": "पिन सेट करीं",
+  "user_type": "यूजर श्रेणी",
+  "processing": "काम होत बा...",
+  "registration_success": "प्रोफाइल सफलतापूर्वक अपडेट भइल!",
   "support_pin_info": "हमार सपोर्ट टीम से जुड़ला खातिर ई सपोर्ट पिन इस्तेमाल होला।",
   "support_pin": "सपोर्ट पिन",
   "hide": "छुपाईं",
@@ -313,5 +319,6 @@
   "select_new_manager": "नया प्रबंधक चुनें",
   "Loading Notifications": "सूचनाएं लोड हो रही हैं",
   "project_details": "परियोजना विवरण",
-  "issues_details": "मुद्दा विवरण"
+  "issues_details": "मुद्दा विवरण",
+  "additional_information": "अतिरिक्त जानकारी"
 }

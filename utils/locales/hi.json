@@ -15,6 +15,8 @@
   "language": "भाषा",
   "select_language": "भाषा चुनें",
   "cancel": "रद्द करें",
+  "complete_registration": "अपना पंजीकरण पूरा करें",
+  "registration_subtitle": "शुरू करने के लिए अपने बारे में थोड़ा और बताएं।",
   "welcome_to_karyah": "कार्य: में आपका स्वागत है",
   "mode": "मोड",
   "search_placeholder": "परियोजनाएँ, कार्य: खोजें...",
@@ -108,6 +110,10 @@
   "no_phone": "कोई फ़ोन नहीं",
   "no_dob": "कोई जन्म तिथि नहीं",
   "no_address": "कोई पता नहीं",
+  "set_pin": "पिन सेट करें",
+  "user_type": "उपयोगकर्ता श्रेणी",
+  "processing": "प्रक्रिया जारी है...",
+  "registration_success": "प्रोफ़ाइल सफलतापूर्वक अपडेट हो गई!",
   "support_pin_info": "यह सपोर्ट पिन हमारी सहायता टीम से संपर्क करने के लिए उपयोग किया जाता है।",
   "support_pin": "सपोर्ट पिन:",
   "hide": "छुपाएं",
@@ -322,5 +328,6 @@
   "project_details": "परियोजना विवरण",
   "issues_details": "मुद्दा विवरण",
   "logout_confirm": "क्या आप वाकई साइन आउट करना चाहते हैं?",
-  "preferences": "प्राथमिकताएं"
+  "preferences": "प्राथमिकताएं",
+  "additional_information": "अतिरिक्त जानकारी"
 }

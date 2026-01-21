@@ -16,6 +16,8 @@
   "select_language": "Select Language",
   "cancel": "Cancel",
   "decline": "Decline",
+  "complete_registration": "Complete Your Registration",
+  "registration_subtitle": "Tell us a bit more about yourself to get started.",
   "welcome_to_karyah": "Welcome to Karyah",
   "mode": "Mode",
   "search_placeholder": "Search projects, tasks...",
@@ -109,6 +111,10 @@
   "no_phone": "No phone",
   "no_dob": "No DOB",
   "no_address": "No address",
+  "set_pin": "Secure PIN",
+  "user_type": "User Category",
+  "processing": "Processing...",
+  "registration_success": "Profile updated successfully!",
   "support_pin_info": "This Support PIN is used to contact our support team for assistance.",
   "support_pin": "Support PIN",
   "hide": "Hide",
@@ -340,5 +346,6 @@
   "project_details": "Project Details",
   "issues_details": "Issues Details",
   "logout_confirm": "Are you sure you want to sign out?",
-  "preferences": "PREFERENCES"
+  "preferences": "PREFERENCES",
+  "additional_information": "Additional Information"
 }

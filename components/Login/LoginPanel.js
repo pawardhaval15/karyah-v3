@@ -1,255 +1,232 @@
-import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TextInput, View } from 'react-native';
+import { memo, useEffect, useRef, useState } from 'react';
+import { Alert, Dimensions, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useAuthStore } from '../../store/authStore';
+import { useTheme } from '../../theme/ThemeContext';
 import GradientButton from './GradientButton';
 import OTPInput from './OTPInput';
 
-export default function LoginPanel({
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const isTablet = SCREEN_WIDTH >= 768;
+
+const LoginPanel = memo(({
   title = "Get Started !",
-  mobile,
-  setMobile,
-  otp,
-  otpRefs,
-  handleOtpChange,
-  handleOtpKeyPress,
-  handleContinue,
-  navigation,
-  inputLabel = "Enter OTP :",
-  inputPlaceholder = "Mobile Number / Email",
-  footerText = "Already a registered user?",
-  footerLinkText = "Login with PIN.",
+  onContinue,
   onFooterLinkPress,
   onSendOtp,
-  showMobileInput = true,
-  forceStep = null,          // Step override (from parent)
-  setStep: externalSetStep,  // Setter from parent
-  showStepFlow = false       // Enables step logic if needed
-}) {
+  footerText = "Already a registered user?",
+  footerLinkText = "Login with PIN.",
+  inputPlaceholder = "Mobile Number / Email",
+}) => {
+  const theme = useTheme();
+  const {
+    mobile, setMobile,
+    otp, setOtpDigit,
+    loginStep, setLoginStep
+  } = useAuthStore();
 
-  const [internalStep, setInternalStep] = useState(1);
-  const step = forceStep ?? internalStep;
-
-  // Timer state for resend OTP
   const [timer, setTimer] = useState(60);
   const [isResending, setIsResending] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const timerRef = useRef();
 
-  // Auto-select OTP on paste
-  useEffect(() => {
-    if (step === 2 && otpRefs && otpRefs[0]?.current) {
-      otpRefs[0].current.setNativeProps({ autoFocus: true });
-    }
-  }, [step, otpRefs]);
+  const otpRefs = [useRef(null), useRef(null), useRef(null), useRef(null)];
 
   useEffect(() => {
-    if (step === 2 && timer > 0) {
+    if (loginStep === 2 && otpRefs[0]?.current) {
+      otpRefs[0].current.focus();
+    }
+  }, [loginStep]);
+
+  useEffect(() => {
+    if (loginStep === 2 && timer > 0) {
       timerRef.current = setTimeout(() => setTimer(timer - 1), 1000);
     }
     return () => clearTimeout(timerRef.current);
-  }, [timer, step]);
-
-  const updateStep = (val) => {
-    if (externalSetStep) {
-      externalSetStep(val);
-    } else {
-      setInternalStep(val);
-    }
-    if (val === 2) setTimer(60); // Reset timer on step change
-  };
+  }, [timer, loginStep]);
 
   const handleNext = async () => {
-    if (step === 1) {
+    if (loginStep === 1) {
       if (!mobile) {
         Alert.alert("Validation", "Please enter your mobile number or email.");
         return;
       }
-      if (onSendOtp) {
-        setIsSendingOtp(true);
-        try {
-          await onSendOtp();
-          updateStep(2);
-        } catch (error) {
-          Alert.alert("Error", error.message);
-        }
+      setIsSendingOtp(true);
+      try {
+        await onSendOtp();
+        setLoginStep(2);
+        setTimer(60);
+      } catch (error) {
+        Alert.alert("Error", error.message);
+      } finally {
         setIsSendingOtp(false);
-      } else {
-        updateStep(2);
       }
     } else {
-      handleContinue();
+      onContinue();
     }
   };
 
-  // Resend OTP handler
   const handleResendOtp = async () => {
     if (timer > 0 || isResending) return;
     setIsResending(true);
     try {
-      if (onSendOtp) await onSendOtp();
+      await onSendOtp();
       setTimer(60);
     } catch (err) {
       Alert.alert("Error", err.message);
+    } finally {
+      setIsResending(true);
+      // Simulate resend delay
+      setTimeout(() => setIsResending(false), 1000);
     }
-    setIsResending(false);
+  };
+
+  const handleOtpChange = (value, index) => {
+    if (/^\d?$/.test(value)) {
+      setOtpDigit(value, index);
+      if (value && index < 3) {
+        otpRefs[index + 1].current.focus();
+      }
+    }
+  };
+
+  const handleOtpKeyPress = (e, index) => {
+    if (e.nativeEvent.key === 'Backspace' && !otp[index] && index > 0) {
+      otpRefs[index - 1].current.focus();
+    }
   };
 
   return (
-    <View style={styles.panel}>
-      {step === 1 && showMobileInput && (
+    <View style={[styles.panel, { backgroundColor: theme.background }]}>
+      {loginStep === 1 ? (
         <>
-          <Text style={styles.title}>{title}</Text>
-          <TextInput
-            style={styles.input}
-            placeholder={inputPlaceholder}
-            value={mobile}
-            onChangeText={setMobile}
-            keyboardType="default"
-            placeholderTextColor="#999"
-          />
+          <Text style={[styles.title, { color: theme.text }]}>{title}</Text>
+          <View style={[styles.inputContainer, { borderColor: theme.border, backgroundColor: theme.card }]}>
+            <TextInput
+              style={[styles.input, { color: theme.text }]}
+              placeholder={inputPlaceholder}
+              value={mobile}
+              onChangeText={setMobile}
+              keyboardType="default"
+              placeholderTextColor={theme.secondaryText}
+            />
+          </View>
         </>
-      )}
-
-      {step === 2 && (
+      ) : (
         <>
-          {showStepFlow && (
-            <Text style={styles.backText} onPress={() => updateStep(1)}>
-              ← Back to Mobile Input
-            </Text>
-          )}
-          <Text style={styles.title}>{inputLabel}</Text>
+          <Text style={[styles.backText, { color: theme.primary }]} onPress={() => setLoginStep(1)}>
+            ← Back
+          </Text>
+          <Text style={[styles.title, { color: theme.text }]}>Verify OTP</Text>
           <View style={styles.mobileEditRow}>
-            <Text style={styles.mobileDisplay}>{mobile}</Text>
-            <Text style={styles.editMobileBtn} onPress={() => updateStep(1)}>
+            <Text style={[styles.mobileDisplay, { color: theme.text, backgroundColor: theme.card }]}>{mobile}</Text>
+            <Text style={[styles.editMobileBtn, { color: theme.primary }]} onPress={() => setLoginStep(1)}>
               Edit
             </Text>
           </View>
-          <Text style={styles.otpInfoText}>
-            {inputLabel === 'Enter OTP :'
-              ? 'Enter the 4-digit code sent to your mobile/email.'
-              : 'Enter the 4-digit code.'}
+          <Text style={[styles.infoText, { color: theme.secondaryText }]}>
+            Enter the 4-digit code sent to your mobile/email.
           </Text>
           <OTPInput
             otp={otp}
             otpRefs={otpRefs}
             onChange={handleOtpChange}
             onKeyPress={handleOtpKeyPress}
-            {...(inputLabel === 'Enter OTP :' ? { timer, isResending, handleResendOtp } : {})}
+            timer={timer}
+            isResending={isResending}
+            handleResendOtp={handleResendOtp}
+            theme={theme}
           />
         </>
       )}
 
-      <GradientButton
-        title={step === 1 ? (isSendingOtp ? 'Sending...' : 'Next') : 'Continue'}
-        onPress={handleNext}
-        disabled={step === 1 && isSendingOtp}
-        {...(isSendingOtp && step === 1 ? { children: <ActivityIndicator color="#fff" style={{ marginLeft: 8 }} /> } : {})}
-      />
+      <View style={styles.buttonWrapper}>
+        <GradientButton
+          title={loginStep === 1 ? (isSendingOtp ? 'Sending...' : 'Next') : 'Continue'}
+          onPress={handleNext}
+          disabled={isSendingOtp}
+        />
+      </View>
 
-      <Text style={styles.footer}>
+      <Text style={[styles.footer, { color: theme.secondaryText }]}>
         {footerText}{' '}
-        <Text style={styles.link} onPress={onFooterLinkPress}>
+        <Text style={[styles.link, { color: theme.primary }]} onPress={onFooterLinkPress}>
           {footerLinkText}
         </Text>
       </Text>
     </View>
   );
-}
+});
 
 const styles = StyleSheet.create({
   panel: {
-    zIndex: 999,
-    backgroundColor: '#fff',
-    padding: 20,
-    paddingTop: 40,
-    minHeight: 200,
-    borderRadius: 0,
+    width: '100%',
+    padding: isTablet ? 40 : 24,
+    borderTopLeftRadius: 32,
+    borderTopRightRadius: 32,
   },
   title: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 16,
-    color: '#011F53',
-    letterSpacing: 0.2,
+    fontSize: isTablet ? 28 : 22,
+    fontWeight: '800',
+    marginBottom: 20,
     textAlign: 'center',
+    letterSpacing: -0.5,
+  },
+  inputContainer: {
+    borderWidth: 1.5,
+    borderRadius: 18,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    height: 56,
+    justifyContent: 'center',
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 14,
-    padding: 12,
     fontSize: 16,
-    paddingVertical: 12,
-    marginBottom: 0,
-    color: '#000',
-    marginBottom: 0,
-  },
-  otpInfoText: {
-    color: '#666',
-    fontSize: 13,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  otpTimerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
-    marginBottom: 10,
-    gap: 10,
-  },
-  otpTimerText: {
-    color: '#888',
-    fontSize: 13,
-    marginRight: 8,
-  },
-  resendBtn: {
-    color: '#366CD9',
     fontWeight: '600',
-    fontSize: 13,
-    textDecorationLine: 'underline',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  },
+  infoText: {
+    color: '#666',
+    fontSize: 14,
+    marginBottom: 20,
+    textAlign: 'center',
   },
   footer: {
     textAlign: 'center',
-    color: '#888',
-    fontWeight: '500',
-    fontFamily: 'plusJakartaSans',
-    marginTop: 10,
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 16,
   },
   link: {
-    color: '#366CD9',
+    fontWeight: '700',
     textDecorationLine: 'underline',
   },
   backText: {
-    fontWeight: '500',
+    fontWeight: '700',
     fontSize: 14,
-    marginBottom: 14,
-    color: '#366CD9',
-    textAlign: 'left',
+    marginBottom: 12,
+    alignSelf: 'flex-start',
   },
   mobileEditRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
-    gap: 8,
+    marginBottom: 12,
+    gap: 12,
   },
   mobileDisplay: {
     fontSize: 15,
-    color: '#011F53',
-    fontWeight: '500',
-    backgroundColor: '#F8F9FB',
-    paddingHorizontal: 10,
+    fontWeight: '700',
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   editMobileBtn: {
-    color: '#366CD9',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
     textDecorationLine: 'underline',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
   },
+  buttonWrapper: {
+    marginTop: 10,
+  }
 });
+
+export default LoginPanel;
