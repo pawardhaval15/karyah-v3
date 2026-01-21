@@ -329,5 +329,8 @@
   "issues_details": "तक्रार तपशील",
   "logout_confirm": "तुम्हाला नक्की साइन आउट करायचे आहे का?",
   "preferences": "प्राधान्ये",
-  "additional_information": "अतिरिक्त माहिती"
+  "additional_information": "अतिरिक्त माहिती",
+  "name_required": "पूर्ण नाव आवश्यक आहे",
+  "phone_required": "फोन नंबर आवश्यक आहे",
+  "pin_required": "सुरक्षित पिन आवश्यक आहे"
 }

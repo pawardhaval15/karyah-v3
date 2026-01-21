@@ -320,5 +320,8 @@
   "Loading Notifications": "सूचनाएं लोड हो रही हैं",
   "project_details": "परियोजना विवरण",
   "issues_details": "मुद्दा विवरण",
-  "additional_information": "अतिरिक्त जानकारी"
+  "additional_information": "अतिरिक्त जानकारी",
+  "name_required": "पूरा नाम जरूरी बा",
+  "phone_required": "फोन नंबर जरूरी बा",
+  "pin_required": "सुरक्षित पिन जरूरी बा"
 }

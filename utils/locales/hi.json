@@ -329,5 +329,8 @@
   "issues_details": "मुद्दा विवरण",
   "logout_confirm": "क्या आप वाकई साइन आउट करना चाहते हैं?",
   "preferences": "प्राथमिकताएं",
-  "additional_information": "अतिरिक्त जानकारी"
+  "additional_information": "अतिरिक्त जानकारी",
+  "name_required": "पूरा नाम अनिवार्य है",
+  "phone_required": "फ़ोन नंबर अनिवार्य है",
+  "pin_required": "सुरक्षित पिन अनिवार्य है"
 }

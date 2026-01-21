@@ -9,7 +9,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -17,7 +16,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import { useRegister } from '../hooks/useAuth';
@@ -27,7 +26,6 @@ import { createWorklist } from '../utils/worklist';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const isTablet = SCREEN_WIDTH >= 768;
-const DEFAULT_AVATAR = 'https://cdn-icons-png.flaticon.com/512/4140/4140048.png';
 
 const FormField = memo(({ label, value, onChangeText, theme, placeholder, keyboardType = 'default', isMultiline = false, onPress, editable = true, icon, rightIcon }) => (
   <Animated.View entering={FadeInDown.duration(400)} style={styles.fieldWrapper}>
@@ -125,19 +123,27 @@ export default function RegistrationForm({ route, navigation }) {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.phone) {
-      Alert.alert(t('error'), t('required_fields_missing') || 'Name and phone are required.');
+    if (!form.name.trim()) {
+      Alert.alert(t('error'), t('name_required') || 'Full Name is required.');
+      return;
+    }
+    if (!form.phone.trim()) {
+      Alert.alert(t('error'), t('phone_required') || 'Phone Number is required.');
+      return;
+    }
+    if (!form.pin.trim()) {
+      Alert.alert(t('error'), t('pin_required') || 'Secure PIN is required.');
       return;
     }
 
     try {
       const data = await registerMutation.mutateAsync({
-        name: form.name,
-        phone: form.phone,
-        email: form.email,
-        location: form.location,
-        bio: form.bio,
-        pin: form.pin,
+        name: form.name.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim(),
+        location: form.location.trim(),
+        bio: form.bio.trim(),
+        pin: form.pin.trim(),
       });
 
       await AsyncStorage.setItem('token', data.token);
@@ -184,25 +190,10 @@ export default function RegistrationForm({ route, navigation }) {
           </Text>
         </Animated.View>
 
-        {/* Profile Photo */}
-        <Animated.View entering={FadeInUp.delay(200).duration(600)} style={styles.avatarSection}>
-          <View style={[styles.avatarWrapper, { borderColor: theme.border }]}>
-            <Image
-              source={form.profilePhoto ? { uri: form.profilePhoto } : { uri: DEFAULT_AVATAR }}
-              style={styles.avatar}
-            />
-            <TouchableOpacity
-              style={[styles.editAvatarBtn, { backgroundColor: theme.primary }]}
-              onPress={() => Alert.alert('Coming Soon', 'Image picking will be enabled in profile.')}
-            >
-              <Feather name="plus" size={16} color="#fff" />
-            </TouchableOpacity>
-          </View>
-        </Animated.View>
 
         <View style={styles.formContainer}>
           <FormField
-            label={t('full_name')}
+            label={`${t('full_name')} *`}
             placeholder={t('enter_your_full_name')}
             value={form.name}
             onChangeText={t => handleChange('name', t)}
@@ -211,7 +202,7 @@ export default function RegistrationForm({ route, navigation }) {
           />
 
           <FormField
-            label={t('phone_number')}
+            label={`${t('phone_number')} *`}
             placeholder={t('enter_phone_number')}
             value={form.phone}
             onChangeText={t => handleChange('phone', t)}
@@ -221,7 +212,7 @@ export default function RegistrationForm({ route, navigation }) {
           />
 
           <FormField
-            label={t('set_pin') || 'Secure PIN'}
+            label={`${t('set_pin') || 'Secure PIN'} *`}
             placeholder="4-6 Digit Numeric PIN"
             value={form.pin}
             onChangeText={t => handleChange('pin', t)}
@@ -369,35 +360,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     opacity: 0.8,
-  },
-  avatarSection: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  avatarWrapper: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 4,
-    padding: 4,
-    position: 'relative',
-  },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 45,
-  },
-  editAvatarBtn: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
-    borderColor: '#fff',
   },
   formContainer: {
     gap: 4,
