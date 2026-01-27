@@ -73,10 +73,12 @@ export default function RegistrationForm({ route, navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const isEmailIdentifier = identifier.includes('@');
+
   const [form, setForm] = useState({
     name: user.name || '',
-    email: user.email || '',
-    phone: user.phone || identifier || '',
+    email: user.email || (isEmailIdentifier ? identifier : ''),
+    phone: user.phone || (!isEmailIdentifier ? identifier : ''),
     location: user.location || '',
     dob: user.dob || '',
     pin: user.pin || '',
@@ -88,20 +90,26 @@ export default function RegistrationForm({ route, navigation }) {
 
   // Sync identifier if it changes
   useEffect(() => {
-    if (identifier && !form.phone) {
-      setForm(prev => ({ ...prev, phone: identifier }));
+    if (identifier) {
+      const isEmail = identifier.includes('@');
+      setForm(prev => ({
+        ...prev,
+        phone: prev.phone || (!isEmail ? identifier : ''),
+        email: prev.email || (isEmail ? identifier : '')
+      }));
     }
   }, [identifier]);
 
   // Safety check: If user is already registered, go to Home
   useEffect(() => {
-    if (user.isRegistered) {
+    // If user record exists and has a name or explicit flag, it's an existing user
+    if (user.isRegistered || user.name || (user.isProfileCompleted === true)) {
       navigation.reset({
         index: 0,
         routes: [{ name: 'Home' }],
       });
     }
-  }, [user.isRegistered, navigation]);
+  }, [user.isRegistered, user.name, user.isProfileCompleted, navigation]);
 
   const handleChange = useCallback((key, value) => {
     setForm(prev => ({ ...prev, [key]: value }));

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect } from 'react';
 import {
   Alert,
   Dimensions,
@@ -14,13 +15,20 @@ import {
 
 import Header from '../components/Login/Header';
 import LoginPanel from '../components/Login/LoginPanel';
+import { useAuthStore } from '../store/authStore';
+import { useTheme } from '../theme/ThemeContext';
 import { loginWithPin } from '../utils/auth';
 
 export default function PinLoginScreen({ navigation }) {
   const theme = useTheme();
   const {
-    mobile, otp, setLoginStep
+    mobile, otp, setLoginStep, isNewUser
   } = useAuthStore();
+
+  // Safety: Force Step 1 (Mobile/Email entry) on mount
+  useEffect(() => {
+    setLoginStep(1);
+  }, [setLoginStep]);
 
   const handleContinue = useCallback(async () => {
     const enteredPin = otp.join('');
@@ -34,7 +42,8 @@ export default function PinLoginScreen({ navigation }) {
       const res = await loginWithPin(mobile, enteredPin);
       await AsyncStorage.setItem('token', res.token);
 
-      if (res.redirectTo === 'dashboard' || res.user?.isRegistered) {
+      // Navigate to Home if explicitly requested, or if user is registered
+      if (res.redirectTo === 'dashboard' || res.user?.isRegistered || res.isRegistered || !isNewUser) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Home' }],
@@ -48,7 +57,7 @@ export default function PinLoginScreen({ navigation }) {
     } catch (err) {
       Alert.alert("Login Failed", err.message || "Invalid PIN");
     }
-  }, [mobile, otp, navigation]);
+  }, [mobile, otp, navigation, isNewUser]);
 
   return (
     <ImageBackground
@@ -76,6 +85,8 @@ export default function PinLoginScreen({ navigation }) {
                 <View style={[styles.panelContainer, { backgroundColor: theme.background }]}>
                   <LoginPanel
                     title="Login with PIN"
+                    step2Title="Verify PIN"
+                    step2Subtitle="Enter your 4-digit secure PIN."
                     onContinue={handleContinue}
                     inputPlaceholder="Mobile Number / Email"
                     footerText="Forgot PIN?"

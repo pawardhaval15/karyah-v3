@@ -10,6 +10,8 @@ const isTablet = SCREEN_WIDTH >= 768;
 
 const LoginPanel = memo(({
   title = "Get Started !",
+  step2Title = "Verify OTP",
+  step2Subtitle = "Enter the 4-digit code sent to your mobile/email.",
   onContinue,
   onFooterLinkPress,
   onSendOtp,
@@ -50,17 +52,22 @@ const LoginPanel = memo(({
         Alert.alert("Validation", "Please enter your mobile number or email.");
         return;
       }
-      setIsSendingOtp(true);
-      try {
-        if (onSendOtp) {
+
+      // If we have onSendOtp, it's likely the main login page (OTP flow)
+      // If NOT (e.g. PinLogin), we just move to Step 2 (PIN entry)
+      if (onSendOtp) {
+        setIsSendingOtp(true);
+        try {
           await onSendOtp();
+          setLoginStep(2);
+          setTimer(60);
+        } catch (error) {
+          Alert.alert("Error", error.message);
+        } finally {
+          setIsSendingOtp(false);
         }
+      } else {
         setLoginStep(2);
-        setTimer(60);
-      } catch (error) {
-        Alert.alert("Error", error.message);
-      } finally {
-        setIsSendingOtp(false);
       }
     } else {
       onContinue();
@@ -120,7 +127,7 @@ const LoginPanel = memo(({
           <Text style={[styles.backText, { color: theme.primary }]} onPress={() => setLoginStep(1)}>
             ← Back
           </Text>
-          <Text style={[styles.title, { color: theme.text }]}>Verify OTP</Text>
+          <Text style={[styles.title, { color: theme.text }]}>{step2Title}</Text>
           <View style={styles.mobileEditRow}>
             <Text style={[styles.mobileDisplay, { color: theme.text, backgroundColor: theme.card }]}>{mobile}</Text>
             <Text style={[styles.editMobileBtn, { color: theme.primary }]} onPress={() => setLoginStep(1)}>
@@ -128,16 +135,16 @@ const LoginPanel = memo(({
             </Text>
           </View>
           <Text style={[styles.infoText, { color: theme.secondaryText }]}>
-            Enter the 4-digit code sent to your mobile/email.
+            {step2Subtitle}
           </Text>
           <OTPInput
             otp={otp}
             otpRefs={otpRefs}
             onChange={handleOtpChange}
             onKeyPress={handleOtpKeyPress}
-            timer={timer}
+            timer={onSendOtp ? timer : null}
             isResending={isResending}
-            handleResendOtp={handleResendOtp}
+            handleResendOtp={onSendOtp ? handleResendOtp : null}
             theme={theme}
           />
         </>

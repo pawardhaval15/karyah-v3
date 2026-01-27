@@ -29,7 +29,7 @@ const LoginScreen = ({ navigation }) => {
   const theme = useTheme();
   const {
     mobile, otp, showTerms, setShowTerms,
-    setIsNewUser, resetAuthStore, setLoginStep
+    isNewUser, setIsNewUser, resetAuthStore, setLoginStep
   } = useAuthStore();
 
   const checkIdentifierMutation = useCheckIdentifier();
@@ -38,7 +38,11 @@ const LoginScreen = ({ navigation }) => {
   const handleSendOtp = useCallback(async () => {
     try {
       const res = await checkIdentifierMutation.mutateAsync(mobile);
-      setIsNewUser(!res.isRegistered);
+      // Robust detection: Only mark as new user if backend explicitly says so.
+      // If isRegistered is missing or true, we treat as an existing/potential user.
+      const isReg = res.isRegistered === true || res.registered === true;
+      setIsNewUser(res.isRegistered === false || res.registered === false);
+
       Alert.alert("Success", res.message || "OTP sent successfully!");
     } catch (err) {
       throw err;
@@ -56,21 +60,29 @@ const LoginScreen = ({ navigation }) => {
       const res = await verifyOtpMutation.mutateAsync({ identifier: mobile, otp: enteredOtp });
       await AsyncStorage.setItem('token', res.token);
 
-      if (!res.user?.isRegistered || res.redirectTo === 'registrationForm') {
-        navigation.navigate('RegistrationForm', {
-          user: res.user || {},
-          identifier: mobile,
-        });
-      } else {
+      // Determine if registration is needed based on:
+      // 1. isNewUser flag from Step 1 (check-email)
+      // 2. The explicit message from Step 2 (verify-otp)
+      const isNewUserMsg = res.message?.toLowerCase().includes('complete registration');
+
+      // If it's a confirmed existing user (isNewUser is false) AND
+      // the server didn't explicitly ask for registration in the message
+      if (!isNewUser && !isNewUserMsg) {
         navigation.reset({
           index: 0,
           routes: [{ name: 'Home' }],
+        });
+      } else {
+        // Go to registration for confirmed new users or if server explicitly asks
+        navigation.navigate('RegistrationForm', {
+          user: res.user || {},
+          identifier: mobile,
         });
       }
     } catch (err) {
       Alert.alert("Verification Failed", err.message || "Invalid OTP");
     }
-  }, [mobile, otp, verifyOtpMutation, navigation]);
+  }, [mobile, otp, verifyOtpMutation, navigation, isNewUser]);
 
   return (
     <ImageBackground
