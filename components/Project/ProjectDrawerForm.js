@@ -4,7 +4,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ActivityIndicator, Alert, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View,
+  ActivityIndicator, Alert, FlatList, Image,
+  Keyboard,
+  KeyboardAvoidingView, Modal, Platform, Pressable,
+  ScrollView, StyleSheet, Text, TextInput, TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import { useSearchUsers, useSendConnectionRequest, useUserConnections } from '../../hooks/useConnections';
 import { useUserOrganizations } from '../../hooks/useOrganizations';
@@ -33,17 +38,20 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
   const [showCategorySuggestions, setShowCategorySuggestions] = useState(false);
   const [categorySuggestions, setCategorySuggestions] = useState([]);
 
+  // Close suggestions when other pickers are opened
+  useEffect(() => {
+    if (showCoAdminPicker || showOrgPicker) {
+      setShowCategorySuggestions(false);
+    }
+  }, [showCoAdminPicker, showOrgPicker]);
+
   // Default Organization Selection
   useEffect(() => {
-    if (organizations.length > 0 && !values?.organizationId) {
-      const preferredOrg = organizations.find(org => org.name === "Kona Kona Interiors");
-      if (preferredOrg) {
-        onChange('organizationId', preferredOrg.id);
-      } else if (organizations.length === 1) {
-        onChange('organizationId', organizations[0].id);
-      }
+    if (values?.organizationId === undefined) {
+      // Default to null as per user request to show "Select Organization"
+      onChange('organizationId', null);
     }
-  }, [organizations, values?.organizationId, onChange]);
+  }, [values?.organizationId, onChange]);
 
   // Search Users logic using hook
   const { data: allUsers = [], isLoading: searchingUsers } = useSearchUsers(searchText);
@@ -126,10 +134,10 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
 
   const handleCreate = async () => {
     try {
-      if (!values.organizationId) {
-        Alert.alert('Validation Error', 'Please select an Organization for this project.');
-        return;
-      }
+      // if (!values.organizationId) {
+      //   Alert.alert('Validation Error', 'Please select an Organization for this project.');
+      //   return;
+      // }
 
       if (!values.projectName || values.projectName.trim() === '') {
         Alert.alert('Validation Error', 'Project name is required.');
@@ -194,6 +202,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
       setSelectedCoAdmins(prev =>
         prev.includes(user.userId) ? prev.filter(id => id !== user.userId) : [...prev, user.userId]
       );
+
     }
   };
 
@@ -214,7 +223,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
           color={theme.secondaryText}
           style={{ marginRight: 10 }}
         />
-        <Text style={{ color: selectedOrg ? theme.text : theme.secondaryText, flex: 1 }}>
+        <Text style={{ color: theme.text, flex: 1 }}>
           {selectedOrg ? selectedOrg.name : 'Select Organization'}
         </Text>
         <Feather name="chevron-down" size={20} color={theme.secondaryText} />
@@ -229,229 +238,246 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
           style={{ flex: 1, backgroundColor: theme.card }}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}>
-          <ScrollView
-            contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
-            keyboardShouldPersistTaps="handled">
-            <View style={{ flex: 1, justifyContent: 'center' }}>
-              <FieldBox
-                value={values?.projectName || ''}
-                placeholder={t('project_name')}
-                theme={theme}
-                editable={true}
-                onChangeText={(t) => onChange && onChange('projectName', t)}
-              />
-              <OrganizationInputField />
-              <FieldBox
-                value={values?.projectDesc || ''}
-                placeholder={t('description')}
-                theme={theme}
-                editable={true}
-                multiline={true}
-                onChangeText={(t) => onChange && onChange('projectDesc', t)}
-              />
-              <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
-                <LinearGradient
-                  colors={[theme.secondary, theme.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.drawerBtnGradient}>
-                  <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-              <Text style={[styles.drawerHint, { color: theme.secondaryText }]}>
-                Want to Add Complete Details?{' '}
-                <Text
-                  style={[styles.drawerHintLink, { color: theme.primary }]}
-                  onPress={() => setShowFullForm(true)}>
-                  Click Here
+          <TouchableWithoutFeedback onPress={() => {
+            setShowCategorySuggestions(false);
+            Keyboard.dismiss();
+          }}>
+            <ScrollView
+              contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}
+              keyboardShouldPersistTaps="handled">
+              <View style={{ flex: 1, justifyContent: 'center' }}>
+                <FieldBox
+                  value={values?.projectName || ''}
+                  placeholder={t('project_name')}
+                  theme={theme}
+                  editable={true}
+                  onChangeText={(t) => onChange && onChange('projectName', t)}
+                />
+                <OrganizationInputField />
+                <FieldBox
+                  value={values?.projectDesc || ''}
+                  placeholder={t('description')}
+                  theme={theme}
+                  editable={true}
+                  multiline={true}
+                  onChangeText={(t) => onChange && onChange('projectDesc', t)}
+                />
+                <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
+                  <LinearGradient
+                    colors={[theme.secondary, theme.primary]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={styles.drawerBtnGradient}>
+                    <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+                <Text style={[styles.drawerHint, { color: theme.secondaryText }]}>
+                  Want to Add Complete Details?{' '}
+                  <Text
+                    style={[styles.drawerHintLink, { color: theme.primary }]}
+                    onPress={() => setShowFullForm(true)}>
+                    Click Here
+                  </Text>
                 </Text>
-              </Text>
-            </View>
-          </ScrollView>
+              </View>
+            </ScrollView>
+          </TouchableWithoutFeedback>
         </KeyboardAvoidingView>
       )}
       {/* Embedded Full Form (when hideSimpleForm is true) */}
       {hideSimpleForm && (
-        <ScrollView
-          style={{ backgroundColor: theme.card }}
-          contentContainerStyle={{ paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <FieldBox
-            value={values?.projectName || ''}
-            placeholder={t('project_name')}
-            theme={theme}
-            editable={true}
-            onChangeText={(t) => onChange('projectName', t)}
-          />
-          <OrganizationInputField />
-          <View style={styles.dateRow}>
-            <DateBox
-              label={t('start_date')}
-              value={values?.startDate || ''}
-              onChange={(date) => onChange('startDate', date?.toISOString?.() || '')}
+        <TouchableWithoutFeedback onPress={() => {
+          setShowCategorySuggestions(false);
+          Keyboard.dismiss();
+        }}>
+          <ScrollView
+            style={{ backgroundColor: theme.card }}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            keyboardShouldPersistTaps="handled"
+          >
+            <FieldBox
+              value={values?.projectName || ''}
+              placeholder={t('project_name')}
               theme={theme}
+              editable={true}
+              onChangeText={(t) => onChange('projectName', t)}
             />
-            <DateBox
-              label={t('end_date')}
-              value={values?.endDate || ''}
-              onChange={(date) => onChange('endDate', date?.toISOString?.() || '')}
+            <OrganizationInputField />
+            <View style={styles.dateRow}>
+              <DateBox
+                label={t('start_date')}
+                value={values?.startDate || ''}
+                onChange={(date) => onChange('startDate', date?.toISOString?.() || '')}
+                theme={theme}
+              />
+              <DateBox
+                label={t('end_date')}
+                value={values?.endDate || ''}
+                onChange={(date) => onChange('endDate', date?.toISOString?.() || '')}
+                theme={theme}
+              />
+            </View>
+            {/* Custom Category Input with Suggestions */}
+            <View style={[styles.categoryInputContainer, { zIndex: 1000 }]}>
+              <View style={[
+                styles.inputBox,
+                { backgroundColor: theme.card, borderColor: theme.border }
+              ]}>
+                <Feather
+                  name="tag"
+                  size={20}
+                  color={theme.secondaryText}
+                  style={{ marginRight: 10 }}
+                />
+                <TextInput
+                  style={[styles.input, { color: theme.text }]}
+                  placeholder={t('project_category')}
+                  placeholderTextColor={theme.secondaryText}
+                  value={values?.projectCategory || ''}
+                  onChangeText={handleCategoryChange}
+                  onFocus={() => {
+                    const suggestions = filterCategories(values?.projectCategory || '');
+                    setCategorySuggestions(suggestions);
+                    setShowCategorySuggestions(true);
+                  }}
+                  onBlur={() => {
+                    // Delay hiding to allow selection to register
+                    setTimeout(() => setShowCategorySuggestions(false), 250);
+                  }}
+                />
+              </View>
+              {/* Category Suggestions Dropdown */}
+              {showCategorySuggestions && categorySuggestions.length > 0 && (
+                <View
+                  style={[
+                    styles.suggestionsContainer,
+                    {
+                      backgroundColor: theme.card,
+                      borderColor: theme.border,
+                      shadowColor: '#000',
+                      elevation: 5, // For Android z-index
+                    }
+                  ]}
+                  onStartShouldSetResponder={() => true} // Capture touches
+                  onResponderTerminationRequest={() => false} // Don't let parent take it
+                >
+                  <ScrollView
+                    style={{ maxHeight: 200 }}
+                    contentContainerStyle={{ paddingVertical: 5 }}
+                    showsVerticalScrollIndicator={true}
+                    persistentScrollbar={true}
+                    keyboardShouldPersistTaps="always"
+                    nestedScrollEnabled={true}
+                  >
+                    {categorySuggestions.map((item, index) => (
+                      <TouchableOpacity
+                        key={`${item.text}-${index}`}
+                        style={[
+                          styles.suggestionItem,
+                          {
+                            borderBottomColor: theme.border,
+                            borderBottomWidth: index === categorySuggestions.length - 1 ? 0 : 0.5
+                          }
+                        ]}
+                        onPress={() => handleCategorySuggestionSelect(item)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={[
+                            styles.suggestionText,
+                            {
+                              color: theme.text,
+                              fontWeight: item.type === 'category' ? '600' : '500',
+                              marginLeft: item.type === 'subcategory' ? 20 : 0
+                            }
+                          ]}>
+                            {item.text}
+                          </Text>
+                          {item.type === 'subcategory' && (
+                            <Text style={[
+                              styles.suggestionSubtext,
+                              {
+                                color: theme.secondaryText,
+                                marginLeft: 20
+                              }
+                            ]}>
+                              in {item.parentCategory}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={{
+                          width: 24,
+                          height: 24,
+                          borderRadius: 12,
+                          borderWidth: 1.5,
+                          borderColor: theme.secondaryText,
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          backgroundColor: 'transparent'
+                        }}>
+                          {item.type === 'category' ? (
+                            <Feather name="folder" size={12} color={theme.secondaryText} />
+                          ) : (
+                            <View style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: 4,
+                              backgroundColor: theme.secondaryText,
+                              opacity: 0.6
+                            }} />
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
+            </View>
+            <FieldBox
+              value={values?.location || ''}
+              placeholder={t('location')}
               theme={theme}
+              editable={true}
+              onChangeText={(t) => onChange('location', t)}
             />
-          </View>
-          {/* Custom Category Input with Suggestions */}
-          <View style={[styles.categoryInputContainer, { zIndex: 1000 }]}>
-            <View style={[
-              styles.inputBox,
-              { backgroundColor: theme.card, borderColor: theme.border }
-            ]}>
+            <TouchableOpacity
+              style={[
+                styles.inputBox,
+                { backgroundColor: theme.card, borderColor: theme.border },
+              ]}
+              onPress={() => setShowCoAdminPicker(true)}>
               <Feather
-                name="tag"
+                name="users"
                 size={20}
                 color={theme.secondaryText}
                 style={{ marginRight: 10 }}
               />
-              <TextInput
-                style={[styles.input, { color: theme.text }]}
-                placeholder={t('project_category')}
-                placeholderTextColor={theme.secondaryText}
-                value={values?.projectCategory || ''}
-                onChangeText={handleCategoryChange}
-                onFocus={() => {
-                  const suggestions = filterCategories(values?.projectCategory || '');
-                  setCategorySuggestions(suggestions);
-                  setShowCategorySuggestions(true);
-                }}
-                onBlur={() => {
-                  // Delay hiding suggestions to allow selection
-                  // setTimeout(() => setShowCategorySuggestions(false), 200);
-                }}
-              />
-            </View>
-            {/* Category Suggestions Dropdown */}
-            {showCategorySuggestions && categorySuggestions.length > 0 && (
-              <View style={[
-                styles.suggestionsContainer,
-                {
-                  backgroundColor: theme.card,
-                  borderColor: theme.border,
-                  shadowColor: '#000'
-                }
-              ]}>
-                <ScrollView
-                  style={{ maxHeight: 250 }}
-                  showsVerticalScrollIndicator={false}
-                  keyboardShouldPersistTaps="handled"
-                  nestedScrollEnabled={true}
-                >
-                  {categorySuggestions.map((item, index) => (
-                    <TouchableOpacity
-                      key={`${item.text}-${index}`}
-                      style={[
-                        styles.suggestionItem,
-                        {
-                          borderBottomColor: theme.border,
-                          borderBottomWidth: index === categorySuggestions.length - 1 ? 0 : 0.5
-                        }
-                      ]}
-                      onPress={() => handleCategorySuggestionSelect(item)}
-                      activeOpacity={0.7}
-                    >
-                      <View style={{ flex: 1 }}>
-                        <Text style={[
-                          styles.suggestionText,
-                          {
-                            color: theme.text,
-                            fontWeight: item.type === 'category' ? '600' : '500',
-                            marginLeft: item.type === 'subcategory' ? 20 : 0
-                          }
-                        ]}>
-                          {item.text}
-                        </Text>
-                        {item.type === 'subcategory' && (
-                          <Text style={[
-                            styles.suggestionSubtext,
-                            {
-                              color: theme.secondaryText,
-                              marginLeft: 20
-                            }
-                          ]}>
-                            in {item.parentCategory}
-                          </Text>
-                        )}
-                      </View>
-                      <View style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 12,
-                        borderWidth: 1.5,
-                        borderColor: theme.secondaryText,
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        backgroundColor: 'transparent'
-                      }}>
-                        {item.type === 'category' ? (
-                          <Feather name="folder" size={12} color={theme.secondaryText} />
-                        ) : (
-                          <View style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: 4,
-                            backgroundColor: theme.secondaryText,
-                            opacity: 0.6
-                          }} />
-                        )}
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            )}
-          </View>
-          <FieldBox
-            value={values?.location || ''}
-            placeholder={t('location')}
-            theme={theme}
-            editable={true}
-            onChangeText={(t) => onChange('location', t)}
-          />
-          <TouchableOpacity
-            style={[
-              styles.inputBox,
-              { backgroundColor: theme.card, borderColor: theme.border },
-            ]}
-            onPress={() => setShowCoAdminPicker(true)}>
-            <Feather
-              name="users"
-              size={20}
-              color={theme.secondaryText}
-              style={{ marginRight: 10 }}
+              <Text style={{ color: theme.text, flex: 1 }}>
+                {selectedCoAdmins.length > 0
+                  ? `${selectedCoAdmins.length} Co-Admin(s) selected`
+                  : t('select_co_admins')}
+              </Text>
+              <Feather name="chevron-right" size={20} color={theme.secondaryText} />
+            </TouchableOpacity>
+            <FieldBox
+              value={values?.projectDesc || ''}
+              placeholder={t('description')}
+              theme={theme}
+              editable={true}
+              multiline={true}
+              onChangeText={(t) => onChange('projectDesc', t)}
             />
-            <Text style={{ color: theme.text, flex: 1 }}>
-              {selectedCoAdmins.length > 0
-                ? `${selectedCoAdmins.length} Co-Admin(s) selected`
-                : t('select_co_admins')}
-            </Text>
-            <Feather name="chevron-right" size={20} color={theme.secondaryText} />
-          </TouchableOpacity>
-          <FieldBox
-            value={values?.projectDesc || ''}
-            placeholder={t('description')}
-            theme={theme}
-            editable={true}
-            multiline={true}
-            onChangeText={(t) => onChange('projectDesc', t)}
-          />
-          <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
-            <LinearGradient
-              colors={[theme.secondary, theme.primary]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.drawerBtnGradient}>
-              <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </ScrollView>
+            <TouchableOpacity style={styles.drawerBtn} onPress={handleCreate}>
+              <LinearGradient
+                colors={[theme.secondary, theme.primary]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.drawerBtnGradient}>
+                <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </ScrollView>
+        </TouchableWithoutFeedback>
       )}
       {/* Full Modal (only when not embedded) */}
       {!hideSimpleForm && (
@@ -477,7 +503,10 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 keyExtractor={() => 'dummy'}
                 keyboardShouldPersistTaps="always"
                 ListHeaderComponent={
-                  <>
+                  <Pressable onPress={() => {
+                    setShowCategorySuggestions(false);
+                    Keyboard.dismiss();
+                  }}>
                     <FieldBox
                       value={values?.projectName || ''}
                       placeholder={t('project_name')}
@@ -526,25 +555,32 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                             setShowCategorySuggestions(true);
                           }}
                           onBlur={() => {
-                            // Delay hiding suggestions to allow selection
-                            setTimeout(() => setShowCategorySuggestions(false), 200);
+                            // Delay hiding to allow selection to register
+                            setTimeout(() => setShowCategorySuggestions(false), 250);
                           }}
                         />
                       </View>
                       {/* Category Suggestions Dropdown */}
                       {showCategorySuggestions && categorySuggestions.length > 0 && (
-                        <View style={[
-                          styles.suggestionsContainer,
-                          {
-                            backgroundColor: theme.card,
-                            borderColor: theme.border,
-                            shadowColor: '#000'
-                          }
-                        ]}>
+                        <View
+                          style={[
+                            styles.suggestionsContainer,
+                            {
+                              backgroundColor: theme.card,
+                              borderColor: theme.border,
+                              shadowColor: '#000',
+                              elevation: 5,
+                            }
+                          ]}
+                          onStartShouldSetResponder={() => true}
+                          onResponderTerminationRequest={() => false}
+                        >
                           <ScrollView
-                            style={{ maxHeight: 250 }}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
+                            style={{ maxHeight: 200 }}
+                            contentContainerStyle={{ paddingVertical: 5 }}
+                            showsVerticalScrollIndicator={true}
+                            persistentScrollbar={true}
+                            keyboardShouldPersistTaps="always"
                             nestedScrollEnabled={true}
                           >
                             {categorySuggestions.map((item, index) => (
@@ -808,7 +844,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                         <Text style={styles.drawerBtnText}>{t('create_new_project')}</Text>
                       </LinearGradient>
                     </TouchableOpacity>
-                  </>
+                  </Pressable>
                 }
               />
             </KeyboardAvoidingView>
@@ -831,9 +867,9 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
             </View>
 
             <FlatList
-              data={organizations}
-              keyExtractor={(item) => (item.id ? item.id.toString() : Math.random().toString())}
-              contentContainerStyle={{ paddingBottom: 20 }} // Add padding to bottom
+              data={[{ id: null, name: 'Select Organization', role: 'N/A' }, ...organizations]}
+              keyExtractor={(item) => (item.id !== null ? item.id.toString() : 'null-org')}
+              contentContainerStyle={{ paddingBottom: 20 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={{
@@ -851,7 +887,7 @@ export default function ProjectDrawerForm({ values, onChange, onSubmit, hideSimp
                 >
                   <View>
                     <Text style={{ fontSize: 16, color: theme.text, fontWeight: '500' }}>{item.name}</Text>
-                    <Text style={{ fontSize: 12, color: theme.secondaryText }}>Role: {item.role}</Text>
+                    {item.id !== null && <Text style={{ fontSize: 12, color: theme.secondaryText }}>Role: {item.role}</Text>}
                   </View>
                   {values?.organizationId === item.id && (
                     <Feather name="check-circle" size={20} color={theme.primary} />

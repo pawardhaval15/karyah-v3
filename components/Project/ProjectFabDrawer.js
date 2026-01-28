@@ -1,19 +1,21 @@
 import { Ionicons } from '@expo/vector-icons';
-import ProjectDrawerForm from './ProjectDrawerForm';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    TouchableWithoutFeedback,
-    View,
+  Keyboard,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 import FabButton from './FabButton';
 import FabPopup from './FabPopup';
+import ProjectDrawerForm from './ProjectDrawerForm';
 import TaskDrawerForm from './TaskDrawerForm';
-import { useTranslation } from 'react-i18next';
 export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme }) {
   const [open, setOpen] = useState(false);
   const [drawerType, setDrawerType] = useState(null);
@@ -104,36 +106,41 @@ export default function ProjectFabDrawer({ onTaskSubmit, onProjectSubmit, theme 
       <Modal visible={!!drawerType} animationType="slide" transparent onRequestClose={closeDrawer}>
         <TouchableWithoutFeedback onPress={closeDrawer}>
           <View style={styles.modalOverlay}>
-            <TouchableWithoutFeedback>
+            <TouchableWithoutFeedback onPress={() => Keyboard.dismiss()}>
               <View style={[styles.drawerSheet, { backgroundColor: theme.card }]}>
-                <View style={styles.drawerHeader}>
-                  <Text style={[styles.drawerTitle, { color: theme.text }]}>
-                    {drawerType === 'task' ? t('add_task_details') : t('create_new_project')}
-                  </Text>
-                  <TouchableOpacity
-                    onPress={closeDrawer}
-                    style={[styles.closeBtn, { backgroundColor: theme.secCard }]}>
-                    <Ionicons name="close" size={20} color={theme.text} />
-                  </TouchableOpacity>
-                </View>
+                <Pressable onPress={() => Keyboard.dismiss()}>
+                  <View style={styles.drawerHeader}>
+                    <Text style={[styles.drawerTitle, { color: theme.text }]}>
+                      {drawerType === 'task' ? t('add_task_details') : t('create_new_project')}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={closeDrawer}
+                      style={[styles.closeBtn, { backgroundColor: theme.secCard }]}>
+                      <Ionicons name="close" size={20} color={theme.text} />
+                    </TouchableOpacity>
+                  </View>
+                </Pressable>
                 <ScrollView
                   showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
                   contentContainerStyle={{ paddingBottom: 30 }}>
-                  {drawerType === 'task' ? (
-                    <TaskDrawerForm
-                      values={taskForm}
-                      onChange={handleTaskChange}
-                      onSubmit={handleTaskSubmit}
-                      theme={theme}
-                    />
-                  ) : drawerType === 'project' ? (
-                    <ProjectDrawerForm
-                      values={projectForm}
-                      onChange={handleProjectChange}
-                      onSubmit={handleProjectSubmit}
-                      hideSimpleForm={true}
-                    />
-                  ) : null}
+                  <Pressable onPress={() => Keyboard.dismiss()}>
+                    {drawerType === 'task' ? (
+                      <TaskDrawerForm
+                        values={taskForm}
+                        onChange={handleTaskChange}
+                        onSubmit={handleTaskSubmit}
+                        theme={theme}
+                      />
+                    ) : drawerType === 'project' ? (
+                      <ProjectDrawerForm
+                        values={projectForm}
+                        onChange={handleProjectChange}
+                        onSubmit={handleProjectSubmit}
+                        hideSimpleForm={true}
+                      />
+                    ) : null}
+                  </Pressable>
                 </ScrollView>
               </View>
             </TouchableWithoutFeedback>
