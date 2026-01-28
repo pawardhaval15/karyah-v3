@@ -139,7 +139,7 @@ export default function HomeScreen({ navigation }) {
   };
 
   return (
-    <View style={[{ backgroundColor: theme.card, flex: 1 }]}>
+    <View style={[{ backgroundColor: theme.background, flex: 1 }]}>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 0 }}
         showsVerticalScrollIndicator={false}

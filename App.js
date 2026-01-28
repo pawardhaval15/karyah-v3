@@ -86,17 +86,17 @@ function AppContent() {
   }
 
   return (
-    <>
+    <View style={{ flex: 1, backgroundColor: theme.background }}>
       <StatusBar
         animated
         barStyle={colorMode === 'dark' ? 'light-content' : 'dark-content'}
-        backgroundColor={Platform.OS === 'android' ? theme.card : undefined}
+        backgroundColor={theme.background}
         translucent={false}
       />
       <CustomNotificationProvider theme={theme}>
-        <AppNavigator />
+        <AppNavigator theme={theme} />
       </CustomNotificationProvider>
-    </>
+    </View>
   );
 }
 

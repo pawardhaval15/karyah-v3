@@ -1,4 +1,4 @@
-import { NavigationContainer } from '@react-navigation/native';
+import { DefaultTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AddConnectionScreen from 'screens/AddConnectionScreen';
 import AuthLoadingScreen from 'screens/AuthLoadingScreen';
@@ -10,10 +10,14 @@ import NotificationScreen from 'screens/NotificationScreen';
 import RegistrationForm from 'screens/RegistrationForm';
 import UpdateTaskScreen from 'screens/UpdateTaskScreen';
 import UserProfileScreen from 'screens/UserProfileScreen';
+import CommunityAnnouncementScreen from "../screens/CommunityAnnouncementScreen";
+import CommunityScreen from '../screens/CommunityScreen';
+import CommunityDetailsScreen from '../screens/CommunityScreenDetails';
 import HomeScreen from '../screens/HomeScreen';
 import IssuesScreen from '../screens/IssuesScreen';
 import LoginScreen from '../screens/LoginScreen';
 import PinLoginScreen from '../screens/PinLoginScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import ProfessionalDashboard from '../screens/ProfessionalDashboard';
 import ProjectAccessScreen from '../screens/ProjectAccessScreen';
 import ProjectDetailsScreen from '../screens/ProjectDetailsScreen';
@@ -21,21 +25,28 @@ import ProjectDiscussionScreen from '../screens/ProjectDiscussionScreen';
 import ProjectIssuesScreen from '../screens/ProjectIssuesScreen';
 import ProjectScreen from '../screens/ProjectScreen';
 import SettingsScreen from '../screens/SettingsScreen';
-import TaskDetailsScreen from '../screens/TaskDetailsScreen';
 import SubTaskDetailsScreen from '../screens/SubTaskDetailsScreen';
+import TaskDetailsScreen from '../screens/TaskDetailsScreen';
 import TaskListScreen from '../screens/TaskListScreen';
 import UpdateProjectScreen from '../screens/UpdateProjectScreen';
 import WorklistScreen from '../screens/WorklistScreen';
 import { navigationRef } from './navigationRef';
-import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
-import CommunityScreen from '../screens/CommunityScreen';
-import CommunityDetailsScreen from '../screens/CommunityScreenDetails'
-import CommunityAnnouncementScreen from "../screens/CommunityAnnouncementScreen"
 const Stack = createNativeStackNavigator();
 
-export default function AppNavigator() {
+export default function AppNavigator({ theme }) {
+  const navigationTheme = {
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: theme.background,
+      card: theme.card,
+      text: theme.text,
+      border: theme.border,
+    },
+  };
+
   return (
-    <NavigationContainer ref={navigationRef}>
+    <NavigationContainer ref={navigationRef} theme={navigationTheme}>
       <Stack.Navigator initialRouteName="AuthLoading" screenOptions={{ headerShown: false }}>
         <Stack.Screen name="AuthLoading" component={AuthLoadingScreen} />
         <Stack.Screen name="TermsAndPolicy" component={PrivacyPolicyScreen} options={{ headerShown: false }} />
@@ -66,7 +77,7 @@ export default function AppNavigator() {
         <Stack.Screen name="ProjectAccessScreen" component={ProjectAccessScreen} />
         <Stack.Screen name="CommunityScreen" component={CommunityScreen} />
         <Stack.Screen name="CommunityDetailsScreen" component={CommunityDetailsScreen} />
-        <Stack.Screen name="CommunityAnnouncementScreen" component={CommunityAnnouncementScreen}/>
+        <Stack.Screen name="CommunityAnnouncementScreen" component={CommunityAnnouncementScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
