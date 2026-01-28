@@ -1,173 +1,55 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from './config';
+import apiClient from './apiClient';
 
 export const getProjectsByUserId = async () => {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error("User not authenticated");
-
-    const response = await fetch(`${API_URL}api/projects`, {
-        method: 'GET',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-        },
-    });
-    const data = await response.json();
-
-    if (!response.ok) throw new Error(data.message || 'Failed to fetch projects');
-    
-    // Ensure we return an array even if data.projects is undefined/null
-    const projects = data && data.projects ? data.projects : [];
-    if (!Array.isArray(projects)) {
-        console.warn('API returned non-array for projects:', projects);
-        return [];
-    }
-    
-    return projects;
+  try {
+    const response = await apiClient.get('api/projects');
+    const projects = response.data && response.data.projects ? response.data.projects : [];
+    return Array.isArray(projects) ? projects : [];
+  } catch (error) {
+    console.error('Failed to fetch projects:', error.message);
+    throw error;
+  }
 };
 
 export const getProjectById = async (id) => {
-  const token = await AsyncStorage.getItem('token');
-  if (!token) throw new Error('User not authenticated');
-
-  const response = await fetch(`${API_URL}api/projects/${id}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  const data = await response.json();
-  // console.log('Fetched project data:', data);
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch project details');
-  }
-
-  // Ensure we return a valid project object
-  const project = data && data.project ? data.project : {};
-  
-  // Ensure issues and worklists are arrays
-  if (project) {
-    if (!Array.isArray(project.issues)) {
-      project.issues = [];
+  try {
+    const response = await apiClient.get(`api/projects/${id}`);
+    const project = response.data && response.data.project ? response.data.project : {};
+    if (project) {
+      project.issues = Array.isArray(project.issues) ? project.issues : [];
+      project.worklists = Array.isArray(project.worklists) ? project.worklists : [];
     }
-    if (!Array.isArray(project.worklists)) {
-      project.worklists = [];
-    }
+    return project;
+  } catch (error) {
+    console.error('Failed to fetch project details:', error.message);
+    throw error;
   }
-  
-  return project;
 };
 
 export const createProject = async (projectData) => {
   try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error('User not authenticated');
-
-    // Log your payload to debug easily
-    console.log(' Final JSON Payload:', JSON.stringify(projectData, null, 2));
-
-    const response = await fetch(`${API_URL}api/projects/create`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(projectData),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.log(' Create Project Error Response:', errorText);
-      throw new Error('Failed to create project');
-    }
-
-    const data = await response.json();
-    return data.project;
+    const response = await apiClient.post('api/projects/create', projectData);
+    return response.data.project;
   } catch (error) {
-    console.log(' Create Project Error:', error.message);
+    console.error('Create Project Error:', error.message);
     throw error;
   }
 };
 
 export const updateProject = async (id, projectData) => {
   try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error('User not authenticated');
-
-    // console.log(' Updating project:', id);
-    // console.log(' Payload:', JSON.stringify(projectData, null, 2));
-
-    const response = await fetch(`${API_URL}api/projects/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify(projectData),
-    });
-
-    const responseBody = await response.text();
-    let data;
-    try {
-      data = JSON.parse(responseBody);
-    } catch {
-      throw new Error('Invalid JSON response from server');
-    }
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to update project');
-    }
-
-    return data.project;
+    const response = await apiClient.put(`api/projects/${id}`, projectData);
+    return response.data.project;
   } catch (error) {
     console.error('Update Project Error:', error.message);
     throw error;
   }
 };
 
-export const getTaskDependencyChartByProjectId = async (projectId) => {
-  const token = await AsyncStorage.getItem('token');
-  if (!token) throw new Error('User not authenticated');
-
-  const response = await fetch(`${API_URL}api/projects/dependency-chart/${projectId}`, {
-    method: 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to fetch task dependency chart');
-  }
-
-  return data; // Contains: dependencyTrees, sequentialChains, dependencies, tasks
-};
-
 export const deleteProjectById = async (id) => {
   try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error('User not authenticated');
-
-    const response = await fetch(`${API_URL}api/projects/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || 'Failed to delete project');
-    }
-
-    return data.message; // Expected: "Project deleted successfully."
+    const response = await apiClient.delete(`api/projects/${id}`);
+    return response.data.message;
   } catch (error) {
     console.error('Delete Project Error:', error.message);
     throw error;
@@ -176,75 +58,40 @@ export const deleteProjectById = async (id) => {
 
 export const updateProjectTags = async (projectId, tags) => {
   try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) throw new Error('User not authenticated');
-
-    console.log('Updating project tags:', { projectId, tags });
-
-    const response = await fetch(`${API_URL}api/projects/${projectId}/tags`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      },
-      body: JSON.stringify({ tags }),
-    });
-
-    const data = await response.json();
-    console.log(' Project tags update response:', data);
-
-    if (!response.ok) {
-      console.error('Project tags update failed:', data);
-      throw new Error(data.message || 'Failed to update project tags');
-    }
-
-    console.log('Project tags updated successfully');
-    return data.project;
+    const response = await apiClient.patch(`api/projects/${projectId}/tags`, { tags });
+    return response.data.project;
   } catch (error) {
-    console.error('Error updating project tags:', error);
+    console.error('Error updating project tags:', error.message);
     throw error;
   }
 };
 
 export const transferProjectOwnership = async (projectId, newOwnerId) => {
-  const token = await AsyncStorage.getItem('token');
-  if (!token) throw new Error('User not authenticated');
-
-  const response = await fetch(`${API_URL}api/projects/${projectId}/transfer-ownership`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ newOwnerId }),
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to transfer ownership');
+  try {
+    const response = await apiClient.post(`api/projects/${projectId}/transfer-ownership`, { newOwnerId });
+    return response.data;
+  } catch (error) {
+    console.error('Transfer Ownership Error:', error.message);
+    throw error;
   }
-
-  return data;
 };
 
 export const leaveProject = async (projectId) => {
-  const token = await AsyncStorage.getItem('token');
-  if (!token) throw new Error('User not authenticated');
-
-  const response = await fetch(`${API_URL}api/projects/${projectId}/leave`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error(data.message || 'Failed to leave project');
+  try {
+    const response = await apiClient.post(`api/projects/${projectId}/leave`);
+    return response.data;
+  } catch (error) {
+    console.error('Leave Project Error:', error.message);
+    throw error;
   }
+};
 
-  return data; // Returns { message: "...", coAdmins: [...] }
+export const fetchTaskDependencyChart = async (projectId) => {
+  try {
+    const response = await apiClient.get(`api/projects/${projectId}/dependency-chart`);
+    return response.data;
+  } catch (error) {
+    console.error('Fetch Dependency Chart Error:', error.message);
+    throw error;
+  }
 };
