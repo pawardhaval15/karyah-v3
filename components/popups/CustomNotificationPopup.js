@@ -1,6 +1,6 @@
 import { Feather, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import {
   Animated,
   Dimensions,
@@ -11,6 +11,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSettingsStore } from '../../store/settingsStore';
+import { storage } from '../../utils/mmkv';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -30,21 +32,9 @@ export default function CustomNotificationPopup({
 }) {
   const slideAnim = useRef(new Animated.Value(screenWidth)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [showNotifications, setShowNotifications] = useState(true);
+  const { customNotificationsEnabled: showNotifications } = useSettingsStore();
 
-  // Check notification settings from AsyncStorage
-  useEffect(() => {
-    const checkNotificationSettings = async () => {
-      try {
-        const setting = await AsyncStorage.getItem('customNotificationsEnabled');
-        setShowNotifications(setting !== 'false'); // Default to true if not set
-      } catch (error) {
-        console.log('Error checking notification settings:', error);
-        setShowNotifications(true);
-      }
-    };
-    checkNotificationSettings();
-  }, []);
+  // No longer need checkNotificationSettings useEffect as it's handled by Zustand persisted store
 
   // Auto-hide logic
   useEffect(() => {
@@ -123,7 +113,7 @@ export default function CustomNotificationPopup({
       },
       onPanResponderRelease: (evt, gestureState) => {
         slideAnim.flattenOffset();
-        
+
         if (gestureState.dx > 100 || gestureState.vx > 0.5) {
           // Swipe right to dismiss
           hideNotification();
@@ -161,71 +151,71 @@ export default function CustomNotificationPopup({
           },
         ]}
       >
-          {/* Notification Content */}
-          <TouchableOpacity
-            style={styles.content}
-            onPress={handleTap}
-            activeOpacity={0.8}
-          >
-            {/* Header with App Icon */}
-            <View style={styles.header}>
-              <View style={[styles.iconContainer, { backgroundColor: theme?.primary || '#007AFF' }]}>
-                <MaterialIcons name="notifications" size={12} color="#FFFFFF" />
-              </View>
-              <Text style={[styles.appName, { color: theme?.secondaryText || '#666666' }]}>
-                Karyah
+        {/* Notification Content */}
+        <TouchableOpacity
+          style={styles.content}
+          onPress={handleTap}
+          activeOpacity={0.8}
+        >
+          {/* Header with App Icon */}
+          <View style={styles.header}>
+            <View style={[styles.iconContainer, { backgroundColor: theme?.primary || '#007AFF' }]}>
+              <MaterialIcons name="notifications" size={12} color="#FFFFFF" />
+            </View>
+            <Text style={[styles.appName, { color: theme?.secondaryText || '#666666' }]}>
+              Karyah
+            </Text>
+            <View style={styles.timestamp}>
+              <Text style={[styles.timeText, { color: theme?.secondaryText || '#666666' }]}>
+                now
               </Text>
-              <View style={styles.timestamp}>
-                <Text style={[styles.timeText, { color: theme?.secondaryText || '#666666' }]}>
-                  now
+            </View>
+          </View>
+
+          {/* Notification Title - Compact */}
+          <Text
+            style={[styles.title, { color: theme?.text || '#000000' }]}
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+
+          {/* Notification Description - Small */}
+          {message && (
+            <Text
+              style={[styles.description, { color: theme?.secondaryText || '#666666' }]}
+              numberOfLines={2}
+            >
+              {message}
+            </Text>
+          )}
+
+          {/* Type indicator - smaller */}
+          {data?.type && (
+            <View style={styles.typeIndicator}>
+              <View style={[styles.typeBadge, { backgroundColor: theme?.primary + '20' || '#007AFF20' }]}>
+                <Text style={[styles.typeText, { color: theme?.primary || '#007AFF' }]}>
+                  {data.type.toUpperCase()}
                 </Text>
               </View>
             </View>
+          )}
+        </TouchableOpacity>
 
-            {/* Notification Title - Compact */}
-            <Text
-              style={[styles.title, { color: theme?.text || '#000000' }]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-
-            {/* Notification Description - Small */}
-            {message && (
-              <Text
-                style={[styles.description, { color: theme?.secondaryText || '#666666' }]}
-                numberOfLines={2}
-              >
-                {message}
-              </Text>
-            )}
-
-            {/* Type indicator - smaller */}
-            {data?.type && (
-              <View style={styles.typeIndicator}>
-                <View style={[styles.typeBadge, { backgroundColor: theme?.primary + '20' || '#007AFF20' }]}>
-                  <Text style={[styles.typeText, { color: theme?.primary || '#007AFF' }]}>
-                    {data.type.toUpperCase()}
-                  </Text>
-                </View>
-              </View>
-            )}
+        {/* Action Buttons - Only Cancel */}
+        <View style={styles.actions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={hideNotification}
+            activeOpacity={0.7}
+          >
+            <Feather name="x" size={14} color={theme?.secondaryText || '#666666'} />
           </TouchableOpacity>
+        </View>
 
-          {/* Action Buttons - Only Cancel */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.cancelButton]}
-              onPress={hideNotification}
-              activeOpacity={0.7}
-            >
-              <Feather name="x" size={14} color={theme?.secondaryText || '#666666'} />
-            </TouchableOpacity>
-          </View>
-
-          {/* Swipe indicator */}
-          <View style={[styles.swipeIndicator, { backgroundColor: theme?.border || '#E1E5E9' }]} />
-        </Animated.View>
+        {/* Swipe indicator */}
+        <View style={[styles.swipeIndicator, { backgroundColor: theme?.border || '#E1E5E9' }]} />
+      </Animated.View>
     </View>
   );
 }
@@ -347,6 +337,7 @@ const styles = StyleSheet.create({
 export const toggleCustomNotifications = async (enabled) => {
   try {
     await AsyncStorage.setItem('customNotificationsEnabled', enabled.toString());
+    storage.set('customNotificationsEnabled', enabled.toString()); // Also sync to MMKV if available
     return true;
   } catch (error) {
     console.error('Error saving notification settings:', error);
