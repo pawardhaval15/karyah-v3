@@ -1,5 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { memo, useCallback, useMemo, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -16,8 +16,20 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, FadeOutUp, Layout } from 'react-native-reanimated';
+import Animated, {
+  FadeInDown,
+  FadeInUp,
+  FadeOutUp,
+  Layout,
+  useAnimatedProps,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
+} from 'react-native-reanimated';
 import Svg, { Circle, Defs, G, Path, Stop, LinearGradient as SvgGradient } from 'react-native-svg';
+
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // Components
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
@@ -30,6 +42,7 @@ import {
   useDeleteProject,
   useLeaveProject,
   useProjectDetails,
+  useProjectStatistics,
   useTransferOwnership
 } from '../hooks/useProjects';
 import { useTasksByWorklist } from '../hooks/useTasks';
@@ -80,49 +93,62 @@ const CircularProgress = memo(({ percentage, size = 100, strokeWidth = 8, theme 
   );
 });
 
-const DonutChart = memo(({ done = 0, todo = 100, theme, styles }) => {
-  const size = 60;
-  const strokeWidth = 8;
+const ProjectStatsCircle = memo(({ progress = 0, count = 0, theme, color, size = 36 }) => {
+  const strokeWidth = 5;
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
-  const doneOffset = circumference - (done / 100) * circumference;
+
+  const animatedProgress = useSharedValue(0);
+  const countScale = useSharedValue(1);
+
+  useEffect(() => {
+    animatedProgress.value = withTiming(progress, { duration: 1000 });
+  }, [progress]);
+
+  useEffect(() => {
+    countScale.value = withSpring(1.2, { damping: 10, stiffness: 100 }, () => {
+      countScale.value = withSpring(1);
+    });
+  }, [count]);
+
+  const animatedProps = useAnimatedProps(() => {
+    const offset = circumference - (Math.min(100, Math.max(0, animatedProgress.value)) / 100) * circumference;
+    return {
+      strokeDashoffset: offset,
+    };
+  });
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: countScale.value }],
+  }));
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={theme.secCard}
-            strokeWidth={strokeWidth}
-            fill="none"
-          />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            stroke={theme.primary}
-            strokeWidth={strokeWidth}
-            fill="none"
-            strokeDasharray={circumference}
-            strokeDashoffset={doneOffset}
-            strokeLinecap="round"
-          />
-        </G>
+    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
+      <Svg width={size} height={size} style={{ transform: [{ rotate: '-90deg' }] }}>
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={theme.dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'}
+          strokeWidth={strokeWidth}
+          fill="transparent"
+        />
+        <AnimatedCircle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke={color || theme.primary}
+          strokeWidth={strokeWidth}
+          strokeDasharray={`${circumference} ${circumference}`}
+          animatedProps={animatedProps}
+          strokeLinecap="round"
+          fill="transparent"
+        />
       </Svg>
-      <View style={{ flex: 1 }}>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: theme.primary }]} />
-          <Text style={styles.legendLabel}>Done</Text>
-          <Text style={styles.legendValue}>{done}%</Text>
-        </View>
-        <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: theme.secCard }]} />
-          <Text style={styles.legendLabel}>To Do</Text>
-          <Text style={styles.legendValue}>{todo}%</Text>
-        </View>
+      <View style={[StyleSheet.absoluteFill, { justifyContent: 'center', alignItems: 'center' }]}>
+        <Animated.Text style={[{ fontSize: 10, fontWeight: '800', color: theme.text }, animatedTextStyle]}>
+          {count}
+        </Animated.Text>
       </View>
     </View>
   );
@@ -169,6 +195,7 @@ const QuickActionItem = memo(({ icon, label, onPress, color, styles }) => (
 
 const ProjectHeader = memo(({
   projectDetails,
+  projectStats,
   theme,
   styles,
   onBack,
@@ -181,6 +208,17 @@ const ProjectHeader = memo(({
   setCreateModalVisible,
 }) => {
   const [showProjectDetails, setShowProjectDetails] = useState(false);
+
+  const criticalCount = projectStats?.critical?.count ?? 0;
+  const criticalProgress = projectStats?.critical?.avgProgress ?? 0;
+  const issueCount = projectStats?.issues?.count ?? 0;
+  const issueProgress = projectStats?.issues?.avgProgress ?? 0;
+  const taskCount = projectStats?.tasks?.count ?? 0;
+  const taskProgress = projectStats?.tasks?.avgProgress ?? 0;
+
+  const criticalColor = theme.criticalGradient ? theme.criticalGradient[0] : '#FF3B30';
+  const issueColor = theme.issueGradient ? theme.issueGradient[0] : '#FF9500';
+  const taskColor = theme.taskGradient ? theme.taskGradient[0] : theme.primary;
 
   return (
     <View>
@@ -229,7 +267,20 @@ const ProjectHeader = memo(({
       <View style={styles.analyticsGrid}>
         <View style={[styles.analyticsCard, { flex: 1.2 }]}>
           <Text style={styles.cardTitle}>TASK STATUS</Text>
-          <DonutChart done={projectDetails?.progress || 0} todo={100 - (projectDetails?.progress || 0)} theme={theme} styles={styles} />
+          <View style={{ flexDirection: 'row', gap: 15, alignItems: 'center', marginTop: 5 }}>
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <ProjectStatsCircle progress={criticalProgress} count={criticalCount} color={criticalColor} theme={theme} />
+              <Text style={{ fontSize: 8, fontWeight: '700', color: theme.secondaryText }}>CRITICAL</Text>
+            </View>
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <ProjectStatsCircle progress={issueProgress} count={issueCount} color={issueColor} theme={theme} />
+              <Text style={{ fontSize: 8, fontWeight: '700', color: theme.secondaryText }}>ISSUES</Text>
+            </View>
+            <View style={{ alignItems: 'center', gap: 4 }}>
+              <ProjectStatsCircle progress={taskProgress} count={taskCount} color={taskColor} theme={theme} />
+              <Text style={{ fontSize: 8, fontWeight: '700', color: theme.secondaryText }}>TASKS</Text>
+            </View>
+          </View>
         </View>
         <View style={[styles.analyticsCard, { flex: 1 }]}>
           <Text style={styles.cardTitle}>ACTIVITY</Text>
@@ -382,6 +433,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     isFetching: isProjectRefetching
   } = useProjectDetails(finalProjectId);
 
+  const { data: allStats = [] } = useProjectStatistics();
+  const projectStats = useMemo(() => {
+    return allStats.find(s => (s.id || s._id) === finalProjectId);
+  }, [allStats, finalProjectId]);
+
   const {
     worklists,
     worklistsProgress,
@@ -465,6 +521,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const listHeader = useMemo(() => (
     <ProjectHeader
       projectDetails={projectDetails}
+      projectStats={projectStats}
       theme={theme}
       styles={styles}
       onBack={() => navigation.goBack()}
