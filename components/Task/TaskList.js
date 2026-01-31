@@ -246,7 +246,8 @@ export default function TaskList({
     ListHeaderComponent,
     ListEmptyComponent,
     activeTab,
-    onSubtaskNavigate
+    onSubtaskNavigate,
+    ...rest
 }) {
     const { t } = useTranslation();
     const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
@@ -297,7 +298,7 @@ export default function TaskList({
         }
 
         const taskId = item.id || item.taskId || item._id;
-        const isSelected = selectedTasks.includes(taskId);
+        const isSelected = (selectedTasks || []).includes(taskId);
 
         return (
             <TaskItem
@@ -347,6 +348,7 @@ export default function TaskList({
             initialNumToRender={10}
             maxToRenderPerBatch={10}
             windowSize={11}
+            {...rest}
         />
     );
 }

@@ -15,6 +15,7 @@ export const useWorklists = (projectId) => {
         queryKey: ['worklists', projectId],
         queryFn: () => getWorklistsByProjectId(projectId),
         enabled: !!projectId,
+        refetchInterval: 5000,
     });
 
     // Query for worklists progress
@@ -22,6 +23,7 @@ export const useWorklists = (projectId) => {
         queryKey: ['worklistsProgress', projectId],
         queryFn: () => getProjectWorklistsProgress(projectId),
         enabled: !!projectId,
+        refetchInterval: 5000,
     });
 
     // Mutation for creating worklist

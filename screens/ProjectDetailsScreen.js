@@ -1,6 +1,5 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { memo, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
@@ -17,30 +16,31 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import Animated, { FadeInDown, FadeInUp, Layout } from 'react-native-reanimated';
+import Animated, { FadeInDown, FadeInUp, FadeOutUp, Layout } from 'react-native-reanimated';
 import Svg, { Circle, Defs, G, Path, Stop, LinearGradient as SvgGradient } from 'react-native-svg';
+
+// Components
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
 import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
+import TaskList from '../components/Task/TaskList';
+
+// Hooks
+import { useUserConnections } from '../hooks/useConnections';
+import {
+  useDeleteProject,
+  useLeaveProject,
+  useProjectDetails,
+  useTransferOwnership
+} from '../hooks/useProjects';
+import { useTasksByWorklist } from '../hooks/useTasks';
+import { useUserDetails } from '../hooks/useUser';
+import { useWorklists } from '../hooks/useWorklists';
 import { useWorklistUIStore } from '../store/worklistUIStore';
 import { useTheme } from '../theme/ThemeContext';
-import { getUserIdFromToken } from '../utils/auth';
-import { fetchUserConnections } from '../utils/issues';
-import {
-  deleteProjectById,
-  getProjectById,
-  leaveProject,
-  transferProjectOwnership,
-} from '../utils/project';
-import {
-  createWorklist,
-  deleteWorklist,
-  getProjectWorklistsProgress,
-  getWorklistsByProjectId
-} from '../utils/worklist';
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// --- Memoized Helper Components ---
+// --- Memoized UI Components ---
 
 const CircularProgress = memo(({ percentage, size = 100, strokeWidth = 8, theme }) => {
   const radius = (size - strokeWidth) / 2;
@@ -159,15 +159,13 @@ const ActivityChart = memo(({ theme }) => {
 });
 
 const QuickActionItem = memo(({ icon, label, onPress, color, styles }) => (
-  <TouchableOpacity style={styles.actionItem} onPress={onPress}>
+  <TouchableOpacity style={styles.actionItem} onPress={onPress} activeOpacity={0.7}>
     <View style={[styles.actionIconContainer, { backgroundColor: `${color}15` }]}>
-      <Feather name={icon} size={22} color={color} />
+      <Feather name={icon} size={20} color={color} />
     </View>
     <Text style={styles.actionLabel}>{label}</Text>
   </TouchableOpacity>
 ));
-
-// --- Sub-components for professional live updates (extracted to avoid unmounting) ---
 
 const ProjectHeader = memo(({
   projectDetails,
@@ -178,26 +176,25 @@ const ProjectHeader = memo(({
   onMaterial,
   onChat,
   onDependency,
-  onSettings,
+  setShowTeam,
+  showTeam,
   setCreateModalVisible,
-  userId
 }) => {
   const [showProjectDetails, setShowProjectDetails] = useState(false);
-  const [showTeam, setShowTeam] = useState(false);
 
   return (
     <View>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={onBack}>
+        <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={24} color={theme.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>PROJECT OVERVIEW</Text>
-        <TouchableOpacity onPress={onMenu}>
+        <TouchableOpacity onPress={onMenu} activeOpacity={0.7}>
           <Feather name="more-vertical" size={24} color={theme.text} />
         </TouchableOpacity>
       </View>
 
-      <Animated.View entering={FadeInUp.delay(200)} style={styles.heroCard}>
+      <Animated.View entering={FadeInUp.delay(200)} layout={Layout.springify().damping(15)} style={styles.heroCard}>
         <View style={styles.heroTop}>
           <View style={{ flex: 1 }}>
             <View style={styles.categoryBadge}>
@@ -208,7 +205,7 @@ const ProjectHeader = memo(({
               <Ionicons name="calendar-outline" size={14} color={theme.secondaryText} />
               <Text style={styles.metaText}>Due: {projectDetails?.endDate?.split('T')[0] || '-'}</Text>
             </View>
-            <TouchableOpacity onPress={() => setShowProjectDetails(!showProjectDetails)} style={styles.briefToggle}>
+            <TouchableOpacity onPress={() => setShowProjectDetails(!showProjectDetails)} style={styles.briefToggle} activeOpacity={0.7}>
               <Text style={styles.briefToggleText}>{showProjectDetails ? 'Hide Brief' : 'View Brief'}</Text>
               <Feather name={showProjectDetails ? 'chevron-up' : 'chevron-down'} size={14} color={theme.primary} />
             </TouchableOpacity>
@@ -217,7 +214,7 @@ const ProjectHeader = memo(({
         </View>
 
         {showProjectDetails && (
-          <Animated.View entering={FadeInDown} style={styles.heroExpansion}>
+          <Animated.View entering={FadeInDown} exiting={FadeOutUp} style={styles.heroExpansion}>
             <View style={styles.divider} />
             <Text style={styles.expansionTitle}>Project Description</Text>
             <Text style={styles.expansionText}>{projectDetails?.description || 'No description'}</Text>
@@ -241,15 +238,14 @@ const ProjectHeader = memo(({
       </View>
 
       <View style={styles.actionMenu}>
-        <QuickActionItem icon="shopping-bag" label="Material" color={theme.primary} onPress={onMaterial} styles={styles} />
         <QuickActionItem icon="message-circle" label="Chat" color="#4169E1" onPress={onChat} styles={styles} />
+        <QuickActionItem icon="shopping-bag" label="Material" color={theme.primary} onPress={onMaterial} styles={styles} />
         <QuickActionItem icon="users" label="Team" color="#FF1493" onPress={() => setShowTeam(!showTeam)} styles={styles} />
         <QuickActionItem icon="share-2" label="Dependency" color="#32CD32" onPress={onDependency} styles={styles} />
-        <QuickActionItem icon="settings" label="Settings" color="#6A5ACD" onPress={onSettings} styles={styles} />
       </View>
 
       {showTeam && (
-        <View style={styles.teamExpansion}>
+        <Animated.View entering={FadeInDown} exiting={FadeOutUp} style={styles.teamExpansion}>
           <View style={styles.teamHeader}>
             <Text style={styles.expansionTitle}>Project Team</Text>
           </View>
@@ -266,12 +262,12 @@ const ProjectHeader = memo(({
               </View>
             ))
           )}
-        </View>
+        </Animated.View>
       )}
 
       <View style={[styles.worklistHeader, { marginTop: 30 }]}>
         <Text style={styles.sectionTitle}>Project Worklists</Text>
-        <TouchableOpacity style={styles.addNewButton} onPress={() => setCreateModalVisible(true)}>
+        <TouchableOpacity style={styles.addNewButton} onPress={() => setCreateModalVisible(true)} activeOpacity={0.8}>
           <Text style={styles.addNewText}>+ Add New</Text>
         </TouchableOpacity>
       </View>
@@ -280,16 +276,23 @@ const ProjectHeader = memo(({
 });
 
 const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, theme, styles, onDelete, t }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
   const percentage = progress.progress || 0;
   const remainingTasks = progress.totalTasks - progress.completedTasks;
 
+  const { data: tasks = [], isLoading } = useTasksByWorklist(isExpanded ? item.id : null);
+
   return (
-    <Animated.View entering={FadeInDown.delay(index * 100)} layout={Layout.springify()}>
+    <Animated.View
+      entering={FadeInDown.delay(index * 100)}
+      layout={Layout.springify().damping(18).stiffness(120)}
+      style={styles.worklistWrapper}
+    >
       <TouchableOpacity
-        onPress={() => navigation.navigate('TaskListScreen', { worklist: item, project: projectDetails })}
+        onPress={() => setIsExpanded(!isExpanded)}
         onLongPress={() => onDelete(item.id)}
-        activeOpacity={0.7}
-        style={styles.worklistCard}>
+        activeOpacity={0.9}
+        style={[styles.worklistCard, isExpanded && styles.worklistCardExpanded]}>
         <View style={styles.worklistIcon}>
           <Text style={styles.worklistLetter}>{item.name?.[0]?.toUpperCase() || '?'}</Text>
         </View>
@@ -297,10 +300,50 @@ const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, 
           <Text style={styles.worklistName} numberOfLines={1}>{item.name?.toUpperCase()}</Text>
           <Text style={styles.worklistTasks}>{remainingTasks} {t('tasks_remaining')}</Text>
         </View>
-        <View style={{ marginLeft: 10 }}>
-          <CircularProgress size={52} strokeWidth={4} percentage={percentage} theme={theme} />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <CircularProgress size={44} strokeWidth={4} percentage={percentage} theme={theme} />
+          <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={theme.secondaryText} />
         </View>
       </TouchableOpacity>
+
+      {isExpanded && (
+        <Animated.View entering={FadeInUp.duration(300)} exiting={FadeOutUp.duration(200)} style={styles.expansionContent}>
+          <View style={styles.expansionHeader}>
+            <Text style={styles.expansionHeaderText}>Tasks in {item.name}</Text>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('TaskListScreen', { worklist: item, project: projectDetails })}
+              style={styles.viewMoreBtn}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.viewMoreText}>Manage All</Text>
+              <Feather name="external-link" size={12} color={theme.primary} />
+            </TouchableOpacity>
+          </View>
+
+          {isLoading ? (
+            <View style={{ height: 100, justifyContent: 'center' }}>
+              <ActivityIndicator size="small" color={theme.primary} />
+            </View>
+          ) : (
+            <TaskList
+              tasks={tasks}
+              theme={theme}
+              isSelectionMode={false}
+              selectedTasks={[]}
+              onTaskPress={(task) => navigation.navigate('TaskDetails', { taskId: task.id || task._id })}
+              onSubtaskNavigate={(subtaskId) => navigation.navigate('TaskDetails', { taskId: subtaskId })}
+              activeTab="mytasks"
+              scrollEnabled={false}
+              nestedScrollEnabled={true}
+              ListEmptyComponent={
+                <View style={styles.emptyTasksContainer}>
+                  <Text style={styles.emptyTasksText}>No tasks found in this worklist.</Text>
+                </View>
+              }
+            />
+          )}
+        </Animated.View>
+      )}
     </Animated.View>
   );
 });
@@ -311,7 +354,6 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const { t } = useTranslation();
   const theme = useTheme();
   const styles = useMemo(() => getStyles(theme), [theme]);
-  const queryClient = useQueryClient();
   const { project, projectId } = route.params || {};
   const finalProjectId = projectId || project?.id;
 
@@ -322,127 +364,77 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     newWorklistName,
     setNewWorklistName,
     resetCreateForm,
-    isEditModalVisible,
-    setEditModalVisible,
-    editedWorklistName,
-    setEditedWorklistName,
-    selectedWorklist,
-    setSelectedWorklist,
-    resetEditForm,
   } = useWorklistUIStore();
 
-  // Local UI State (not in store)
-  const [userId, setUserId] = useState(null);
+  const { data: user } = useUserDetails();
+  const userId = user?.id || user?._id;
   const [menuVisible, setMenuVisible] = useState(false);
   const [showDependencyChart, setShowDependencyChart] = useState(false);
   const [showMaterialRequestPopup, setShowMaterialRequestPopup] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showTeam, setShowTeam] = useState(false);
 
-  // --- Server State (React Query) ---
-
-  useEffect(() => {
-    getUserIdFromToken().then(setUserId);
-  }, []);
-
+  // --- API Hooks (Server State) ---
   const {
     data: projectDetails,
     isLoading: isProjectLoading,
-    isRefetching: isProjectRefetching,
-    refetch: refetchProject
-  } = useQuery({
-    queryKey: ['project', finalProjectId],
-    queryFn: () => getProjectById(finalProjectId),
-    enabled: !!finalProjectId,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
-  });
+    refetch: refetchProject,
+    isFetching: isProjectRefetching
+  } = useProjectDetails(finalProjectId);
 
   const {
-    data: worklists = [],
+    worklists,
+    worklistsProgress,
     isLoading: isWorklistsLoading,
-    refetch: refetchWorklists
-  } = useQuery({
-    queryKey: ['worklists', finalProjectId],
-    queryFn: () => getWorklistsByProjectId(finalProjectId),
-    enabled: !!finalProjectId,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
-  });
+    refetch: refetchWorklists,
+    createWorklist,
+    deleteWorklist,
+    isRefreshing: isWorklistsRefreshing
+  } = useWorklists(finalProjectId);
 
-  const {
-    data: worklistsProgress = [],
-    refetch: refetchProgress
-  } = useQuery({
-    queryKey: ['worklistsProgress', finalProjectId],
-    queryFn: () => getProjectWorklistsProgress(finalProjectId),
-    enabled: !!finalProjectId,
-    refetchInterval: 5000,
-    refetchIntervalInBackground: true,
-  });
+  const { data: users = [] } = useUserConnections();
 
-  const { data: users = [] } = useQuery({
-    queryKey: ['userConnections'],
-    queryFn: fetchUserConnections,
-  });
+  const leaveMutation = useLeaveProject();
+  const transferMutation = useTransferOwnership();
+  const deleteProjectMutation = useDeleteProject();
 
-  // --- Mutations ---
-
-  const createWorklistMutation = useMutation({
-    mutationFn: (name) => createWorklist(finalProjectId, name),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['worklists', finalProjectId]);
-      queryClient.invalidateQueries(['worklistsProgress', finalProjectId]);
-      resetCreateForm();
-    },
-    onError: (error) => Alert.alert('Error', error.message),
-  });
-
-  const deleteWorklistMutation = useMutation({
-    mutationFn: (id) => deleteWorklist(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['worklists', finalProjectId]);
-      queryClient.invalidateQueries(['worklistsProgress', finalProjectId]);
-    },
-    onError: (error) => Alert.alert('Error', error.message),
-  });
-
-  const leaveProjectMutation = useMutation({
-    mutationFn: () => leaveProject(finalProjectId),
-    onSuccess: () => {
-      navigation.navigate('Main');
-    },
-    onError: (error) => Alert.alert('Error', error.message),
-  });
-
-  const transferOwnershipMutation = useMutation({
-    mutationFn: (newOwnerId) => transferProjectOwnership(finalProjectId, newOwnerId),
-    onSuccess: () => {
-      setShowTransferModal(false);
-      Alert.alert('Success', 'Ownership transferred.');
-      queryClient.invalidateQueries(['project', finalProjectId]);
-    },
-    onError: (error) => Alert.alert('Error', error.message),
-  });
-
-  // --- Handlers (using useCallback for memoization stability) ---
+  // --- Handlers ---
 
   const onRefresh = useCallback(() => {
     refetchProject();
     refetchWorklists();
-    refetchProgress();
-  }, [refetchProject, refetchWorklists, refetchProgress]);
+  }, [refetchProject, refetchWorklists]);
 
-  const handleCreateWorklist = useCallback(() => {
+  const handleCreateWorklist = useCallback(async () => {
     if (!newWorklistName.trim()) return Alert.alert('Validation', 'Enter name');
-    createWorklistMutation.mutate(newWorklistName.trim());
-  }, [newWorklistName, createWorklistMutation]);
+    try {
+      await createWorklist({ name: newWorklistName.trim() });
+      resetCreateForm();
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to create worklist');
+    }
+  }, [newWorklistName, createWorklist, resetCreateForm]);
 
   const handleDeleteWorklist = useCallback((id) => {
-    Alert.alert('Delete', 'Are you sure?', [
+    Alert.alert('Delete', 'Are you sure you want to delete this worklist?', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteWorklistMutation.mutate(id) },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteWorklist(id) },
     ]);
-  }, [deleteWorklistMutation]);
+  }, [deleteWorklist]);
+
+  const handleLeaveProject = useCallback(() => {
+    Alert.alert(t('leave_project'), t('leave_project_confirm'), [
+      { text: t('cancel'), style: 'cancel' },
+      {
+        text: t('leave'),
+        style: 'destructive',
+        onPress: () => leaveMutation.mutate(finalProjectId, {
+          onSuccess: () => navigation.navigate('Home'),
+          onError: (err) => Alert.alert('Error', err.message)
+        })
+      },
+    ]);
+  }, [t, leaveMutation, finalProjectId, navigation]);
 
   const handleTransferOwnership = useCallback((id, name) => {
     Alert.alert(
@@ -450,23 +442,25 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       `Are you sure you want to transfer ownership to ${name}?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Confirm', onPress: () => transferOwnershipMutation.mutate(id) }
+        {
+          text: 'Confirm',
+          onPress: () => transferMutation.mutate({ projectId: finalProjectId, newOwnerId: id }, {
+            onSuccess: () => {
+              setShowTransferModal(false);
+              Alert.alert('Success', 'Ownership transferred.');
+            },
+            onError: (err) => Alert.alert('Error', err.message)
+          })
+        }
       ]
     );
-  }, [transferOwnershipMutation]);
-
-  const handleLeaveProject = useCallback(() => {
-    Alert.alert(t('leave_project'), t('leave_project_confirm'), [
-      { text: t('cancel'), style: 'cancel' },
-      { text: t('leave'), style: 'destructive', onPress: () => leaveProjectMutation.mutate() },
-    ]);
-  }, [t, leaveProjectMutation]);
+  }, [transferMutation, finalProjectId]);
 
   const getWorklistProgress = useCallback((id) => {
     return worklistsProgress.find(p => p.worklistId === id) || { progress: 0, totalTasks: 0, completedTasks: 0 };
   }, [worklistsProgress]);
 
-  // --- Render Functions ---
+  // --- Renders ---
 
   const listHeader = useMemo(() => (
     <ProjectHeader
@@ -478,11 +472,11 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       onMaterial={() => setShowMaterialRequestPopup(true)}
       onChat={() => navigation.navigate('ProjectDiscussionScreen', { projectId: finalProjectId, projectName: projectDetails?.projectName })}
       onDependency={() => setShowDependencyChart(true)}
-      onSettings={() => projectDetails?.userId === userId ? navigation.navigate('ProjectAccessScreen', { projectId: finalProjectId, projectName: projectDetails?.projectName }) : Alert.alert('Denied', 'Owner only')}
+      setShowTeam={setShowTeam}
+      showTeam={showTeam}
       setCreateModalVisible={setCreateModalVisible}
-      userId={userId}
     />
-  ), [projectDetails, theme, styles, navigation, finalProjectId, userId, setCreateModalVisible]);
+  ), [projectDetails, theme, styles, navigation, finalProjectId, showTeam, setCreateModalVisible]);
 
   const renderItem = useCallback(({ item, index }) => (
     <WorklistItem
@@ -506,7 +500,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     );
   }
 
-  if (!projectDetails && !isProjectLoading) {
+  if (!projectDetails) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={{ color: theme.text }}>{t('project_not_found')}</Text>
@@ -524,7 +518,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isProjectRefetching} onRefresh={onRefresh} tintColor={theme.primary} />
+          <RefreshControl refreshing={isProjectRefetching || isWorklistsRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
         ListEmptyComponent={
           <View style={{ padding: 40, alignItems: 'center' }}>
@@ -534,9 +528,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         }
       />
 
-      {/* Modals remain in main tree as they are conditionally rendered or hidden automatically */}
+      {/* Modals */}
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
-        <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' }} activeOpacity={1} onPress={() => setMenuVisible(false)}>
+        <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuPopup}>
             {projectDetails?.userId === userId ? (
               <>
@@ -548,7 +542,18 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   <Feather name="repeat" size={18} color={theme.text} />
                   <Text style={styles.menuText}>Handover</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); Alert.alert('Delete', 'Sure?', [{ text: 'Cancel' }, { text: 'Delete', onPress: () => deleteProjectById(finalProjectId).then(() => navigation.goBack()) }]); }}>
+                <TouchableOpacity style={styles.menuItem} onPress={() => {
+                  setMenuVisible(false);
+                  Alert.alert('Delete', 'Are you sure?', [
+                    { text: 'Cancel' },
+                    {
+                      text: 'Delete',
+                      onPress: () => deleteProjectMutation.mutate(finalProjectId, {
+                        onSuccess: () => navigation.goBack()
+                      })
+                    }
+                  ]);
+                }}>
                   <Feather name="trash-2" size={18} color="#FF3B30" />
                   <Text style={[styles.menuText, { color: '#FF3B30' }]}>Delete</Text>
                 </TouchableOpacity>
@@ -623,7 +628,7 @@ const getStyles = (theme) => StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingTop: Platform.OS === 'ios' ? 45 : 20,
     paddingBottom: 20,
   },
   backButton: {
@@ -668,25 +673,25 @@ const getStyles = (theme) => StyleSheet.create({
     alignSelf: 'flex-start'
   },
   briefToggleText: { fontSize: 11, fontWeight: '700', color: theme.primary },
-  heroExpansion: { marginTop: 16 },
+  heroExpansion: { marginTop: 12 },
   divider: { height: 1, backgroundColor: theme.border, marginBottom: 16, opacity: 0.5 },
   expansionTitle: { fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 8 },
   expansionText: { fontSize: 13, color: theme.secondaryText, lineHeight: 20, marginBottom: 16 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 8, borderTopWidth: 1, borderTopColor: theme.border },
   infoLabel: { fontSize: 12, color: theme.secondaryText, fontWeight: '600' },
   infoValue: { fontSize: 12, color: theme.text, fontWeight: '700' },
-  analyticsGrid: { flexDirection: 'row', paddingHorizontal: 20, gap: 12, marginTop: 20 },
+  analyticsGrid: { flexDirection: 'row', paddingHorizontal: 16, gap: 16, marginTop: 12 },
   analyticsCard: { backgroundColor: theme.card, borderRadius: 20, padding: 16, elevation: 2 },
-  cardTitle: { fontSize: 10, fontWeight: '800', color: theme.secondaryText, marginBottom: 12 },
+  cardTitle: { fontSize: 8, fontWeight: '800', color: theme.secondaryText, marginBottom: 10 },
   legendItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   legendDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
   legendLabel: { fontSize: 10, color: theme.secondaryText, flex: 1 },
   legendValue: { fontSize: 10, fontWeight: '700', color: theme.text },
-  actionMenu: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 20 },
+  actionMenu: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 16 },
   actionItem: { alignItems: 'center', gap: 8 },
-  actionIconContainer: { width: 60, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  actionIconContainer: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { fontSize: 10, fontWeight: '700', color: theme.secondaryText },
-  teamExpansion: { marginHorizontal: 20, marginTop: 15, backgroundColor: theme.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: theme.border },
+  teamExpansion: { marginHorizontal: 20, marginTop: 16, backgroundColor: theme.card, borderRadius: 20, padding: 16, borderWidth: 1, borderColor: theme.border },
   memberRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 8, borderTopWidth: 1, borderTopColor: theme.border },
   memberAvatar: { width: 36, height: 36, borderRadius: 18, marginRight: 10, backgroundColor: theme.avatarBg },
   memberName: { fontSize: 14, fontWeight: '700', color: theme.text },
@@ -695,20 +700,56 @@ const getStyles = (theme) => StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '800', color: theme.text },
   addNewButton: { backgroundColor: theme.primary, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   addNewText: { color: '#FFF', fontSize: 12, fontWeight: '700' },
+  worklistWrapper: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+  },
   worklistCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.card,
-    marginHorizontal: 20,
-    marginBottom: 12,
     padding: 16,
     borderRadius: 20,
     elevation: 2,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  worklistIcon: { width: 48, height: 48, borderRadius: 16, backgroundColor: theme.secCard, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  worklistLetter: { fontSize: 20, fontWeight: '800', color: theme.primary },
+  worklistCardExpanded: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    borderColor: theme.border,
+    elevation: 0,
+  },
+  worklistIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.secCard, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  worklistLetter: { fontSize: 18, fontWeight: '800', color: theme.primary },
   worklistName: { fontSize: 15, fontWeight: '800', color: theme.text },
   worklistTasks: { fontSize: 12, color: theme.secondaryText, fontWeight: '600', marginTop: 2 },
+  expansionContent: {
+    backgroundColor: theme.card,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    paddingHorizontal: 0,
+    paddingBottom: 8,
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: theme.border,
+  },
+  expansionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.border,
+    marginBottom: 8,
+  },
+  expansionHeaderText: { fontSize: 13, fontWeight: '700', color: theme.secondaryText },
+  viewMoreBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  viewMoreText: { fontSize: 12, fontWeight: '700', color: theme.primary },
+  emptyTasksContainer: { padding: 20, alignItems: 'center' },
+  emptyTasksText: { fontSize: 12, color: theme.secondaryText, fontStyle: 'italic' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   menuPopup: { position: 'absolute', top: 60, right: 20, backgroundColor: theme.card, borderRadius: 16, paddingVertical: 8, minWidth: 160, elevation: 10 },
   menuItem: { padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   menuText: { fontWeight: '600', color: theme.text },

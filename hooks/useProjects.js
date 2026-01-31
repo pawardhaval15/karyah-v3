@@ -68,6 +68,7 @@ export const useProjectDetails = (projectId) => {
         },
         enabled: !!projectId,
         staleTime: 5000,
+        refetchInterval: 5000, // Background updates every 5s
     });
 };
 
@@ -104,5 +105,48 @@ export const useProjectStatistics = () => {
         },
         refetchInterval: 30000, // Refresh every 30s
         staleTime: 15000,
+    });
+};
+
+// Hook for leaving a project
+export const useLeaveProject = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (projectId) => {
+            const response = await apiClient.post(`api/projects/${projectId}/leave`);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+        },
+    });
+};
+
+// Hook for transferring project ownership
+export const useTransferOwnership = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async ({ projectId, newOwnerId }) => {
+            const response = await apiClient.post(`api/projects/${projectId}/transfer-ownership`, { newOwnerId });
+            return response.data;
+        },
+        onSuccess: (data, variables) => {
+            queryClient.invalidateQueries({ queryKey: ['project', variables.projectId] });
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+        },
+    });
+};
+
+// Hook for deleting a project
+export const useDeleteProject = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: async (projectId) => {
+            const response = await apiClient.delete(`api/projects/${projectId}`);
+            return response.data;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+        },
     });
 };

@@ -48,7 +48,7 @@ export const useTasksByWorklist = (worklistId) => {
             return response.data.tasks || [];
         },
         enabled: !!worklistId,
-        refetchInterval: 10000,
+        refetchInterval: 5000,
     });
 };
 
