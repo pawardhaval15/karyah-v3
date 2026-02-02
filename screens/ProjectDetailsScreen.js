@@ -32,6 +32,7 @@ import Svg, { Circle, Defs, G, Path, Stop, LinearGradient as SvgGradient } from 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
 // Components
+import AddTaskPopup from '../components/popups/AddTaskPopup';
 import DependencyChartPopup from '../components/popups/DependencyChartPopup';
 import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
 import TaskList from '../components/Task/TaskList';
@@ -45,7 +46,7 @@ import {
   useProjectStatistics,
   useTransferOwnership
 } from '../hooks/useProjects';
-import { useTasksByWorklist } from '../hooks/useTasks';
+import { useTaskMutations, useTasksByProject, useTasksByWorklist } from '../hooks/useTasks';
 import { useUserDetails } from '../hooks/useUser';
 import { useWorklists } from '../hooks/useWorklists';
 import { useWorklistUIStore } from '../store/worklistUIStore';
@@ -206,6 +207,7 @@ const ProjectHeader = memo(({
   setShowTeam,
   showTeam,
   setCreateModalVisible,
+  onAddTask,
 }) => {
   const [showProjectDetails, setShowProjectDetails] = useState(false);
 
@@ -234,6 +236,9 @@ const ProjectHeader = memo(({
 
       <Animated.View entering={FadeInUp.delay(200)} layout={Layout.springify().damping(15)} style={styles.heroCard}>
         <View style={styles.heroTop}>
+          <View style={{ marginRight: 20 }}>
+            <CircularProgress percentage={projectDetails?.progress || 0} size={100} strokeWidth={10} theme={theme} />
+          </View>
           <View style={{ flex: 1 }}>
             <View style={styles.categoryBadge}>
               <Text style={styles.categoryText}>{projectDetails?.projectCategory?.toUpperCase() || 'GENERAL'}</Text>
@@ -248,7 +253,6 @@ const ProjectHeader = memo(({
               <Feather name={showProjectDetails ? 'chevron-up' : 'chevron-down'} size={14} color={theme.primary} />
             </TouchableOpacity>
           </View>
-          <CircularProgress percentage={projectDetails?.progress || 0} size={100} strokeWidth={10} theme={theme} />
         </View>
 
         {showProjectDetails && (
@@ -318,15 +322,20 @@ const ProjectHeader = memo(({
 
       <View style={[styles.worklistHeader, { marginTop: 30 }]}>
         <Text style={styles.sectionTitle}>Project Worklists</Text>
-        <TouchableOpacity style={styles.addNewButton} onPress={() => setCreateModalVisible(true)} activeOpacity={0.8}>
-          <Text style={styles.addNewText}>+ Add New</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          <TouchableOpacity style={styles.addNewButton} onPress={() => setCreateModalVisible(true)} activeOpacity={0.8}>
+            <Text style={styles.addNewText}>+ Worklist</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.addNewButton, { backgroundColor: theme.card, borderWidth: 1, borderColor: theme.primary }]} onPress={() => onAddTask()} activeOpacity={0.8}>
+            <Text style={[styles.addNewText, { color: theme.primary }]}>+ Task</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
 });
 
-const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, theme, styles, onDelete, t }) => {
+const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, theme, styles, onDelete, t, onAddTask }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const percentage = progress.progress || 0;
   const remainingTasks = progress.totalTasks - progress.completedTasks;
@@ -345,14 +354,13 @@ const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, 
         activeOpacity={0.9}
         style={[styles.worklistCard, isExpanded && styles.worklistCardExpanded]}>
         <View style={styles.worklistIcon}>
-          <Text style={styles.worklistLetter}>{item.name?.[0]?.toUpperCase() || '?'}</Text>
+          <CircularProgress size={44} strokeWidth={4} percentage={percentage} theme={theme} />
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.worklistName} numberOfLines={1}>{item.name?.toUpperCase()}</Text>
           <Text style={styles.worklistTasks}>{remainingTasks} {t('tasks_remaining')}</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-          <CircularProgress size={44} strokeWidth={4} percentage={percentage} theme={theme} />
           <Feather name={isExpanded ? "chevron-up" : "chevron-down"} size={20} color={theme.secondaryText} />
         </View>
       </TouchableOpacity>
@@ -360,14 +368,17 @@ const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, 
       {isExpanded && (
         <Animated.View entering={FadeInUp.duration(300)} exiting={FadeOutUp.duration(200)} style={styles.expansionContent}>
           <View style={styles.expansionHeader}>
-            <Text style={styles.expansionHeaderText}>Tasks in {item.name}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.expansionHeaderText}>Tasks in {item.name}</Text>
+              <Text style={styles.expansionHeaderCount}>{tasks.length} {t('tasks')}</Text>
+            </View>
             <TouchableOpacity
-              onPress={() => navigation.navigate('TaskListScreen', { worklist: item, project: projectDetails })}
-              style={styles.viewMoreBtn}
+              onPress={() => onAddTask(item)}
+              style={[styles.smallAddBtn, { backgroundColor: theme.primary + '15' }]}
               activeOpacity={0.7}
             >
-              <Text style={styles.viewMoreText}>Manage All</Text>
-              <Feather name="external-link" size={12} color={theme.primary} />
+              <Feather name="plus" size={14} color={theme.primary} />
+              <Text style={[styles.smallAddBtnText, { color: theme.primary }]}>Add Task</Text>
             </TouchableOpacity>
           </View>
 
@@ -418,12 +429,27 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   } = useWorklistUIStore();
 
   const { data: user } = useUserDetails();
-  const userId = user?.id || user?._id;
+  const userId = user?.id || user?._id || user?.userId || user?.user_id;
+  const userName = user?.name;
   const [menuVisible, setMenuVisible] = useState(false);
   const [showDependencyChart, setShowDependencyChart] = useState(false);
   const [showMaterialRequestPopup, setShowMaterialRequestPopup] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showTeam, setShowTeam] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [selectedWorklistForTask, setSelectedWorklistForTask] = useState(null);
+  const [addTaskForm, setAddTaskForm] = useState({
+    taskName: '',
+    projectId: finalProjectId,
+    taskWorklist: '',
+    taskDeps: [],
+    taskStart: '',
+    taskEnd: '',
+    taskAssign: '',
+    taskDesc: '',
+    tags: [],
+    isIssue: false,
+  });
 
   // --- API Hooks (Server State) ---
   const {
@@ -449,12 +475,92 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   } = useWorklists(finalProjectId);
 
   const { data: users = [] } = useUserConnections();
+  const { data: projectTasks = [] } = useTasksByProject(finalProjectId);
 
+  const { createTask } = useTaskMutations();
   const leaveMutation = useLeaveProject();
   const transferMutation = useTransferOwnership();
   const deleteProjectMutation = useDeleteProject();
 
+  // --- Role Checks ---
+  const isCreator = useMemo(() => {
+    if (!projectDetails) return false;
+
+    // 1. ID based check
+    const projectOwnerId =
+      (typeof projectDetails.userId === 'object' ? (projectDetails.userId._id || projectDetails.userId.id) : projectDetails.userId) ||
+      projectDetails.creatorId ||
+      projectDetails.creatorUserId;
+
+    const idMatch = userId && projectOwnerId && String(userId) === String(projectOwnerId);
+
+    // 2. Name based fallback
+    const projectCreatorName = projectDetails.creatorName || (typeof projectDetails.userId === 'object' ? projectDetails.userId.name : null);
+    const nameMatch = userName && projectCreatorName && userName.trim().toLowerCase() === projectCreatorName.trim().toLowerCase();
+
+    return !!(idMatch || nameMatch);
+  }, [projectDetails, userId, userName]);
+
+  const isCoAdmin = useMemo(() => {
+    if (!projectDetails || !userId) return false;
+    return projectDetails.coAdmins?.some(admin => {
+      const adminId = typeof admin === 'object' ? (admin.id || admin._id) : admin;
+      return adminId && String(adminId) === String(userId);
+    });
+  }, [projectDetails?.coAdmins, userId]);
+
   // --- Handlers ---
+
+  const handleAddTaskChange = (field, value) => {
+    setAddTaskForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleOpenAddTask = useCallback((worklist) => {
+    if (worklist) {
+      setSelectedWorklistForTask(worklist);
+      setAddTaskForm(prev => ({
+        ...prev,
+        taskWorklist: worklist.id || worklist._id,
+        projectId: finalProjectId
+      }));
+    } else {
+      setSelectedWorklistForTask(null);
+      setAddTaskForm(prev => ({
+        ...prev,
+        taskWorklist: '',
+        projectId: finalProjectId
+      }));
+    }
+    setShowAddTask(true);
+  }, [finalProjectId]);
+
+  const handleAddTaskSubmit = useCallback(async () => {
+    try {
+      if (!addTaskForm.taskName.trim()) {
+        return Alert.alert('Error', 'Task name is required');
+      }
+      await createTask.mutateAsync({
+        ...addTaskForm,
+        projectId: finalProjectId,
+        taskWorklist: selectedWorklistForTask?.id || selectedWorklistForTask?._id
+      });
+      setShowAddTask(false);
+      setAddTaskForm({
+        taskName: '',
+        projectId: finalProjectId,
+        taskWorklist: '',
+        taskDeps: [],
+        taskStart: '',
+        taskEnd: '',
+        taskAssign: '',
+        taskDesc: '',
+        tags: [],
+        isIssue: false,
+      });
+    } catch (error) {
+      Alert.alert('Error', error.message || 'Failed to create task');
+    }
+  }, [addTaskForm, createTask, finalProjectId, selectedWorklistForTask]);
 
   const onRefresh = useCallback(() => {
     refetchProject();
@@ -532,8 +638,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       setShowTeam={setShowTeam}
       showTeam={showTeam}
       setCreateModalVisible={setCreateModalVisible}
+      onAddTask={() => handleOpenAddTask()}
     />
-  ), [projectDetails, theme, styles, navigation, finalProjectId, showTeam, setCreateModalVisible]);
+  ), [projectDetails, theme, styles, navigation, finalProjectId, showTeam, setCreateModalVisible, handleOpenAddTask]);
 
   const renderItem = useCallback(({ item, index }) => (
     <WorklistItem
@@ -546,8 +653,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       styles={styles}
       onDelete={handleDeleteWorklist}
       t={t}
+      onAddTask={handleOpenAddTask}
     />
-  ), [navigation, projectDetails, getWorklistProgress, theme, styles, handleDeleteWorklist, t]);
+  ), [navigation, projectDetails, getWorklistProgress, theme, styles, handleDeleteWorklist, t, handleOpenAddTask]);
 
   if (isProjectLoading || isWorklistsLoading) {
     return (
@@ -589,12 +697,15 @@ export default function ProjectDetailsScreen({ navigation, route }) {
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setMenuVisible(false)}>
           <View style={styles.menuPopup}>
-            {projectDetails?.userId === userId ? (
+            {(isCreator || isCoAdmin) && (
+              <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateProjectScreen', { projectId: finalProjectId }); }}>
+                <Feather name="edit" size={18} color={theme.text} />
+                <Text style={styles.menuText}>Edit Project</Text>
+              </TouchableOpacity>
+            )}
+
+            {isCreator && (
               <>
-                <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('UpdateProjectScreen', { projectId: finalProjectId }); }}>
-                  <Feather name="edit" size={18} color={theme.text} />
-                  <Text style={styles.menuText}>Edit Project</Text>
-                </TouchableOpacity>
                 <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); setShowTransferModal(true); }}>
                   <Feather name="repeat" size={18} color={theme.text} />
                   <Text style={styles.menuText}>Handover</Text>
@@ -602,9 +713,9 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                 <TouchableOpacity style={styles.menuItem} onPress={() => {
                   setMenuVisible(false);
                   Alert.alert('Delete', 'Are you sure?', [
-                    { text: 'Cancel' },
+                    { text: t('cancel') },
                     {
-                      text: 'Delete',
+                      text: t('delete'),
                       onPress: () => deleteProjectMutation.mutate(finalProjectId, {
                         onSuccess: () => navigation.goBack()
                       })
@@ -615,10 +726,12 @@ export default function ProjectDetailsScreen({ navigation, route }) {
                   <Text style={[styles.menuText, { color: '#FF3B30' }]}>Delete</Text>
                 </TouchableOpacity>
               </>
-            ) : (
+            )}
+
+            {!isCreator && (
               <TouchableOpacity style={styles.menuItem} onPress={() => { setMenuVisible(false); handleLeaveProject(); }}>
                 <Feather name="log-out" size={18} color="#FF3B30" />
-                <Text style={[styles.menuText, { color: '#FF3B30' }]}>Leave Project</Text>
+                <Text style={[styles.menuText, { color: '#FF3B30' }]}>{t('leave_project')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -670,6 +783,23 @@ export default function ProjectDetailsScreen({ navigation, route }) {
           </View>
         </View>
       </Modal>
+
+      <AddTaskPopup
+        visible={showAddTask}
+        onClose={() => setShowAddTask(false)}
+        values={addTaskForm}
+        onChange={handleAddTaskChange}
+        onSubmit={handleAddTaskSubmit}
+        theme={theme}
+        projectId={finalProjectId}
+        projectName={projectDetails?.projectName}
+        worklistId={selectedWorklistForTask?.id}
+        worklistName={selectedWorklistForTask?.name}
+        projects={[{ id: finalProjectId, projectName: projectDetails?.projectName }]}
+        users={users}
+        worklists={worklists}
+        projectTasks={projectTasks}
+      />
 
       {showDependencyChart && <DependencyChartPopup visible={true} onClose={() => setShowDependencyChart(false)} projectId={finalProjectId} />}
       <MaterialRequestPopup visible={showMaterialRequestPopup} onClose={() => setShowMaterialRequestPopup(false)} projectId={finalProjectId} theme={theme} users={users} />
@@ -744,7 +874,7 @@ const getStyles = (theme) => StyleSheet.create({
   legendDot: { width: 6, height: 6, borderRadius: 3, marginRight: 6 },
   legendLabel: { fontSize: 10, color: theme.secondaryText, flex: 1 },
   legendValue: { fontSize: 10, fontWeight: '700', color: theme.text },
-  actionMenu: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 16 },
+  actionMenu: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginTop: 16, marginRight: 16, marginLeft: 16 },
   actionItem: { alignItems: 'center', gap: 8 },
   actionIconContainer: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
   actionLabel: { fontSize: 10, fontWeight: '700', color: theme.secondaryText },
@@ -777,7 +907,7 @@ const getStyles = (theme) => StyleSheet.create({
     borderColor: theme.border,
     elevation: 0,
   },
-  worklistIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: theme.secCard, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
+  worklistIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 12 },
   worklistLetter: { fontSize: 18, fontWeight: '800', color: theme.primary },
   worklistName: { fontSize: 15, fontWeight: '800', color: theme.text },
   worklistTasks: { fontSize: 12, color: theme.secondaryText, fontWeight: '600', marginTop: 2 },
@@ -802,6 +932,19 @@ const getStyles = (theme) => StyleSheet.create({
     marginBottom: 8,
   },
   expansionHeaderText: { fontSize: 13, fontWeight: '700', color: theme.secondaryText },
+  expansionHeaderCount: { fontSize: 11, color: theme.secondaryText, marginTop: 2 },
+  smallAddBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  smallAddBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
   viewMoreBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   viewMoreText: { fontSize: 12, fontWeight: '700', color: theme.primary },
   emptyTasksContainer: { padding: 20, alignItems: 'center' },

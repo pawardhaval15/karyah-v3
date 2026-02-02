@@ -156,7 +156,14 @@ const TaskCard = ({
         }
       ]}>
         <View style={styles.contentRow}>
-          {/* Left Content Column */}
+          {/* Left Indicator (Only for Tasks) */}
+          {!isIssue && (
+            <View style={{ marginRight: 12 }}>
+              <ProgressRing progress={percent} color={theme.primary} theme={theme} />
+            </View>
+          )}
+
+          {/* Main Content Column */}
           <View style={styles.leftColumn}>
             <Text
               style={[styles.taskTitle, { color: theme.text }]}
@@ -180,16 +187,13 @@ const TaskCard = ({
                   </Text>
                 </View>
               )}
-            </View>
-
-            <View style={styles.bottomRow}>
               {dueDateStatus ? (
                 <View style={styles.dateContainer}>
                   <Feather
                     name="calendar"
                     size={12}
                     color={dueDateStatus.color}
-                    style={{ marginRight: 4 }}
+                    style={{ marginRight: 4, marginLeft: 10 }}
                   />
                   <Text
                     style={{
@@ -206,7 +210,7 @@ const TaskCard = ({
                     name="calendar"
                     size={12}
                     color={theme.secondaryText}
-                    style={{ marginRight: 4 }}
+                    style={{ marginRight: 4, marginLeft: 10 }}
                   />
                   <Text style={[styles.metaText, { color: theme.secondaryText }]}>
                     No due date
@@ -214,12 +218,14 @@ const TaskCard = ({
                 </View>
               )}
             </View>
+
+            {/* Hidden/Commented bottomRow removed for cleanliness as it's now in metaRow */}
           </View>
 
-          {/* Right Action/Badge Column */}
-          <View style={styles.rightColumn}>
-            <View style={styles.ringContainer}>
-              {isIssue ? (
+          {/* Right Indicator (Only for Issues) */}
+          {isIssue && (
+            <View style={styles.rightColumn}>
+              <View style={styles.ringContainer}>
                 <View style={[
                   styles.statusBadge,
                   {
@@ -239,11 +245,9 @@ const TaskCard = ({
                     {issueStatus || 'Open'}
                   </Text>
                 </View>
-              ) : (
-                <ProgressRing progress={percent} color={theme.primary} theme={theme} />
-              )}
+              </View>
             </View>
-          </View>
+          )}
         </View>
       </View>
     </Animated.View>

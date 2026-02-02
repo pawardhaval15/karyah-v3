@@ -138,21 +138,20 @@ const TaskItem = memo(({
                     </View>
                 )}
 
-                {/* Left Icon Box */}
+                {/* Left Progress Circle */}
                 <View style={{
                     width: 48,
                     height: 48,
-                    borderRadius: 16,
-                    backgroundColor: iconColors.bg,
                     alignItems: 'center',
                     justifyContent: 'center',
                     marginRight: 16,
                 }}>
-                    <MaterialIcons
-                        name={item.isIssue ? 'report-problem' : 'assignment'}
-                        size={24}
-                        color={iconColors.icon}
-                    />
+                    <View style={{ transform: [{ scale: 0.8 }] }}>
+                        <CustomCircularProgress
+                            percentage={item.progress || 0}
+                            size={52}
+                        />
+                    </View>
                 </View>
 
                 <View style={{ flex: 1 }}>
@@ -185,38 +184,6 @@ const TaskItem = memo(({
                                         </Text>
                                     </View>
                                 )}
-                            </View>
-                        </View>
-
-                        {/* Right Tracking Column */}
-                        <View style={{ alignItems: 'flex-end', gap: 6 }}>
-                            {/* {item.progerss === 100 || item.status === 'Completed' ? (
-                                <View style={{
-                                    backgroundColor: '#34C759',
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 4,
-                                    borderRadius: 12,
-                                }}>
-                                    <Text style={{ fontSize: 10, color: '#FFF', fontWeight: '800', textTransform: 'uppercase' }}>
-                                        COMPLETED
-                                    </Text>
-                                </View>
-                            ) : (
-                                <View style={{
-                                    backgroundColor: statusStyle.bg,
-                                    paddingHorizontal: 10,
-                                    paddingVertical: 4,
-                                    borderRadius: 12,
-                                }}>
-                                    <Text style={{ fontSize: 10, color: statusStyle.text, fontWeight: '800', textTransform: 'uppercase' }}>
-                                        {item.status || 'PENDING'}
-                                    </Text>
-                                </View>
-                            )} */}
-
-                            {/* Always Show Progress Circle */}
-                            <View style={{ transform: [{ scale: 0.8 }] }}>
-                                <CustomCircularProgress percentage={item.progress || 0} />
                             </View>
                         </View>
                     </View>
