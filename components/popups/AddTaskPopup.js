@@ -1,8 +1,7 @@
-import React from 'react';
-import { Modal, View, TouchableOpacity, StyleSheet, ScrollView, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import AddTaskForm from '../Task/AddTaskForm';
 import { useTranslation } from 'react-i18next';
+import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import AddTaskForm from '../Task/AddTaskForm';
 export default function AddTaskPopup({
     visible,
     onClose,
@@ -19,12 +18,12 @@ export default function AddTaskPopup({
     worklists,
     projectTasks,
 }) {
-  const { t } = useTranslation();
-  return (
-      <Modal
-          visible={visible}
-          animationType="slide"
-          transparent
+    const { t } = useTranslation();
+    return (
+        <Modal
+            visible={visible}
+            animationType="slide"
+            transparent
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
@@ -39,8 +38,8 @@ export default function AddTaskPopup({
                         <AddTaskForm
                             values={values}
                             onChange={onChange}
-                            onSubmit={() => {
-                                onSubmit();
+                            onSubmit={(newTask) => {
+                                onSubmit(newTask);
                                 onClose();
                             }}
                             theme={theme}

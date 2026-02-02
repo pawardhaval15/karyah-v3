@@ -237,9 +237,9 @@ export default function AddTaskForm({
         setLoading(false);
         return;
       }
-      await createTask(taskData);
+      const newTask = await createTask(taskData);
       Alert.alert('Success', 'Task created successfully!');
-      onSubmit();
+      onSubmit(newTask);
     } catch (error) {
       console.error('Create task failed:', error.message);
       Alert.alert('Error', error.message || 'Failed to create task');

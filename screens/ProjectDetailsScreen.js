@@ -491,7 +491,7 @@ export default function ProjectDetailsScreen({ navigation, route }) {
   const { data: users = [] } = useUserConnections();
   const { data: projectTasks = [] } = useTasksByProject(finalProjectId);
 
-  const { createTask } = useTaskMutations();
+  const { createTask, invalidateTasks } = useTaskMutations();
   const leaveMutation = useLeaveProject();
   const transferMutation = useTransferOwnership();
   const deleteProjectMutation = useDeleteProject();
@@ -548,16 +548,21 @@ export default function ProjectDetailsScreen({ navigation, route }) {
     setShowAddTask(true);
   }, [finalProjectId]);
 
-  const handleAddTaskSubmit = useCallback(async () => {
+  const handleAddTaskSubmit = useCallback(async (newTask) => {
     try {
       if (!addTaskForm.taskName.trim()) {
-        return Alert.alert('Error', 'Task name is required');
+        if (!newTask) return Alert.alert('Error', 'Task name is required');
       }
-      await createTask.mutateAsync({
-        ...addTaskForm,
-        projectId: finalProjectId,
-        taskWorklist: selectedWorklistForTask?.id || selectedWorklistForTask?._id
-      });
+
+      // AddTaskForm handles the API call and alerts success.
+      // We just need to cleanup and ensure the UI refreshes.
+
+      const worklistId = newTask?.worklistId || selectedWorklistForTask?.id || selectedWorklistForTask?._id;
+
+      invalidateTasks(worklistId, finalProjectId);
+      refetchWorklists();
+      refetchProject();
+
       setShowAddTask(false);
       setAddTaskForm({
         taskName: '',
@@ -572,9 +577,12 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         isIssue: false,
       });
     } catch (error) {
-      Alert.alert('Error', error.message || 'Failed to create task');
+      console.error('handleAddTaskSubmit Error:', error);
+      // Fallback in case something unexpected happens
+      refetchWorklists();
+      refetchProject();
     }
-  }, [addTaskForm, createTask, finalProjectId, selectedWorklistForTask]);
+  }, [addTaskForm.taskName, finalProjectId, invalidateTasks, refetchProject, refetchWorklists, selectedWorklistForTask]);
 
   const onRefresh = useCallback(() => {
     refetchProject();

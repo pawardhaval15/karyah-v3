@@ -86,11 +86,43 @@ export const leaveProject = async (projectId) => {
   }
 };
 
-export const fetchTaskDependencyChart = async (projectId) => {
+export const getTaskDependencyChartByProjectId = async (projectId) => {
   try {
     const response = await apiClient.get(`api/projects/${projectId}/dependency-chart`);
     return response.data;
   } catch (error) {
+    // If the specific endpoint is not found, fallback to building it from tasks
+    if (error.response && error.response.status === 404) {
+      console.warn('Dependency chart endpoint 404, falling back to local generation');
+      try {
+        const tasksResponse = await apiClient.get(`api/tasks/${projectId}`);
+        const rawTasks = tasksResponse.data.tasks || [];
+
+        // Ensure each task has an 'id' field
+        const tasks = rawTasks.map(t => ({
+          ...t,
+          id: String(t.id || t._id || t.taskId)
+        }));
+
+        // Generate dependencies from task data
+        const dependencies = [];
+        tasks.forEach(task => {
+          if (task.dependentTaskIds && Array.isArray(task.dependentTaskIds)) {
+            task.dependentTaskIds.forEach(depId => {
+              dependencies.push({
+                from: String(depId),
+                to: String(task.id)
+              });
+            });
+          }
+        });
+
+        return { tasks, dependencies };
+      } catch (fallbackError) {
+        console.error('Fallback Fetch Tasks Error:', fallbackError.message);
+        throw fallbackError;
+      }
+    }
     console.error('Fetch Dependency Chart Error:', error.message);
     throw error;
   }

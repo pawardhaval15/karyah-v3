@@ -270,7 +270,9 @@ export default function MyTasksScreen({ navigation }) {
       isIssue: false, // Reset isIssue
     });
     if (newTask) {
-      setTasks((prev) => [newTask, ...prev]);
+      invalidateTasks(newTask.worklistId, newTask.projectId);
+      refetchMyTasks();
+      refetchCreated();
     }
   };
 
