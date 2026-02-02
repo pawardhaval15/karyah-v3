@@ -1,26 +1,29 @@
-import { Feather, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
+import { Feather, Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import Slider from '@react-native-community/slider'; // Add this import
+import Slider from '@react-native-community/slider';
 import AttachmentSheet from 'components/popups/AttachmentSheet';
 import CoAdminListPopup from 'components/popups/CoAdminListPopup';
-import { Audio } from 'expo-av';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { jwtDecode } from 'jwt-decode';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-    ActivityIndicator, Alert, Image, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View,
+    ActivityIndicator, Alert, Dimensions, Image, Modal, Platform, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View,
 } from 'react-native';
+import Animated, {
+    FadeInDown,
+    FadeInUp,
+    useAnimatedProps,
+    useSharedValue,
+    withTiming
+} from 'react-native-reanimated';
+import Svg, { Circle, G, Path } from 'react-native-svg';
 import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
 import ImageModal from '../components/issue details/ImageModal';
 import AddSubTaskPopup from '../components/popups/AddSubTaskPopup';
-import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
-import TaskChatPopup from '../components/popups/TaskChatPopup';
-import TaskReassignPopup from '../components/popups/TaskReassignPopup';
 import useAttachmentPicker from '../components/popups/useAttachmentPicker';
 import DateBox from '../components/project details/DateBox';
-import CustomCircularProgress from '../components/task details/CustomCircularProgress';
 import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
@@ -32,12 +35,67 @@ import {
     moveTaskToNextStage,
     reopenTask,
     updateTask,
-    updateTaskDetails,
     updateTaskFlags,
-    updateTaskProgress,
+    updateTaskProgress
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
 import { getWorklistsByProjectId } from '../utils/worklist';
+
+const { width: screenWidth } = Dimensions.get('window');
+const AnimatedCircle = Animated.createAnimatedComponent(Circle);
+
+const CircularProgress = memo(({ percentage, size = 100, strokeWidth = 8, theme }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const animatedProgress = useSharedValue(percentage);
+
+    useEffect(() => {
+        animatedProgress.value = withTiming(percentage, { duration: 1000 });
+    }, [percentage]);
+
+    const animatedProps = useAnimatedProps(() => {
+        const offset = circumference - (Math.min(100, Math.max(0, animatedProgress.value)) / 100) * circumference;
+        return { strokeDashoffset: offset };
+    });
+
+    return (
+        <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+            <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+                <G rotation="-90" origin={`${size / 2}, ${size / 2}`}>
+                    <Circle
+                        cx={size / 2} cy={size / 2} r={radius}
+                        stroke={theme.mode === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)'}
+                        strokeWidth={strokeWidth} fill="none"
+                    />
+                    <AnimatedCircle
+                        cx={size / 2} cy={size / 2} r={radius}
+                        stroke={theme.primary} strokeWidth={strokeWidth}
+                        fill="none" strokeDasharray={circumference}
+                        animatedProps={animatedProps} strokeLinecap="round"
+                    />
+                </G>
+            </Svg>
+            <View style={{ position: 'absolute', alignItems: 'center' }}>
+                <Text style={{ fontSize: size * 0.2, fontWeight: '700', color: theme.text }}>{Math.round(percentage)}%</Text>
+            </View>
+        </View>
+    );
+});
+
+const ActivityChart = memo(({ theme }) => {
+    const data = [40, 60, 45, 90, 65, 80, 70];
+    const max = Math.max(...data);
+    const points = data.map((d, i) => `${(i / (data.length - 1)) * 100},${40 - (d / max) * 30}`).join(' ');
+
+    return (
+        <View style={{ height: 80, width: '100%' }}>
+            <Svg width="100%" height="80" viewBox="0 0 100 40" preserveAspectRatio="none">
+                <Path d={`M 0 40 L 0 ${40 - (data[0] / max) * 30} L ${points} L 100 40 Z`} fill={theme.primary + '20'} />
+                <Path d={`M 0 ${40 - (data[0] / max) * 30} L ${points}`} fill="none" stroke={theme.primary} strokeWidth="1.5" />
+            </Svg>
+        </View>
+    );
+});
 
 export default function SubTaskDetailsScreen({ route, navigation }) {
     // Store decoded token globally for this component
@@ -589,287 +647,188 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
         : task.progress === 100;
 
     return (
-        <View
-            style={{
-                flex: 1,
-                backgroundColor: theme.background,
-                paddingTop: Platform.OS === 'ios' ? 70 : 25,
-            }}>
-            <ScrollView contentContainerStyle={{ paddingBottom: showSubtasks ? 60 : 80 }}>
-                {/* Top Navigation */}
-                <View
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        paddingHorizontal: 10,
-                    }}>
-                    <TouchableOpacity style={styles.backBtn} onPress={handleGoBack}>
-                        <MaterialIcons name="arrow-back-ios" size={16} color={theme.text} />
-                        <Text style={[styles.backText, { color: theme.text }]}>{t('back')}</Text>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
+            <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingBottom: 100, paddingTop: Platform.OS === 'ios' ? 60 : 40 }}
+            >
+                {/* Header Navigation */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10 }}>
+                    <TouchableOpacity
+                        onPress={handleGoBack}
+                        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.border }}
+                    >
+                        <Feather name="chevron-left" size={24} color={theme.text} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => setMenuVisible(true)} style={{ padding: 8 }}>
-                        <Feather name="more-vertical" size={22} color={theme.text} />
+                    <Text style={{ fontSize: 18, fontWeight: '800', color: theme.text }}>{t('subtask_details') || 'Subtask Details'}</Text>
+                    <TouchableOpacity
+                        onPress={() => setMenuVisible(true)}
+                        style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: theme.card, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: theme.border }}
+                    >
+                        <Feather name="more-horizontal" size={20} color={theme.text} />
                     </TouchableOpacity>
                 </View>
-                {/* Header */}
-                <LinearGradient
-                    colors={[theme.secondary, theme.primary]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={styles.headerCard}
-                >
-                    <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-                        {/* Task Info: flex 1, wraps properly */}
-                        <View style={{ flex: 1, minWidth: 0 }}>
-                            <TouchableOpacity onPress={() => setShowTaskNameModal(true)}>
-                                <Text
-                                    style={[
-                                        styles.taskName,
-                                        {
-                                            flexShrink: 1,
-                                            flexWrap: 'wrap',
-                                            fontWeight: '600',
-                                            color: '#fff',
-                                            fontSize: 20,
-                                            minWidth: 0, // Adds proper text ellipsis handling
-                                        }
-                                    ]}
-                                    numberOfLines={2}
-                                    ellipsizeMode="tail"
-                                >
-                                    {task.taskName}
-                                </Text>
-                            </TouchableOpacity>
-                            <Text style={styles.dueDate}>
-                                {t('due_date')}: {task.endDate ? new Date(task.endDate).toDateString() : '-'}
-                            </Text>
-                            {/* STATUS BADGES ROW */}
-                            <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
-                                {/* Hold Badge */}
-                                {task.status === 'Hold' && (
-                                    <View style={{
-                                        backgroundColor: '#FF9800', // Orange for Hold
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 3,
-                                        borderRadius: 6,
-                                        alignSelf: 'flex-start'
-                                    }}>
-                                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>ON HOLD</Text>
-                                    </View>
-                                )}
 
-                                {/* Completed Badge (Optional but useful) */}
-                                {(task.status === 'Completed' || task.progress === 100) && (
-                                    <View style={{
-                                        backgroundColor: '#4CAF50', // Green for Completed
-                                        paddingHorizontal: 8,
-                                        paddingVertical: 3,
-                                        borderRadius: 6,
-                                        alignSelf: 'flex-start'
-                                    }}>
-                                        <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>COMPLETED</Text>
+                {/* Premium Top Card */}
+                <Animated.View entering={FadeInUp.delay(200)}>
+                    <View style={[styles.premiumTopCard, { backgroundColor: theme.primary }]}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <View style={{ flex: 1, marginRight: 15 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                                    <View style={styles.statusBadge}>
+                                        <Text style={styles.statusBadgeText}>{task.status || 'Pending'}</Text>
                                     </View>
-                                )}
+                                    {task.isCritical && (
+                                        <View style={[styles.statusBadge, { backgroundColor: '#EF4444' }]}>
+                                            <Text style={styles.statusBadgeText}>CRITICAL</Text>
+                                        </View>
+                                    )}
+                                </View>
+                                <Text style={styles.premiumTaskName} numberOfLines={2}>{task.taskName}</Text>
+                                <View style={styles.premiumDueDateRow}>
+                                    <Feather name="calendar" size={14} color="#fff" style={{ marginRight: 6 }} />
+                                    <Text style={{ color: '#fff', fontSize: 13, fontWeight: '500' }}>
+                                        {task.endDate ? new Date(task.endDate).toLocaleDateString() : 'No date'}
+                                    </Text>
+                                </View>
                             </View>
+                            <CircularProgress percentage={task.progress || 0} size={85} strokeWidth={8} theme={theme} />
                         </View>
-                        {/* Details Button: stays at right, never hidden */}
-                        <TouchableOpacity
-                            onPress={() => setShowTaskDetails((prev) => !prev)}
-                            style={{
-                                backgroundColor: 'rgba(255,255,255,0.2)',
-                                borderRadius: 12,
-                                paddingHorizontal: 12,
-                                paddingVertical: 8,
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                borderWidth: 1,
-                                borderColor: 'rgba(255,255,255,0.3)',
-                                marginLeft: 12, // Spacing from task name
-                                alignSelf: 'flex-start',
-                            }}>
-                            <MaterialIcons name="description" size={16} color="#fff" style={{ marginRight: 6 }} />
-                            <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>
-                                {t('details')}
-                            </Text>
-                            <MaterialIcons
-                                name={showTaskDetails ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
-                                size={16}
-                                color="#fff"
-                                style={{ marginLeft: 4 }}
-                            />
-                        </TouchableOpacity>
                     </View>
-                </LinearGradient>
-                {/* Task Action Buttons */}
-                <View
-                    style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        marginHorizontal: 20,
-                        marginTop: 0,
-                        marginBottom: 12,
-                        gap: 10,
-                    }}>
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => setShowTaskChat(true)}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: theme.card,
-                            borderRadius: 18,
-                            paddingHorizontal: 14,
-                            paddingVertical: 7,
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                        }}>
-                        <MaterialIcons name="chat" size={18} color={theme.primary} style={{ marginRight: 7 }} />
-                        <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('chat')}</Text>
-                    </TouchableOpacity>
-                    {/* Reassign Task button */}
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => setShowReassignModal(true)}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: theme.card,
-                            borderRadius: 18,
-                            paddingHorizontal: 14,
-                            paddingVertical: 7,
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                        }}>
-                        <MaterialIcons name="swap-horiz" size={18} color="#FF6B35" style={{ marginRight: 7 }} />
-                        <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('reassign')}</Text>
-                    </TouchableOpacity>
+                </Animated.View>
 
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        onPress={() => setShowMaterialRequest(true)}
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: theme.card,
-                            borderRadius: 18,
-                            paddingHorizontal: 14,
-                            paddingVertical: 7,
-                            borderWidth: 1,
-                            borderColor: theme.border,
-                        }}>
-                        <MaterialIcons name="inventory" size={18} color="#FF9800" style={{ marginRight: 7 }} />
-                        <Text style={{ color: theme.text, fontWeight: '400', fontSize: 13 }}>{t('requirements')}</Text>
-                    </TouchableOpacity>
-                </View>
-                <TaskChatPopup
-                    visible={showTaskChat}
-                    onClose={() => setShowTaskChat(false)}
-                    messages={chatMessages}
-                    onSend={handleSendChatMessage}
-                    theme={theme}
-                    currentUserId={currentUserId}
-                    loading={chatLoading}
-                    users={users}
-                    task={task}
-                />
-                <MaterialRequestPopup
-                    visible={showMaterialRequest}
-                    onClose={() => setShowMaterialRequest(false)}
-                    taskId={task.id || task._id || task.taskId}
-                    projectId={task.projectId}
-                    theme={theme}
-                />
-                <TaskReassignPopup
-                    visible={showReassignModal}
-                    onClose={(wasReassigned) => {
-                        setShowReassignModal(false);
-                        if (wasReassigned) {
-                            // Navigate back since user is no longer assigned to this task
-                            navigation.goBack();
-                        }
-                    }}
-                    taskId={task?.id || task?._id || task?.taskId}
-                    theme={theme}
-                    currentAssignees={task?.assignedUserDetails || []}
-                    isCreator={isCreator}
-                />
+                {/* Stats Grid */}
+                <Animated.View entering={FadeInDown.delay(400)} style={styles.statsGrid}>
+                    <View style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <Ionicons name="link-outline" size={24} color={theme.primary} />
+                        <Text style={[styles.statsCount, { color: theme.text }]}>{task.dependentTasks?.length || 0}</Text>
+                        <Text style={styles.statsLabel}>Deps</Text>
+                    </View>
+                    <View style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <Ionicons name="git-branch-outline" size={24} color="#10B981" />
+                        <Text style={[styles.statsCount, { color: theme.text }]}>{task.subTasks?.length || 0}</Text>
+                        <Text style={styles.statsLabel}>Subtasks</Text>
+                    </View>
+                    <View style={[styles.statsCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                        <Ionicons name="cube-outline" size={24} color="#F59E0B" />
+                        <Text style={[styles.statsCount, { color: theme.text }]}>0</Text>
+                        <Text style={styles.statsLabel}>Items</Text>
+                    </View>
+                </Animated.View>
 
-                {isWorkflowTask ? (
-                    //WORKFLOW MODE VIEW
-                    <View style={[styles.workflowCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
-                        <View style={styles.workflowHeader}>
-                            <MaterialCommunityIcons name="transit-connection-variant" size={20} color={theme.primary} />
-                            <Text style={[styles.workflowTitle, { color: theme.text }]}>WORKFLOW STAGE</Text>
-                            <View style={[styles.stageBadge, { backgroundColor: theme.primary + '20' }]}>
-                                <Text style={[styles.stageBadgeText, { color: theme.primary }]}>{task.category?.replace('_', ' ')}</Text>
-                            </View>
+                {/* Activity Chart */}
+                <Animated.View entering={FadeInDown.delay(500)} style={[styles.chartCard, { backgroundColor: theme.card, borderColor: theme.border }]}>
+                    <View style={styles.chartHeader}>
+                        <View>
+                            <Text style={{ fontSize: 16, fontWeight: '800', color: theme.text }}>Velocity</Text>
+                            <Text style={{ fontSize: 12, color: theme.secondaryText }}>Weekly activity tracking</Text>
                         </View>
+                        <View style={{ backgroundColor: theme.primary + '15', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 }}>
+                            <Text style={{ color: theme.primary, fontSize: 12, fontWeight: '700' }}>Active</Text>
+                        </View>
+                    </View>
+                    <ActivityChart theme={theme} />
+                </Animated.View>
 
+                {/* Action Row */}
+                <Animated.View entering={FadeInDown.delay(600)} style={styles.actionCircleRow}>
+                    <TouchableOpacity onPress={() => setShowTaskChat(true)} style={styles.actionCircle}>
+                        <Ionicons name="chatbubbles-outline" size={22} color={theme.primary} />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: theme.secondaryText, marginTop: 4 }}>Chat</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowMaterialRequest(true)} style={styles.actionCircle}>
+                        <Ionicons name="document-text-outline" size={22} color="#10B981" />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: theme.secondaryText, marginTop: 4 }}>Docs</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowReassignModal(true)} style={styles.actionCircle}>
+                        <Ionicons name="people-outline" size={22} color="#F59E0B" />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: theme.secondaryText, marginTop: 4 }}>Team</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setShowTaskDetails(p => !p)} style={[styles.actionCircle, showTaskDetails && { backgroundColor: theme.primary }]}>
+                        <Ionicons name="options-outline" size={22} color={showTaskDetails ? "#fff" : "#6366F1"} />
+                        <Text style={{ fontSize: 10, fontWeight: '600', color: showTaskDetails ? "#fff" : theme.secondaryText, marginTop: 4 }}>Log</Text>
+                    </TouchableOpacity>
+                </Animated.View>
+
+                {/* Task Details Section */}
+                {showTaskDetails && (
+                    <Animated.View entering={FadeInDown} style={{ marginBottom: 20 }}>
+                        <FieldBox label={t("project")} value={task.projectName || '-'} theme={theme} />
+                        <FieldBox label={t("description")} value={task.description || ''} editable={false} multiline={true} theme={theme} />
+                        <View style={styles.dateRow}>
+                            <DateBox label={t("start")} value={new Date(task.startDate)} theme={theme} />
+                            <DateBox label={t("end")} value={new Date(task.endDate)} theme={theme} />
+                        </View>
+                        {/* Attachments Field */}
+                        <FieldBox
+                            label={t("attachments")}
+                            value=""
+                            placeholder={`${allAttachments.length} files attached`}
+                            rightComponent={
+                                <TouchableOpacity
+                                    style={{ backgroundColor: theme.primary + '15', padding: 8, borderRadius: 8 }}
+                                    onPress={() => { setDrawerVisible(true); setDrawerAttachments(task.images || []); }}
+                                >
+                                    <Text style={{ color: theme.primary, fontWeight: '700', fontSize: 12 }}>View All</Text>
+                                </TouchableOpacity>
+                            }
+                            theme={theme}
+                        />
+                    </Animated.View>
+                )}
+
+                {/* Workflow/Legacy View */}
+                {isWorkflowTask ? (
+                    <Animated.View entering={FadeInDown.delay(700)} style={[styles.workflowCard, { backgroundColor: theme.card, borderColor: theme.border + '50', elevation: 2 }]}>
+                        <View style={styles.workflowHeader}>
+                            <Ionicons name="git-network-outline" size={20} color={theme.primary} />
+                            <Text style={[styles.workflowTitle, { color: theme.text }]}>WORKFLOW PROGRESS</Text>
+                        </View>
                         <View style={styles.stepperContainer}>
-                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', paddingVertical: 10 }}>
+                            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingVertical: 10 }}>
                                 {workflowStages.map((stage, index) => {
                                     const isCompleted = index < currentStageIndex;
                                     const isCurrent = index === currentStageIndex;
                                     return (
                                         <View key={stage.key} style={{ flexDirection: 'row', alignItems: 'center' }}>
                                             <View style={{ alignItems: 'center' }}>
-                                                <View style={[styles.stepNode, isCompleted ? { backgroundColor: '#21B573', borderColor: '#21B573' } : isCurrent ? { backgroundColor: theme.primary, borderColor: theme.primary } : { backgroundColor: theme.card, borderColor: theme.border }]}>
-                                                    {isCompleted ? <Feather name="check" size={12} color="#fff" /> : <Text style={[styles.stepNumber, { color: isCurrent ? '#fff' : theme.secondaryText }]}>{index + 1}</Text>}
+                                                <View style={[styles.stepNode, isCompleted ? { backgroundColor: '#10B981', borderColor: '#10B981' } : isCurrent ? { backgroundColor: theme.primary, borderColor: theme.primary } : { backgroundColor: theme.card, borderColor: theme.border }]}>
+                                                    {isCompleted ? <Feather name="check" size={12} color="#fff" /> : <Text style={{ color: isCurrent ? '#fff' : theme.secondaryText, fontSize: 10, fontWeight: '700' }}>{index + 1}</Text>}
                                                 </View>
-                                                {isCurrent && <Text style={[styles.stepLabelActive, { color: theme.primary }]} numberOfLines={1}>{stage.label}</Text>}
+                                                {isCurrent && <Text style={{ color: theme.primary, fontSize: 10, fontWeight: '700', marginTop: 4 }}>{stage.label}</Text>}
                                             </View>
-                                            {index < workflowStages.length - 1 && <View style={[styles.stepLine, (index < currentStageIndex) ? { backgroundColor: '#21B573' } : { backgroundColor: theme.border }]} />}
+                                            {index < workflowStages.length - 1 && <View style={[styles.stepLine, index < currentStageIndex ? { backgroundColor: '#10B981' } : { backgroundColor: theme.border }]} />}
                                         </View>
                                     );
                                 })}
                             </ScrollView>
                         </View>
-
-                        <View style={styles.currentStageBox}>
-                            <Text style={[styles.currentStageLabel, { color: theme.secondaryText }]}>CURRENT STAGE</Text>
-                            <Text style={[styles.currentStageValue, { color: theme.text }]}>{currentStageLabel}</Text>
-                        </View>
-
                         {!isTaskCompleted && (
-                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.primary }]} onPress={handleNextStage} disabled={stageLoading}>
-                                {stageLoading ? <ActivityIndicator color="#fff" size="small" /> : <><Feather name="check-circle" size={18} color="#fff" style={{ marginRight: 8 }} /><Text style={styles.actionBtnText}>Mark as Complete</Text></>}
+                            <TouchableOpacity style={[styles.actionBtn, { backgroundColor: theme.primary, borderRadius: 16, marginTop: 15 }]} onPress={handleNextStage} disabled={stageLoading}>
+                                {stageLoading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={styles.actionBtnText}>Complete Next Stage</Text>}
                             </TouchableOpacity>
                         )}
-
-                        {isTaskCompleted && (
-                            <View style={[styles.completedBanner, { backgroundColor: '#21B57320' }]}>
-                                <Feather name="check" size={16} color="#21B573" />
-                                <Text style={{ color: '#21B573', fontWeight: '600', marginLeft: 6 }}>Workflow Completed</Text>
-                            </View>
-                        )}
-                    </View>
+                    </Animated.View>
                 ) : (
-                    // LEGACY MODE VIEW
-                    task && typeof editableProgress === 'number' && (
-                        <View style={{ marginHorizontal: 22, marginTop: 0, marginBottom: 10 }}>
-                            <Text style={{ color: theme.text, fontWeight: '500', fontSize: 16, marginBottom: 8 }}>{t('progress')}: {editableProgress}%</Text>
-                            <Slider
-                                style={{ width: '100%', height: 18 }}
-                                minimumValue={0} maximumValue={100} step={1}
-                                minimumTrackTintColor={theme.primary} maximumTrackTintColor={theme.secCard} thumbTintColor={theme.primary}
-                                value={editableProgress ?? 0}
-                                onValueChange={(value) => { isSlidingRef.current = true; setEditableProgress(value); }}
-                                onSlidingComplete={async (value) => {
-                                    isSlidingRef.current = false;
-                                    const prevProgress = lastProgressRef.current;
-                                    if (value === 100) {
-                                        Alert.alert('Complete Task?', 'Mark as 100% complete?', [
-                                            { text: 'No', style: 'cancel', onPress: () => setEditableProgress(prevProgress) },
-                                            { text: 'Yes', onPress: async () => await handleUpdateProgress(value, prevProgress) },
-                                        ]);
-                                    } else {
-                                        await handleUpdateProgress(value, prevProgress);
-                                    }
-                                }}
-                            />
+                    <Animated.View entering={FadeInDown.delay(700)} style={{ marginHorizontal: 22, backgroundColor: theme.card, padding: 15, borderRadius: 20, borderWidth: 1, borderColor: theme.border }}>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+                            <Text style={{ color: theme.text, fontWeight: '700' }}>Task Progress</Text>
+                            <Text style={{ color: theme.primary, fontWeight: '800' }}>{editableProgress}%</Text>
                         </View>
-                    )
+                        <Slider
+                            style={{ width: '100%', height: 40 }}
+                            minimumValue={0} maximumValue={100} step={1}
+                            minimumTrackTintColor={theme.primary}
+                            maximumTrackTintColor={theme.border}
+                            thumbTintColor={theme.primary}
+                            value={editableProgress ?? 0}
+                            onValueChange={v => { isSlidingRef.current = true; setEditableProgress(v); }}
+                            onSlidingComplete={async v => {
+                                isSlidingRef.current = false;
+                                await handleUpdateProgress(v, lastProgressRef.current);
+                            }}
+                        />
+                    </Animated.View>
                 )}
                 {showTaskDetails && (
                     <>
@@ -1042,299 +1001,6 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                             title={coAdminListPopupTitle}
                         /></>)}
 
-                {/* Critical Toggle - Only show when task is an issue */}
-                {task.isIssue && (
-                    <View style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        backgroundColor: task.isCritical ? theme.criticalBg : theme.normalIssueBg,
-                        borderRadius: 14,
-                        borderWidth: 1,
-                        borderColor: task.isCritical ? theme.criticalBorder : theme.normalIssueBorder,
-                        marginHorizontal: 20,
-                        marginBottom: 16,
-                        padding: 12,
-                        gap: 12,
-                    }}>
-                        <View style={{
-                            width: 40,
-                            height: 40,
-                            borderRadius: 10,
-                            backgroundColor: task.isCritical ? theme.criticalIconBg : theme.normalIssueIconBg,
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}>
-                            <MaterialIcons
-                                name="warning"
-                                size={24}
-                                color={task.isCritical ? theme.criticalText : theme.normalIssueText}
-                            />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={{
-                                color: task.isCritical ? theme.criticalText : theme.normalIssueText,
-                                fontWeight: '700',
-                                fontSize: 16,
-                                marginBottom: 2,
-                            }}>
-                                {task.isCritical ? 'Critical Issue' : 'Normal Issue'}
-                            </Text>
-                            <Text style={{
-                                fontSize: 13,
-                                fontWeight: '400',
-                                lineHeight: 18,
-                                color: theme.text,
-                            }}>
-                                {task.isCritical
-                                    ? 'This issue requires immediate attention'
-                                    : 'Toggle to mark this issue as critical'
-                                }
-                            </Text>
-                        </View>
-                        {/* Show toggle for task creator */}
-                        {isCreator ? (
-                            <Switch
-                                value={task.isCritical || false}
-                                onValueChange={async (value) => {
-                                    try {
-                                        setLoading(true);
-                                        console.log('Updating task isCritical:', { taskId, value });
-
-                                        // Use updateTaskFlags to preserve assigned users
-                                        const flags = {
-                                            isCritical: value
-                                        };
-                                        await updateTaskFlags(taskId, flags);
-
-                                        // Refresh the task data
-                                        const updatedTask = await getTaskDetailsById(taskId);
-                                        setTask(updatedTask);
-
-                                        console.log('Task critical status updated successfully:', { taskId, isCritical: value });
-                                        Alert.alert(
-                                            'Success',
-                                            value
-                                                ? 'Issue marked as critical successfully.'
-                                                : 'Issue no longer marked as critical.'
-                                        );
-                                    } catch (err) {
-                                        console.error('Error updating task critical status:', err);
-                                        Alert.alert('Error', err.message || 'Failed to update critical status');
-                                    } finally {
-                                        setLoading(false);
-                                    }
-                                }}
-                                trackColor={{
-                                    false: '#ddd',
-                                    true: theme.criticalText
-                                }}
-                                thumbColor="#fff"
-                            />
-                        ) : (
-                            // Show status badge for non-creators
-                            <View style={{
-                                backgroundColor: task.isCritical ? theme.criticalBadgeBg : theme.normalIssueBadgeBg,
-                                paddingHorizontal: 12,
-                                paddingVertical: 6,
-                                borderRadius: 12,
-                            }}>
-                                <Text style={{
-                                    color: task.isCritical ? theme.criticalBadgeText : theme.normalIssueBadgeText,
-                                    fontWeight: '600',
-                                    fontSize: 12,
-                                }}>
-                                    {task.isCritical ? 'CRITICAL' : 'NORMAL'}
-                                </Text>
-                            </View>
-                        )}
-                    </View>
-                )}
-                <FieldBox
-                    label={t("description")}
-                    value={task.description || ''}
-                    editable={false}
-                    multiline={true}
-                    theme={theme}
-                />
-                <FieldBox
-                    label={t("added_attachments")}
-                    value=""
-                    placeholder={
-                        allAttachments.length === 0 ? t('no_attachments') : t('tap_on_view_to_see_attachments')
-                    }
-                    rightComponent={
-                        allAttachments.length > 0 && (
-                            <TouchableOpacity
-                                style={{
-                                    flexDirection: 'row',
-                                    alignItems: 'center',
-                                    paddingVertical: 6,
-                                    paddingHorizontal: 12,
-                                    backgroundColor: theme.primary,
-                                    borderRadius: 8,
-                                    justifyContent: 'center',
-                                }}
-                                onPress={() => {
-                                    setDrawerVisible(true);
-                                    setDrawerAttachments(task.images || []);
-                                }}>
-                                <MaterialIcons name="folder" size={16} color="#fff" />
-                                <Text style={{ color: '#fff', fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                                    {t("view")} ({allAttachments.length})
-                                </Text>
-                            </TouchableOpacity>
-                        )
-                    }
-                    theme={theme}
-                />
-                <FieldBox
-                    label={t("add_new_attachments")}
-                    value=""
-                    placeholder={t("tap_to_add_attachments")}
-                    rightComponent={
-                        <TouchableOpacity
-                            style={{
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                paddingVertical: 6,
-                                paddingHorizontal: 12,
-                                backgroundColor: theme.secCard,
-                                borderRadius: 8,
-                                justifyContent: 'center',
-                            }}
-                            onPress={() => setShowAttachmentSheet(true)}>
-                            <Feather name="paperclip" size={16} color={theme.primary} />
-                            <Text style={{ color: theme.primary, fontWeight: '500', marginLeft: 4, fontSize: 12 }}>
-                                {uploadingAttachment
-                                    ? t('uploading')
-                                    : attaching
-                                        ? t('attaching')
-                                        : t('add_files')}
-                            </Text>
-
-                        </TouchableOpacity>
-                    }
-                    theme={theme}
-                />
-                {newAttachments.length > 0 && (
-                    <View style={{ marginHorizontal: 16, marginBottom: 10 }}>
-                        {/* Show two attachments per row */}
-                        {Array.from({ length: Math.ceil(newAttachments.length / 2) }).map((_, rowIdx) => (
-                            <View
-                                key={rowIdx}
-                                style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
-                                {[0, 1].map((colIdx) => {
-                                    const idx = rowIdx * 2 + colIdx;
-                                    const att = newAttachments[idx];
-                                    if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
-                                    return (
-                                        <View
-                                            key={att.uri || att.name || idx}
-                                            style={{
-                                                flex: 1,
-                                                flexDirection: 'row',
-                                                alignItems: 'center',
-                                                justifyContent: 'flex-start',
-                                                padding: 8,
-                                                borderWidth: 1,
-                                                borderColor: theme.border,
-                                                borderRadius: 10,
-                                                backgroundColor: theme.card,
-                                                marginRight: colIdx === 0 ? 12 : 0,
-                                            }}>
-                                            {/* Preview for images */}
-                                            {att.type && att.type.startsWith('image') ? (
-                                                <TouchableOpacity
-                                                    onPress={() => {
-                                                        /* Optionally open image in modal */
-                                                    }}>
-                                                    <Image
-                                                        source={{ uri: att.uri }}
-                                                        style={{ width: 25, height: 25, borderRadius: 6, marginRight: 8 }}
-                                                    />
-                                                </TouchableOpacity>
-                                            ) : null}
-                                            {/* Preview for audio */}
-                                            {att.type && att.type.startsWith('audio') ? (
-                                                <TouchableOpacity
-                                                    onPress={async () => {
-                                                        try {
-                                                            const { sound } = await Audio.Sound.createAsync({ uri: att.uri });
-                                                            await sound.playAsync();
-                                                        } catch (error) {
-                                                            console.error('Failed to play audio:', error);
-                                                            Alert.alert('Error', 'Could not play audio file');
-                                                        }
-                                                    }}
-                                                    style={{ marginRight: 8 }}>
-                                                    <MaterialCommunityIcons
-                                                        name="play-circle-outline"
-                                                        size={28}
-                                                        color="#1D4ED8"
-                                                    />
-                                                </TouchableOpacity>
-                                            ) : null}
-                                            {/* File/document icon for other types */}
-                                            {!att.type?.startsWith('image') && !att.type?.startsWith('audio') ? (
-                                                <MaterialCommunityIcons
-                                                    name="file-document-outline"
-                                                    size={28}
-                                                    color="#888"
-                                                    style={{ marginRight: 8 }}
-                                                />
-                                            ) : null}
-                                            {/* File name */}
-                                            <Text style={{ color: theme.text, fontSize: 13, flex: 1 }}>
-                                                {(att.name || att.uri?.split('/').pop() || 'Attachment').length > 20
-                                                    ? (att.name || att.uri?.split('/').pop()).slice(0, 15) + '...'
-                                                    : att.name || att.uri?.split('/').pop()}
-                                            </Text>
-                                            {/* Remove button */}
-                                            <TouchableOpacity
-                                                onPress={() => {
-                                                    // Use setNewAttachments from useAttachmentPicker
-                                                    setNewAttachments((prev) => prev.filter((_, i) => i !== idx));
-                                                }}
-                                                style={{ marginLeft: 8 }}>
-                                                <MaterialCommunityIcons name="close-circle" size={22} color="#E53935" />
-                                            </TouchableOpacity>
-                                        </View>
-                                    );
-                                })}
-                            </View>
-                        ))}
-                        <TouchableOpacity
-                            style={{
-                                backgroundColor: theme.primary,
-                                borderRadius: 8,
-                                paddingHorizontal: 18,
-                                paddingVertical: 10,
-                                alignItems: 'center',
-                                marginTop: 6,
-                            }}
-                            disabled={uploadingAttachment}
-                            onPress={async () => {
-                                setUploadingAttachment(true);
-                                try {
-                                    await updateTaskDetails(task.id || task._id || task.taskId, {
-                                        attachments: newAttachments,
-                                    });
-                                    clearAttachments();
-                                    // Refresh task details to show new attachments
-                                    const updated = await getTaskDetailsById(task.id || task._id || task.taskId);
-                                    setTask(updated);
-                                    Alert.alert('Success', 'Attachment(s) added!');
-                                } catch (err) {
-                                    Alert.alert('Error', err.message || 'Failed to add attachment.');
-                                }
-                                setUploadingAttachment(false);
-                            }}>
-                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>
-                                {uploadingAttachment ? 'Uploading...' : 'Upload to Task'}
-                            </Text>
-                        </TouchableOpacity>
-                    </View>
-                )}
                 <AttachmentSheet
                     visible={showAttachmentSheet}
                     onClose={() => setShowAttachmentSheet(false)}
@@ -1643,161 +1309,85 @@ export default function SubTaskDetailsScreen({ route, navigation }) {
                     </View>
                 </Modal>
                 {/* Subtasks Section */}
-                <View style={[styles.subTaskHeader, { marginTop: 0 }]}>
+                {/* Subtask Section */}
+                <View style={{ marginTop: 20 }}>
                     <TouchableOpacity
-                        style={[
-                            styles.viewSubtaskBtn,
-                            {
-                                backgroundColor: theme.secCard,
-                                borderRadius: 12,
-                                paddingVertical: 10,
-                                paddingHorizontal: 16,
-                                flexDirection: 'row',
-                                borderWidth: 1,
-                                alignItems: 'center',
-                                borderColor: theme.border,
-                            },
-                        ]}
-                        onPress={() => {
-                            setShowSubtasks((prev) => !prev);
-                            // Clear search when hiding subtasks
-                            if (showSubtasks) {
-                                setSubtaskSearch('');
-                            }
-                        }}
-                        activeOpacity={0.85}>
-                        <Feather
-                            name={showSubtasks ? 'chevron-down' : 'chevron-up'}
-                            size={18}
-                            color={theme.text}
-                        />
-                        <Text
-                            style={[
-                                styles.viewSubtaskBtnText,
-                                { color: theme.text, fontWeight: '500', fontSize: 14, marginLeft: 8 },
-                            ]}
-                        >
-                            {showSubtasks
-                                ? t('hide_subtasks')
-                                : t('view_subtasks', { count: task.subTasks?.length || 0 })}
+                        onPress={() => setShowSubtasks(p => !p)}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginHorizontal: 20, marginBottom: 15 }}
+                    >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                            <View style={{ width: 4, height: 20, backgroundColor: theme.primary, borderRadius: 2, marginRight: 10 }} />
+                            <Text style={styles.premiumSectionTitle}>{t("subtasks")} ({task.subTasks?.length || 0})</Text>
+                        </View>
+                        <Feather name={showSubtasks ? "chevron-up" : "chevron-down"} size={20} color={theme.secondaryText} />
+                    </TouchableOpacity>
 
-                            {subtaskSearch && showSubtasks && ` • ${t('found_subtasks', { count: filteredSubtasks.length })}`}
-                        </Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={{
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: theme.primary,
-                            borderRadius: 12,
-                            paddingVertical: 10,
-                            paddingHorizontal: 16,
-                            marginLeft: 10,
-                            shadowColor: '#000',
-                            shadowOpacity: 0.1,
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowRadius: 4,
-                            elevation: 3,
-                        }}
-                        onPress={() => setShowAddSubTaskPopup(true)}
-                        activeOpacity={0.85}>
-                        <Feather name="plus" size={18} color="#fff" />
-                        <Text style={{ color: '#fff', fontWeight: '500', fontSize: 14, marginLeft: 8 }}>
-                            {t("add_subtask")}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-                {showSubtasks && (
-                    <View
-                        style={[
-                            styles.subtasksCard,
-                            { backgroundColor: theme.card, borderColor: theme.border, marginTop: 0 },
-                        ]}>
-                        <Text style={[styles.subtasksTitle, { color: theme.text, marginBottom: 16 }]}>
-                            {t("subtasks")} ({task.subTasks?.length || 0})
-                        </Text>
-                        {/* Search Bar */}
-                        {(task.subTasks?.length || 0) > 0 && (
-                            <View
-                                style={[
-                                    styles.searchContainer,
-                                    { backgroundColor: theme.secCard, borderColor: theme.border },
-                                ]}>
-                                <Feather
-                                    name="search"
-                                    size={16}
-                                    color={theme.secondaryText}
-                                    style={{ marginRight: 8 }}
-                                />
-                                <TextInput
-                                    style={[styles.searchInput, { color: theme.text }]}
-                                    placeholder={t("search_subtasks")}
-                                    placeholderTextColor={theme.secondaryText}
-                                    value={subtaskSearch}
-                                    onChangeText={setSubtaskSearch}
-                                />
-                                {subtaskSearch.length > 0 && (
-                                    <TouchableOpacity onPress={() => setSubtaskSearch('')} style={{ padding: 4 }}>
-                                        <Feather name="x" size={16} color={theme.secondaryText} />
+                    {showSubtasks && (
+                        <Animated.View entering={FadeInDown}>
+                            {/* Search Bar */}
+                            {(task.subTasks?.length || 0) > 0 && (
+                                <View style={[styles.searchContainer, { marginHorizontal: 20, backgroundColor: theme.card, borderColor: theme.border, marginBottom: 15 }]}>
+                                    <Feather name="search" size={18} color={theme.secondaryText} />
+                                    <TextInput
+                                        style={[styles.searchInput, { color: theme.text, marginLeft: 10 }]}
+                                        placeholder={t("search_subtasks")}
+                                        placeholderTextColor={theme.secondaryText}
+                                        value={subtaskSearch}
+                                        onChangeText={setSubtaskSearch}
+                                    />
+                                </View>
+                            )}
+
+                            {(!task.subTasks || task.subTasks.length === 0) ? (
+                                <View style={{ alignItems: 'center', padding: 40 }}>
+                                    <Ionicons name="git-branch-outline" size={48} color={theme.border} />
+                                    <Text style={{ color: theme.secondaryText, marginTop: 10 }}>{t("no_subtasks_available")}</Text>
+                                    <TouchableOpacity
+                                        style={{ marginTop: 15, backgroundColor: theme.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 }}
+                                        onPress={() => setShowAddSubTaskPopup(true)}
+                                    >
+                                        <Text style={{ color: '#fff', fontWeight: '700' }}>Add First Subtask</Text>
                                     </TouchableOpacity>
-                                )}
-                            </View>
-                        )}
-                        {!task.subTasks || task.subTasks.length === 0 ? (
-                            <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
-                                {t("no_subtasks_available")}
-                            </Text>
-                        ) : filteredSubtasks.length === 0 ? (
-                            <Text style={[styles.noSubtasksText, { color: theme.secondaryText }]}>
-                                {t("no_subtasks_found", { query: subtaskSearch })}
-                            </Text>
-                        ) : (
-                            filteredSubtasks.map((sub, idx) => (
-                                <TouchableOpacity
-                                    key={idx}
-                                    style={[
-                                        styles.subtaskCard,
-                                        { backgroundColor: theme.card, borderColor: theme.border },
-                                    ]}
-                                    onPress={() => {
-                                        // Reset subtask search when navigating
-                                        setSubtaskSearch('');
-                                        // Navigate to subtask details
-                                        navigation.push('TaskDetails', {
-                                            taskId: sub.id || sub.taskId || sub._id,
-                                            refreshedAt: Date.now(),
-                                        });
-                                    }}
-                                    activeOpacity={0.85}>
-                                    <View style={[styles.subtaskIcon, { backgroundColor: theme.avatarBg }]}>
-                                        <Text style={[styles.subtaskIconText, { color: theme.primary }]}>
-                                            {(sub.taskName || sub.name || 'T')[0]}
-                                        </Text>
-                                    </View>
-                                    <View style={{ flex: 1 }}>
-                                        <Text style={[styles.subtaskName, { color: theme.text }]}>
-                                            {sub.taskName || sub.name}
-                                        </Text>
-                                        <View style={styles.subtaskMeta}>
-                                            <View style={styles.subtaskAssignedRow}>
-                                                <Feather name="user" size={12} color={theme.secondaryText} />
-                                                <Text style={[styles.subtaskAssigned, { color: theme.secondaryText }]}>
-                                                    {sub.assignedUserDetails?.map((u) => u.name).join(', ') || 'Unassigned'}
-                                                </Text>
-                                            </View>
-                                            <View
-                                                style={[styles.progressBadge, { backgroundColor: theme.primary + '15' }]}>
-                                                <Text style={[styles.progressText, { color: theme.primary }]}>
-                                                    {sub.progress ?? 0}%
-                                                </Text>
-                                            </View>
-                                        </View>
-                                    </View>
-                                </TouchableOpacity>
-                            ))
-                        )}
-                    </View>
-                )}
+                                </View>
+                            ) : (
+                                <>
+                                    {filteredSubtasks.map((sub, idx) => (
+                                        <Animated.View key={sub.id || idx} entering={FadeInDown.delay(100 * idx)}>
+                                            <TouchableOpacity
+                                                style={[styles.premiumSubtaskCard, { backgroundColor: theme.card, borderColor: theme.border }]}
+                                                onPress={() => {
+                                                    setSubtaskSearch('');
+                                                    navigation.push('TaskDetails', {
+                                                        taskId: sub.id || sub.taskId || sub._id,
+                                                        refreshedAt: Date.now(),
+                                                    });
+                                                }}
+                                            >
+                                                <View style={[styles.subtaskAvatarContainer, { backgroundColor: theme.primary + '10' }]}>
+                                                    <Text style={{ color: theme.primary, fontWeight: '800' }}>{(sub.taskName || 'T')[0]}</Text>
+                                                </View>
+                                                <View style={styles.subtaskInfo}>
+                                                    <Text style={[styles.subtaskNameText, { color: theme.text }]}>{sub.taskName}</Text>
+                                                    <Text style={styles.subtaskUserText} numberOfLines={1}>
+                                                        {sub.assignedUserDetails?.map(u => u.name).join(', ') || 'Unassigned'}
+                                                    </Text>
+                                                </View>
+                                                <CircularProgress percentage={sub.progress ?? 0} size={42} strokeWidth={4} theme={theme} />
+                                            </TouchableOpacity>
+                                        </Animated.View>
+                                    ))}
+                                    <TouchableOpacity
+                                        onPress={() => setShowAddSubTaskPopup(true)}
+                                        style={{ marginHorizontal: 20, marginVertical: 10, padding: 15, borderRadius: 20, borderStyle: 'dashed', borderWidth: 2, borderColor: theme.border, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' }}
+                                    >
+                                        <Feather name="plus-circle" size={20} color={theme.primary} />
+                                        <Text style={{ color: theme.primary, fontWeight: '700', marginLeft: 8 }}>Add New Subtask</Text>
+                                    </TouchableOpacity>
+                                </>
+                            )}
+                        </Animated.View>
+                    )}
+                </View>
             </ScrollView>
             <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
                 <TouchableOpacity style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.2)' }} activeOpacity={1} onPress={() => setMenuVisible(false)}>
@@ -2627,5 +2217,158 @@ const styles = StyleSheet.create({
         paddingHorizontal: 18,
         borderRadius: 8,
         backgroundColor: 'rgba(52, 120, 246, 0.08)',
+    },
+    // Premium UI Styles
+    premiumTopCard: {
+        marginHorizontal: 20,
+        borderRadius: 24,
+        padding: 22,
+        marginTop: 15,
+        marginBottom: 20,
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowOffset: { width: 0, height: 10 },
+        shadowRadius: 20,
+    },
+    premiumTaskName: {
+        fontSize: 24,
+        fontWeight: '800',
+        color: '#fff',
+        letterSpacing: -0.5,
+    },
+    premiumDueDateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        opacity: 0.9,
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 10,
+        backgroundColor: 'rgba(255,255,255,0.2)',
+    },
+    statusBadgeText: {
+        color: '#fff',
+        fontSize: 11,
+        fontWeight: '700',
+        textTransform: 'uppercase',
+    },
+    statsGrid: {
+        flexDirection: 'row',
+        marginHorizontal: 20,
+        gap: 12,
+        marginBottom: 20,
+    },
+    statsCard: {
+        flex: 1,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    statsCount: {
+        fontSize: 18,
+        fontWeight: '800',
+        marginTop: 4,
+    },
+    statsLabel: {
+        fontSize: 10,
+        fontWeight: '600',
+        color: '#7B8794',
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    chartCard: {
+        marginHorizontal: 20,
+        padding: 16,
+        borderRadius: 24,
+        borderWidth: 1,
+        marginBottom: 20,
+    },
+    chartHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 15,
+    },
+    actionCircleRow: {
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 20,
+        marginBottom: 25,
+    },
+    actionCircle: {
+        width: 52,
+        height: 52,
+        borderRadius: 26,
+        backgroundColor: '#fff',
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 4,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowOffset: { width: 0, height: 4 },
+        shadowRadius: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    sectionTitleRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        marginBottom: 15,
+    },
+    premiumSectionTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+        color: '#1F2937',
+    },
+    premiumSubtaskCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 20,
+        marginBottom: 12,
+        padding: 12,
+        borderRadius: 20,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowOffset: { width: 0, height: 2 },
+        shadowRadius: 10,
+    },
+    subtaskAvatarContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    subtaskInfo: {
+        flex: 1,
+        marginLeft: 15,
+    },
+    subtaskNameText: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    subtaskUserText: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 2,
+    },
+    menuOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+    },
+    menuDivider: {
+        height: 1,
+        backgroundColor: '#F3F4F6',
+        marginHorizontal: 8,
     },
 });
