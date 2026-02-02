@@ -368,18 +368,18 @@ const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, 
       {isExpanded && (
         <Animated.View entering={FadeInUp.duration(300)} exiting={FadeOutUp.duration(200)} style={styles.expansionContent}>
           <View style={styles.expansionHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.expansionHeaderText}>Tasks in {item.name}</Text>
+            {/* <View style={{ flex: 1 }}> */}
+              <Text style={styles.expansionHeaderText}>Tasks & Issues in {item.name}</Text>
               <Text style={styles.expansionHeaderCount}>{tasks.length} {t('tasks')}</Text>
-            </View>
-            <TouchableOpacity
+            {/* </View> */}
+            {/* <TouchableOpacity
               onPress={() => onAddTask(item)}
               style={[styles.smallAddBtn, { backgroundColor: theme.primary + '15' }]}
               activeOpacity={0.7}
             >
               <Feather name="plus" size={14} color={theme.primary} />
               <Text style={[styles.smallAddBtnText, { color: theme.primary }]}>Add Task</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
 
           {isLoading ? (
