@@ -222,8 +222,10 @@ const ProjectHeader = memo(({
   const issueColor = theme.issueGradient ? theme.issueGradient[0] : '#FF9500';
   const taskColor = theme.taskGradient ? theme.taskGradient[0] : theme.primary;
 
+  const layoutTransition = Layout.springify().damping(18).stiffness(120);
+
   return (
-    <View>
+    <View style={{ flex: 1 }}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={onBack} activeOpacity={0.7}>
           <Ionicons name="chevron-back" size={24} color={theme.text} />
@@ -234,7 +236,11 @@ const ProjectHeader = memo(({
         </TouchableOpacity>
       </View>
 
-      <Animated.View entering={FadeInUp.delay(200)} layout={Layout.springify().damping(15)} style={styles.heroCard}>
+      <Animated.View
+        entering={FadeInUp.delay(200)}
+        layout={layoutTransition}
+        style={styles.heroCard}
+      >
         <View style={styles.heroTop}>
           <View style={{ marginRight: 20 }}>
             <CircularProgress percentage={projectDetails?.progress || 0} size={100} strokeWidth={10} theme={theme} />
@@ -256,7 +262,11 @@ const ProjectHeader = memo(({
         </View>
 
         {showProjectDetails && (
-          <Animated.View entering={FadeInDown} exiting={FadeOutUp} style={styles.heroExpansion}>
+          <Animated.View
+            entering={FadeInDown.duration(300)}
+            exiting={FadeOutUp.duration(200)}
+            style={styles.heroExpansion}
+          >
             <View style={styles.divider} />
             <Text style={styles.expansionTitle}>Project Description</Text>
             <Text style={styles.expansionText}>{projectDetails?.description || 'No description'}</Text>
@@ -268,7 +278,7 @@ const ProjectHeader = memo(({
         )}
       </Animated.View>
 
-      <View style={styles.analyticsGrid}>
+      <Animated.View layout={layoutTransition} style={styles.analyticsGrid}>
         <View style={[styles.analyticsCard, { flex: 1.2 }]}>
           <Text style={styles.cardTitle}>TASK STATUS</Text>
           <View style={{ flexDirection: 'row', gap: 15, alignItems: 'center', marginTop: 5 }}>
@@ -290,17 +300,22 @@ const ProjectHeader = memo(({
           <Text style={styles.cardTitle}>ACTIVITY</Text>
           <ActivityChart theme={theme} />
         </View>
-      </View>
+      </Animated.View>
 
-      <View style={styles.actionMenu}>
+      <Animated.View layout={layoutTransition} style={styles.actionMenu}>
         <QuickActionItem icon="message-circle" label="Chat" color="#4169E1" onPress={onChat} styles={styles} />
         <QuickActionItem icon="shopping-bag" label="Material" color={theme.primary} onPress={onMaterial} styles={styles} />
         <QuickActionItem icon="users" label="Team" color="#FF1493" onPress={() => setShowTeam(!showTeam)} styles={styles} />
         <QuickActionItem icon="share-2" label="Dependency" color="#32CD32" onPress={onDependency} styles={styles} />
-      </View>
+      </Animated.View>
 
       {showTeam && (
-        <Animated.View entering={FadeInDown} exiting={FadeOutUp} style={styles.teamExpansion}>
+        <Animated.View
+          entering={FadeInDown.duration(300)}
+          exiting={FadeOutUp.duration(200)}
+          layout={layoutTransition}
+          style={styles.teamExpansion}
+        >
           <View style={styles.teamHeader}>
             <Text style={styles.expansionTitle}>Project Team</Text>
           </View>
@@ -320,7 +335,7 @@ const ProjectHeader = memo(({
         </Animated.View>
       )}
 
-      <View style={[styles.worklistHeader, { marginTop: 30 }]}>
+      <Animated.View layout={layoutTransition} style={[styles.worklistHeader, { marginTop: 30 }]}>
         <Text style={styles.sectionTitle}>Project Worklists</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity style={styles.addNewButton} onPress={() => setCreateModalVisible(true)} activeOpacity={0.8}>
@@ -330,7 +345,7 @@ const ProjectHeader = memo(({
             <Text style={[styles.addNewText, { color: theme.primary }]}>+ Task</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </Animated.View>
     </View>
   );
 });
@@ -342,10 +357,12 @@ const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, 
 
   const { data: tasks = [], isLoading } = useTasksByWorklist(isExpanded ? item.id : null);
 
+  const layoutTransition = Layout.springify().damping(18).stiffness(120);
+
   return (
     <Animated.View
       entering={FadeInDown.delay(index * 100)}
-      layout={Layout.springify().damping(18).stiffness(120)}
+      layout={layoutTransition}
       style={styles.worklistWrapper}
     >
       <TouchableOpacity
@@ -366,20 +383,17 @@ const WorklistItem = memo(({ item, index, navigation, projectDetails, progress, 
       </TouchableOpacity>
 
       {isExpanded && (
-        <Animated.View entering={FadeInUp.duration(300)} exiting={FadeOutUp.duration(200)} style={styles.expansionContent}>
+        <Animated.View
+          entering={FadeInUp.duration(300)}
+          exiting={FadeOutUp.duration(200)}
+          layout={layoutTransition}
+          style={styles.expansionContent}
+        >
           <View style={styles.expansionHeader}>
-            {/* <View style={{ flex: 1 }}> */}
+            <View style={{ flex: 1 }}>
               <Text style={styles.expansionHeaderText}>Tasks & Issues in {item.name}</Text>
               <Text style={styles.expansionHeaderCount}>{tasks.length} {t('tasks')}</Text>
-            {/* </View> */}
-            {/* <TouchableOpacity
-              onPress={() => onAddTask(item)}
-              style={[styles.smallAddBtn, { backgroundColor: theme.primary + '15' }]}
-              activeOpacity={0.7}
-            >
-              <Feather name="plus" size={14} color={theme.primary} />
-              <Text style={[styles.smallAddBtnText, { color: theme.primary }]}>Add Task</Text>
-            </TouchableOpacity> */}
+            </View>
           </View>
 
           {isLoading ? (
@@ -682,6 +696,10 @@ export default function ProjectDetailsScreen({ navigation, route }) {
         ListHeaderComponent={listHeader}
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={5}
+        maxToRenderPerBatch={5}
+        windowSize={10}
         refreshControl={
           <RefreshControl refreshing={isProjectRefetching || isWorklistsRefreshing} onRefresh={onRefresh} tintColor={theme.primary} />
         }
