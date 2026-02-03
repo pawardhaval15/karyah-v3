@@ -2,12 +2,14 @@ import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
 import { useFocusEffect } from '@react-navigation/native';
+import { ResizeMode, Video } from 'expo-av';
 import { jwtDecode } from 'jwt-decode';
 import React, { memo, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator, Alert,
   Dimensions,
+  Image,
   Modal, Platform,
   RefreshControl,
   ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View
@@ -24,20 +26,25 @@ import AttachmentDrawer from '../components/issue details/AttachmentDrawer';
 import AttachmentPreviewModal from '../components/issue details/AttachmentPreviewDrawer';
 import ImageModal from '../components/issue details/ImageModal';
 import AddSubTaskPopup from '../components/popups/AddSubTaskPopup';
+import AttachmentSheet from '../components/popups/AttachmentSheet';
 import MaterialRequestPopup from '../components/popups/MaterialRequestPopup';
 import TaskChatPopup from '../components/popups/TaskChatPopup';
+import VoiceRecorderPopup from '../components/popups/VoiceRecorderPopup';
+
+// ... existing imports
+
 import TaskReassignPopup from '../components/popups/TaskReassignPopup';
 import useAttachmentPicker from '../components/popups/useAttachmentPicker';
-import DateBox from '../components/project details/DateBox';
-import FieldBox from '../components/task details/FieldBox';
 import { useTheme } from '../theme/ThemeContext';
 import { fetchProjectsByUser, fetchUserConnections } from '../utils/issues';
+
 import {
   deleteTask, getTaskDetailsById, getTasksByProjectId,
   holdTask,
   moveTaskToNextStage,
   reopenTask,
   updateTask,
+  updateTaskDetails,
   updateTaskFlags, updateTaskProgress
 } from '../utils/task';
 import { fetchTaskMessages, sendTaskMessage } from '../utils/taskMessage';
@@ -240,6 +247,15 @@ export default function TaskDetailsScreen({ route, navigation }) {
   });
   // Fix for ReferenceError: showAttachmentSheet
   const [showAttachmentSheet, setShowAttachmentSheet] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+  const [isGalleryExpanded, setIsGalleryExpanded] = useState(false);
+
+  const handleAudioRecorded = (file) => {
+    if (file && file.uri) {
+      setNewAttachments(prev => [...prev, file]);
+      // Alert.alert('Success', 'Audio recording added to staging!');
+    }
+  };
 
   // New Function to handle Stage Movement
   const handleNextStage = async () => {
@@ -710,6 +726,22 @@ export default function TaskDetailsScreen({ route, navigation }) {
               </Text>
             </View>
 
+            <View style={styles.premiumDueRow}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', flexShrink: 1 }}>
+                <Feather name="briefcase" size={16} color={theme.primary} />
+                <Text style={[styles.premiumDueText, { flexShrink: 1 }]}>
+                  {typeof task.projectName === 'object' ? task.projectName?.name : task.projectName || '-'}
+                </Text>
+              </View>
+
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 16, flexShrink: 1 }}>
+                <Feather name="map-pin" size={16} color={theme.primary} />
+                <Text style={[styles.premiumDueText, { flexShrink: 1 }]}>
+                  {task.location}
+                </Text>
+              </View>
+            </View>
+
             <View style={styles.statusBadgeRow}>
               {task.status === 'Hold' ? (
                 <View style={[styles.statusBadge, { backgroundColor: theme.issueBadgeBg || '#FF9800' }]}>
@@ -728,6 +760,13 @@ export default function TaskDetailsScreen({ route, navigation }) {
                 </View>
               )}
             </View>
+            {task.description ? (
+              <View style={{ marginTop: 12 }}>
+                <Text style={{ fontSize: 13, color: theme.secondaryText, lineHeight: 18 }} numberOfLines={3}>
+                  {task.description}
+                </Text>
+              </View>
+            ) : null}
           </View>
 
           <View>
@@ -739,7 +778,290 @@ export default function TaskDetailsScreen({ route, navigation }) {
             />
           </View>
         </Animated.View>
-        {/* Stats Grid */}
+
+        {/* Circular Action Buttons Row */}
+        <Animated.View entering={FadeInUp.delay(800)} style={styles.actionCircleRow}>
+          <View style={styles.actionCircleContainer}>
+            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowTaskChat(true)}>
+              <Feather name="message-circle" size={24} color={theme.issueText} />
+            </TouchableOpacity>
+            <Text style={styles.actionCircleLabel}>Chat</Text>
+          </View>
+
+          <View style={styles.actionCircleContainer}>
+            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setIsGalleryExpanded(!isGalleryExpanded)}>
+              <Feather name="file-text" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <Text style={styles.actionCircleLabel}>Docs</Text>
+          </View>
+
+          <View style={styles.actionCircleContainer}>
+            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowReassignModal(true)}>
+              <Ionicons name="people-outline" size={24} color="#21B573" />
+            </TouchableOpacity>
+            <Text style={styles.actionCircleLabel}>Team</Text>
+          </View>
+
+          <View style={styles.actionCircleContainer}>
+            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowMaterialRequest(true)}>
+              <Feather name="package" size={24} color={theme.primary} />
+            </TouchableOpacity>
+            <Text style={styles.actionCircleLabel}>Materials</Text>
+          </View>
+
+          <View style={styles.actionCircleContainer}>
+            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowDependentPopup(true)}>
+              <Feather name="link" size={24} color={theme.issueText} />
+            </TouchableOpacity>
+            <Text style={styles.actionCircleLabel}>Dependency</Text>
+          </View>
+        </Animated.View>
+
+        {/* Attachments Section - MOVED & CONDITIONAL */}
+        {isGalleryExpanded && (
+          <Animated.View entering={FadeInDown.duration(300)} style={[styles.workflowCard, { backgroundColor: theme.card, borderColor: theme.border, marginTop: -10 }]}>
+            {/* Header Row */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>
+                {t("attachments")} ({allAttachments.length})
+              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                {/* Mic Icon */}
+                <TouchableOpacity onPress={() => setShowVoiceRecorder(true)}>
+                  <Feather name="mic" size={22} color={theme.primary} />
+                </TouchableOpacity>
+
+                {/* Add Button */}
+                <TouchableOpacity
+                  style={{
+                    backgroundColor: theme.primary,
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                  }}
+                  onPress={() => setShowAttachmentSheet(true)}
+                >
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>+ Add</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* PREVIEW LIST FOR NEW (UNSAVED) ATTACHMENTS (Before Upload) */}
+            {newAttachments.length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <View style={{
+                  backgroundColor: theme.background,
+                  borderRadius: 12,
+                  padding: 12,
+                  borderWidth: 1,
+                  borderColor: theme.primary,
+                  borderStyle: 'dashed'
+                }}>
+                  <Text style={{ fontSize: 12, fontWeight: '600', color: theme.primary, marginBottom: 8 }}>
+                    Ready to Upload ({newAttachments.length})
+                  </Text>
+                  {/* List of new files to be uploaded */}
+                  {Array.from({ length: Math.ceil(newAttachments.length / 2) }).map((_, rowIdx) => (
+                    <View
+                      key={rowIdx}
+                      style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 6 }}>
+                      {[0, 1].map((colIdx) => {
+                        const idx = rowIdx * 2 + colIdx;
+                        const att = newAttachments[idx];
+                        if (!att) return <View key={colIdx} style={{ flex: 1 }} />;
+                        return (
+                          <View
+                            key={att.uri || att.name || idx}
+                            style={{
+                              flex: 1,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              padding: 8,
+                              borderWidth: 1,
+                              borderColor: theme.border,
+                              borderRadius: 8,
+                              backgroundColor: theme.card,
+                              marginRight: colIdx === 0 ? 8 : 0,
+                            }}>
+                            {/* Thumbnail Preview */}
+                            {(() => {
+                              const type = att.type || '';
+                              const name = att.name || '';
+                              const isImage = type.startsWith('image') || name.match(/\.(jpeg|jpg|gif|png|webp)$/i);
+                              const isVideo = type.startsWith('video') || name.match(/\.(mp4|mov|avi|mkv|webm)$/i);
+                              const isPdf = type.includes('pdf') || name.match(/\.pdf$/i);
+                              const isAudio = type.startsWith('audio') || name.match(/\.(mp3|wav|m4a|aac)$/i);
+                              const isWord = type.includes('word') || type.includes('document') || name.match(/\.(doc|docx)$/i);
+                              const isExcel = type.includes('sheet') || type.includes('excel') || name.match(/\.(xls|xlsx)$/i);
+
+                              if (isImage) return <Image source={{ uri: att.uri }} style={{ width: 24, height: 24, borderRadius: 4, marginRight: 8 }} />;
+                              if (isVideo) return (
+                                <View style={{ width: 24, height: 24, borderRadius: 4, marginRight: 8, overflow: 'hidden', backgroundColor: '#000' }}>
+                                  <Video
+                                    source={{ uri: att.uri }}
+                                    style={{ width: '100%', height: '100%' }}
+                                    resizeMode={ResizeMode.COVER}
+                                    useNativeControls={false}
+                                    shouldPlay={false}
+                                    isMuted={true}
+                                  />
+                                </View>
+                              );
+                              if (isPdf) return <MaterialCommunityIcons name="file-pdf-box" size={24} color="#F44336" style={{ marginRight: 8 }} />;
+                              if (isAudio) return <MaterialCommunityIcons name="file-music-outline" size={24} color="#2196F3" style={{ marginRight: 8 }} />;
+                              if (isWord) return <MaterialCommunityIcons name="file-word-box" size={24} color="#1976D2" style={{ marginRight: 8 }} />;
+                              if (isExcel) return <MaterialCommunityIcons name="file-excel-box" size={24} color="#4CAF50" style={{ marginRight: 8 }} />;
+                              return <MaterialCommunityIcons name="file-document-outline" size={24} color={theme.secondaryText} style={{ marginRight: 8 }} />;
+                            })()}
+                            <Text style={{ color: theme.text, fontSize: 12, flex: 1 }} numberOfLines={1}>
+                              {(att.name || 'File').slice(0, 15)}
+                            </Text>
+                            {/* Remove from staging */}
+                            <TouchableOpacity
+                              onPress={() => setNewAttachments((prev) => prev.filter((_, i) => i !== idx))}
+                              style={{ marginLeft: 4 }}>
+                              <MaterialCommunityIcons name="close" size={18} color="#E53935" />
+                            </TouchableOpacity>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  ))}
+                  {/* UPLOAD ACTION BUTTON */}
+                  <TouchableOpacity
+                    style={{
+                      backgroundColor: theme.primary,
+                      borderRadius: 8,
+                      paddingVertical: 12,
+                      alignItems: 'center',
+                      marginTop: 4,
+                    }}
+                    disabled={uploadingAttachment}
+                    onPress={async () => {
+                      setUploadingAttachment(true);
+                      try {
+                        // Pass taskName and description so they don't get overwritten with null
+                        await updateTaskDetails(task.id || task._id || task.taskId, {
+                          taskName: task.taskName,
+                          description: task.description,
+                          attachments: newAttachments,
+                        });
+                        clearAttachments();
+                        // Refresh task details to show new attachments immediately
+                        const updated = await getTaskDetailsById(task.id || task._id || task.taskId);
+                        setTask(updated);
+                        Alert.alert('Success', 'Attachment(s) uploaded successfully!');
+                      } catch (err) {
+                        console.error('Upload Error:', err);
+                        Alert.alert('Error', err.message || 'Failed to upload attachments.');
+                      }
+                      setUploadingAttachment(false);
+                    }}>
+                    {uploadingAttachment ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>
+                        Upload {newAttachments.length} {newAttachments.length === 1 ? 'File' : 'Files'} Now
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {allAttachments.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 12 }}>
+                {allAttachments.map((att, index) => {
+                  const url = att.url || att.uri || (typeof att === 'string' ? att : '');
+                  const type = att.type || '';
+                  const extension = url ? url.split('.').pop().toLowerCase().split('?')[0] : '';
+
+                  const isImage = type.includes('image') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'heic'].includes(extension);
+                  const isVideo = type.includes('video') || ['mp4', 'mov', 'avi', 'mkv', 'webm'].includes(extension);
+                  const isPdf = type.includes('pdf') || extension === 'pdf';
+                  const isAudio = type.includes('audio') || ['mp3', 'wav', 'm4a', 'aac'].includes(extension);
+                  const isWord = type.includes('word') || type.includes('document') || ['doc', 'docx'].includes(extension);
+                  const isExcel = type.includes('sheet') || type.includes('excel') || ['xls', 'xlsx'].includes(extension);
+
+                  return (
+                    <TouchableOpacity key={index} onPress={() => { setPreviewIndex(index); setPreviewVisible(true); }}>
+                      <View style={{
+                        width: 80,
+                        height: 80,
+                        borderRadius: 12,
+                        backgroundColor: theme.background,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                        borderWidth: 1,
+                        borderColor: theme.border
+                      }}>
+                        {isImage ? (
+                          <Image
+                            source={{ uri: url }}
+                            style={{ width: '100%', height: '100%' }}
+                            resizeMode="cover"
+                          />
+                        ) : isVideo ? (
+                          <View style={{ width: '100%', height: '100%', backgroundColor: '#000' }}>
+                            <Video
+                              source={{ uri: url }}
+                              style={{ width: '100%', height: '100%' }}
+                              resizeMode={ResizeMode.COVER}
+                              useNativeControls={false}
+                              shouldPlay={false}
+                              isMuted={true}
+                            />
+                            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.2)' }}>
+                              <Feather name="play-circle" size={24} color="#fff" />
+                            </View>
+                          </View>
+                        ) : isPdf ? (
+                          <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#FFEBEE' }}>
+                            <MaterialCommunityIcons name="file-pdf-box" size={32} color="#F44336" />
+                            <Text style={{ fontSize: 9, color: '#F44336', marginTop: 4, fontWeight: '700' }}>PDF</Text>
+                          </View>
+                        ) : isAudio ? (
+                          <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#E3F2FD' }}>
+                            <MaterialCommunityIcons name="file-music-outline" size={32} color="#2196F3" />
+                            <Text style={{ fontSize: 9, color: '#2196F3', marginTop: 4, fontWeight: '700' }}>AUDIO</Text>
+                          </View>
+                        ) : isWord ? (
+                          <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#E8F5E9' }}>
+                            <MaterialCommunityIcons name="file-word-box" size={32} color="#1976D2" />
+                            <Text style={{ fontSize: 9, color: '#1976D2', marginTop: 4, fontWeight: '700' }}>DOC</Text>
+                          </View>
+                        ) : isExcel ? (
+                          <View style={{ alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', backgroundColor: '#E8F5E9' }}>
+                            <MaterialCommunityIcons name="file-excel-box" size={32} color="#4CAF50" />
+                            <Text style={{ fontSize: 9, color: '#4CAF50', marginTop: 4, fontWeight: '700' }}>XLS</Text>
+                          </View>
+                        ) : (
+                          <Feather name="file-text" size={30} color={theme.primary} />
+                        )}
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            ) : newAttachments.length === 0 && (
+              <View style={{
+                height: 100,
+                borderWidth: 1,
+                borderColor: theme.border,
+                borderStyle: 'dashed',
+                borderRadius: 12,
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.background + '50'
+              }}>
+                <Text style={{ color: theme.secondaryText, fontStyle: 'italic', fontSize: 14 }}>No attachments yet</Text>
+              </View>
+            )}
+          </Animated.View>
+        )}
+
+        {/* Stats Grid - COMMENTED OUT
         <Animated.View entering={FadeInUp.delay(400)} style={styles.statsGrid}>
           <TouchableOpacity style={styles.statsCard} onPress={() => setShowDependentPopup(true)}>
             <View style={[styles.statsIconContainer, { backgroundColor: theme.issueBg }]}>
@@ -765,43 +1087,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <Text style={styles.statsValue}>Requirements</Text>
           </TouchableOpacity>
         </Animated.View>
+        */}
 
-        {/* Velocity Chart Card */}
-        <Animated.View entering={FadeInUp.delay(600)} style={[styles.chartCard, { backgroundColor: theme.card }]}>
-          <Text style={styles.chartTitle}>Task Velocity</Text>
-          <ActivityChart theme={theme} />
-        </Animated.View>
-
-        {/* Circular Action Buttons Row */}
-        <Animated.View entering={FadeInUp.delay(800)} style={styles.actionCircleRow}>
-          <View style={styles.actionCircleContainer}>
-            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowTaskChat(true)}>
-              <Feather name="message-circle" size={24} color={theme.issueText} />
-            </TouchableOpacity>
-            <Text style={styles.actionCircleLabel}>Chat</Text>
-          </View>
-
-          <View style={styles.actionCircleContainer}>
-            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setDrawerVisible(true)}>
-              <Feather name="file-text" size={24} color={theme.primary} />
-            </TouchableOpacity>
-            <Text style={styles.actionCircleLabel}>Docs</Text>
-          </View>
-
-          <View style={styles.actionCircleContainer}>
-            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowReassignModal(true)}>
-              <Ionicons name="people-outline" size={24} color="#21B573" />
-            </TouchableOpacity>
-            <Text style={styles.actionCircleLabel}>Team</Text>
-          </View>
-
-          <View style={styles.actionCircleContainer}>
-            <TouchableOpacity style={[styles.actionCircle, { backgroundColor: theme.card, borderColor: theme.border }]} onPress={() => setShowTaskDetails(!showTaskDetails)}>
-              <Feather name="clipboard" size={24} color={theme.secondaryText} />
-            </TouchableOpacity>
-            <Text style={styles.actionCircleLabel}>Log</Text>
-          </View>
-        </Animated.View>
         <TaskChatPopup
           visible={showTaskChat}
           onClose={() => setShowTaskChat(false)}
@@ -824,18 +1111,15 @@ export default function TaskDetailsScreen({ route, navigation }) {
           visible={showReassignModal}
           onClose={(wasReassigned) => {
             setShowReassignModal(false);
-            if (wasReassigned) {
-              // Navigate back since user is no longer assigned to this task
-              navigation.goBack();
-            }
           }}
           taskId={task?.id || task?._id || task?.taskId}
           theme={theme}
           currentAssignees={task?.assignedUserDetails || []}
           isCreator={isCreator}
         />
+
         {isWorkflowTask ? (
-          // 🟢 WORKFLOW MODE VIEW
+          // WORKFLOW MODE VIEW
           <Animated.View entering={FadeInDown.delay(900)} style={[styles.workflowCard, { backgroundColor: theme.card, borderColor: theme.border + '50', elevation: 2 }]}>
             <View style={styles.workflowHeader}>
               <MaterialCommunityIcons name="transit-connection-variant" size={20} color={theme.primary} />
@@ -955,72 +1239,13 @@ export default function TaskDetailsScreen({ route, navigation }) {
           )
         )}
 
-        {showTaskDetails && (
-          <Animated.View entering={FadeInDown} style={{ marginBottom: 20 }}>
-            <FieldBox
-              label={t("selected_project")}
-              value={typeof task.projectName === 'object' ? task.projectName?.name : task.projectName || '-'}
-              theme={theme}
-            />
-            <FieldBox
-              label={t("selected_worklist")}
-              value={Array.isArray(worklists) ? worklists.find((wl) => wl.id === task.worklistId)?.name || '-' : '-'}
-              theme={theme}
-            />
-            <View style={styles.dateRow}>
-              <DateBox label={t("start_date")} value={new Date(task.startDate)} theme={theme} />
-              <DateBox label={t("end_date")} value={new Date(task.endDate)} theme={theme} />
-            </View>
+        {/* Velocity Chart Card */}
+        <Animated.View entering={FadeInUp.delay(600)} style={[styles.chartCard, { backgroundColor: theme.card }]}>
+          <Text style={styles.chartTitle}>Task Velocity</Text>
+          <ActivityChart theme={theme} />
+        </Animated.View>
 
-            <FieldBox
-              label={t("description")}
-              value={task.description || ''}
-              editable={false}
-              multiline={true}
-              theme={theme}
-            />
 
-            {/* Critical Toggle for Issues */}
-            {task.isIssue && (
-              <View style={[styles.fieldBox, { backgroundColor: theme.inputBox || theme.card, borderColor: theme.border, justifyContent: 'space-between', paddingVertical: 12 }]}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.inputLabel, { color: theme.text }]}>CRITICAL ISSUE</Text>
-                  <Text style={{ fontSize: 13, color: theme.secondaryText }}>{task.isCritical ? 'High Priority' : 'Normal Priority'}</Text>
-                </View>
-                {isCreator && (
-                  <Switch
-                    value={task.isCritical || false}
-                    onValueChange={async (value) => {
-                      try {
-                        setLoading(true);
-                        await updateTaskFlags(taskId, { isCritical: value });
-                        const updatedTask = await getTaskDetailsById(taskId);
-                        setTask(updatedTask);
-                        Alert.alert('Success', value ? 'Marked as critical.' : 'Removed critical status.');
-                      } catch (err) {
-                        Alert.alert('Error', err.message);
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    trackColor={{ false: '#ddd', true: theme.criticalText }}
-                  />
-                )}
-              </View>
-            )}
-
-            <FieldBox
-              label={t("attachments")}
-              value={allAttachments.length > 0 ? `${allAttachments.length} files` : 'No attachments'}
-              rightComponent={
-                <TouchableOpacity onPress={() => setShowAttachmentSheet(true)}>
-                  <Feather name="plus-circle" size={20} color={theme.primary} />
-                </TouchableOpacity>
-              }
-              theme={theme}
-            />
-          </Animated.View>
-        )}
 
         <Modal
           visible={showDependentPopup}
@@ -1251,6 +1476,8 @@ export default function TaskDetailsScreen({ route, navigation }) {
             )
           })
         )}
+
+
       </ScrollView>
       {/* Options Menu Modal */}
       <Modal visible={menuVisible} transparent animationType="fade" onRequestClose={() => setMenuVisible(false)}>
@@ -1330,6 +1557,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
+      <VoiceRecorderPopup
+        visible={showVoiceRecorder}
+        onClose={() => setShowVoiceRecorder(false)}
+        onRecord={handleAudioRecorded}
+        theme={theme}
+      />
       {/* Subtask Popup with updated props */}
       <AddSubTaskPopup
         visible={showAddSubTaskPopup}
@@ -1346,6 +1579,15 @@ export default function TaskDetailsScreen({ route, navigation }) {
         projectTasks={projectTasks}
         worklists={worklists}
         parentTaskId={taskId}
+      />
+      <AttachmentSheet
+        visible={showAttachmentSheet}
+        onClose={() => setShowAttachmentSheet(false)}
+        onPick={async (type) => {
+          const files = await pickAttachment(type);
+          console.log('Files returned from picker:', files);
+          setShowAttachmentSheet(false);
+        }}
       />
       <AttachmentDrawer
         visible={drawerVisible}
@@ -1595,7 +1837,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
               <View style={[styles.coAdminPopup, { backgroundColor: theme.card, borderColor: theme.border }]}>
                 <Text style={[styles.coAdminPopupTitle, { color: theme.text }]}>{t("task_name")}</Text>
                 <Text style={[{ color: theme.text, fontSize: 16, textAlign: 'center', lineHeight: 22, marginBottom: 12 }]}>
-                  {task?.name}
+                  {task?.taskName}
                 </Text>
                 <TouchableOpacity
                   style={styles.coAdminPopupCloseBtn}

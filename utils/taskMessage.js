@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { API_URL } from './config';
 import { Platform } from 'react-native';
+import { API_URL } from './config';
 
 export async function fetchTaskMessages(taskId) {
   const token = await AsyncStorage.getItem('token');
@@ -22,7 +22,7 @@ export async function fetchTaskMessages(taskId) {
       attachments: msg.attachments || [],
     }));
   } catch (err) {
-    console.error('[fetchTaskMessages] Error:', err);
+    // console.error('[fetchTaskMessages] Error:', err);
     throw err;
   }
 }

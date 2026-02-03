@@ -42,6 +42,7 @@ export default function AttachmentPreviewModal({ visible, onClose, attachments =
   const [isPlaying, setIsPlaying] = useState(false);
   const [sound, setSound] = useState(null);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // --- SYNC INDEX (iOS Fix) ---
   useEffect(() => {
@@ -135,6 +136,8 @@ export default function AttachmentPreviewModal({ visible, onClose, attachments =
   const handleDownload = async () => {
     if (!currentAttachment) return;
     const uri = currentAttachment.uri || currentAttachment;
+
+    setDownloading(true);
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
@@ -144,17 +147,23 @@ export default function AttachmentPreviewModal({ visible, onClose, attachments =
       const fileName = getFileName(currentAttachment);
       const localUri = FileSystem.documentDirectory + fileName;
       const downloadRes = await FileSystem.downloadAsync(uri, localUri);
-      const asset = await MediaLibrary.createAssetAsync(downloadRes.uri);
-      const albums = await MediaLibrary.getAlbumsAsync();
-      let album = albums.find((alb) => alb.title === 'Karyah Downloads');
-      if (!album) {
-        await MediaLibrary.createAlbumAsync('Karyah Downloads', asset, false);
-      } else {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album.id, false);
+
+      // MediaLibrary works best for Media (Images/Videos/Audio)
+      try {
+        const asset = await MediaLibrary.createAssetAsync(downloadRes.uri);
+        // We do not move to a custom album to avoid EPERM crashes on Android 11+
+        Alert.alert('Success', 'File saved to Gallery/Storage!');
+      } catch (mediaError) {
+        console.log('MediaLibrary save error:', mediaError);
+        // Even if this fails, the file is in the cache/document directory
+        Alert.alert('Saved', 'File downloaded to internal storage.');
       }
-      Alert.alert('Success', 'Downloaded successfully!');
+
     } catch (error) {
+      console.error('Download error:', error);
       Alert.alert('Error', 'Failed to download.');
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -338,8 +347,12 @@ export default function AttachmentPreviewModal({ visible, onClose, attachments =
           <Text style={styles.headerTitle}>{currentIndex + 1} / {attachments.length}</Text>
           <View style={{ width: 40 }} />
           {/* Download Button Added Back */}
-          <TouchableOpacity onPress={handleDownload} style={styles.iconButton}>
-            <Feather name="download" size={24} color="#fff" />
+          <TouchableOpacity onPress={handleDownload} style={styles.iconButton} disabled={downloading}>
+            {downloading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Feather name="download" size={24} color="#fff" />
+            )}
           </TouchableOpacity>
         </View>
 

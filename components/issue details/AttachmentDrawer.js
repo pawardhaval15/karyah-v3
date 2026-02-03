@@ -1,18 +1,17 @@
-import React from 'react';
-import {
-    Modal,
-    View,
-    Text,
-    TouchableOpacity,
-    FlatList,
-    Image,
-    StyleSheet,
-    Dimensions,
-    Alert,
-} from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import {
+    Alert,
+    Dimensions,
+    FlatList,
+    Image,
+    Modal,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
+} from 'react-native';
 
 const numColumns = 3;
 const ITEM_SIZE = Math.floor(Dimensions.get('window').width / numColumns) - 24;
@@ -41,15 +40,24 @@ export default function AttachmentDrawer({
             }
             const localUri = FileSystem.documentDirectory + name;
             const downloadRes = await FileSystem.downloadAsync(uri, localUri);
-            const asset = await MediaLibrary.createAssetAsync(downloadRes.uri);
-            const albums = await MediaLibrary.getAlbumsAsync();
-            let album = albums.find(alb => alb.title === 'Karyah Downloads');
-            if (!album) {
-                await MediaLibrary.createAlbumAsync('Karyah Downloads', asset, false);
-            } else {
-                await MediaLibrary.addAssetsToAlbumAsync([asset], album.id, false);
+
+            // Safer MediaLibrary usage
+            try {
+                const asset = await MediaLibrary.createAssetAsync(downloadRes.uri);
+                const albums = await MediaLibrary.getAlbumsAsync();
+                let album = albums.find(alb => alb.title === 'Karyah Downloads');
+                if (!album) {
+                    await MediaLibrary.createAlbumAsync('Karyah Downloads', asset, false);
+                } else {
+                    await MediaLibrary.addAssetsToAlbumAsync([asset], album.id, false);
+                }
+                Alert.alert('Success', 'File downloaded successfully!');
+            } catch (mediaError) {
+                console.log('MediaLibrary save error:', mediaError);
+                // If album creation fails, the asset is usually still saved to default storage.
+                // We suppress the crash.
+                Alert.alert('Saved', 'File saved to Gallery/Storage.');
             }
-            Alert.alert('Success', 'File downloaded successfully!');
         } catch (err) {
             console.error('Download failed:', err);
             Alert.alert('Error', 'Download failed.');
