@@ -309,10 +309,11 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontSize: 14,
-    fontWeight: '400',
+    fontWeight: '500',
   },
   activeTabText: {
     color: '#fff',
+    fontWeight: 'bold',
   },
   searchBarContainer: {
     flexDirection: 'row',
