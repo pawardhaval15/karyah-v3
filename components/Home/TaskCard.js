@@ -180,42 +180,44 @@ const TaskCard = ({
                 </Text>
               </View>
               {location && (
-                <View style={[styles.metaItem, { marginLeft: 10 }]}>
+                <View style={[styles.metaItem, { marginLeft: 16 }]}>
                   <Feather name="map-pin" size={12} color={theme.secondaryText} style={styles.metaIcon} />
                   <Text style={[styles.metaText, { color: theme.secondaryText }]} numberOfLines={1}>
                     {location}
                   </Text>
                 </View>
               )}
-              {dueDateStatus ? (
-                <View style={styles.dateContainer}>
-                  <Feather
-                    name="calendar"
-                    size={12}
-                    color={dueDateStatus.color}
-                    style={{ marginRight: 4, marginLeft: 10 }}
-                  />
-                  <Text
-                    style={{
-                      color: dueDateStatus.color,
-                      fontSize: 11,
-                      fontWeight: '500',
-                    }}>
-                    {dueDateStatus.text}
-                  </Text>
-                </View>
-              ) : (
-                <View style={styles.dateContainer}>
-                  <Feather
-                    name="calendar"
-                    size={12}
-                    color={theme.secondaryText}
-                    style={{ marginRight: 4, marginLeft: 10 }}
-                  />
-                  <Text style={[styles.metaText, { color: theme.secondaryText }]}>
-                    No due date
-                  </Text>
-                </View>
+              {!isIssue && (
+                dueDateStatus ? (
+                  <View style={styles.dateContainer}>
+                    <Feather
+                      name="calendar"
+                      size={12}
+                      color={dueDateStatus.color}
+                      style={{ marginRight: 4, marginLeft: 10 }}
+                    />
+                    <Text
+                      style={{
+                        color: dueDateStatus.color,
+                        fontSize: 11,
+                        fontWeight: '500',
+                      }}>
+                      {dueDateStatus.text}
+                    </Text>
+                  </View>
+                ) : (
+                  <View style={styles.dateContainer}>
+                    <Feather
+                      name="calendar"
+                      size={12}
+                      color={theme.secondaryText}
+                      style={{ marginRight: 4, marginLeft: 10 }}
+                    />
+                    <Text style={[styles.metaText, { color: theme.secondaryText }]}>
+                      No due date
+                    </Text>
+                  </View>
+                )
               )}
             </View>
 
@@ -225,6 +227,13 @@ const TaskCard = ({
           {/* Right Indicator (Only for Issues) */}
           {isIssue && (
             <View style={styles.rightColumn}>
+              {dueDateStatus && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
+                  <Text style={{ color: dueDateStatus.color, fontSize: 10, fontWeight: '700' }}>
+                    {dueDateStatus.text}
+                  </Text>
+                </View>
+              )}
               <View style={styles.ringContainer}>
                 <View style={[
                   styles.statusBadge,
@@ -242,7 +251,7 @@ const TaskCard = ({
                         : (theme.issueBadgeText || theme.normalIssueBadgeText || '#FFFFFF')
                     }
                   ]}>
-                    {issueStatus || 'Open'}
+                    {issueStatus || 'Pending'}
                   </Text>
                 </View>
               </View>
