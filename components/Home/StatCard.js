@@ -3,6 +3,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Dimensions,
   FlatList,
   StyleSheet,
   Text,
@@ -11,6 +12,10 @@ import {
 } from 'react-native';
 import Animated, { FadeInRight } from 'react-native-reanimated';
 import { useDashboardStats } from '../../hooks/useDashboard';
+import ProgressRing from '../ui/ProgressRing';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const CARD_WIDTH = (SCREEN_WIDTH - 54) / 2.3; // Even smaller width to show more cards
 
 const StatCard = memo(({
   title,
@@ -21,73 +26,50 @@ const StatCard = memo(({
   screen,
   navigation,
   theme,
-  extrasLine,
   index
 }) => {
-  const handlePress = () => {
+  const handlePress = useCallback(() => {
     if (navigation && screen) {
       navigation.navigate(screen);
     }
-  };
+  }, [navigation, screen]);
 
   return (
     <Animated.View
       entering={FadeInRight.delay(index * 100).springify()}
-      style={{ marginRight: 12 }}
+      style={styles.cardWrapper}
     >
-      <TouchableOpacity activeOpacity={0.85} onPress={handlePress}>
-        <View style={[styles.card, { backgroundColor: theme.card }]}>
-          <LinearGradient
-            colors={gradientColors}
-            start={{ x: 0, y: 1 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.gradientSection}
-          >
-            <View style={styles.cardSubTitleRow}>
-              <Text style={styles.cardSubTitleLabel}>{title}</Text>
-              <Text style={styles.cardSubTitleValue}>
-                {value}
-                <Text style={{ color: '#fff', opacity: 0.75 }}>
-                  {' '} / {total}
-                </Text>
-              </Text>
-            </View>
-          </LinearGradient>
-
-          <View
-            style={[
-              styles.bottomSection,
-              { backgroundColor: theme.card, borderColor: theme.border }
-            ]}
-          >
-            <View style={styles.row}>
-              <Text style={[styles.progressLabel, { color: theme.text }]}>
-                {percent}%
-              </Text>
-
-              {extrasLine ? (
-                <Text
-                  style={[styles.cardExtra, { marginLeft: 'auto', color: theme.secondaryText }]}
-                  numberOfLines={1}
-                >
-                  {extrasLine}
-                </Text>
-              ) : null}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        onPress={handlePress}
+        style={styles.card}
+      >
+        <LinearGradient
+          colors={gradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.gradientHeader}
+        >
+          <View style={styles.contentRow}>
+            <View style={styles.statsColumn}>
+              <Text style={styles.cardTitle} numberOfLines={1}>{title}</Text>
+              <View style={styles.valueGroup}>
+                <Text style={styles.mainValue}>{value}</Text>
+                <Text style={styles.totalValue}>/{total}</Text>
+              </View>
             </View>
 
-            <View style={[styles.progressBarBg, { backgroundColor: theme.border }]}>
-              <View
-                style={[
-                  styles.progressBar,
-                  {
-                    width: `${percent}%`,
-                    backgroundColor: theme.primary
-                  }
-                ]}
+            <View style={styles.ringContainer}>
+              <ProgressRing
+                progress={percent}
+                color={"rgba(255,255,255,0.9)"}
+                theme={{ ...theme, text: '#fff' }}
+                size={36}
+                strokeWidth={3}
               />
             </View>
           </View>
-        </View>
+        </LinearGradient>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -95,81 +77,60 @@ const StatCard = memo(({
 
 const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
   const { t } = useTranslation();
-  const { data: apiData, isLoading: statsLoading } = useDashboardStats();
+  const { data: stats, isLoading: statsLoading } = useDashboardStats();
 
   const loading = parentLoading || statsLoading;
 
   const statData = useMemo(() => {
-    if (!apiData) return [];
+    if (!stats) return [];
 
     return [
       {
-        id: 'critical_issues',
+        id: 'critical',
         title: t('critical_issues'),
-        value: apiData.critical?.unresolved ?? 0,
-        total: apiData.critical?.total ?? 0,
-        percent: apiData.critical?.total
-          ? Math.round((apiData.critical.unresolved / apiData.critical.total) * 100)
-          : 0,
-        extrasLine: `Resolved: ${apiData.critical?.resolved ?? 0}`,
+        value: stats.critical?.unresolved ?? 0,
+        total: stats.critical?.total ?? 0,
+        percent: stats.critical?.total ? Math.round(((stats.critical.total - stats.critical.unresolved) / stats.critical.total) * 100) : 0,
         gradientColors: theme.criticalGradient,
         screen: 'IssuesScreen',
       },
       {
         id: 'issues',
         title: t('issues'),
-        value: apiData.issues?.unresolved ?? 0,
-        total: apiData.issues?.total ?? 0,
-        percent: apiData.issues?.total
-          ? Math.round((apiData.issues.unresolved / apiData.issues.total) * 100)
-          : 0,
-        extrasLine: `Resolved: ${apiData.issues?.resolved ?? 0}`,
+        value: stats.issues?.unresolved ?? 0,
+        total: stats.issues?.total ?? 0,
+        percent: stats.issues?.total ? Math.round(((stats.issues.total - stats.issues.unresolved) / stats.issues.total) * 100) : 0,
         gradientColors: theme.issueGradient,
         screen: 'IssuesScreen',
       },
       {
         id: 'tasks',
         title: t('tasks'),
-        value: (apiData.tasks?.inProgress ?? 0) + (apiData.tasks?.pending ?? 0),
-        total: apiData.tasks?.total ?? 0,
-        percent: apiData.tasks?.total
-          ? Math.round((apiData.tasks.completed / apiData.tasks.total) * 100)
-          : 0,
-        extrasLine: `Pending: ${apiData.tasks?.pending ?? 0} • Done: ${apiData.tasks?.completed ?? 0}`,
+        value: (stats.tasks?.inProgress ?? 0) + (stats.tasks?.pending ?? 0),
+        total: stats.tasks?.total ?? 0,
+        percent: stats.tasks?.total ? Math.round((stats.tasks.completed / stats.tasks.total) * 100) : 0,
         gradientColors: theme.taskGradient,
         screen: 'MyTasksScreen',
       },
       {
         id: 'projects',
         title: t('projects'),
-        value: (apiData.projects?.inProgress ?? 0) + (apiData.projects?.pending ?? 0),
-        total: apiData.projects?.total ?? 0,
-        percent: apiData.projects?.total
-          ? Math.round((apiData.projects.completed / apiData.projects.total) * 100)
-          : 0,
-        extrasLine: `Pending: ${apiData.projects?.pending ?? 0} • Done: ${apiData.projects?.completed ?? 0}`,
+        value: (stats.projects?.inProgress ?? 0) + (stats.projects?.pending ?? 0),
+        total: stats.projects?.total ?? 0,
+        percent: stats.projects?.total ? Math.round((stats.projects.completed / stats.projects.total) * 100) : 0,
         gradientColors: theme.projectGradient,
         screen: 'ProjectScreen',
       },
     ];
-  }, [apiData, t]);
+  }, [stats, t, theme]);
 
-
-  const renderItem = useCallback(
-    ({ item, index }) => (
-      <StatCard
-        {...item}
-        index={index}
-        navigation={navigation}
-        theme={theme}
-      />
-    ),
-    [navigation, theme]
-  );
+  const renderItem = useCallback(({ item, index }) => (
+    <StatCard {...item} index={index} navigation={navigation} theme={theme} />
+  ), [navigation, theme]);
 
   if (loading && statData.length === 0) {
     return (
-      <View style={{ height: 100, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={styles.loader}>
         <ActivityIndicator size="small" color={theme.primary} />
       </View>
     );
@@ -182,89 +143,67 @@ const StatCardList = memo(({ navigation, theme, loading: parentLoading }) => {
       keyExtractor={item => item.id}
       horizontal
       showsHorizontalScrollIndicator={false}
-      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 10 }}
-      initialNumToRender={3}
-      maxToRenderPerBatch={2}
-      windowSize={3}
-      removeClippedSubviews
+      contentContainerStyle={styles.listContainer}
+      snapToInterval={CARD_WIDTH + 10}
+      decelerationRate="fast"
     />
   );
 });
 
-export default StatCardList;
-
-
 const styles = StyleSheet.create({
+  loader: { height: 80, justifyContent: 'center' },
+  listContainer: { paddingHorizontal: 20, paddingBottom: 10, paddingTop: 5 },
+  cardWrapper: { marginRight: 10 },
   card: {
-    width: 180,
-    borderRadius: 12,
-    backgroundColor: '#fff',
-    marginBottom: 0,
+    borderRadius: 14,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
+    width: CARD_WIDTH,
   },
-  cardSubTitleRow: {
+  gradientHeader: {
+    padding: 12,
+    height: 75, // Slim height
+    justifyContent: 'center',
+  },
+  contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    justifyContent: 'space-between',
   },
-  cardSubTitleLabel: {
-    fontSize: 16,
-    color: '#fff',
-    marginRight: 8,
-    fontWeight: '500',
+  statsColumn: {
+    flex: 1,
   },
-  cardSubTitleValue: {
-    fontSize: 14,
-    color: '#fff',
-    fontWeight: '500',
-    marginLeft: 'auto',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    width: '100%',
-  },
-  gradientSection: {
-    borderTopLeftRadius: 10,
-    borderTopRightRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  cardExtra: {
-    color: '#000000',
+  cardTitle: {
     fontSize: 10,
-    opacity: 0.85,
-    fontWeight: '400',
-  },
-  bottomSection: {
-    backgroundColor: '#fff',
-    borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 12,
-    paddingHorizontal: 16,
-    paddingTop: 6,
-    paddingBottom: 12,
-    borderColor: '#e5e7eb',
-    borderWidth: 0.8,
-    borderTopWidth: 0,
-  },
-  progressLabel: {
-    color: '#222',
-    fontWeight: '400',
-    fontSize: 12,
+    fontWeight: '800',
+    color: '#fff',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
     marginBottom: 2,
-    marginRight: 8,
+    opacity: 0.9,
   },
-  progressBarBg: {
-    width: '100%',
-    height: 4,
-    backgroundColor: '#e5e7eb',
-    borderRadius: 12,
-    marginTop: 2,
+  valueGroup: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
   },
-  progressBar: {
-    height: 4,
-    backgroundColor: '#366CD9',
-    borderRadius: 12,
+  mainValue: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
   },
+  totalValue: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
+    opacity: 0.7,
+  },
+  ringContainer: {
+    marginLeft: 6,
+  }
 });
+
+export default StatCardList;

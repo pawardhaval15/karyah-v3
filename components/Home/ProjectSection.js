@@ -101,7 +101,7 @@ const ProjectSection = memo(({ navigation, theme, loading: parentLoading }) => {
                 showsHorizontalScrollIndicator={false}
                 contentContainerStyle={{ paddingLeft: 20, paddingRight: 20, marginBottom: 20 }}
                 renderItem={renderProjectItem}
-                keyExtractor={(item) => item.id || item._id || Math.random().toString()}
+                keyExtractor={(item, index) => item.id || item._id || `proj-${index}`}
                 getItemLayout={getItemLayout}
                 initialNumToRender={3}
                 maxToRenderPerBatch={2}
